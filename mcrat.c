@@ -250,7 +250,6 @@ int main(int argc, char **argv)
                 //if simulation time is less than the simulation time of the next frame, keep scattering in this frame
                 //go through each photon and find blocks closest to each photon and properties of those blocks to calulate mean free path
                 //and choose the photon with the smallest mfp and calculate the timestep
-                //printf("In main: %e, %e,\n",ph_vxPtr, ph_vyPtr);
                 
                 ph_scatt_index=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, &time_step, xPtr,  yPtr, velxPtr,  velyPtr,  dens_labPtr, tempPtr,\
                     &ph_dens_labPtr, &ph_vxPtr, &ph_vyPtr, &ph_tempPtr, rand);

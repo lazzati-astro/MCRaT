@@ -12,6 +12,7 @@
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_sf_bessel.h>
 #include "mclib.h"
+#include <omp.h>
 
 #define PROP_DIM1 1
 #define PROP_DIM2 8
@@ -20,7 +21,7 @@
 
 //define constants
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27;
-const double K_B=1.380658e-16, M_P=1.6726231e-24, THOMP_X_SECT=6.65246e-25, M_EL=9.1093879e-28  ;
+const double K_B=1.380658e-16, M_P=1.6726231e-24, THOMP_X_SECT=6.65246e-25, M_EL=9.1093879e-28 ;
 
 void printPhotons(struct photon *ph, int num_ph, int frame,char dir[200] )
 {
@@ -624,7 +625,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     {
        if ((*(r+i) > (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) > theta_min) )
         {
-            //*(temps+i)=0.76*(*(temps+i));
+            
             for(j=0;j<(*(ph_dens+k));j++ )
             {
                     //have to get random frequency for the photon comoving frequency
@@ -704,8 +705,8 @@ void lorentzBoost(double *boost, double *p_ph, double *result, char object)
     gsl_matrix *lambda1= gsl_matrix_calloc (4, 4); //create matrix thats 4x4 to do lorentz boost 
     gsl_vector *p_ph_prime =gsl_vector_calloc(4); //create vestor to hold lorentz boosted vector
     
-    printf("Boost: %e, %e, %e, %e\n",gsl_blas_dnrm2(&b.vector), *(boost+0), *(boost+1), *(boost+2));
-    printf("4 Momentum to Boost: %e, %e, %e, %e\n",*(p_ph+0), *(p_ph+1), *(p_ph+2), *(p_ph+3));
+    //printf("%e, %e, %e, %e\n",gsl_blas_dnrm2(&b.vector), *(boost+0), *(boost+1), *(boost+2));
+    //printf("%e, %e, %e, %e\n",*(p_ph+0), *(p_ph+1), *(p_ph+2), *(p_ph+3));
     
     //if magnitude of fluid velocity is != 0 do lorentz boost otherwise dont need to do a boost
     if (gsl_blas_dnrm2(&b.vector) > 0)
@@ -713,7 +714,6 @@ void lorentzBoost(double *boost, double *p_ph, double *result, char object)
         //printf("in If\n");
         beta=gsl_blas_dnrm2(&b.vector);
         gamma=1.0/sqrt(1-pow(beta, 2.0));
-        printf("Beta: %e\tGamma: %e\n",beta,gamma );
         
         //initalize matrix values
         gsl_matrix_set(lambda1, 0,0, gamma);
@@ -735,13 +735,7 @@ void lorentzBoost(double *boost, double *p_ph, double *result, char object)
         gsl_matrix_set(lambda1, 3,2, gsl_matrix_get(lambda1,2,3));
         
         gsl_blas_dgemv(CblasNoTrans, 1, lambda1, &p.vector, 0, p_ph_prime );
-        
-        printf("Lorentz Boost Matrix 0: %e,%e, %e, %e\n", gsl_matrix_get(lambda1, 0,0), gsl_matrix_get(lambda1, 0,1), gsl_matrix_get(lambda1, 0,2), gsl_matrix_get(lambda1, 0,3));
-        printf("Lorentz Boost Matrix 1: %e,%e, %e, %e\n", gsl_matrix_get(lambda1, 1,0), gsl_matrix_get(lambda1, 1,1), gsl_matrix_get(lambda1, 1,2), gsl_matrix_get(lambda1, 1,3));
-        printf("Lorentz Boost Matrix 2: %e,%e, %e, %e\n", gsl_matrix_get(lambda1, 2,0), gsl_matrix_get(lambda1, 2,1), gsl_matrix_get(lambda1, 2,2), gsl_matrix_get(lambda1, 2,3));
-        printf("Lorentz Boost Matrix 3: %e,%e, %e, %e\n", gsl_matrix_get(lambda1, 3,0), gsl_matrix_get(lambda1, 3,1), gsl_matrix_get(lambda1, 3,2), gsl_matrix_get(lambda1, 3,3));
-        
-        printf("Before Check: %e %e %e %e\n ",gsl_vector_get(p_ph_prime, 0), gsl_vector_get(p_ph_prime, 1), gsl_vector_get(p_ph_prime, 2), gsl_vector_get(p_ph_prime, 3));
+        //printf("Before Check: %e %e %e %e\n ",gsl_vector_get(p_ph_prime, 0), gsl_vector_get(p_ph_prime, 1), gsl_vector_get(p_ph_prime, 2), gsl_vector_get(p_ph_prime, 3));
         
         //double check vector for 0 norm condition if photon
         if (object == 'p')
@@ -754,7 +748,7 @@ void lorentzBoost(double *boost, double *p_ph, double *result, char object)
             boosted_p=gsl_vector_ptr(p_ph_prime, 0);
         }
         
-        printf("After Check: %e %e %e %e\n ", *(boosted_p+0),*(boosted_p+1),*(boosted_p+2),*(boosted_p+3) );
+        //printf("After Check: %e %e %e %e\n ", *(boosted_p+0),*(boosted_p+1),*(boosted_p+2),*(boosted_p+3) );
     }
     else
     {
@@ -766,9 +760,9 @@ void lorentzBoost(double *boost, double *p_ph, double *result, char object)
          }
          else
          {
-             //if 4 momentum isnt for photon and there is no boost to be done, we dont care about normality and just want back what was passed to lorentz boost
-            boosted_p=gsl_vector_ptr(&p.vector, 0);
-         }
+            //if 4 momentum isnt for photon and there is no boost to be done, we dont care about normality and just want back what was passed to lorentz boost
+            boosted_p=gsl_vector_ptr(&p.vector, 0);         
+          }
     }
     //assign values to result
     *(result+0)=*(boosted_p+0);
@@ -788,7 +782,7 @@ double *zeroNorm(double *p_ph)
     double normalizing_factor=0;
     gsl_vector_view p=gsl_vector_view_array((p_ph+1), 3); //make last 3 elements of p_ph pointer into vector
     
-    if (*(p_ph+0) != gsl_blas_dnrm2(&p.vector ) )
+    if ((*(p_ph+0)) != (gsl_blas_dnrm2(&p.vector )) )
     {
         normalizing_factor=(gsl_blas_dnrm2(&p.vector ));
         //printf("in zero norm if\n");
@@ -821,7 +815,8 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     double ph_x=0, ph_y=0, ph_phi=0, dist=0, dist_min=1e12;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
     double ph_v_norm=0, fl_v_norm=0;
-    double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_temp_tmp=0, rnd_tracker=0 ;
+    double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_temp_tmp=0 ;
+    double rnd_tracker=0, n_dens_lab_min=0, n_vx_min=0, n_vy_min=0, n_temp_min=0;
     
         int index=0;
         double mfp=0,min_mfp=0, beta=0;
@@ -830,6 +825,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
     //or just parallelize this part here
     min_mfp=1e12;
+    #pragma omp parallel for firstprivate( ph_x, ph_y, ph_phi, dist_min, dist, j, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp,  n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
     for (i=0;i<num_ph; i++)
     {
         //printf("%e,%e\n", ((ph+i)->r0), ((ph+i)->r1));
@@ -880,39 +876,40 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         ph_v_norm=pow(pow(((ph+i)->p1), 2.0)+pow(((ph+i)->p2), 2.0)+pow(((ph+i)->p3), 2.0), 0.5);
         
         //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
-        (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make one so this is defined
+        (n_cosangle)=1;//((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
         
         beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
-        //printf("Beta, n_vx_tmp, n_vy_tmp: %e, %e, %e\n", beta, (n_vx_tmp), (n_vy_tmp));
-        //put this in to double check that random number is between 0 and 1 (exclusive)
+        //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
         rnd_tracker=0;
-        while ((rnd_tracker<=0) || (rnd_tracker>=1))
+        while (rnd_tracker<=0 || rnd_tracker>=1)
         {
             rnd_tracker=gsl_rng_uniform_pos(rand);
-            //printf("rnd_tracker: %e\n", rnd_tracker);
-        }        
+        }
         mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOMP_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths 
-        //printf("mfp: %e\n",mfp );
-        //printf("\nPhoton: %d mfp: %e  cos_angle: %e beta: %e dens_lab: %e rnd_tracker: %e\n\n", i, mfp, n_cosangle , beta,n_dens_lab_tmp, rnd_tracker );
         if (mfp<0)
         {
-            //printf("\nPhoton: %d mfp: %e  cos_angle: %e beta: %e dens_lab: %e rnd_tracker: %e\n\n", i, mfp, n_cosangle , beta,n_dens_lab_tmp, rnd_tracker );
+            printf("\nThread: %d Photon: %d mfp: %e  cos_angle: %e beta: %e dens_lab: %e rnd_tracker: %e\n\n",omp_get_thread_num(), i, mfp, n_cosangle , beta,n_dens_lab_tmp, rnd_tracker );
         }
         
+        #pragma omp critical 
         if ( mfp<min_mfp)
         {
             min_mfp=mfp;
-            *(n_dens_lab)= n_dens_lab_tmp;
-            *(n_vx)= n_vx_tmp;
-            *(n_vy)= n_vy_tmp;
-            *(n_temp)= n_temp_tmp;
+            n_dens_lab_min= n_dens_lab_tmp;
+            n_vx_min= n_vx_tmp;
+            n_vy_min= n_vy_tmp;
+            n_temp_min= n_temp_tmp;
             index=i;
-            printf("new min: %e for photon %d with block properties: %e, %e, %e\n", mfp, index, n_vx_tmp, n_vy_tmp, n_temp_tmp);
+            printf("Thread is %d. new min: %e for photon %d with block properties: %e, %e, %e\n", omp_get_thread_num(), mfp, index, n_vx_tmp, n_vy_tmp, n_temp_tmp);
+            #pragma omp flush(min_mfp)
         }
 
         
     }
-    
+    *(n_dens_lab)= n_dens_lab_min;
+    *(n_vx)= n_vx_min;
+    *(n_vy)= n_vy_min;
+    *(n_temp)= n_temp_min;
     (*time_step)=min_mfp/C_LIGHT;
     return index;
     
@@ -1353,6 +1350,4 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
     *min=temp_min;
     
 }
-
-
 
