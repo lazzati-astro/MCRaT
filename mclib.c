@@ -876,7 +876,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         ph_v_norm=pow(pow(((ph+i)->p1), 2.0)+pow(((ph+i)->p2), 2.0)+pow(((ph+i)->p3), 2.0), 0.5);
         
         //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
-        (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
+        (n_cosangle)=1;//((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
         
         beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
         //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
@@ -1351,3 +1351,50 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
     
 }
 
+
+void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array)
+{
+    double  gamma_infinity=1, t_comov=1*pow(10, 9), ddensity=3e-9;// the comoving temperature in Kelvin, and the comoving density in g/cm^2
+    int i=0;
+    double vel=pow(1-pow(gamma_infinity, -2.0) ,0.5), lab_dens=gamma_infinity*ddensity;
+    
+    for (i=0; i<num_array;i++)
+    {
+        *(gamma+i)=gamma_infinity;
+        *(vx+i)=0;
+        *(vy+i)=vel;
+        *(dens+i)=ddensity;
+        *(dens_lab+i)=lab_dens;
+        *(pres+i)=(A_RAD*pow(t_comov, 4.0))/(3*pow(C_LIGHT, 2.0)); 
+        *(temp+i)=pow(3*(*(pres+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0); //just assign t_comov
+    }
+    
+}
+
+void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array)
+{
+    double  gamma_infinity=100, lumi=1e52, r00=1e8;
+    double vel=0;
+    int i=0;
+    
+    for (i=0;i<num_array;i++)
+    {
+        if ((*(r+i)) >= (r00*gamma_infinity))
+        {
+            *(gamma+i)=gamma_infinity;
+            *(pres+i)=(lumi*pow(r00, 2.0/3.0)*pow(*(r+i), -8.0/3.0) )/(12.0*M_PI*C_LIGHT*pow(gamma_infinity, 4.0/3.0)*pow(C_LIGHT, 2.0)); 
+        }
+        else
+        {
+            *(gamma+i)=(*(r+i))/r00;
+            *(pres+i)=(lumi*pow(r00, 2.0))/(12.0*M_PI*C_LIGHT*pow(C_LIGHT, 2.0)*pow(*(r+i), 4.0) );  
+        }
+        
+        vel=pow(1-pow(*(gamma+i), -2.0) ,0.5);
+        *(vx+i)=(vel*(*(x+i)))/pow(pow(*(x+i), 2)+ pow(*(y+i), 2) ,0.5);
+        *(vy+i)=(vel*(*(y+i)))/pow(pow(*(x+i), 2)+ pow(*(y+i), 2) ,0.5);
+        *(dens+i)=lumi/(4*M_PI*pow(*(r+i), 2.0)*pow(C_LIGHT, 3.0)*gamma_infinity*(*(gamma+i)));
+        *(dens_lab+i)=*(dens+i)*(*(gamma+i));
+    }
+    
+}

@@ -46,11 +46,10 @@
 #include <gsl/gsl_rng.h>
 #include "mclib.h"
 
-#define THISRUN "Science"
-#define FILEPATH "/Users/Tylerparsotan/Documents/PYTHON/MCRAT/16OI/"
-#define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
-#define MC_PATH "MC_16OI/"
-//#define MC_PATH "MC_16OI/Single_Photon_Cy_mc_total/"
+#define THISRUN "Cylindrical"
+#define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16TI/"
+#define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
+#define MC_PATH "CMC_16TI_CYLINDRICAL_PARALLEL/"
 #define MCPAR "mc.par"
 
 int main(int argc, char **argv)
@@ -64,6 +63,9 @@ int main(int argc, char **argv)
 	char mc_file[200]="" ;
     char mc_filename[200]="";
     char mc_operation[200]="";
+    char this_run[200]=THISRUN;
+    char *cyl="Cylindrical";
+    char *sph="Spherical";
     int file_count = 0;
     DIR * dirp;
     struct dirent * entry;
@@ -193,6 +195,17 @@ int main(int argc, char **argv)
             readAndDecimate(flash_file, inj_radius, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                 &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num);
                 
+            //check for run type
+            if(strcmp(cyl, this_run)==0)
+            {
+                //printf("In cylindrical prep\n");
+                cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
+            }
+            else if (strcmp(sph, this_run)==0)
+            {
+                sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num );
+            }
+                
             //determine where to place photons and how many should go in a given place
             //for a checkpoint implmentation, dont need to inject photons, need to load photons' last saved data 
             printf(">> mc.py: Injecting photons\n");
@@ -242,6 +255,17 @@ int main(int argc, char **argv)
                 &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num);
                 //printf("The result of read and decimate are arrays with %d elements\n", array_num);
                 
+            //check for run type
+            if(strcmp(cyl, this_run)==0)
+            {
+                //printf("In cylindrical prep\n");
+                cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
+            }
+            else if (strcmp(sph, this_run)==0)
+            {
+                sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num );
+            }
+                
             printf(">> mc.py: propagating and scattering %d photons\n", num_ph);
             
             frame_scatt_cnt=0;
@@ -274,12 +298,12 @@ int main(int argc, char **argv)
                     photonScatter( (phPtr+ph_scatt_index), (ph_vxPtr), (ph_vyPtr), (ph_tempPtr), rand );
                     
                     
-                    if (frame_scatt_cnt%1000 == 0)
-                    {
+                    //if (frame_scatt_cnt%1000 == 0)
+                    //{
                         printf("Scattering Number: %d\n", frame_scatt_cnt);
                         printf("The local temp is: %e\n", (ph_tempPtr));
-                        printf("Average photon energy is: %e\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 and then do (*3e10/1.6e-9)
-                    }
+                        printf("Average photon energy is: %e keV\n", averagePhotonEnergy(phPtr, num_ph)/1.6e-9); //write function to average over the photons p0 and then do (*3e10/1.6e-9)
+                    //}
                     
                 }
                 else
