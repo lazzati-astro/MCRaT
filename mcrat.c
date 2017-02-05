@@ -46,11 +46,10 @@
 #include <gsl/gsl_rng.h>
 #include "mclib.h"
 
-#define THISRUN "Science"
-#define FILEPATH "/Users/Tylerparsotan/Documents/PYTHON/MCRAT/16OI/"
-#define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
-#define MC_PATH "MC_16OI/"
-//#define MC_PATH "MC_16OI/Single_Photon_Cy_mc_total/"
+#define THISRUN "Cylindrical"
+#define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16TI/"
+#define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
+#define MC_PATH "CMC_16TI_CYLINDRICAL/"
 #define MCPAR "mc.par"
 
 int main(int argc, char **argv)
@@ -64,6 +63,9 @@ int main(int argc, char **argv)
 	char mc_file[200]="" ;
     char mc_filename[200]="";
     char mc_operation[200]="";
+    char this_run[200]=THISRUN;
+    char *cyl="Cylindrical";
+    char *sph="Spherical";
     int file_count = 0;
     DIR * dirp;
     struct dirent * entry;
@@ -76,7 +78,8 @@ int main(int argc, char **argv)
     double *szxPtr=NULL,*szyPtr=NULL, *tempPtr=NULL; //pointers to hold data from FLASH files
     int num_ph=0, array_num=0, ph_scatt_index=0, max_scatt=0, min_scatt=0,i=0; //number of photons produced in injection algorithm, number of array elleemnts from reading FLASH file, index of photon whch does scattering, generic counter
     double dt_max=0, thescatt=0, accum_time=0; 
-    double  gamma_infinity=0, time_now=0, time_step=0, avg_scatt=0; //gamma_infinity not used?
+    double  gamma_infinity=0;
+    double time_now=0, time_step=0, avg_scatt=0;
     double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0;// *ph_cosanglePtr=NULL ;
     int frame=0, scatt_frame=0, frame_scatt_cnt=0, scatt_framestart=0, framestart=0;
     struct photon *phPtr=NULL; //pointer to array of photons 
@@ -92,8 +95,7 @@ int main(int argc, char **argv)
     //make strings of proper directories etc.
 	snprintf(flash_prefix,sizeof(flash_prefix),"%s%s",FILEPATH,FILEROOT );
 	snprintf(mc_dir,sizeof(flash_prefix),"%s%s%s",FILEPATH,MC_PATH, argv[1]);
-	//snprintf(mc_dir,sizeof(flash_prefix),"%s%s",FILEPATH,MC_PATH);
-    snprintf(mc_file,sizeof(flash_prefix),"%s%s",mc_dir,MCPAR);
+	snprintf(mc_file,sizeof(flash_prefix),"%s%s",mc_dir,MCPAR);
     
     printf(">> mc.py: I am working on path: %s \n",mc_dir);
     
@@ -192,6 +194,17 @@ int main(int argc, char **argv)
             //for a checkpoint implmentation, dont need to read the file yet
             readAndDecimate(flash_file, inj_radius, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                 &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num);
+            
+            //check for run type
+            if(strcmp(cyl, this_run)==0)
+            {
+                //printf("In cylindrical prep\n");
+                cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
+            }
+            else if (strcmp(sph, this_run)==0)
+            {
+                sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num );
+            }
                 
             //determine where to place photons and how many should go in a given place
             //for a checkpoint implmentation, dont need to inject photons, need to load photons' last saved data 
@@ -242,6 +255,17 @@ int main(int argc, char **argv)
                 &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num);
                 //printf("The result of read and decimate are arrays with %d elements\n", array_num);
                 
+            //check for run type
+            if(strcmp(cyl, this_run)==0)
+            {
+                printf("In cylindrical prep\n");
+                cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
+            }
+            else if (strcmp(sph, this_run)==0)
+            {
+                sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num );
+            }
+                
             printf(">> mc.py: propagating and scattering %d photons\n", num_ph);
             
             frame_scatt_cnt=0;
@@ -250,7 +274,6 @@ int main(int argc, char **argv)
                 //if simulation time is less than the simulation time of the next frame, keep scattering in this frame
                 //go through each photon and find blocks closest to each photon and properties of those blocks to calulate mean free path
                 //and choose the photon with the smallest mfp and calculate the timestep
-                //printf("In main: %e, %e,\n",ph_vxPtr, ph_vyPtr);
                 
                 ph_scatt_index=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, &time_step, xPtr,  yPtr, velxPtr,  velyPtr,  dens_labPtr, tempPtr,\
                     &ph_dens_labPtr, &ph_vxPtr, &ph_vyPtr, &ph_tempPtr, rand);
@@ -275,12 +298,12 @@ int main(int argc, char **argv)
                     photonScatter( (phPtr+ph_scatt_index), (ph_vxPtr), (ph_vyPtr), (ph_tempPtr), rand );
                     
                     
-                    if (frame_scatt_cnt%1000 == 0)
-                    {
+                    //if (frame_scatt_cnt%1000 == 0)
+                    //{
                         printf("Scattering Number: %d\n", frame_scatt_cnt);
-                        printf("The local temp is: %e\n", (ph_tempPtr));
-                        printf("Average photon energy is: %e\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 and then do (*3e10/1.6e-9)
-                    }
+                        printf("The local temp is: %e, Local energy: %e\n", (ph_tempPtr),  (ph_tempPtr)*(1.380658e-16/1.6e-9));
+                        printf("Average photon energy is: %e keV\n", averagePhotonEnergy(phPtr, num_ph)/1.6e-9); //write function to average over the photons p0*c and then do (/1.6e-9)
+                    //}
                     
                 }
                 else

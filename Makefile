@@ -2,9 +2,9 @@ HDF_INSTALL = /usr/local/hdf5
 EXTLIB = -L$(HDF_INSTALL)/lib -L/usr/local/lib
 CC          = gcc
 CFLAGS      = -Wall -O2 
-LIB         = -lz -lm -ldl -lgsl -lgslcblas -lm
+LIB         = -lz -lm -ldl -lgsl -lgslcblas -lm 
 
-DEPS = mclib.h
+DEPS = mcrat.c mclib.c
 OBJ = mcrat.o mclib.o
 
 INCLUDE   = -I$(HDF_INSTALL)/include -I/usr/local/include/
@@ -26,7 +26,8 @@ MCRAT: $(OBJ)
 
 
 clean: 
-	rm -f *.o 
+	rm -f *.h5 *.o 
+
  
 
 .SUFFIXES:.o.c
