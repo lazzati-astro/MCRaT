@@ -1,0 +1,13 @@
+[{
+  "file": "/Users/Tylerparsotan/Documents/C/MCRaT/main.c",
+  "directory": "/Users/Tylerparsotan/Documents/C/MCRaT",
+  "command": "/usr/bin/gcc -c /Users/Tylerparsotan/Documents/C/MCRaT/main.c -o /Users/Tylerparsotan/Documents/C/MCRaT/main.c.o  -g  -O0  -Wall -I. -I."
+ }, {
+  "file": "/Users/Tylerparsotan/Documents/C/MCRaT/mc_lib.c",
+  "directory": "/Users/Tylerparsotan/Documents/C/MCRaT",
+  "command": "/usr/bin/gcc -c /Users/Tylerparsotan/Documents/C/MCRaT/mc_lib.c -o /Users/Tylerparsotan/Documents/C/MCRaT/mc_lib.c.o  -g  -O0  -Wall -I. -I."
+ }, {
+  "file": "/Users/Tylerparsotan/Documents/C/MCRaT/hdf5_eg.c",
+  "directory": "/Users/Tylerparsotan/Documents/C/MCRaT",
+  "command": "/usr/bin/gcc -c /Users/Tylerparsotan/Documents/C/MCRaT/hdf5_eg.c -o /Users/Tylerparsotan/Documents/C/MCRaT/hdf5_eg.c.o  -g  -O0  -Wall -I. -I."
+ }]

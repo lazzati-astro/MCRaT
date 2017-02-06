@@ -876,7 +876,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         ph_v_norm=pow(pow(((ph+i)->p1), 2.0)+pow(((ph+i)->p2), 2.0)+pow(((ph+i)->p3), 2.0), 0.5);
         
         //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
-        (n_cosangle)=1;//((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
+        (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
         
         beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
         //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
@@ -1354,7 +1354,7 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
 
 void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array)
 {
-    double  gamma_infinity=1, t_comov=1*pow(10, 9), ddensity=3e-9;// the comoving temperature in Kelvin, and the comoving density in g/cm^2
+    double  gamma_infinity=100, t_comov=1*pow(10, 9), ddensity=3e-7;// the comoving temperature in Kelvin, and the comoving density in g/cm^2
     int i=0;
     double vel=pow(1-pow(gamma_infinity, -2.0) ,0.5), lab_dens=gamma_infinity*ddensity;
     

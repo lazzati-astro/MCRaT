@@ -33,7 +33,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t);
 
 void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double fluid_temp, gsl_rng * rand);
 
-void singleElectron(double *el_p, double temp, struct photon *ph, gsl_rng * rand);
+void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand);
 
 void singleComptonScatter(double *el_comov, double *ph_comov, gsl_rng * rand);
 
