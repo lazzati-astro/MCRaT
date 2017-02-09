@@ -46,10 +46,10 @@
 #include <gsl/gsl_rng.h>
 #include "mclib.h"
 
-#define THISRUN "Cylindrical"
-#define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16TI/"
+#define THISRUN "Spherical"
+#define FILEPATH "/Volumes/parsotat/Documents/16TI/"
 #define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
-#define MC_PATH "CMC_16TI_CYLINDRICAL_PARALLEL/"
+#define MC_PATH "CMC_16TI_SPHERICAL_PARALLEL/"
 #define MCPAR "mc.par"
 
 int main(int argc, char **argv)
@@ -298,12 +298,12 @@ int main(int argc, char **argv)
                     photonScatter( (phPtr+ph_scatt_index), (ph_vxPtr), (ph_vyPtr), (ph_tempPtr), rand );
                     
                     
-                    //if (frame_scatt_cnt%1000 == 0)
-                    //{
+                    if (frame_scatt_cnt%1000 == 0)
+                    {
                         printf("Scattering Number: %d\n", frame_scatt_cnt);
                         printf("The local temp is: %e\n", (ph_tempPtr));
                         printf("Average photon energy is: %e keV\n", averagePhotonEnergy(phPtr, num_ph)/1.6e-9); //write function to average over the photons p0 and then do (*3e10/1.6e-9)
-                    //}
+                    }
                     
                 }
                 else
