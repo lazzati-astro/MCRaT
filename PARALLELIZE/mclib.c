@@ -21,7 +21,7 @@
 
 //define constants
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27;
-const double K_B=1.380658e-16, M_P=1.6726231e-24, THOMP_X_SECT=6.65246e-25, M_EL=9.1093879e-28 ;
+const double K_B=1.380658e-16, M_P=1.6726231e-24, THOMP_X_SECT=6.65246e-25, M_EL=9.1093879e-28  ;
 
 void printPhotons(struct photon *ph, int num_ph, int frame,char dir[200] )
 {
@@ -563,7 +563,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     if (spect=='w') //from MCRAT paper, w for wien spectrum 
     {
         num_dens_coeff=8.44;
-        printf("in wien spectrum\n");
+        //printf("in wien spectrum\n");
     }
     else
     {
@@ -625,7 +625,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     {
        if ((*(r+i) > (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) > theta_min) )
         {
-            
+            //*(temps+i)=0.76*(*(temps+i));
             for(j=0;j<(*(ph_dens+k));j++ )
             {
                     //have to get random frequency for the photon comoving frequency
@@ -705,8 +705,10 @@ void lorentzBoost(double *boost, double *p_ph, double *result, char object)
     gsl_matrix *lambda1= gsl_matrix_calloc (4, 4); //create matrix thats 4x4 to do lorentz boost 
     gsl_vector *p_ph_prime =gsl_vector_calloc(4); //create vestor to hold lorentz boosted vector
     
-    //printf("%e, %e, %e, %e\n",gsl_blas_dnrm2(&b.vector), *(boost+0), *(boost+1), *(boost+2));
-    //printf("%e, %e, %e, %e\n",*(p_ph+0), *(p_ph+1), *(p_ph+2), *(p_ph+3));
+    /*
+    printf("Boost: %e, %e, %e, %e\n",gsl_blas_dnrm2(&b.vector), *(boost+0), *(boost+1), *(boost+2));
+    printf("4 Momentum to Boost: %e, %e, %e, %e\n",*(p_ph+0), *(p_ph+1), *(p_ph+2), *(p_ph+3));
+    */
     
     //if magnitude of fluid velocity is != 0 do lorentz boost otherwise dont need to do a boost
     if (gsl_blas_dnrm2(&b.vector) > 0)
@@ -714,6 +716,7 @@ void lorentzBoost(double *boost, double *p_ph, double *result, char object)
         //printf("in If\n");
         beta=gsl_blas_dnrm2(&b.vector);
         gamma=1.0/sqrt(1-pow(beta, 2.0));
+        //printf("Beta: %e\tGamma: %e\n",beta,gamma );
         
         //initalize matrix values
         gsl_matrix_set(lambda1, 0,0, gamma);
@@ -735,7 +738,15 @@ void lorentzBoost(double *boost, double *p_ph, double *result, char object)
         gsl_matrix_set(lambda1, 3,2, gsl_matrix_get(lambda1,2,3));
         
         gsl_blas_dgemv(CblasNoTrans, 1, lambda1, &p.vector, 0, p_ph_prime );
-        //printf("Before Check: %e %e %e %e\n ",gsl_vector_get(p_ph_prime, 0), gsl_vector_get(p_ph_prime, 1), gsl_vector_get(p_ph_prime, 2), gsl_vector_get(p_ph_prime, 3));
+        
+        /*
+        printf("Lorentz Boost Matrix 0: %e,%e, %e, %e\n", gsl_matrix_get(lambda1, 0,0), gsl_matrix_get(lambda1, 0,1), gsl_matrix_get(lambda1, 0,2), gsl_matrix_get(lambda1, 0,3));
+        printf("Lorentz Boost Matrix 1: %e,%e, %e, %e\n", gsl_matrix_get(lambda1, 1,0), gsl_matrix_get(lambda1, 1,1), gsl_matrix_get(lambda1, 1,2), gsl_matrix_get(lambda1, 1,3));
+        printf("Lorentz Boost Matrix 2: %e,%e, %e, %e\n", gsl_matrix_get(lambda1, 2,0), gsl_matrix_get(lambda1, 2,1), gsl_matrix_get(lambda1, 2,2), gsl_matrix_get(lambda1, 2,3));
+        printf("Lorentz Boost Matrix 3: %e,%e, %e, %e\n", gsl_matrix_get(lambda1, 3,0), gsl_matrix_get(lambda1, 3,1), gsl_matrix_get(lambda1, 3,2), gsl_matrix_get(lambda1, 3,3));
+        
+        printf("Before Check: %e %e %e %e\n ",gsl_vector_get(p_ph_prime, 0), gsl_vector_get(p_ph_prime, 1), gsl_vector_get(p_ph_prime, 2), gsl_vector_get(p_ph_prime, 3));
+        */
         
         //double check vector for 0 norm condition if photon
         if (object == 'p')
@@ -760,9 +771,9 @@ void lorentzBoost(double *boost, double *p_ph, double *result, char object)
          }
          else
          {
-            //if 4 momentum isnt for photon and there is no boost to be done, we dont care about normality and just want back what was passed to lorentz boost
-            boosted_p=gsl_vector_ptr(&p.vector, 0);         
-          }
+             //if 4 momentum isnt for photon and there is no boost to be done, we dont care about normality and just want back what was passed to lorentz boost
+            boosted_p=gsl_vector_ptr(&p.vector, 0);
+         }
     }
     //assign values to result
     *(result+0)=*(boosted_p+0);
@@ -782,7 +793,7 @@ double *zeroNorm(double *p_ph)
     double normalizing_factor=0;
     gsl_vector_view p=gsl_vector_view_array((p_ph+1), 3); //make last 3 elements of p_ph pointer into vector
     
-    if ((*(p_ph+0)) != (gsl_blas_dnrm2(&p.vector )) )
+    if (*(p_ph+0) != gsl_blas_dnrm2(&p.vector ) )
     {
         normalizing_factor=(gsl_blas_dnrm2(&p.vector ));
         //printf("in zero norm if\n");
@@ -817,13 +828,34 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     double ph_v_norm=0, fl_v_norm=0;
     double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_temp_tmp=0 ;
     double rnd_tracker=0, n_dens_lab_min=0, n_vx_min=0, n_vy_min=0, n_temp_min=0;
+    int num_threads=omp_get_max_threads();
     
-        int index=0;
-        double mfp=0,min_mfp=0, beta=0;
+    int index=0;
+    double mfp=0,min_mfp=0, beta=0;
+        
+        
+    //initialize gsl random number generator fo each thread
+        const gsl_rng_type *rng_t;
+        gsl_rng **rng;
+        gsl_rng_env_setup();
+        rng_t = gsl_rng_ranlxs0;;
+
+        rng = (gsl_rng **) malloc((num_threads ) * sizeof(gsl_rng *)); //minus 1 because master thread already has rand initalized
+        rng[0]=rand;
+
+            //#pragma omp parallel for num_threads(nt)
+        for(i=1;i<num_threads;i++)
+        {
+            rng[i] = gsl_rng_alloc (rng_t);
+            gsl_rng_set(rng[i],gsl_rng_get(rand));
+        }
        
     //go through each photon and find the blocks around it and then get the distances to all of those blocks and choose the one thats the shortest distance away
     //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
     //or just parallelize this part here
+    
+    
+    
     min_mfp=1e12;
     #pragma omp parallel for firstprivate( ph_x, ph_y, ph_phi, dist_min, dist, j, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp,  n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
     for (i=0;i<num_ph; i++)
@@ -876,20 +908,21 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         ph_v_norm=pow(pow(((ph+i)->p1), 2.0)+pow(((ph+i)->p2), 2.0)+pow(((ph+i)->p3), 2.0), 0.5);
         
         //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
-        (n_cosangle)=1;//((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
+        (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
         
         beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
         //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
         rnd_tracker=0;
-        while (rnd_tracker<=0 || rnd_tracker>=1)
-        {
-            rnd_tracker=gsl_rng_uniform_pos(rand);
-        }
+        //while ((rnd_tracker<=0) || (rnd_tracker>=1))
+        //{
+            rnd_tracker=gsl_rng_uniform_pos(rng[omp_get_thread_num()]);
+            //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
+        //}
         mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOMP_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths 
-        if (mfp<0)
-        {
-            printf("\nThread: %d Photon: %d mfp: %e  cos_angle: %e beta: %e dens_lab: %e rnd_tracker: %e\n\n",omp_get_thread_num(), i, mfp, n_cosangle , beta,n_dens_lab_tmp, rnd_tracker );
-        }
+        //if (mfp<0)
+        //{
+            //printf("\nThread: %d Photon: %d mfp: %e  cos_angle: %e beta: %e dens_lab: %e rnd_tracker: %e\n\n",omp_get_thread_num(), i, mfp, n_cosangle , beta,n_dens_lab_tmp, rnd_tracker );
+        //}
         
         #pragma omp critical 
         if ( mfp<min_mfp)
@@ -900,12 +933,20 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             n_vy_min= n_vy_tmp;
             n_temp_min= n_temp_tmp;
             index=i;
-            printf("Thread is %d. new min: %e for photon %d with block properties: %e, %e, %e\n", omp_get_thread_num(), mfp, index, n_vx_tmp, n_vy_tmp, n_temp_tmp);
+            //printf("Thread is %d. new min: %e for photon %d with block properties: %e, %e, %e\n", omp_get_thread_num(), mfp, index, n_vx_tmp, n_vy_tmp, n_temp_tmp);
             #pragma omp flush(min_mfp)
         }
 
         
     }
+    
+    //free rand number generator
+    for (i=1;i<num_threads;i++)
+    {
+        gsl_rng_free(rng[i]);
+    }
+    free(rng);
+    
     *(n_dens_lab)= n_dens_lab_min;
     *(n_vx)= n_vx_min;
     *(n_vy)= n_vy_min;
@@ -986,29 +1027,33 @@ void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double f
     *(ph_p+1)=(ph->p1);
     *(ph_p+2)=(ph->p2);
     *(ph_p+3)=(ph->p3);
+    /*
     printf("Unscattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
     printf("Fluid Beta: %e, %e, %e\n", *(fluid_beta+0),*(fluid_beta+1), *(fluid_beta+2));
+    */
     
     //first we bring the photon to the fluid's comoving frame
     lorentzBoost(fluid_beta, ph_p, ph_p_comov, 'p');
     //printf("Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
+    /*
     printf("Before Scattering, In Comov_frame:\n");
     printf("ph_comov: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+    */
     
     //second we generate a thermal electron at the correct temperature
     singleElectron(el_p_comov, fluid_temp, ph_p_comov, rand);
-    printf("el_comov: %e, %e, %e,%e\n", *(el_p_comov+0), *(el_p_comov+1), *(el_p_comov+2), *(el_p_comov+3));
+    //printf("el_comov: %e, %e, %e,%e\n", *(el_p_comov+0), *(el_p_comov+1), *(el_p_comov+2), *(el_p_comov+3));
     
     //third we perform the scattering and save scattered photon 4 monetum in ph_p_comov @ end of function
     singleComptonScatter(el_p_comov, ph_p_comov, rand);
-    printf("After Scattering, After Lorentz Boost to Comov frame: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+    //printf("After Scattering, After Lorentz Boost to Comov frame: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
     
     //fourth we bring the photon back to the lab frame
      *(negative_fluid_beta+0)=-1*( *(fluid_beta+0));
      *(negative_fluid_beta+1)=-1*( *(fluid_beta+1));
      *(negative_fluid_beta+2)=-1*( *(fluid_beta+2));
     lorentzBoost(negative_fluid_beta, ph_p_comov, ph_p, 'p');
-    printf("Scattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
+    //printf("Scattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
     //printf("Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
     //printf("Old: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
     
@@ -1057,7 +1102,7 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand)
             y_dum=gsl_rng_uniform(rand)/2.0;
             
             f_x_dum=pow(x_dum,2)*(beta_x_dum/gsl_sf_bessel_Kn (2, 1.0/factor))*exp(-1*x_dum/factor); //not sure if this is right is giving small values of gamma -> beta=nan
-            printf("Choosing a Gamma: xdum: %e, f_x_dum: %e, y_dum: %e\n", x_dum, f_x_dum, y_dum);
+            //printf("Choosing a Gamma: xdum: %e, f_x_dum: %e, y_dum: %e\n", x_dum, f_x_dum, y_dum);
         }
         gamma=x_dum;
         
@@ -1071,7 +1116,7 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand)
         gamma=pow( 1- (pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)+ pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)+pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)  ) ,-0.5);
     }
     
-    printf("Chosen Gamma: %e\n",gamma);
+    //printf("Chosen Gamma: %e\n",gamma);
     
     beta=pow( 1- (1/pow(  gamma,2.0 ))  ,0.5);
     //printf("Beta is: %e in singleElectron\n", beta);
@@ -1086,7 +1131,7 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand)
         f_x_dum=sin(x_dum)*(1-(beta*cos(x_dum)));
     }
     theta=x_dum;
-    printf("Beta: %e\tPhi: %e\tTheta: %e\n",beta,phi, theta);
+    //printf("Beta: %e\tPhi: %e\tTheta: %e\n",beta,phi, theta);
     //fill in electron 4 momentum NOT SURE WHY THE ORDER IS AS SUCH SEEMS TO BE E/c, pz,py,px!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     
     *(el_p+0)=gamma*(M_EL)*(C_LIGHT);
@@ -1102,7 +1147,7 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand)
     ph_phi=atan2(*(ph_p+2), *(ph_p+3)); //Double Check
     ph_theta=atan2(pow( pow(*(ph_p+2),2)+  pow(*(ph_p+3),2) , 0.5) , (*(ph_p+1)) );
     
-    printf("Calculated Photon phi and theta in singleElectron:%e, %e\n", ph_phi, ph_theta);
+    //printf("Calculated Photon phi and theta in singleElectron:%e, %e\n", ph_phi, ph_theta);
     
     //fill in rotation matrix to rotate around x axis to get rid of phi angle
     gsl_matrix_set(rot, 1,1,1);
@@ -1112,11 +1157,13 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand)
     gsl_matrix_set(rot, 2,0,sin(ph_theta));
     gsl_blas_dgemv(CblasNoTrans, 1, rot, &el_p_prime.vector, 0, result);
     
+    /*
     printf("Rotation Matrix 0: %e,%e, %e\n", gsl_matrix_get(rot, 0,0), gsl_matrix_get(rot, 0,1), gsl_matrix_get(rot, 0,2));
     printf("Rotation Matrix 1: %e,%e, %e\n", gsl_matrix_get(rot, 1,0), gsl_matrix_get(rot, 1,1), gsl_matrix_get(rot, 1,2));
     printf("Rotation Matrix 2: %e,%e, %e\n", gsl_matrix_get(rot, 2,0), gsl_matrix_get(rot, 2,1), gsl_matrix_get(rot, 2,2));
 
     printf("Middle: %e, %e, %e,%e\n", *(el_p+0), gsl_vector_get(result,0), gsl_vector_get(result,1), gsl_vector_get(result,2));
+    */
     
     gsl_matrix_set_all(rot,0);
     
@@ -1126,10 +1173,12 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand)
     gsl_matrix_set(rot, 1,2,-sin(-ph_phi));
     gsl_matrix_set(rot, 2,1,sin(-ph_phi));
     gsl_blas_dgemv(CblasNoTrans, 1, rot, result, 0, &el_p_prime.vector);
+    /*
     printf("Rotation Matrix 0: %e,%e, %e\n", gsl_matrix_get(rot, 0,0), gsl_matrix_get(rot, 0,1), gsl_matrix_get(rot, 0,2));
     printf("Rotation Matrix 1: %e,%e, %e\n", gsl_matrix_get(rot, 1,0), gsl_matrix_get(rot, 1,1), gsl_matrix_get(rot, 1,2));
     printf("Rotation Matrix 2: %e,%e, %e\n", gsl_matrix_get(rot, 2,0), gsl_matrix_get(rot, 2,1), gsl_matrix_get(rot, 2,2));
     printf("Final EL_P_vec: %e, %e, %e,%e\n", *(el_p+0), gsl_vector_get(&el_p_prime.vector,0), gsl_vector_get(&el_p_prime.vector,1), gsl_vector_get(&el_p_prime.vector,2));
+    */
     
     //gsl_rng_free (rand); 
     //printf("freeing pointers in singleElectron\n");
@@ -1160,17 +1209,17 @@ void singleComptonScatter(double *el_comov, double *ph_comov, gsl_rng * rand)
     *(el_v+0)=(*(el_comov+1))/(*(el_comov+0));
     *(el_v+1)=(*(el_comov+2))/(*(el_comov+0));
     *(el_v+2)=(*(el_comov+3))/(*(el_comov+0));
-    printf("el_v: %e, %e, %e\n", *(el_v+0), *(el_v+1), *(el_v+2));
+    //printf("el_v: %e, %e, %e\n", *(el_v+0), *(el_v+1), *(el_v+2));
         
     //lorentz boost into frame where the electron is stationary
     lorentzBoost(el_v, el_comov, el_p_prime, 'e');
     lorentzBoost(el_v, ph_comov, ph_p_prime, 'p');
-    printf("New ph_p in electron rest frame: %e, %e, %e,%e\n", *(ph_p_prime+0), *(ph_p_prime+1), *(ph_p_prime+2), *(ph_p_prime+3));
+    //printf("New ph_p in electron rest frame: %e, %e, %e,%e\n", *(ph_p_prime+0), *(ph_p_prime+1), *(ph_p_prime+2), *(ph_p_prime+3));
     
     ph_p=gsl_vector_view_array((ph_p_prime+1), 3);
     el_p=gsl_vector_view_array(el_p_prime,4);
     phi0=atan2(*(ph_p_prime+2), *(ph_p_prime+1) );
-    printf("Photon Phi: %e\n", phi0);
+    //printf("Photon Phi: %e\n", phi0);
     //rotate the axes so that the photon incomes along the x-axis
     gsl_matrix_set(rot0, 2,2,1);
     gsl_matrix_set(rot0, 0,0,cos(-phi0));
@@ -1179,9 +1228,11 @@ void singleComptonScatter(double *el_comov, double *ph_comov, gsl_rng * rand)
     gsl_matrix_set(rot0, 1,0,sin(-phi0));
     gsl_blas_dgemv(CblasNoTrans, 1, rot0, &ph_p.vector, 0, result0);
     
+    /*
     printf("Rotation Matrix 0: %e,%e, %e\n", gsl_matrix_get(rot0, 0,0), gsl_matrix_get(rot0, 0,1), gsl_matrix_get(rot0, 0,2));
     printf("Rotation Matrix 1: %e,%e, %e\n", gsl_matrix_get(rot0, 1,0), gsl_matrix_get(rot0, 1,1), gsl_matrix_get(rot0, 1,2));
     printf("Rotation Matrix 2: %e,%e, %e\n", gsl_matrix_get(rot0, 2,0), gsl_matrix_get(rot0, 2,1), gsl_matrix_get(rot0, 2,2));
+    */
     
     //set values of ph_p_prime equal to the result and get new phi from result
     *(ph_p_prime+1)=gsl_vector_get(result0,0);
@@ -1190,10 +1241,11 @@ void singleComptonScatter(double *el_comov, double *ph_comov, gsl_rng * rand)
     
     phi1=atan2(gsl_vector_get(result0,2), gsl_vector_get(result0,0));
     
+    /*
     printf("rotation 1: %e, %e, %e\n",  *(ph_p_prime+1),  *(ph_p_prime+2),  *(ph_p_prime+3));
     printf("Photon Phi: %e\n", phi1);
     printf("make sure the vector view is good: %e, %e, %e,%e\n", *(ph_p_prime+0), gsl_vector_get(&ph_p.vector,0), gsl_vector_get(&ph_p.vector,1), gsl_vector_get(&ph_p.vector,2));
-    
+    */
     
     //rotate around y to bring it all along x
     gsl_matrix_set(rot1, 1,1,1);
@@ -1203,20 +1255,22 @@ void singleComptonScatter(double *el_comov, double *ph_comov, gsl_rng * rand)
     gsl_matrix_set(rot1, 2,0,sin(-phi1));
     gsl_blas_dgemv(CblasNoTrans, 1, rot1, &ph_p.vector, 0, result1);
     
+    /*
     printf("Rotation Matrix 0: %e,%e, %e\n", gsl_matrix_get(rot1, 0,0), gsl_matrix_get(rot1, 0,1), gsl_matrix_get(rot1, 0,2));
     printf("Rotation Matrix 1: %e,%e, %e\n", gsl_matrix_get(rot1, 1,0), gsl_matrix_get(rot1, 1,1), gsl_matrix_get(rot1, 1,2));
     printf("Rotation Matrix 2: %e,%e, %e\n", gsl_matrix_get(rot1, 2,0), gsl_matrix_get(rot1, 2,1), gsl_matrix_get(rot1, 2,2));
+    */
     
     //set values of ph_p_prime equal to the result and get new phi from result
     *(ph_p_prime+1)=*(ph_p_prime+0);//why setting it to the energy?
     *(ph_p_prime+2)=gsl_vector_get(result1,1); 
     *(ph_p_prime+3)=0; //just directly setting it to 0 now?
     
-    printf("rotation 2: %e, %e, %e, %e\n",  *(ph_p_prime+0), *(ph_p_prime+1),  *(ph_p_prime+2),  *(ph_p_prime+3));
+    //printf("rotation 2: %e, %e, %e, %e\n",  *(ph_p_prime+0), *(ph_p_prime+1),  *(ph_p_prime+2),  *(ph_p_prime+3));
     
     //generate random theta and phi angles for scattering
     phi=gsl_rng_uniform(rand)*2*M_PI;
-    printf("Phi: %e\n", phi);
+    //printf("Phi: %e\n", phi);
     
     y_dum=1; //initalize loop to get a random theta
     f_x_dum=0;
@@ -1228,7 +1282,7 @@ void singleComptonScatter(double *el_comov, double *ph_comov, gsl_rng * rand)
     }
     theta=x_dum;
     
-    printf("Theta: %e\n", theta);
+    //printf("Theta: %e\n", theta);
     
     //perform scattering and compute new 4-momenta of electron and photon
     //scattered photon 4 momentum
@@ -1252,9 +1306,11 @@ void singleComptonScatter(double *el_comov, double *ph_comov, gsl_rng * rand)
     */
      gsl_vector_sub(whole_ph_p,result); //resut is saved into ph_p vector, unscattered-scattered 4 mometum of photon
     gsl_vector_add(&el_p.vector ,whole_ph_p);
+    /*
     printf("After scattering:\n");
     printf("el_p: %e, %e, %e,%e\n", gsl_vector_get(&el_p.vector,0), gsl_vector_get(&el_p.vector,1), gsl_vector_get(&el_p.vector,2), gsl_vector_get(&el_p.vector,3));
     printf("ph_p: %e, %e, %e,%e\n", gsl_vector_get(result,0), gsl_vector_get(result,1), gsl_vector_get(result,2), gsl_vector_get(result,3));
+    */
     
     //rotate back to comoving frame
     *(ph_p_prime+0)=gsl_vector_get(result,0);
@@ -1268,16 +1324,18 @@ void singleComptonScatter(double *el_comov, double *ph_comov, gsl_rng * rand)
     gsl_matrix_set(rot1, 0,2,sin(-phi1));
     gsl_matrix_set(rot1, 2,0,-sin(-phi1));
     gsl_blas_dgemv(CblasNoTrans, 1, rot1, &ph_p.vector, 0, result1);
+    /*
     printf("Photon Phi: %e\n", phi1);
     printf("Rotation Matrix 0: %e,%e, %e\n", gsl_matrix_get(rot1, 0,0), gsl_matrix_get(rot1, 0,1), gsl_matrix_get(rot1, 0,2));
     printf("Rotation Matrix 1: %e,%e, %e\n", gsl_matrix_get(rot1, 1,0), gsl_matrix_get(rot1, 1,1), gsl_matrix_get(rot1, 1,2));
     printf("Rotation Matrix 2: %e,%e, %e\n", gsl_matrix_get(rot1, 2,0), gsl_matrix_get(rot1, 2,1), gsl_matrix_get(rot1, 2,2));
+    */
     
     //set values of ph_p_prime to result1 from undoing 2nd rotation
     *(ph_p_prime+1)=gsl_vector_get(result1,0);
     *(ph_p_prime+2)=gsl_vector_get(result1,1); 
     *(ph_p_prime+3)=gsl_vector_get(result1,2); 
-    printf("Undo rotation 2: %e, %e, %e, %e\n",  *(ph_p_prime+0), *(ph_p_prime+1),  *(ph_p_prime+2),  *(ph_p_prime+3));
+    //printf("Undo rotation 2: %e, %e, %e, %e\n",  *(ph_p_prime+0), *(ph_p_prime+1),  *(ph_p_prime+2),  *(ph_p_prime+3));
     //ignore the electron, dont care about it, undo the first rotation
     gsl_matrix_set_all(rot0,0);
     gsl_matrix_set(rot0, 2,2,1);
@@ -1287,15 +1345,17 @@ void singleComptonScatter(double *el_comov, double *ph_comov, gsl_rng * rand)
     gsl_matrix_set(rot0, 1,0,-sin(-phi0));
     gsl_blas_dgemv(CblasNoTrans, 1, rot0, &ph_p.vector, 0, result0);
     
+    /*
     printf("Photon Phi: %e\n", phi0);
     printf("Rotation Matrix 0: %e,%e, %e\n", gsl_matrix_get(rot0, 0,0), gsl_matrix_get(rot0, 0,1), gsl_matrix_get(rot0, 0,2));
     printf("Rotation Matrix 1: %e,%e, %e\n", gsl_matrix_get(rot0, 1,0), gsl_matrix_get(rot0, 1,1), gsl_matrix_get(rot0, 1,2));
     printf("Rotation Matrix 2: %e,%e, %e\n", gsl_matrix_get(rot0, 2,0), gsl_matrix_get(rot0, 2,1), gsl_matrix_get(rot0, 2,2));
+    */
     
     *(ph_p_prime+1)=gsl_vector_get(result0,0);
     *(ph_p_prime+2)=gsl_vector_get(result0,1); 
     *(ph_p_prime+3)=gsl_vector_get(result0,2); 
-    printf("Undo rotation 1: %e, %e, %e, %e\n",  *(ph_p_prime+0), *(ph_p_prime+1),  *(ph_p_prime+2),  *(ph_p_prime+3));
+    //printf("Undo rotation 1: %e, %e, %e, %e\n",  *(ph_p_prime+0), *(ph_p_prime+1),  *(ph_p_prime+2),  *(ph_p_prime+3));
     //deboost photon to lab frame
     *(negative_el_v+0)=(-1*(*(el_v+0)));
     *(negative_el_v+1)=(-1*(*(el_v+1)));
@@ -1350,4 +1410,5 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
     *min=temp_min;
     
 }
+
 

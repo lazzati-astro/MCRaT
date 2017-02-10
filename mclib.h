@@ -44,8 +44,3 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
 void saveCheckpoint(char dir[200], int frame, int scatt_frame, int ph_num,double time_now, struct photon *ph , int last_frame);
 
 void readCheckpoint(char dir[200], struct photon **ph, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time );
-
-void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array);
-
-void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array);
-
