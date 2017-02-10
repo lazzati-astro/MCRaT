@@ -33,7 +33,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t);
 
 void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double fluid_temp, gsl_rng * rand);
 
-void singleElectron(double *el_p, double temp, struct photon *ph, gsl_rng * rand);
+void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand);
 
 void singleComptonScatter(double *el_comov, double *ph_comov, gsl_rng * rand);
 
@@ -44,3 +44,8 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
 void saveCheckpoint(char dir[200], int frame, int scatt_frame, int ph_num,double time_now, struct photon *ph , int last_frame);
 
 void readCheckpoint(char dir[200], struct photon **ph, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time );
+
+void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array);
+
+void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array);
+

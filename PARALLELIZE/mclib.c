@@ -838,7 +838,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         const gsl_rng_type *rng_t;
         gsl_rng **rng;
         gsl_rng_env_setup();
-        rng_t = gsl_rng_ranlxs0;
+        rng_t = gsl_rng_default;
 
         rng = (gsl_rng **) malloc((num_threads ) * sizeof(gsl_rng *)); //minus 1 because master thread already has rand initalized
         rng[0]=rand;
