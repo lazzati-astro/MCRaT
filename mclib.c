@@ -1412,4 +1412,3 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
 }
 
 
-
