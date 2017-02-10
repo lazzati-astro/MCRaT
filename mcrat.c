@@ -45,6 +45,8 @@
 #include <math.h>
 #include <gsl/gsl_rng.h>
 #include "mclib.h"
+#include <omp.h>
+
 
 #define THISRUN "Science"
 #define FILEPATH "/Users/Tylerparsotan/Documents/PYTHON/MCRAT/16OI/"
@@ -303,7 +305,7 @@ int main(int argc, char **argv)
         printf("The maximum number of scatterings for a photon is: %d\nThe minimum number of scattering for a photon is: %d\n", max_scatt, min_scatt);
         printf("The average number of scatterings thus far is: %lf\n", avg_scatt);
         
-        printPhotons(phPtr, num_ph,  scatt_frame , mc_dir);
+        printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir);
         
         //for a checkpoint implmentation,save the checkpoint file here after every 5 frames or something
         //save the photons data, the scattering number data, the scatt_frame value, and the frame value

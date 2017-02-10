@@ -23,13 +23,13 @@
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27;
 const double K_B=1.380658e-16, M_P=1.6726231e-24, THOMP_X_SECT=6.65246e-25, M_EL=9.1093879e-28  ;
 
-void printPhotons(struct photon *ph, int num_ph, int frame,char dir[200] )
+void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200] )
 {
     //function to save the photons' positions and 4 momentum
     int i=0;
     char mc_file_p0[200], mc_file_p1[200],mc_file_p2[200], mc_file_p3[200];
-    char mc_file_r0[200], mc_file_r1[200], mc_file_r2[200], mc_file_ns[200];
-    FILE *fPtr=NULL, *fPtr1=NULL,*fPtr2=NULL,*fPtr3=NULL,*fPtr4=NULL,*fPtr5=NULL,*fPtr6=NULL,*fPtr7=NULL;
+    char mc_file_r0[200], mc_file_r1[200], mc_file_r2[200], mc_file_ns[200], mc_file_pw[200];
+    FILE *fPtr=NULL, *fPtr1=NULL,*fPtr2=NULL,*fPtr3=NULL,*fPtr4=NULL,*fPtr5=NULL,*fPtr6=NULL,*fPtr7=NULL,*fPtr8=NULL;
     
     //make strings for proper files
     snprintf(mc_file_p0,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_P0.dat" );
@@ -40,6 +40,10 @@ void printPhotons(struct photon *ph, int num_ph, int frame,char dir[200] )
     snprintf(mc_file_r1,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_R1.dat" );
     snprintf(mc_file_r2,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_R2.dat" );
     snprintf(mc_file_ns,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_NS.dat" ); //for number of scatterings each photon went through
+    if (frame==frame_inj) //if the frame is the same one that the photons were injected in, save the photon weights
+    {
+        snprintf(mc_file_pw,sizeof(mc_file_p0),"%s%s",dir,"mcdata_PW.dat" ); 
+    }
     
     //save the energy
     fPtr=fopen(mc_file_p0, "a");
@@ -50,7 +54,10 @@ void printPhotons(struct photon *ph, int num_ph, int frame,char dir[200] )
     fPtr5=fopen(mc_file_r1, "a");
     fPtr6=fopen(mc_file_r2, "a");
     fPtr7=fopen(mc_file_ns, "a");
-    
+    if (frame==frame_inj)
+    {
+        fPtr8=fopen(mc_file_pw, "a");
+    }
     //printf("Writing P0\n");
     for (i=0;i<num_ph;i++)
     {
@@ -78,7 +85,10 @@ void printPhotons(struct photon *ph, int num_ph, int frame,char dir[200] )
         //fprintf(fPtr7,"%0.13e\t",  *(ph_num_scatt+i));
         fprintf(fPtr7,"%e\t",  (ph+i)->num_scatt);
         //printf("%d: %0.13e \n", i, (ph+i)->num_scatt);
-        
+        if (frame==frame_inj)
+        {
+            fprintf(fPtr8,"%e\t",  (ph+i)->weight);
+        }
     }    
     fclose(fPtr);
     fclose(fPtr1);
@@ -88,6 +98,10 @@ void printPhotons(struct photon *ph, int num_ph, int frame,char dir[200] )
     fclose(fPtr5);
     fclose(fPtr6);
     fclose(fPtr7);
+    if (frame==frame_inj)
+    {
+        fclose(fPtr8);
+    }
     
     //printf("%s\n%s\n%s\n", mc_file_p0, mc_file_r0, mc_file_ns);
 }
@@ -176,6 +190,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int *framestart, int *sca
             (*ph)[i].r1=phHolder->r1 ;
             (*ph)[i].r2=phHolder->r2; 
             (*ph)[i].num_scatt=phHolder->num_scatt;
+            (*ph)[i].weight=phHolder->weight;
             
         }
         
@@ -681,6 +696,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                 (*ph)[ph_tot].r1=(*(x+i))*sin(position_phi) ;
                 (*ph)[ph_tot].r2=(*(y+i)); //y coordinate in flash becomes z coordinate in MCRaT
                 (*ph)[ph_tot].num_scatt=0;
+                (*ph)[ph_tot].weight=ph_weight;
                 //printf("%d\n",ph_tot);
                 ph_tot++;
             }

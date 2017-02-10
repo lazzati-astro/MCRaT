@@ -8,11 +8,11 @@ struct photon
     double r1; //y
     double r2; //z
     double num_scatt;
-    //double weight; //each photon should have equal weight, sp this shouldnt matter, weight in mc.par file
+    double weight; //each photon should have equal weight, sp this shouldnt matter, weight in mc.par file but across injections can have varying weights
 } ; //structure to hold photon information
 
 
-void printPhotons(struct photon *ph, int num_ph, int frame,char dir[200] );
+void printPhotons(struct photon *ph, int num_ph, int frame, int  frame_inj,char dir[200] );
 
 void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *inj_radius, int *frm0,int *last_frm, int *frm2, int *photon_num, double *ph_weight, char *spect, char *restart);
 
