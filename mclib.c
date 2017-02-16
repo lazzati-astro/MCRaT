@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <dirent.h>
 #include "hdf5.h"
 #include <math.h>
 #include <time.h>
@@ -23,7 +25,7 @@
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27;
 const double K_B=1.380658e-16, M_P=1.6726231e-24, THOMP_X_SECT=6.65246e-25, M_EL=9.1093879e-28  ;
 
-void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200] )
+void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200], int thread_num )
 {
     //function to save the photons' positions and 4 momentum
     int i=0;
@@ -32,17 +34,17 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     FILE *fPtr=NULL, *fPtr1=NULL,*fPtr2=NULL,*fPtr3=NULL,*fPtr4=NULL,*fPtr5=NULL,*fPtr6=NULL,*fPtr7=NULL,*fPtr8=NULL;
     
     //make strings for proper files
-    snprintf(mc_file_p0,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_P0.dat" );
-    snprintf(mc_file_p1,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_P1.dat" );
-    snprintf(mc_file_p2,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_P2.dat" );
-    snprintf(mc_file_p3,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_P3.dat" );
-    snprintf(mc_file_r0,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_R0.dat" );
-    snprintf(mc_file_r1,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_R1.dat" );
-    snprintf(mc_file_r2,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_R2.dat" );
-    snprintf(mc_file_ns,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_NS.dat" ); //for number of scatterings each photon went through
+    snprintf(mc_file_p0,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_P0_", thread_num,".dat" );
+    snprintf(mc_file_p1,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_P1_", thread_num,".dat" );
+    snprintf(mc_file_p2,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_P2_", thread_num,".dat" );
+    snprintf(mc_file_p3,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_P3_", thread_num,".dat" );
+    snprintf(mc_file_r0,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_R0_", thread_num,".dat" );
+    snprintf(mc_file_r1,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_R1_", thread_num,".dat" );
+    snprintf(mc_file_r2,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_R2_", thread_num,".dat" );
+    snprintf(mc_file_ns,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_NS_", thread_num,".dat" ); //for number of scatterings each photon went through
     if (frame==frame_inj) //if the frame is the same one that the photons were injected in, save the photon weights
     {
-        snprintf(mc_file_pw,sizeof(mc_file_p0),"%s%s",dir,"mcdata_PW.dat" ); 
+        snprintf(mc_file_pw,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_PW_", thread_num,".dat" ); 
     }
     
     //save the energy
@@ -106,7 +108,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     //printf("%s\n%s\n%s\n", mc_file_p0, mc_file_r0, mc_file_ns);
 }
 
-void saveCheckpoint(char dir[200], int frame, int scatt_frame, int ph_num,double time_now, struct photon *ph, int last_frame )
+void saveCheckpoint(char dir[200], int frame, int scatt_frame, int ph_num,double time_now, struct photon *ph, int last_frame,  int thread_num )
 {
     //function to save data necessary to restart simulation if it ends
     //need to save all photon data 
@@ -115,7 +117,7 @@ void saveCheckpoint(char dir[200], int frame, int scatt_frame, int ph_num,double
     char restart;
     int i=0;
     
-    snprintf(checkptfile,sizeof(checkptfile),"%s%s",dir,"mc_chkpt.dat" );
+    snprintf(checkptfile,sizeof(checkptfile),"%s%s%d%s",dir,"mc_chkpt_", thread_num,".dat" );
 
     
     fPtr=fopen(checkptfile, "wb");
@@ -146,7 +148,7 @@ void saveCheckpoint(char dir[200], int frame, int scatt_frame, int ph_num,double
     
 }
 
-void readCheckpoint(char dir[200], struct photon **ph, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time )
+void readCheckpoint(char dir[200], struct photon **ph, int frame0, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time,  int thread_num )
 {
     //function to read in data from checkpoint file
     FILE *fPtr=NULL;
@@ -155,56 +157,69 @@ void readCheckpoint(char dir[200], struct photon **ph, int *framestart, int *sca
     //int frame, scatt_frame, ph_num, i=0;
     struct photon *phHolder=NULL; //pointer to struct to hold data read in from checkpoint file
     
-    snprintf(checkptfile,sizeof(checkptfile),"%s%s",dir,"mc_chkpt.dat" );
+     
+    snprintf(checkptfile,sizeof(checkptfile),"%s%s%d%s",dir,"mc_chkpt_", thread_num,".dat" );
+        
+    printf("Checkpoint file: %s\n", checkptfile);
     
-    fPtr=fopen(checkptfile, "rb");
-    
-    fread(restart, sizeof(char), 1, fPtr);
-    printf("%c\n", *restart);
-    fread(framestart, sizeof(int), 1, fPtr);
-    printf("%d\n", *framestart);
-    
-    if((*restart)=='c')
+    if (access( checkptfile, F_OK ) != -1) //if you can access the file, open and read it
     {
-        fread(scatt_framestart, sizeof(int), 1, fPtr);
-        *scatt_framestart+=1; //add one to start at the next frame after the siomulation was interrrupted
-        printf("%d\n", *scatt_framestart);
-        fread(time, sizeof(double), 1, fPtr);
-        printf("%e\n", *time);
-        fread(ph_num, sizeof(int), 1, fPtr);
-        printf("%d\n", *ph_num);
+        fPtr=fopen(checkptfile, "rb");
         
-        phHolder=malloc(sizeof(struct photon));
-        (*ph)=malloc(sizeof(struct photon)*(*ph_num)); //allocate memory to hold photon data
+        fread(restart, sizeof(char), 1, fPtr);
+        printf("%c\n", *restart);
+        fread(framestart, sizeof(int), 1, fPtr);
+        printf("%d\n", *framestart);
         
-        for (i=0;i<(*ph_num);i++)
+        if((*restart)=='c')
         {
-            fread(phHolder, sizeof(struct photon), 1, fPtr);
-            //printf("%e,%e,%e, %e,%e,%e, %e, %e\n",(ph)->p0, (ph)->p1, (ph)->p2, ph->p3, (ph)->r0, (ph)->r1, (ph)->r2, ph->num_scatt );
+            fread(scatt_framestart, sizeof(int), 1, fPtr);
+            *scatt_framestart+=1; //add one to start at the next frame after the siomulation was interrrupted
+            printf("%d\n", *scatt_framestart);
+            fread(time, sizeof(double), 1, fPtr);
+            printf("%e\n", *time);
+            fread(ph_num, sizeof(int), 1, fPtr);
+            printf("%d\n", *ph_num);
             
-            (*ph)[i].p0=phHolder->p0;
-            (*ph)[i].p1=phHolder->p1;
-            (*ph)[i].p2=phHolder->p2;
-            (*ph)[i].p3=phHolder->p3;
-            (*ph)[i].r0= phHolder->r0; 
-            (*ph)[i].r1=phHolder->r1 ;
-            (*ph)[i].r2=phHolder->r2; 
-            (*ph)[i].num_scatt=phHolder->num_scatt;
-            (*ph)[i].weight=phHolder->weight;
+            phHolder=malloc(sizeof(struct photon));
+            (*ph)=malloc(sizeof(struct photon)*(*ph_num)); //allocate memory to hold photon data
             
+            for (i=0;i<(*ph_num);i++)
+            {
+                fread(phHolder, sizeof(struct photon), 1, fPtr);
+                //printf("%e,%e,%e, %e,%e,%e, %e, %e\n",(ph)->p0, (ph)->p1, (ph)->p2, ph->p3, (ph)->r0, (ph)->r1, (ph)->r2, ph->num_scatt );
+                
+                (*ph)[i].p0=phHolder->p0;
+                (*ph)[i].p1=phHolder->p1;
+                (*ph)[i].p2=phHolder->p2;
+                (*ph)[i].p3=phHolder->p3;
+                (*ph)[i].r0= phHolder->r0; 
+                (*ph)[i].r1=phHolder->r1 ;
+                (*ph)[i].r2=phHolder->r2; 
+                (*ph)[i].num_scatt=phHolder->num_scatt;
+                (*ph)[i].weight=phHolder->weight;
+                
+            }
+            
+            free(phHolder);
+        }
+        else
+        {
+            *framestart+=1; //if the  checkpoint file saved and the program was inturrupted before the frame variable had just increased and before the scatt_frame iteration was saved, add one to the frame start
+            *scatt_framestart=(*framestart);
         }
         
-        free(phHolder);
+        fclose(fPtr);
     }
-    else
+    else //if not use default
     {
-        *framestart+=1; //if the  checkpoint file saved and the program was inturrupted before the frame variable had just increased and before the scatt_frame iteration was saved, add one to the frame start
+        *framestart=frame0;
+        *scatt_framestart=frame0;
+        
     }
-    
-    fclose(fPtr);
 }
 
-void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *inj_radius, int *frm0,int *last_frm, int *frm2, int *photon_num, double *ph_weight, char *spect, char *restart)
+void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0,int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads)
 {
     //function to read mc.par file
 	FILE *fptr=NULL;
@@ -230,21 +245,33 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
 	
 	fgets(buf, 100,fptr);
 	
-	fscanf(fptr, "%d",frm2);
-    *frm2+=*frm0; //frame to go to is what is given in the file plus the starting frame
-	//printf("%d\n", *frm2 );
+	fscanf(fptr, "%d",frm2_small);
+    *frm2_small+=*frm0; //frame to go to is what is given in the file plus the starting frame
+	printf("%d\n", *frm2_small );
 	
 	fgets(buf, 100,fptr);
 	
-	fscanf(fptr, "%d",photon_num);
+	//fscanf(fptr, "%d",photon_num); remove photon num because we dont need this
 	//printf("%d\n", *photon_num );
+    
+    fscanf(fptr, "%d",frm2_large);
+    *frm2_large+=*frm0; //frame to go to is what is given in the file plus the starting frame
+    printf("%d\n", *frm2_large );
 	
 	fgets(buf, 100,fptr);
 	
-	fscanf(fptr, "%lf",inj_radius);
+	//fgets(buf, 100,fptr);
+	
+	fscanf(fptr, "%lf",inj_radius_small);
 	//printf("%lf\n", *inj_radius );
 	
 	fgets(buf, 100,fptr);
+    
+    fscanf(fptr, "%lf",inj_radius_large);
+	//printf("%lf\n", *inj_radius );
+	
+	fgets(buf, 100,fptr);
+    
 	//theta jmin
 	fscanf(fptr, "%lf",&theta_deg);
 	*theta_jmin=theta_deg*M_PI/180;
@@ -262,12 +289,20 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
     fscanf(fptr, "%lf",ph_weight);
     fgets(buf, 100,fptr);
     
+    fscanf(fptr, "%d",min_photons);
+    fgets(buf, 100,fptr);
+    
+    fscanf(fptr, "%d",max_photons);
+    fgets(buf, 100,fptr);
+    
     *spect=getc(fptr);
     fgets(buf, 100,fptr);
     //printf("%c\n",*spect);
     
     *restart=getc(fptr);
+    fgets(buf, 100,fptr);
     
+    fscanf(fptr, "%d",num_threads);
 	//close file
 	fclose(fptr);
 }
@@ -566,11 +601,11 @@ void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y,
 }
 
 
-void photonInjection( struct photon **ph, int *ph_num, double r_inj, double ph_weight, char spect, int array_length, double fps, double theta_min, double theta_max,\
+void photonInjection( struct photon **ph, int *ph_num, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, int array_length, double fps, double theta_min, double theta_max,\
 double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temps, double *vx, double *vy, gsl_rng * rand)
 {
     int i=0, block_cnt=0, *ph_dens=NULL, ph_tot=0, j=0,k=0;
-    double ph_dens_calc=0.0, fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, fr_max=0, bb_norm=0, position_phi;
+    double ph_dens_calc=0.0, fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, fr_max=0, bb_norm=0, position_phi, ph_weight_adjusted;
     double com_v_phi, com_v_theta, *p_comv=NULL, *boost=NULL; //comoving phi, theta, comoving 4 momentum for a photon, and boost for photon(to go to lab frame)
     double *l_boost=NULL; //pointer to hold array of lorentz boost, to lab frame, values
     float num_dens_coeff;
@@ -599,29 +634,52 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     }
     //printf("Blocks: %d\n", block_cnt);
     
-    //allocate memory to record density of photons for each block
     ph_dens=malloc(block_cnt * sizeof(int));
     
     //calculate the photon density for each block and save it to the array
     j=0;
     ph_tot=0;
-    for (i=0;i<array_length;i++)
+    ph_weight_adjusted=ph_weight;
+    //printf("%d %d\n", max_photons, min_photons);
+    while ((ph_tot>max_photons) || (ph_tot<min_photons) )
     {
-        //printf("%d\n",i);
-        //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
-            if ((*(r+i) > (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) > theta_min) ) 
-            {
-                ph_dens_calc=num_dens_coeff*2.0*M_PI*(*(x+i))*pow(*(temps+i),3.0)*pow(*(szx+i),2.0) /(ph_weight) ; //a*T^3/(weight) dV, dV=2*PI*x*dx^2, 
-                 
-                 *(ph_dens+j)=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
-                 
-                //printf("%d, %lf \n",*(ph_dens+j), ph_dens_calc);
-                
-                 //sum up all the densities to get total number of photons
-                 ph_tot+=(*(ph_dens+j));
-                 
-                 j++;
-            }
+        j=0;
+        ph_tot=0;
+        //allocate memory to record density of photons for each block
+        //ph_dens=malloc(block_cnt * sizeof(int));
+        
+        for (i=0;i<array_length;i++)
+        {
+            //printf("%d\n",i);
+            //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
+                if ((*(r+i) > (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) > theta_min) ) 
+                {
+                    ph_dens_calc=num_dens_coeff*2.0*M_PI*(*(x+i))*pow(*(temps+i),3.0)*pow(*(szx+i),2.0) /(ph_weight_adjusted) ; //a*T^3/(weight) dV, dV=2*PI*x*dx^2, 
+                     
+                     (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
+                     
+                    //printf("%d, %lf \n",*(ph_dens+j), ph_dens_calc);
+                    
+                     //sum up all the densities to get total number of photons
+                     ph_tot+=(*(ph_dens+j));
+                     
+                     j++;
+                }
+        }
+
+        if (ph_tot>max_photons)
+        {
+            //if the number of photons is too big make ph_weight larger
+            ph_weight_adjusted*=10;
+            //free(ph_dens);
+        }
+        else if (ph_tot<min_photons)
+        {
+            ph_weight_adjusted*=0.5;
+            //free(ph_dens);
+        }
+        //printf("dens: %d, photons: %d\n", *(ph_dens+(j-1)), ph_tot);
+         
     }
         
     //printf("%d\n", ph_tot);
@@ -633,15 +691,17 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     boost=malloc(3*sizeof(double));
     l_boost=malloc(4*sizeof(double));
     
+    
     //go through blocks and assign random energies/locations to proper number of photons
     ph_tot=0;
     k=0;
-     for (i=0;i<array_length;i++)
+    for (i=0;i<array_length;i++)
     {
        if ((*(r+i) > (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) > theta_min) )
         {
+
             //*(temps+i)=0.76*(*(temps+i));
-            for(j=0;j<(*(ph_dens+k));j++ )
+            for(j=0;j<( *(ph_dens+k) ); j++ )
             {
                     //have to get random frequency for the photon comoving frequency
                     y_dum=1; //initalize loop
@@ -696,7 +756,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                 (*ph)[ph_tot].r1=(*(x+i))*sin(position_phi) ;
                 (*ph)[ph_tot].r2=(*(y+i)); //y coordinate in flash becomes z coordinate in MCRaT
                 (*ph)[ph_tot].num_scatt=0;
-                (*ph)[ph_tot].weight=ph_weight;
+                (*ph)[ph_tot].weight=ph_weight_adjusted;
                 //printf("%d\n",ph_tot);
                 ph_tot++;
             }
@@ -705,6 +765,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     }
     
     *ph_num=ph_tot; //save number of photons
+    //printf(" %d: %d\n", *(ph_dens+(k-1)), *ph_num);
     free(ph_dens); free(p_comv);free(boost); free(l_boost);
     
 }
@@ -851,12 +912,13 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         
         
     //initialize gsl random number generator fo each thread
+    /*
         const gsl_rng_type *rng_t;
         gsl_rng **rng;
         gsl_rng_env_setup();
         rng_t = gsl_rng_ranlxs0;
 
-        rng = (gsl_rng **) malloc((num_threads ) * sizeof(gsl_rng *)); //minus 1 because master thread already has rand initalized
+        rng = (gsl_rng **) malloc((num_threads ) * sizeof(gsl_rng *)); 
         rng[0]=rand;
 
             //#pragma omp parallel for num_threads(nt)
@@ -865,18 +927,17 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             rng[i] = gsl_rng_alloc (rng_t);
             gsl_rng_set(rng[i],gsl_rng_get(rand));
         }
-       
+       */
     //go through each photon and find the blocks around it and then get the distances to all of those blocks and choose the one thats the shortest distance away
     //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
     //or just parallelize this part here
     
-    
-    
     min_mfp=1e12;
-    #pragma omp parallel for firstprivate( ph_x, ph_y, ph_phi, dist_min, dist, j, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp,  n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
+    //#pragma omp parallel for firstprivate( ph_x, ph_y, ph_phi, dist_min, dist, j, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp,  n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp ) 
     for (i=0;i<num_ph; i++)
     {
         //printf("%e,%e\n", ((ph+i)->r0), ((ph+i)->r1));
+        
         ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to FLASH x coordinate
         ph_y=((ph+i)->r2);
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
@@ -931,7 +992,8 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         rnd_tracker=0;
         //while ((rnd_tracker<=0) || (rnd_tracker>=1))
         //{
-            rnd_tracker=gsl_rng_uniform_pos(rng[omp_get_thread_num()]);
+            //rnd_tracker=gsl_rng_uniform_pos(rng[omp_get_thread_num()]);
+            rnd_tracker=gsl_rng_uniform_pos(rand);
             //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
         //}
         mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOMP_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths 
@@ -940,7 +1002,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             //printf("\nThread: %d Photon: %d mfp: %e  cos_angle: %e beta: %e dens_lab: %e rnd_tracker: %e\n\n",omp_get_thread_num(), i, mfp, n_cosangle , beta,n_dens_lab_tmp, rnd_tracker );
         //}
         
-        #pragma omp critical 
+        //#pragma omp critical 
         if ( mfp<min_mfp)
         {
             min_mfp=mfp;
@@ -950,19 +1012,20 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             n_temp_min= n_temp_tmp;
             index=i;
             //printf("Thread is %d. new min: %e for photon %d with block properties: %e, %e, %e\n", omp_get_thread_num(), mfp, index, n_vx_tmp, n_vy_tmp, n_temp_tmp);
-            #pragma omp flush(min_mfp)
+            //printf("Ancestor: %d Total Threads: %d\n", omp_get_num_threads(), omp_get_ancestor_thread_num(2));
+            //#pragma omp flush(min_mfp)
         }
 
         
     }
-    
+    /*
     //free rand number generator
     for (i=1;i<num_threads;i++)
     {
         gsl_rng_free(rng[i]);
     }
     free(rng);
-    
+    */
     *(n_dens_lab)= n_dens_lab_min;
     *(n_vx)= n_vx_min;
     *(n_vy)= n_vy_min;
@@ -1424,6 +1487,84 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
     *avg=sum/ph_num;
     *max=temp_max;
     *min=temp_min;
+    
+}
+
+void dirFileMerge(char dir[200], int start_frame, int last_frame)
+{
+    //function to merge files in mcdir produced by various threads
+    int i=0, j=0, num_files=8; //number of files is number of types of mcdata files there are
+    char filename_0[200],filename_1[200], file_no_thread_num[200], cmd[2000], mcdata_type[200];
+    
+    printf("Merging files in %s\n", dir);
+    
+    for (i=start_frame;i<=last_frame;i++)
+    {
+        for (j=0;j<num_files;j++)
+        {
+            switch (j)
+            {
+            case 0: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P0"); break;
+            case 1: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P1");break;
+            case 2: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P2"); break;
+            case 3: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P3"); break;
+            case 4: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R0"); break;
+            case 5: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
+            case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
+            case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+            }
+            
+            snprintf(file_no_thread_num,sizeof(file_no_thread_num),"%s%s%d%s%s%s", dir,"mcdata_",i,"_", mcdata_type,".dat");
+            snprintf(filename_0,sizeof(filename_0),"%s%s%d%s%s%s", dir,"mcdata_",i,"_", mcdata_type ,"_0.dat");
+            snprintf(filename_1,sizeof(filename_1),"%s%s%d%s%s%s", dir,"mcdata_",i,"_",mcdata_type,"_1.dat");
+            
+            //check if both the file exists 
+            if (( access( filename_0, F_OK ) != -1 ) && ( access( filename_1, F_OK ) != -1 )  )
+            {
+                //if they both do make command to cat the together always in the same order
+                snprintf(cmd, sizeof(cmd), "%s%s %s%s%s", "cat ", filename_0, filename_1, " > ", file_no_thread_num);
+            }
+            else if (( access( filename_0, F_OK ) == -1 ) && ( access( filename_1, F_OK ) != -1 )  ) //filename_0 doesnt exist then cat filename_1 into its own file
+            {
+                snprintf(cmd, sizeof(cmd), "%s%s%s%s", "cat ", filename_1, " > ", file_no_thread_num);
+            }
+            else if (( access( filename_0, F_OK ) != -1 ) && ( access( filename_1, F_OK ) == -1 )  ) //vice versa
+            {
+                snprintf(cmd, sizeof(cmd), "%s%s%s%s", "cat ", filename_0, " > ", file_no_thread_num);
+            }
+            else
+            {
+                printf("No mcdata files exist for frame %d\n", i);
+            }
+            
+            system(cmd);
+            //remove file
+            snprintf(cmd, sizeof(cmd), "%s%s", "rm ", filename_0);
+            system(cmd);
+            
+            snprintf(cmd, sizeof(cmd), "%s%s", "rm ", filename_1);
+            system(cmd);
+            
+        }
+    }
+    
+    //merge photon weight files
+    
+    snprintf(file_no_thread_num,sizeof(file_no_thread_num),"%s%s", dir,"mcdata_PW.dat");
+    snprintf(filename_0,sizeof(filename_0),"%s%s", dir,"mcdata_PW_0.dat");
+    snprintf(filename_1,sizeof(filename_1),"%s%s", dir,"mcdata_PW_1.dat");
+    
+    snprintf(cmd, sizeof(cmd), "%s%s%s%s", "cat ", filename_1, " > ", file_no_thread_num);
+    
+    system(cmd);
+    
+     //remove files
+    snprintf(cmd, sizeof(cmd), "%s%s", "rm ", filename_0);
+    system(cmd);
+            
+    snprintf(cmd, sizeof(cmd), "%s%s", "rm ", filename_1);
+    system(cmd);
+    
     
 }
 
