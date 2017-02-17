@@ -167,19 +167,19 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0, int *framesta
         fPtr=fopen(checkptfile, "rb");
         
         fread(restart, sizeof(char), 1, fPtr);
-        printf("%c\n", *restart);
+        //printf("%c\n", *restart);
         fread(framestart, sizeof(int), 1, fPtr);
-        printf("%d\n", *framestart);
+        //printf("%d\n", *framestart);
         
         if((*restart)=='c')
         {
             fread(scatt_framestart, sizeof(int), 1, fPtr);
             *scatt_framestart+=1; //add one to start at the next frame after the siomulation was interrrupted
-            printf("%d\n", *scatt_framestart);
+            //printf("%d\n", *scatt_framestart);
             fread(time, sizeof(double), 1, fPtr);
-            printf("%e\n", *time);
+            //printf("%e\n", *time);
             fread(ph_num, sizeof(int), 1, fPtr);
-            printf("%d\n", *ph_num);
+            //printf("%d\n", *ph_num);
             
             phHolder=malloc(sizeof(struct photon));
             (*ph)=malloc(sizeof(struct photon)*(*ph_num)); //allocate memory to hold photon data
@@ -231,24 +231,24 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
 	fptr=fopen(file,"r");
 	//read in frames per sec and other variables outlined in main()
 	fscanf(fptr, "%lf",fps);
-	printf("%f\n", *fps );
+	//printf("%f\n", *fps );
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%d",frm0);
-	printf("%d\n", *frm0 );
+	//printf("%d\n", *frm0 );
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%d",last_frm);
-	printf("%d\n", *last_frm );
+	//printf("%d\n", *last_frm );
     
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%d",frm2_small);
     *frm2_small+=*frm0; //frame to go to is what is given in the file plus the starting frame
-	printf("%d\n", *frm2_small );
+	//printf("%d\n", *frm2_small );
 	
 	fgets(buf, 100,fptr);
 	
@@ -257,33 +257,33 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
     
     fscanf(fptr, "%d",frm2_large);
     *frm2_large+=*frm0; //frame to go to is what is given in the file plus the starting frame
-    printf("%d\n", *frm2_large );
+    //printf("%d\n", *frm2_large );
 	
 	fgets(buf, 100,fptr);
 	
 	//fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%lf",inj_radius_small);
-	printf("%lf\n", *inj_radius_small );
+	//printf("%lf\n", *inj_radius_small );
 	
 	fgets(buf, 100,fptr);
     
     fscanf(fptr, "%lf",inj_radius_large);
-	printf("%lf\n", *inj_radius_large );
+	//printf("%lf\n", *inj_radius_large );
 	
 	fgets(buf, 100,fptr);
     
 	//theta jmin
 	fscanf(fptr, "%lf",&theta_deg);
 	*theta_jmin=theta_deg*M_PI/180;
-	printf("%f\n", *theta_jmin );
+	//printf("%f\n", *theta_jmin );
 	
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%lf",&theta_deg);
     *theta_j=theta_deg*M_PI/180;
-	printf("%f\n", *theta_j );
+	//printf("%f\n", *theta_j );
 	
 	fgets(buf, 100,fptr);
     
@@ -298,7 +298,7 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
     
     *spect=getc(fptr);
     fgets(buf, 100,fptr);
-    printf("%c\n",*spect);
+    //printf("%c\n",*spect);
     
     *restart=getc(fptr);
     fgets(buf, 100,fptr);
@@ -309,7 +309,7 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
 }
 
 void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y, double **szx, double **szy, double **r,\
- double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number)
+ double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, FILE *fPtr)
 {
     //function to read in data from FLASH file
     hid_t  file,dset, space;
@@ -321,8 +321,8 @@ void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y,
     double x1[8]={-7.0/16,-5.0/16,-3.0/16,-1.0/16,1.0/16,3.0/16,5.0/16,7.0/16};
     
     file = H5Fopen (flash_file, H5F_ACC_RDONLY, H5P_DEFAULT);
-    printf(">> mc.py: Reading positional, density, pressure, and velocity information...\n");
-
+    fprintf(fPtr, ">> mc.py: Reading positional, density, pressure, and velocity information...\n");
+    fflush(fPtr);
     //printf("Reading coord\n");
     dset = H5Dopen (file, "coordinates", H5P_DEFAULT);
     
@@ -470,7 +470,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y,
 
     status = H5Fclose (file);
     
-    printf(">> Selecting good node types (=1)\n");
+    fprintf(fPtr,">> Selecting good node types (=1)\n");
     //find out how many good nodes there are
     for (i=0;i<dims[0];i++)
     {
@@ -501,7 +501,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y,
     //find where the good values corresponding to the good gones (=1) and save them to the previously allocated pointers which are 1D arrays
     //also create proper x and y arrays and block size arrays
     //and then free up the buffer memory space
-    printf(">> Creating and reshaping arrays\n");
+    fprintf(fPtr,">> Creating and reshaping arrays\n");
     count=0;
     for (i=0;i<dims[0];i++)
     {
@@ -1497,7 +1497,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame)
     int i=0, j=0, num_files=8; //number of files is number of types of mcdata files there are
     char filename_0[200],filename_1[200], file_no_thread_num[200], cmd[2000], mcdata_type[200];
     
-    printf("Merging files in %s\n", dir);
+    //printf("Merging files in %s\n", dir);
     
     for (i=start_frame;i<=last_frame;i++)
     {

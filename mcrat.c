@@ -93,11 +93,11 @@ int main(int argc, char **argv)
     snprintf(mc_file,sizeof(flash_prefix),"%s%s%s",FILEPATH, MC_PATH,MCPAR);
 
     
-    printf(">> mc.py:  Reading mc.par\n");
+    //printf(">> mc.py:  Reading mc.par\n");
     
     readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax,&inj_radius_small,&inj_radius_large, &frm0,&last_frm ,&frm2_small, &frm2_large, &ph_weight_suggest, &min_photons, &max_photons, &spect, &restrt, &num_thread); //thetas that comes out is in radians
     
-    printf("small: %d large: %d weights: %e, %c\n", min_photons, max_photons, ph_weight_suggest, restrt);
+    //printf("small: %d large: %d weights: %e, %c\n", min_photons, max_photons, ph_weight_suggest, restrt);
     if (num_thread==0)
     {
         num_thread=omp_get_max_threads(); //if user specifies 0 in mc.par, default to max number of threads possible
@@ -120,15 +120,15 @@ int main(int argc, char **argv)
     //assign ranges to array that hold them
     delta_theta=(theta_jmax-theta_jmin)/(half_threads);
     *(thread_theta+0)=theta_jmin;
-    printf("%e\n", *(thread_theta+0));
+    //printf("%e\n", *(thread_theta+0));
     
     for (j=1;j<(half_threads+1); j++)
     {
         *(thread_theta+j)=*(thread_theta+(j-1))+delta_theta;
-        printf("%e\n", *(thread_theta+j)*180/M_PI);
+        //printf("%e\n", *(thread_theta+j)*180/M_PI);
     }
 
-    printf("half_threads: %d\n", half_threads);
+    //printf("half_threads: %d\n", half_threads);
     //start parallel section with half the threads possible and assign each thread to its value of theta by rewriting its private value of theta min and max that was read from mcrat
     omp_set_nested(1); //allow for nested parallelization
     //omp_set_dynamic(0);
@@ -139,7 +139,7 @@ int main(int argc, char **argv)
     #pragma omp parallel num_threads(half_threads)
     {
         
-        printf("%d\n", omp_get_num_threads() );
+        //printf("%d\n", omp_get_num_threads() );
         double inj_radius;
         int frm2;
         char mc_filename[200]="";
@@ -155,11 +155,11 @@ int main(int argc, char **argv)
                 
         theta_jmin_thread=(*(thread_theta+omp_get_thread_num() ));
         theta_jmax_thread=(*(thread_theta+omp_get_thread_num()+1 ));
-        printf("Thread %d: %0.1lf, %0.1lf \n %d %d\n", omp_get_thread_num(),  theta_jmin_thread*180/M_PI,  theta_jmax_thread*180/M_PI, frm2_small, frm2_large );
+        //printf("Thread %d: %0.1lf, %0.1lf \n %d %d\n", omp_get_thread_num(),  theta_jmin_thread*180/M_PI,  theta_jmax_thread*180/M_PI, frm2_small, frm2_large );
         
         snprintf(mc_dir,sizeof(flash_prefix),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
         
-        printf(">> Thread %d in  MCRaT: I am working on path: %s \n",omp_get_thread_num(), mc_dir  );
+        //printf(">> Thread %d in  MCRaT: I am working on path: %s \n",omp_get_thread_num(), mc_dir  );
         
         if ((theta_jmin_thread >= 0) &&  (theta_jmax_thread <= (2*M_PI/180) )) //if within small angle (0-2 degrees) use _small inj_radius and frm2
         {
@@ -171,10 +171,10 @@ int main(int argc, char **argv)
             inj_radius=inj_radius_large;
             frm2=frm2_large;
         }
-        printf("Thread %d: %0.1lf, %0.1lf \n %d %e\n", omp_get_thread_num(),  theta_jmin_thread*180/M_PI,  theta_jmax_thread*180/M_PI, frm2, inj_radius );
+        //printf("Thread %d: %0.1lf, %0.1lf \n %d %e\n", omp_get_thread_num(),  theta_jmin_thread*180/M_PI,  theta_jmax_thread*180/M_PI, frm2, inj_radius );
 
         //want to also have another set of threads that each has differing ranges of frame injections therefore do nested parallelism here so each thread can read its own checkpoint file
-        #pragma omp parallel num_threads(2) 
+        #pragma omp parallel num_threads(2) firstprivate(restrt)
         {
             char flash_file[200]="";
             char log_file[200]="";
@@ -191,7 +191,7 @@ int main(int argc, char **argv)
             
             //if (omp_get_thread_num()==0)
             //{
-                printf( "A:%d Im Thread: %d with ancestor %d working in %s\n", omp_get_num_threads(),  omp_get_thread_num(), omp_get_ancestor_thread_num(1), mc_dir);
+                //printf( "A:%d Im Thread: %d with ancestor %d working in %s\n", omp_get_num_threads(),  omp_get_thread_num(), omp_get_ancestor_thread_num(1), mc_dir);
             //}
             
             if (restrt=='c')
@@ -209,13 +209,13 @@ int main(int argc, char **argv)
                 */
                 if (restrt=='c')
                 {
-                    printf("Starting from photons injected at frame: %d out of %d\n", framestart, frm2);
-                    printf("Continuing scattering %d photons from frame: %d\n", num_ph, scatt_framestart);
-                    printf("The time now is: %e\n", time_now);
+                    printf(">> Thread %d with ancestor %d: Starting from photons injected at frame: %d out of %d\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1),framestart, frm2);
+                    printf(">> Thread %d with ancestor %d: Continuing scattering %d photons from frame: %d\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1),num_ph, scatt_framestart);
+                    printf(">> Thread %d with ancestor %d: The time now is: %e\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1),time_now);
                 }
                 else
                 {
-                    printf("Continuing simulation by injecting photons at frame: %d out of %d\n", framestart, frm2); //starting with new photon injection is same as restarting sim
+                    printf(">> Thread %d with ancestor %d: Continuing simulation by injecting photons at frame: %d out of %d\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1),framestart, frm2); //starting with new photon injection is same as restarting sim
                 }
                 }
             }
@@ -232,7 +232,7 @@ int main(int argc, char **argv)
                 //for a checkpoint implementation, need to find the latest checkpoint file and read it and not delete the files
                 #pragma omp critical
                 {
-                    printf(">> mc.py:  Cleaning directory \n");
+                    printf(">> Thread %d with ancestor %d:  Cleaning directory \n",omp_get_thread_num(), omp_get_ancestor_thread_num(1));
                     dirp = opendir(mc_dir);
                     while ((entry = readdir(dirp)) != NULL) 
                     {
@@ -301,8 +301,8 @@ int main(int argc, char **argv)
                  }
                 
                 //printf(">> mc.py: Working on Frame %d\n", frame);
-                printf("%d Im Thread: %d with ancestor %d Working on Frame: %d\n", omp_get_num_threads(),  omp_get_thread_num(), omp_get_ancestor_thread_num(1), frame);
-                
+                fprintf(fPtr,"%d Im Thread: %d with ancestor %d Working on Frame: %d\n", omp_get_num_threads(),  omp_get_thread_num(), omp_get_ancestor_thread_num(1), frame);
+                fflush(fPtr);
                 
                 if (restrt=='r')
                 {
@@ -324,7 +324,8 @@ int main(int argc, char **argv)
                         snprintf(flash_file,sizeof(flash_prefix), "%s%d",flash_prefix,frame);
                     }
                     
-                    printf(">> Im Thread: %d with ancestor %d: Opening FLASH file %s\n",omp_get_thread_num(), omp_get_ancestor_thread_num(1), flash_file);
+                    fprintf(fPtr,">> Im Thread: %d with ancestor %d: Opening FLASH file %s\n",omp_get_thread_num(), omp_get_ancestor_thread_num(1), flash_file);
+                    fflush(fPtr);
                     
                     //exit(0);
                     //read in FLASH file
@@ -332,15 +333,16 @@ int main(int argc, char **argv)
                     #pragma omp critical
                     {
                         readAndDecimate(flash_file, inj_radius, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                            &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num);
+                            &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, fPtr);
                         
                     }
                         
                     //determine where to place photons and how many should go in a given place
                     //for a checkpoint implmentation, dont need to inject photons, need to load photons' last saved data 
-                    printf(">>  Thread: %d with ancestor %d: Injecting photons\n",omp_get_thread_num(), omp_get_ancestor_thread_num(1));
+                    fprintf(fPtr,">>  Thread: %d with ancestor %d: Injecting photons\n",omp_get_thread_num(), omp_get_ancestor_thread_num(1));
+                    fflush(fPtr);
                     photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng[omp_get_thread_num()] ); 
-                    printf("%d\n",num_ph); //num_ph is one more photon than i actually have
+                    //printf("%d\n",num_ph); //num_ph is one more photon than i actually have
                     /*
                     for (i=0;i<num_ph;i++)
                         printf("%e,%e,%e \n",(phPtr+i)->r0, (phPtr+i)->r1, (phPtr+i)->r2 );
@@ -356,10 +358,11 @@ int main(int argc, char **argv)
                 
                 for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame++)
                 {
-                    printf(">>\n");
-                    printf(">> mc.py: Working on photons injected at frame: %d out of %d\n", frame, frm2);
-                    printf(">> mc.py: %s: Working on frame %d\n", THISRUN, scatt_frame);
-                    printf(">> mc.py: Opening file...\n");
+                    fprintf(fPtr,">>\n");
+                    fprintf(fPtr,">> Thread %d with ancestor %d : Working on photons injected at frame: %d out of %d\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1),frame, frm2);
+                    fprintf(fPtr,">> Thread %d with ancestor %d: %s - Working on frame %d\n",omp_get_thread_num(), omp_get_ancestor_thread_num(1), THISRUN, scatt_frame);
+                    fprintf(fPtr,">> Thread %d with ancestor %d: Opening file...\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1));
+                    fflush(fPtr);
                     
                     
                     //put proper number at the end of the flash file
@@ -383,11 +386,12 @@ int main(int argc, char **argv)
                     #pragma omp critical
                     {
                         readAndDecimate(flash_file, inj_radius, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                            &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num);
+                            &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, fPtr);
                     }
                         //printf("The result of read and decimate are arrays with %d elements\n", array_num);
                         
-                    printf(">> mc.py: propagating and scattering %d photons\n", num_ph);
+                    fprintf(fPtr,">> Thread %d with ancestor %d: propagating and scattering %d photons\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1),num_ph);
+                    fflush(fPtr);
                     
                     frame_scatt_cnt=0;
                     while (time_now<((scatt_frame+1)/fps))
@@ -421,9 +425,10 @@ int main(int argc, char **argv)
                             
                             if (frame_scatt_cnt%1000 == 0)
                             {
-                                printf("Scattering Number: %d\n", frame_scatt_cnt);
-                                printf("The local temp is: %e\n", (ph_tempPtr));
-                                printf("Average photon energy is: %e\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 and then do (*3e10/1.6e-9)
+                                fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
+                                fprintf(fPtr,"The local temp is: %e\n", (ph_tempPtr));
+                                fprintf(fPtr,"Average photon energy is: %e\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 and then do (*3e10/1.6e-9)
+                                fflush(fPtr);
                             }
                             
                         }
@@ -443,17 +448,19 @@ int main(int argc, char **argv)
                 //get scattering statistics
                 phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt);
                         
-                printf("The number of scatterings in this frame is: %d\n", frame_scatt_cnt);
-                printf("The last time step was: %lf.\nThe time now is: %lf\n", time_step,time_now);
-                printf("The maximum number of scatterings for a photon is: %d\nThe minimum number of scattering for a photon is: %d\n", max_scatt, min_scatt);
-                printf("The average number of scatterings thus far is: %lf\n", avg_scatt);
+                fprintf(fPtr,"The number of scatterings in this frame is: %d\n", frame_scatt_cnt);
+                fprintf(fPtr,"The last time step was: %lf.\nThe time now is: %lf\n", time_step,time_now);
+                fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scattering for a photon is: %d\n", max_scatt, min_scatt);
+                fprintf(fPtr,"The average number of scatterings thus far is: %lf\n", avg_scatt);
+                fflush(fPtr);
                 
                 printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, omp_get_thread_num());
                 
                 //for a checkpoint implmentation,save the checkpoint file here after every 5 frames or something
                 //save the photons data, the scattering number data, the scatt_frame value, and the frame value
                 //WHAT IF THE PROGRAM STOPS AFTER THE LAST SCATT_FRAME, DURING THE FIRST SCATT_FRAME OF NEW FRAME VARIABLE - save restrt variable as 'r'
-                printf(">> mc.py: Making checkpoint file\n");
+                fprintf(fPtr, ">> Thread %d with ancestor %d: Making checkpoint file\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1));
+                fflush(fPtr);
                 saveCheckpoint(mc_dir, frame, scatt_frame, num_ph, time_now, phPtr, last_frm, omp_get_thread_num());
                 
                 free(xPtr);free(yPtr);free(szxPtr);free(szyPtr);free(rPtr);free(thetaPtr);free(velxPtr);free(velyPtr);free(densPtr);free(presPtr);
