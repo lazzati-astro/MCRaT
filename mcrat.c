@@ -144,6 +144,7 @@ int main(int argc, char **argv)
         int frm2;
         char mc_filename[200]="";
         char mc_filename_2[200]="";
+        char mc_filename_3[200]="";
         char mc_operation[200]="";
         char mc_dir[200]="" ;
         int file_count = 0;
@@ -242,16 +243,17 @@ int main(int argc, char **argv)
                     }
                     printf("File count %d\n", file_count);
                     
-                    if (file_count>2)
+                    if (file_count>0)
                     {
                         for (i=0;i<=last_frm;i++)
                         {
-                            snprintf(mc_filename,sizeof(flash_prefix),"%s%s%d%s", mc_dir,"mcdata_",i,"_P0_0.dat");
-                            snprintf(mc_filename,sizeof(flash_prefix),"%s%s%d%s", mc_dir,"mcdata_",i,"_P0.dat");
-                            if(( access( mc_filename, F_OK ) != -1 ) || ( access( mc_filename_2, F_OK ) != -1 ) )
+                            snprintf(mc_filename,sizeof(mc_filename),"%s%s%d%s", mc_dir,"mcdata_",i,"_P0_0.dat");
+                            snprintf(mc_filename_2,sizeof(mc_filename),"%s%s%d%s", mc_dir,"mcdata_",i,"_P0_1.dat");
+                            snprintf(mc_filename_3,sizeof(mc_filename_2),"%s%s%d%s", mc_dir,"mcdata_",i,"_P0.dat");
+                            if(( access( mc_filename, F_OK ) != -1 ) || ( access( mc_filename_2, F_OK ) != -1 ) || ( access( mc_filename_3, F_OK ) != -1 ) )
                             {
-                                snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s%d%s","exec rm ", mc_dir,"mcdata_",i,"_*"); //prepares string to remove *.dat in mc_dir
-                                printf("%s",mc_operation);
+                                snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s%d%s","exec rm ", mc_dir,"mcdata_",i,"_*.dat"); //prepares string to remove *.dat in mc_dir
+                                printf("%s\n",mc_operation);
                                 system(mc_operation);
                                 
                                 //snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s%d%s","exec rm ", mc_dir,"mcdata_",i,"_*");
