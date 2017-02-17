@@ -215,6 +215,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0, int *framesta
     {
         *framestart=frame0;
         *scatt_framestart=frame0;
+        *restart='r';
         
     }
 }
@@ -230,17 +231,17 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
 	fptr=fopen(file,"r");
 	//read in frames per sec and other variables outlined in main()
 	fscanf(fptr, "%lf",fps);
-	//printf("%f\n", *fps );
+	printf("%f\n", *fps );
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%d",frm0);
-	//printf("%d\n", *frm0 );
+	printf("%d\n", *frm0 );
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%d",last_frm);
-	//printf("%d\n", *last_frm );
+	printf("%d\n", *last_frm );
     
 	
 	fgets(buf, 100,fptr);
@@ -263,26 +264,26 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
 	//fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%lf",inj_radius_small);
-	//printf("%lf\n", *inj_radius );
+	printf("%lf\n", *inj_radius_small );
 	
 	fgets(buf, 100,fptr);
     
     fscanf(fptr, "%lf",inj_radius_large);
-	//printf("%lf\n", *inj_radius );
+	printf("%lf\n", *inj_radius_large );
 	
 	fgets(buf, 100,fptr);
     
 	//theta jmin
 	fscanf(fptr, "%lf",&theta_deg);
 	*theta_jmin=theta_deg*M_PI/180;
-	//printf("%f\n", *theta_jmin );
+	printf("%f\n", *theta_jmin );
 	
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%lf",&theta_deg);
     *theta_j=theta_deg*M_PI/180;
-	//printf("%f\n", *theta_j );
+	printf("%f\n", *theta_j );
 	
 	fgets(buf, 100,fptr);
     
@@ -297,7 +298,7 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
     
     *spect=getc(fptr);
     fgets(buf, 100,fptr);
-    //printf("%c\n",*spect);
+    printf("%c\n",*spect);
     
     *restart=getc(fptr);
     fgets(buf, 100,fptr);

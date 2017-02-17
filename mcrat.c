@@ -132,7 +132,7 @@ int main(int argc, char **argv)
     //start parallel section with half the threads possible and assign each thread to its value of theta by rewriting its private value of theta min and max that was read from mcrat
     omp_set_nested(1); //allow for nested parallelization
     //omp_set_dynamic(0);
-    omp_set_num_threads(num_thread);
+    //omp_set_num_threads(num_thread);
     //#pragma omp parallel firstprivate(theta_jmin_thread, theta_jmax_thread, mc_dir, phPtr, framestart, scatt_framestart, num_ph, restrt, time_now, st, dirp, file_count, mc_filename, mc_operation, dt_max)
     //printf("%d\n", omp_get_num_threads() );
     
@@ -177,6 +177,8 @@ int main(int argc, char **argv)
         #pragma omp parallel num_threads(2) 
         {
             char flash_file[200]="";
+            char log_file[200]="";
+            FILE *fPtr=NULL; //pointer to log file for each thread
             double *xPtr=NULL,  *yPtr=NULL,  *rPtr=NULL,  *thetaPtr=NULL,  *velxPtr=NULL,  *velyPtr=NULL,  *densPtr=NULL,  *presPtr=NULL,  *gammaPtr=NULL,  *dens_labPtr=NULL;
             double *szxPtr=NULL,*szyPtr=NULL, *tempPtr=NULL; //pointers to hold data from FLASH files
             int num_ph=0, array_num=0, ph_scatt_index=0, max_scatt=0, min_scatt=0,i=0; //number of photons produced in injection algorithm, number of array elleemnts from reading FLASH file, index of photon whch does scattering, generic counter
@@ -186,11 +188,11 @@ int main(int argc, char **argv)
             int frame=0, scatt_frame=0, frame_scatt_cnt=0, scatt_framestart=0, framestart=0;
             struct photon *phPtr=NULL; //pointer to array of photons 
             
+            
             //if (omp_get_thread_num()==0)
             //{
-                printf("A:%d Im Thread: %d with ancestor %d working in %s\n", omp_get_num_threads(),  omp_get_thread_num(), omp_get_ancestor_thread_num(1), mc_dir);
+                printf( "A:%d Im Thread: %d with ancestor %d working in %s\n", omp_get_num_threads(),  omp_get_thread_num(), omp_get_ancestor_thread_num(1), mc_dir);
             //}
-            
             
             if (restrt=='c')
             {
@@ -265,6 +267,9 @@ int main(int argc, char **argv)
                         snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mc_chkpt_*.dat"); //prepares string to remove *.dat in mc_dir
                         system(mc_operation);
                         
+                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mc_output_*.log"); //prepares string to remove *.log in mc_dir
+                        system(mc_operation);
+                        
                     }
                 }
                 framestart=frm0; //if restarting then start from parameters given in mc.par file
@@ -273,7 +278,15 @@ int main(int argc, char **argv)
             }
             
             dt_max=1.0/fps;
-            printf("%d Im Thread: %d with ancestor %d Starting on Frame: %d scatt_framestart: %d\n", omp_get_num_threads(),  omp_get_thread_num(), omp_get_ancestor_thread_num(1), framestart, scatt_framestart);
+            #pragma omp barrier
+            
+            snprintf(log_file,sizeof(log_file),"%s%s%d%s",mc_dir,"mc_output_",omp_get_thread_num(),".log" );
+            printf("%s\n",log_file);
+            fPtr=fopen(log_file, "w");
+            
+            fprintf(fPtr, "%d Im Thread: %d with ancestor %d Starting on Frame: %d scatt_framestart: %d\n", omp_get_num_threads(),  omp_get_thread_num(), omp_get_ancestor_thread_num(1), framestart, scatt_framestart);
+            fflush(fPtr);
+            //fclose(fPtr);
             //#pragma omp barrier
             //exit(0);
             //loop over frames 
@@ -325,7 +338,7 @@ int main(int argc, char **argv)
                         
                     //determine where to place photons and how many should go in a given place
                     //for a checkpoint implmentation, dont need to inject photons, need to load photons' last saved data 
-                    printf(">>  Thread: %d with ancestor %d: Injecting photons\n");
+                    printf(">>  Thread: %d with ancestor %d: Injecting photons\n",omp_get_thread_num(), omp_get_ancestor_thread_num(1));
                     photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng[omp_get_thread_num()] ); 
                     printf("%d\n",num_ph); //num_ph is one more photon than i actually have
                     /*

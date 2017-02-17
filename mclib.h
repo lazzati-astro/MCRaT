@@ -1,3 +1,4 @@
+#define STR_BUFFER 300
 struct photon
 {
     double p0; //E/c, 4 momentum is in lab frame
