@@ -50,6 +50,11 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0, int *framesta
 
 void dirFileMerge(char dir[200], int start_frame, int last_frame);
 
+void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array);
+
+void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array);
+
+
 
 
 

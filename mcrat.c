@@ -50,7 +50,7 @@
 #include <omp.h>
 
 
-#define THISRUN "Science"
+#define THISRUN "Cylindrical"
 #define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16TI/"
 #define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
 #define MC_PATH "CMC_16TI_CYLINDRICAL/"
@@ -64,6 +64,9 @@ int main(int argc, char **argv)
 	// Define variables
 	char flash_prefix[200]="";
 	char mc_file[200]="" ;
+    char this_run[200]=THISRUN;
+    char *cyl="Cylindrical";
+    char *sph="Spherical";
     char spect;//type of spectrum
     char restrt;//restart or not
     double fps, theta_jmin, theta_jmax ;//frames per second of sim, min opening angle of jet, max opening angle of jet in radians
@@ -337,6 +340,17 @@ int main(int argc, char **argv)
                             &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, fPtr);
                         
                     }
+                    
+                    //check for run type
+                    if(strcmp(cyl, this_run)==0)
+                    {
+                        //printf("In cylindrical prep\n");
+                        cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
+                    }
+                    else if (strcmp(sph, this_run)==0)
+                    {
+                        sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num );
+                    }
                         
                     //determine where to place photons and how many should go in a given place
                     //for a checkpoint implmentation, dont need to inject photons, need to load photons' last saved data 
@@ -388,6 +402,17 @@ int main(int argc, char **argv)
                     {
                         readAndDecimate(flash_file, inj_radius, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                             &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, fPtr);
+                    }
+                    
+                    //check for run type
+                    if(strcmp(cyl, this_run)==0)
+                    {
+                        //printf("In cylindrical prep\n");
+                        cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
+                    }
+                    else if (strcmp(sph, this_run)==0)
+                    {
+                        sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num );
                     }
                         //printf("The result of read and decimate are arrays with %d elements\n", array_num);
                         
