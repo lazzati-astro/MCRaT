@@ -25,7 +25,7 @@
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27;
 const double K_B=1.380658e-16, M_P=1.6726231e-24, THOMP_X_SECT=6.65246e-25, M_EL=9.1093879e-28  ;
 
-void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200], int thread_num )
+void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200] )
 {
     //function to save the photons' positions and 4 momentum
     int i=0;
@@ -34,17 +34,17 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     FILE *fPtr=NULL, *fPtr1=NULL,*fPtr2=NULL,*fPtr3=NULL,*fPtr4=NULL,*fPtr5=NULL,*fPtr6=NULL,*fPtr7=NULL,*fPtr8=NULL;
     
     //make strings for proper files
-    snprintf(mc_file_p0,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_P0_", thread_num,".dat" );
-    snprintf(mc_file_p1,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_P1_", thread_num,".dat" );
-    snprintf(mc_file_p2,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_P2_", thread_num,".dat" );
-    snprintf(mc_file_p3,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_P3_", thread_num,".dat" );
-    snprintf(mc_file_r0,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_R0_", thread_num,".dat" );
-    snprintf(mc_file_r1,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_R1_", thread_num,".dat" );
-    snprintf(mc_file_r2,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_R2_", thread_num,".dat" );
-    snprintf(mc_file_ns,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_NS_", thread_num,".dat" ); //for number of scatterings each photon went through
+    snprintf(mc_file_p0,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_P0.dat" );
+    snprintf(mc_file_p1,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_P1.dat" );
+    snprintf(mc_file_p2,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_P2.dat" );
+    snprintf(mc_file_p3,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_P3.dat" );
+    snprintf(mc_file_r0,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_R0.dat" );
+    snprintf(mc_file_r1,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_R1.dat" );
+    snprintf(mc_file_r2,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_R2.dat" );
+    snprintf(mc_file_ns,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_", frame,"_NS.dat" ); //for number of scatterings each photon went through
     if (frame==frame_inj) //if the frame is the same one that the photons were injected in, save the photon weights
     {
-        snprintf(mc_file_pw,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_PW_", thread_num,".dat" ); 
+        snprintf(mc_file_pw,sizeof(mc_file_p0),"%s%s",dir,"mcdata_PW.dat" ); 
     }
     
     //save the energy
@@ -108,7 +108,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     //printf("%s\n%s\n%s\n", mc_file_p0, mc_file_r0, mc_file_ns);
 }
 
-void saveCheckpoint(char dir[200], int frame, int scatt_frame, int ph_num,double time_now, struct photon *ph, int last_frame,  int thread_num )
+void saveCheckpoint(char dir[200], int frame, int scatt_frame, int ph_num,double time_now, struct photon *ph, int last_frame )
 {
     //function to save data necessary to restart simulation if it ends
     //need to save all photon data 
@@ -117,7 +117,7 @@ void saveCheckpoint(char dir[200], int frame, int scatt_frame, int ph_num,double
     char restart;
     int i=0;
     
-    snprintf(checkptfile,sizeof(checkptfile),"%s%s%d%s",dir,"mc_chkpt_", thread_num,".dat" );
+    snprintf(checkptfile,sizeof(checkptfile),"%s%s",dir,"mc_chkpt.dat" );
 
     
     fPtr=fopen(checkptfile, "wb");
@@ -148,7 +148,7 @@ void saveCheckpoint(char dir[200], int frame, int scatt_frame, int ph_num,double
     
 }
 
-void readCheckpoint(char dir[200], struct photon **ph, int frame0, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time,  int thread_num )
+void readCheckpoint(char dir[200], struct photon **ph, int frame0, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time )
 {
     //function to read in data from checkpoint file
     FILE *fPtr=NULL;
@@ -158,7 +158,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0, int *framesta
     struct photon *phHolder=NULL; //pointer to struct to hold data read in from checkpoint file
     
      
-    snprintf(checkptfile,sizeof(checkptfile),"%s%s%d%s",dir,"mc_chkpt_", thread_num,".dat" );
+    snprintf(checkptfile,sizeof(checkptfile),"%s%s",dir,"mc_chkpt.dat" );
         
     printf("Checkpoint file: %s\n", checkptfile);
     
@@ -913,7 +913,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         
         
     //initialize gsl random number generator fo each thread
-    /*
+    
         const gsl_rng_type *rng_t;
         gsl_rng **rng;
         gsl_rng_env_setup();
@@ -928,13 +928,13 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             rng[i] = gsl_rng_alloc (rng_t);
             gsl_rng_set(rng[i],gsl_rng_get(rand));
         }
-       */
+       
     //go through each photon and find the blocks around it and then get the distances to all of those blocks and choose the one thats the shortest distance away
     //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
     //or just parallelize this part here
     
     min_mfp=1e12;
-    //#pragma omp parallel for firstprivate( ph_x, ph_y, ph_phi, dist_min, dist, j, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp,  n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp ) 
+    #pragma omp parallel for firstprivate( ph_x, ph_y, ph_phi, dist_min, dist, j, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp,  n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp ) 
     for (i=0;i<num_ph; i++)
     {
         //printf("%e,%e\n", ((ph+i)->r0), ((ph+i)->r1));
@@ -993,8 +993,8 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         rnd_tracker=0;
         //while ((rnd_tracker<=0) || (rnd_tracker>=1))
         //{
-            //rnd_tracker=gsl_rng_uniform_pos(rng[omp_get_thread_num()]);
-            rnd_tracker=gsl_rng_uniform_pos(rand);
+            rnd_tracker=gsl_rng_uniform_pos(rng[omp_get_thread_num()]);
+            //rnd_tracker=gsl_rng_uniform_pos(rand);
             //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
         //}
         mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOMP_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths 
@@ -1003,7 +1003,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             //printf("\nThread: %d Photon: %d mfp: %e  cos_angle: %e beta: %e dens_lab: %e rnd_tracker: %e\n\n",omp_get_thread_num(), i, mfp, n_cosangle , beta,n_dens_lab_tmp, rnd_tracker );
         //}
         
-        //#pragma omp critical 
+        #pragma omp critical 
         if ( mfp<min_mfp)
         {
             min_mfp=mfp;
@@ -1014,19 +1014,19 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             index=i;
             //printf("Thread is %d. new min: %e for photon %d with block properties: %e, %e, %e\n", omp_get_thread_num(), mfp, index, n_vx_tmp, n_vy_tmp, n_temp_tmp);
             //printf("Ancestor: %d Total Threads: %d\n", omp_get_num_threads(), omp_get_ancestor_thread_num(2));
-            //#pragma omp flush(min_mfp)
+            #pragma omp flush(min_mfp)
         }
 
         
     }
-    /*
+    
     //free rand number generator
     for (i=1;i<num_threads;i++)
     {
         gsl_rng_free(rng[i]);
     }
     free(rng);
-    */
+    
     *(n_dens_lab)= n_dens_lab_min;
     *(n_vx)= n_vx_min;
     *(n_vy)= n_vy_min;

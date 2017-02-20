@@ -70,7 +70,7 @@ int main(int argc, char **argv)
     double inj_radius_small, inj_radius_large,  ph_weight_suggest ;//radius at chich photons are injected into sim
     int frm0,last_frm, frm2_small, frm2_large, j=0, min_photons, max_photons ;//frame starting from, last frame of sim, frame of last injection
     
-    int num_thread=0;
+    int num_thread=0, angle_count=0;
     int half_threads=floor((num_thread/2));
     double *thread_theta=NULL; //saves ranges of thetas for each thread to go through
     double delta_theta=0;
@@ -136,7 +136,8 @@ int main(int argc, char **argv)
     //#pragma omp parallel firstprivate(theta_jmin_thread, theta_jmax_thread, mc_dir, phPtr, framestart, scatt_framestart, num_ph, restrt, time_now, st, dirp, file_count, mc_filename, mc_operation, dt_max)
     //printf("%d\n", omp_get_num_threads() );
     
-    #pragma omp parallel num_threads(half_threads)
+    #pragma omp parallel for num_threads(half_threads) private(angle_count)
+    for (angle_count=(int) (theta_jmin*(180/M_PI)); angle_count< (int) (theta_jmax*(180/M_PI))  ;angle_count++ )
     {
         
         //printf("%d\n", omp_get_num_threads() );
@@ -144,7 +145,6 @@ int main(int argc, char **argv)
         int frm2;
         char mc_filename[200]="";
         char mc_filename_2[200]="";
-        char mc_filename_3[200]="";
         char mc_operation[200]="";
         char mc_dir[200]="" ;
         int file_count = 0;
@@ -154,8 +154,8 @@ int main(int argc, char **argv)
         double theta_jmin_thread=0, theta_jmax_thread=0;
         
                 
-        theta_jmin_thread=(*(thread_theta+omp_get_thread_num() ));
-        theta_jmax_thread=(*(thread_theta+omp_get_thread_num()+1 ));
+        theta_jmin_thread= (angle_count)*(M_PI/180);//(*(thread_theta+omp_get_thread_num() ));
+        theta_jmax_thread= (angle_count+1)*(M_PI/180);//(*(thread_theta+omp_get_thread_num()+1 ));
         //printf("Thread %d: %0.1lf, %0.1lf \n %d %d\n", omp_get_thread_num(),  theta_jmin_thread*180/M_PI,  theta_jmax_thread*180/M_PI, frm2_small, frm2_large );
         
         snprintf(mc_dir,sizeof(flash_prefix),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
@@ -175,7 +175,7 @@ int main(int argc, char **argv)
         //printf("Thread %d: %0.1lf, %0.1lf \n %d %e\n", omp_get_thread_num(),  theta_jmin_thread*180/M_PI,  theta_jmax_thread*180/M_PI, frm2, inj_radius );
 
         //want to also have another set of threads that each has differing ranges of frame injections therefore do nested parallelism here so each thread can read its own checkpoint file
-        #pragma omp parallel num_threads(2) firstprivate(restrt)
+        //#pragma omp parallel num_threads(2) firstprivate(restrt)
         {
             char flash_file[200]="";
             char log_file[200]="";
@@ -200,7 +200,7 @@ int main(int argc, char **argv)
                 printf(">> mc.py:  Reading checkpoint\n");
                 //#pragma omp critical
                 {
-                    readCheckpoint(mc_dir, &phPtr, frm0, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, omp_get_thread_num());
+                    readCheckpoint(mc_dir, &phPtr, frm0, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now);
                 
                 /*
                 for (i=0;i<num_ph;i++)
@@ -247,10 +247,9 @@ int main(int argc, char **argv)
                     {
                         for (i=0;i<=last_frm;i++)
                         {
-                            snprintf(mc_filename,sizeof(mc_filename),"%s%s%d%s", mc_dir,"mcdata_",i,"_P0_0.dat");
-                            snprintf(mc_filename_2,sizeof(mc_filename),"%s%s%d%s", mc_dir,"mcdata_",i,"_P0_1.dat");
-                            snprintf(mc_filename_3,sizeof(mc_filename_2),"%s%s%d%s", mc_dir,"mcdata_",i,"_P0.dat");
-                            if(( access( mc_filename, F_OK ) != -1 ) || ( access( mc_filename_2, F_OK ) != -1 ) || ( access( mc_filename_3, F_OK ) != -1 ) )
+                            
+                            snprintf(mc_filename,sizeof(mc_filename),"%s%s%d%s", mc_dir,"mcdata_",i,"_P0.dat");
+                            if(( access( mc_filename, F_OK ) != -1 ) )
                             {
                                 snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s%d%s","exec rm ", mc_dir,"mcdata_",i,"_*.dat"); //prepares string to remove *.dat in mc_dir
                                 printf("%s\n",mc_operation);
@@ -260,14 +259,14 @@ int main(int argc, char **argv)
                                 //system(mc_operation);
                             }
                         }
-                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mcdata_PW_*.dat"); //prepares string to remove *.dat in mc_dir
-                        system(mc_operation);
+                        //snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mcdata_PW_*.dat"); //prepares string to remove *.dat in mc_dir
+                        //system(mc_operation);
                         
                         snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mcdata_PW.dat"); //prepares string to remove *.dat in mc_dir
                         system(mc_operation);
                         
-                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mc_chkpt_*.dat"); //prepares string to remove *.dat in mc_dir
-                        system(mc_operation);
+                        //snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mc_chkpt_*.dat"); //prepares string to remove *.dat in mc_dir
+                        //system(mc_operation);
                         
                         snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mc_output_*.log"); //prepares string to remove *.log in mc_dir
                         system(mc_operation);
@@ -280,9 +279,9 @@ int main(int argc, char **argv)
             }
             
             dt_max=1.0/fps;
-            #pragma omp barrier
+            //#pragma omp barrier
             
-            snprintf(log_file,sizeof(log_file),"%s%s%d%s",mc_dir,"mc_output_",omp_get_thread_num(),".log" );
+            snprintf(log_file,sizeof(log_file),"%s%s",mc_dir,"mc_output.log" );
             printf("%s\n",log_file);
             fPtr=fopen(log_file, "w");
             
@@ -294,7 +293,7 @@ int main(int argc, char **argv)
             //loop over frames 
             //for a checkpoint implementation, start from the last saved "frame" value and go to the saved "frm2" value
             
-            #pragma omp for 
+            //#pragma omp for 
             for (frame=framestart;frame<=frm2;frame++)
             {
                  if (restrt=='r')
@@ -456,14 +455,14 @@ int main(int argc, char **argv)
                 fprintf(fPtr,"The average number of scatterings thus far is: %lf\n", avg_scatt);
                 fflush(fPtr);
                 
-                printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, omp_get_thread_num());
+                printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir);
                 
                 //for a checkpoint implmentation,save the checkpoint file here after every 5 frames or something
                 //save the photons data, the scattering number data, the scatt_frame value, and the frame value
                 //WHAT IF THE PROGRAM STOPS AFTER THE LAST SCATT_FRAME, DURING THE FIRST SCATT_FRAME OF NEW FRAME VARIABLE - save restrt variable as 'r'
                 fprintf(fPtr, ">> Thread %d with ancestor %d: Making checkpoint file\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1));
                 fflush(fPtr);
-                saveCheckpoint(mc_dir, frame, scatt_frame, num_ph, time_now, phPtr, last_frm, omp_get_thread_num());
+                saveCheckpoint(mc_dir, frame, scatt_frame, num_ph, time_now, phPtr, last_frm);
                 
                 free(xPtr);free(yPtr);free(szxPtr);free(szyPtr);free(rPtr);free(thetaPtr);free(velxPtr);free(velyPtr);free(densPtr);free(presPtr);
                 free(gammaPtr);free(dens_labPtr);free(tempPtr);
@@ -480,7 +479,7 @@ int main(int argc, char **argv)
         }//end omp parallel inner section
         
         //merge files from each worker thread within a directory
-        dirFileMerge(mc_dir, frm0, last_frm);
+        //dirFileMerge(mc_dir, frm0, last_frm);
         
     } //end omp parallel section
     

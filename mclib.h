@@ -13,7 +13,7 @@ struct photon
 } ; //structure to hold photon information
 
 
-void printPhotons(struct photon *ph, int num_ph, int frame, int  frame_inj,char dir[200], int thread_num );
+void printPhotons(struct photon *ph, int num_ph, int frame, int  frame_inj,char dir[200] );
 
 void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0,int *last_frm, int *frm2_small,int *frm2_large,\
  double *ph_weight,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads);
@@ -44,8 +44,13 @@ double averagePhotonEnergy(struct photon *ph, int num_ph);
 
 void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg );
 
-void saveCheckpoint(char dir[200], int frame, int scatt_frame, int ph_num,double time_now, struct photon *ph , int last_frame, int thread_num);
+void saveCheckpoint(char dir[200], int frame, int scatt_frame, int ph_num,double time_now, struct photon *ph , int last_frame);
 
-void readCheckpoint(char dir[200], struct photon **ph, int frame0, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time,  int thread_num );
+void readCheckpoint(char dir[200], struct photon **ph, int frame0, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time );
 
 void dirFileMerge(char dir[200], int start_frame, int last_frame);
+
+
+
+
+
