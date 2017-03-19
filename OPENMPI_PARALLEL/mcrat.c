@@ -142,7 +142,7 @@ int main(int argc, char **argv)
     //assign ranges to array that hold them
     
     //delta_theta=1; put this in mc.par file
-    //leave angles in degress here
+    //leave angles in degrees here
     num_angles=(int) (((theta_jmax-theta_jmin)/delta_theta)) ;//*(180/M_PI));
     thread_theta=malloc( num_angles *sizeof(double) );
     *(thread_theta+0)=theta_jmin;//*(180/M_PI);
@@ -405,7 +405,7 @@ int main(int argc, char **argv)
                     fprintf(fPtr,">>  Proc: %d with angles %0.1lf-%0.1lf: Injecting photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     fflush(fPtr);
                     photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng ); 
-                    printf("This many Photons: %d\n",num_ph); //num_ph is one more photon than i actually have
+                    //printf("This many Photons: %d\n",num_ph); //num_ph is one more photon than i actually have
                     /*
                     for (i=0;i<num_ph;i++)v
                         printf("%e,%e,%e \n",(phPtr+i)->r0, (phPtr+i)->r1, (phPtr+i)->r2 );
@@ -552,6 +552,7 @@ int main(int argc, char **argv)
                 xPtr=NULL; yPtr=NULL;  rPtr=NULL;thetaPtr=NULL;velxPtr=NULL;velyPtr=NULL;densPtr=NULL;presPtr=NULL;gammaPtr=NULL;dens_labPtr=NULL;
                 szxPtr=NULL; szyPtr=NULL; tempPtr=NULL;
                 }
+                
                 restrt='r';//set this to make sure that the next iteration of propogating photons doesnt use the values from the last reading of the checkpoint file
                 free(phPtr); 
                 phPtr=NULL;
@@ -561,12 +562,13 @@ int main(int argc, char **argv)
         
         }//end omp parallel inner section
         
-	MPI_Barrier(angle_comm);
+        //DONT DO THIS WHILE PROGRAM IS RUNNING IT WASTES RESOURCES
+        //MPI_Barrier(angle_comm); 
         //merge files from each worker thread within a directory
-        if (angle_id==0)
-        {
-            dirFileMerge(mc_dir, frm0, last_frm, angle_procs); //only the master proc does this for each angle
-        }
+        //if (angle_id==0)
+        //{
+         //   dirFileMerge(mc_dir, frm0, last_frm, angle_procs); //only the master proc does this for each angle
+        //}
         
     } //end omp parallel section
     
