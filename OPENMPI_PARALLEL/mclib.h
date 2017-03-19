@@ -15,7 +15,7 @@ struct photon
 
 void printPhotons(struct photon *ph, int num_ph, int frame, int  frame_inj,char dir[200], int angle_rank );
 
-void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0,int *last_frm, int *frm2_small,int *frm2_large,\
+void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0,int *last_frm, int *frm2_small,int *frm2_large,\
  double *ph_weight,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads);
 
 

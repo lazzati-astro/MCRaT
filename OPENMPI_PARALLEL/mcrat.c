@@ -52,10 +52,10 @@
 #include "mpi.h"
 
 
-#define THISRUN "Cylindrical"
+#define THISRUN "Science"
 #define FILEPATH "/home/physics/parsotat/16OI/"
 #define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
-#define MC_PATH "MPI_CMC_16TI_CYLINDRICAL/"
+#define MC_PATH "CMC_16OI/"
 //#define MC_PATH "MC_16OI/Single_Photon_Cy_mc_total/"
 #define MCPAR "mc.par"
 
@@ -136,15 +136,16 @@ int main(int argc, char **argv)
     
     //printf(">> mc.py:  Reading mc.par\n");
     
-    readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax,&inj_radius_small,&inj_radius_large, &frm0,&last_frm ,&frm2_small, &frm2_large, &ph_weight_suggest, &min_photons, &max_photons, &spect, &restrt, &num_thread); //thetas that comes out is in radians
+    readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0,&last_frm ,&frm2_small, &frm2_large, &ph_weight_suggest, &min_photons, &max_photons, &spect, &restrt, &num_thread); //thetas that comes out is in radians
     
     //divide up angles and frame injections among threads DONT WANT NUMBER OF THREADS TO BE ODD
     //assign ranges to array that hold them
     
-    delta_theta=1;
-    num_angles=(int) ((theta_jmax-theta_jmin)*(180/M_PI));
+    //delta_theta=1; put this in mc.par file
+    //leave angles in degress here
+    num_angles=(int) (((theta_jmax-theta_jmin)/delta_theta)) ;//*(180/M_PI));
     thread_theta=malloc( num_angles *sizeof(double) );
-    *(thread_theta+0)=theta_jmin*(180/M_PI);
+    *(thread_theta+0)=theta_jmin;//*(180/M_PI);
     //printf("%e\n", *(thread_theta+0));
     
     for (j=1;j<(num_angles); j++)
@@ -181,7 +182,7 @@ int main(int argc, char **argv)
         
         //printf(">> Thread %d in  MCRaT: I am working on path: %s \n",omp_get_thread_num(), mc_dir  );
         
-        if ((theta_jmin_thread >= 0) &&  (theta_jmax_thread <= (2*M_PI/180) )) //if within small angle (0-2 degrees) use _small inj_radius and frm2
+        if ((theta_jmin_thread >= 0) &&  (theta_jmax_thread <= (2*M_PI/180) )) //if within small angle (0-2 degrees) use _small inj_radius and frm2 have to think abou tthis for larger domains
         {
             inj_radius=inj_radius_small;
             frm2=frm2_small;
@@ -246,12 +247,12 @@ int main(int argc, char **argv)
                 if (restrt=='c')
                 {
                     printf(">> Rank %d: Starting from photons injected at frame: %d out of %d\n", angle_id,framestart, frm2);
-                    printf(">> Rank %d with angles %lf - %lf: Continuing scattering %d photons from frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph, scatt_framestart);
-                    printf(">> Rank %d with angles %lf - %lf: The time now is: %e\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,time_now);
+                    printf(">> Rank %d with angles %0.1lf-%0.1lf: Continuing scattering %d photons from frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph, scatt_framestart);
+                    printf(">> Rank %d with angles %0.1lf-%0.1lf: The time now is: %e\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,time_now);
                 }
                 else
                 {
-                    printf(">> Rank %d with angles %lf - %lf: Continuing simulation by injecting photons at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,framestart, frm2); //starting with new photon injection is same as restarting sim
+                    printf(">> Rank %d with angles %0.1lf-%0.1lf: Continuing simulation by injecting photons at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,framestart, frm2); //starting with new photon injection is same as restarting sim
                 }
                 }
             }
@@ -270,7 +271,7 @@ int main(int argc, char **argv)
             {
                 if (angle_id==0)
                 {
-                    printf(">> proc %d with angles %lf - %lf:  Cleaning directory \n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+                    printf(">> proc %d with angles %0.1lf-%0.1lf:  Cleaning directory \n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     dirp = opendir(mc_dir);
                     while ((entry = readdir(dirp)) != NULL) 
                     {
@@ -331,9 +332,9 @@ int main(int argc, char **argv)
             printf("%s\n",log_file);
             fPtr=fopen(log_file, "w");
             
-            printf( "Im Proc %d with angles %lf-%lf proc_frame_size is %d Starting on Frame: %d Injecting until %d scatt_framestart: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, proc_frame_size, framestart, frm2, scatt_framestart);
+            printf( "Im Proc %d with angles %0.1lf-%0.1lf proc_frame_size is %d Starting on Frame: %d Injecting until %d scatt_framestart: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, proc_frame_size, framestart, frm2, scatt_framestart);
             
-            fprintf(fPtr, "Im Proc %d with angles %lf-%lf  Starting on Frame: %d scatt_framestart: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, framestart, scatt_framestart);
+            fprintf(fPtr, "Im Proc %d with angles %0.1lf-%0.1lf  Starting on Frame: %d scatt_framestart: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, framestart, scatt_framestart);
             fflush(fPtr);
             
             free(frame_array);
@@ -349,7 +350,7 @@ int main(int argc, char **argv)
                  }
                 
                 //printf(">> mc.py: Working on Frame %d\n", frame);
-                fprintf(fPtr,"Im Proc: %d with angles %lf - %lf Working on Frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frame);
+                fprintf(fPtr,"Im Proc: %d with angles %0.1lf - %0.1lf Working on Frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frame);
                 fflush(fPtr);
                 
                 if (restrt=='r')
@@ -372,7 +373,7 @@ int main(int argc, char **argv)
                         snprintf(flash_file,sizeof(flash_prefix), "%s%d",flash_prefix,frame);
                     }
                     
-                    fprintf(fPtr,">> Im Proc: %d with angles %lf-%lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
+                    fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
                     fflush(fPtr);
                     
                     
@@ -401,12 +402,12 @@ int main(int argc, char **argv)
                         
                     //determine where to place photons and how many should go in a given place
                     //for a checkpoint implmentation, dont need to inject photons, need to load photons' last saved data 
-                    fprintf(fPtr,">>  Proc: %d with angles %lf-%lf: Injecting photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+                    fprintf(fPtr,">>  Proc: %d with angles %0.1lf-%0.1lf: Injecting photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     fflush(fPtr);
                     photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng ); 
-                    //printf("%d\n",num_ph); //num_ph is one more photon than i actually have
+                    printf("This many Photons: %d\n",num_ph); //num_ph is one more photon than i actually have
                     /*
-                    for (i=0;i<num_ph;i++)
+                    for (i=0;i<num_ph;i++)v
                         printf("%e,%e,%e \n",(phPtr+i)->r0, (phPtr+i)->r1, (phPtr+i)->r2 );
                     */
                 }
@@ -421,9 +422,9 @@ int main(int argc, char **argv)
                 for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame++)
                 {
                     fprintf(fPtr,">>\n");
-                    fprintf(fPtr,">> Proc %d with angles %lf - %lf : Working on photons injected at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,frame, frm2);
-                    fprintf(fPtr,">> Proc %d with angles %lf - %lf: %s - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, THISRUN, scatt_frame);
-                    fprintf(fPtr,">> Proc %d with angles %lf - %lf: Opening file...\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Working on photons injected at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,frame, frm2);
+                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: %s - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, THISRUN, scatt_frame);
+                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Opening file...\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     fflush(fPtr);
                     
                     
@@ -469,7 +470,7 @@ int main(int argc, char **argv)
                     }
                         //printf("The result of read and decimate are arrays with %d elements\n", array_num);
                         
-                    fprintf(fPtr,">> Proc %d with angles %lf - %lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph);
+                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph);
                     fflush(fPtr);
                     
                     frame_scatt_cnt=0;
@@ -538,8 +539,12 @@ int main(int argc, char **argv)
                 //for a checkpoint implmentation,save the checkpoint file here after every 5 frames or something
                 //save the photons data, the scattering number data, the scatt_frame value, and the frame value
                 //WHAT IF THE PROGRAM STOPS AFTER THE LAST SCATT_FRAME, DURING THE FIRST SCATT_FRAME OF NEW FRAME VARIABLE - save restrt variable as 'r'
-                fprintf(fPtr, ">> Proc %d with angles %lf - %lf: Making checkpoint file\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+                fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Making checkpoint file\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                 fflush(fPtr);
+                
+                fprintf(fPtr, " mc_dir: %s\nframe %d\nfrm2: %d\nscatt_frame: %d\n num_photon: %d\ntime_now: %e\nlast_frame: %d\n", mc_dir, frame, frm2, scatt_frame, num_ph, time_now, last_frm  );
+                fflush(fPtr);
+
                 saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id);
                 
                 free(xPtr);free(yPtr);free(szxPtr);free(szyPtr);free(rPtr);free(thetaPtr);free(velxPtr);free(velyPtr);free(densPtr);free(presPtr);
@@ -572,6 +577,5 @@ int main(int argc, char **argv)
     //free(rng);
     //free(thread_theta);
     
-	return 0;
-    
+	return 0;    
 }

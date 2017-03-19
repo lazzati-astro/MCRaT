@@ -30,8 +30,8 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
 {
     //function to save the photons' positions and 4 momentum
     int i=0;
-    char mc_file_p0[200], mc_file_p1[200],mc_file_p2[200], mc_file_p3[200];
-    char mc_file_r0[200], mc_file_r1[200], mc_file_r2[200], mc_file_ns[200], mc_file_pw[200];
+    char mc_file_p0[200]="", mc_file_p1[200]="",mc_file_p2[200]="", mc_file_p3[200]="";
+    char mc_file_r0[200]="", mc_file_r1[200]="", mc_file_r2[200]="", mc_file_ns[200]="", mc_file_pw[200]="";
     FILE *fPtr=NULL, *fPtr1=NULL,*fPtr2=NULL,*fPtr3=NULL,*fPtr4=NULL,*fPtr5=NULL,*fPtr6=NULL,*fPtr7=NULL,*fPtr8=NULL;
     
     //make strings for proper files
@@ -114,38 +114,113 @@ void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int p
     //function to save data necessary to restart simulation if it ends
     //need to save all photon data 
     FILE *fPtr=NULL;
-    char checkptfile[200];
+    char checkptfile[200]="";
+    char command[200]="";
     char restart;
     int i=0;
     
+    //for openMPI have some type of problem with saving the checkpoint file for the  frame in which photons have been injected and scattered in, can try to delete old mc_checkpoint file 
+    //and creating a new one in that case?
+    
     snprintf(checkptfile,sizeof(checkptfile),"%s%s%d%s",dir,"mc_chkpt_", angle_rank,".dat" );
-
-    
-    fPtr=fopen(checkptfile, "wb");
-    
-    if (scatt_frame!=last_frame)
+ 
+    if ((scatt_frame!=last_frame) && (scatt_frame != frame))
     {
+        
+        fPtr=fopen(checkptfile, "wb");
+        printf("%s\n", checkptfile);
+    
+        if (fPtr==NULL)
+        {
+            printf("Cannot open %s to save checkpoint\n", checkptfile);
+        }
+        
         restart='c';
         fwrite(&restart, sizeof(char), 1, fPtr);
+        printf("Rank: %d wrote restart %c\n", angle_rank, restart);
+        fflush(stdout);
         fwrite(&frame, sizeof(int), 1, fPtr);
+        printf("Rank: %d wrote frame\n",  angle_rank);
+        fflush(stdout);
         fwrite(&frame2, sizeof(int), 1, fPtr);
+        printf("Rank: %d wrote frame2\n",  angle_rank);
+        fflush(stdout);
         fwrite(&scatt_frame, sizeof(int), 1, fPtr);
+        printf("Rank: %d wrote scatt_frame\n",  angle_rank);
+        fflush(stdout);
         fwrite(&time_now, sizeof(double), 1, fPtr);
+        printf("Rank: %d wrote time_now\n",  angle_rank);
+        fflush(stdout);
         fwrite(&ph_num, sizeof(int), 1, fPtr);
-        
+        printf("Rank: %d wrote ph_num\n",  angle_rank);
+        fflush(stdout);
         //for(i=0;i<ph_num;i++)
         //{
-            fwrite((ph), sizeof (struct photon )*ph_num, ph_num, fPtr);
+            fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
         //}
+        printf("Rank: %d wrote photons\n",  angle_rank);
+        fflush(stdout);
+    }
+    else if  (scatt_frame == frame)
+    {
+        snprintf(command, sizeof(command), "%s%s","exec rm ",checkptfile);
+        system(command);
+        
+        fPtr=fopen(checkptfile, "wb");
+        printf("%s\n", checkptfile);
+        fflush(stdout);
+    
+        if (fPtr==NULL)
+        {
+            printf("Cannot open %s to save checkpoint\n", checkptfile);
+        }
+        
+        restart='c';
+        fwrite(&restart, sizeof(char), 1, fPtr);
+        printf("Rank: %d wrote restart %c\n", angle_rank, restart);
+        fflush(stdout);
+        fwrite(&frame, sizeof(int), 1, fPtr);
+        printf("Rank: %d wrote frame\n",  angle_rank);
+        fflush(stdout);
+        fwrite(&frame2, sizeof(int), 1, fPtr);
+        printf("Rank: %d wrote frame2\n",  angle_rank);
+        fflush(stdout);
+        fwrite(&scatt_frame, sizeof(int), 1, fPtr);
+        printf("Rank: %d wrote scatt_frame\n",  angle_rank);
+        fflush(stdout);
+        fwrite(&time_now, sizeof(double), 1, fPtr);
+        printf("Rank: %d wrote time_now\n",  angle_rank);
+        fflush(stdout);
+        fwrite(&ph_num, sizeof(int), 1, fPtr);
+        printf("Rank: %d wrote ph_num\n",  angle_rank);
+        fflush(stdout);
+        //for(i=0;i<ph_num;i++)
+        //{
+            fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
+            //fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
+        //}
+        printf("Rank: %d wrote photons\n",  angle_rank);
+        fflush(stdout);
         
     }
     else
     {
+        fPtr=fopen(checkptfile, "wb");
+        printf("%s\n", checkptfile);
+    
+        if (fPtr==NULL)
+        {
+            printf("Cannot open %s to save checkpoint\n", checkptfile);
+        }
+        
         //just finished last iteration of scatt_frame
         restart='r';
         fwrite(&restart, sizeof(char), 1, fPtr);
+        printf("Rank: %d wrote restart %c\n", angle_rank, restart);
         fwrite(&frame, sizeof(int), 1, fPtr);
+         printf("Rank: %d wrote frame\n",  angle_rank);
         fwrite(&frame2, sizeof(int), 1, fPtr);
+         printf("Rank: %d wrote frame2\n",  angle_rank);
     }
     fclose(fPtr);
     
@@ -155,12 +230,12 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2,
 {
     //function to read in data from checkpoint file
     FILE *fPtr=NULL;
-    char checkptfile[200];
+    char checkptfile[200]="";
     int i=0;
     //int frame, scatt_frame, ph_num, i=0;
     struct photon *phHolder=NULL; //pointer to struct to hold data read in from checkpoint file
     
-     
+    
     snprintf(checkptfile,sizeof(checkptfile),"%s%s%d%s",dir,"mc_chkpt_", angle_rank,".dat" );
         
     printf("Checkpoint file: %s\n", checkptfile);
@@ -224,11 +299,11 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2,
     }
 }
 
-void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0,int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads)
+void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0,int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads)
 {
     //function to read mc.par file
 	FILE *fptr=NULL;
-	char buf[100];
+	char buf[100]="";
 	double theta_deg;
 	
 	//open file
@@ -279,14 +354,20 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
     
 	//theta jmin
 	fscanf(fptr, "%lf",&theta_deg);
-	*theta_jmin=theta_deg*M_PI/180;
+	*theta_jmin=theta_deg;//*M_PI/180; leave as degrees to manipulate processes 
 	//printf("%f\n", *theta_jmin );
 	
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%lf",&theta_deg);
-    *theta_j=theta_deg*M_PI/180;
+    *theta_j=theta_deg;//*M_PI/180;
+	//printf("%f\n", *theta_j );
+	
+	fgets(buf, 100,fptr);
+    
+    fscanf(fptr, "%lf",d_theta_j);
+    //*theta_j=theta_deg;//*M_PI/180;
 	//printf("%f\n", *theta_j );
 	
 	fgets(buf, 100,fptr);
