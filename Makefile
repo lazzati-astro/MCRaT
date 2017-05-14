@@ -1,8 +1,8 @@
 HDF_INSTALL = /usr/local/hdf5
 EXTLIB = -L$(HDF_INSTALL)/lib -L/usr/local/lib -L/opt/local/lib/
 CC          = gcc-mp-5
-CFLAGS      = -Wall -O2 -fopenmp
-LIB         = -lz -lm -ldl -lgsl -lgslcblas -lm 
+CFLAGS      = -Wall -O3 -fopenmp
+LIB         = -lz -lm -ldl -lgsl -lgslcblas -lm -lmpi
 
 DEPS = mclib.h
 OBJ = mcrat.o mclib.o

@@ -50,10 +50,10 @@
 #include <omp.h>
 
 
-#define THISRUN "Cylindrical"
+#define THISRUN "Spherical"
 #define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16TI/"
 #define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
-#define MC_PATH "CMC_16TI_CYLINDRICAL/"
+#define MC_PATH "CMC_16TI_SPHERICAL_PARALLEL/"
 //#define MC_PATH "MC_16OI/Single_Photon_Cy_mc_total/"
 #define MCPAR "mc.par"
 
@@ -75,6 +75,7 @@ int main(int argc, char **argv)
     
     int num_thread=0, angle_count=0;
     int half_threads=floor((num_thread/2));
+    int num_angles=0;
     double *thread_theta=NULL; //saves ranges of thetas for each thread to go through
     double delta_theta=0;
    
@@ -98,7 +99,7 @@ int main(int argc, char **argv)
     
     //printf(">> mc.py:  Reading mc.par\n");
     
-    readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax,&inj_radius_small,&inj_radius_large, &frm0,&last_frm ,&frm2_small, &frm2_large, &ph_weight_suggest, &min_photons, &max_photons, &spect, &restrt, &num_thread); //thetas that comes out is in radians
+    readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0,&last_frm ,&frm2_small, &frm2_large, &ph_weight_suggest, &min_photons, &max_photons, &spect, &restrt, &num_thread); //thetas that comes out is in degrees
     
     //printf("small: %d large: %d weights: %e, %c\n", min_photons, max_photons, ph_weight_suggest, restrt);
     if (num_thread==0)
@@ -107,7 +108,7 @@ int main(int argc, char **argv)
     }
     
     half_threads=floor((num_thread/2));
-    thread_theta=malloc(((half_threads)+1)*sizeof(double) );
+    //thread_theta=malloc(((half_threads)+1)*sizeof(double) );
     
     
     rng = (gsl_rng **) malloc((num_thread ) * sizeof(gsl_rng *)); 
@@ -121,6 +122,7 @@ int main(int argc, char **argv)
     
     //divide up angles and frame injections among threads DONT WANT NUMBER OF THREADS TO BE ODD
     //assign ranges to array that hold them
+    /*
     delta_theta=(theta_jmax-theta_jmin)/(half_threads);
     *(thread_theta+0)=theta_jmin;
     //printf("%e\n", *(thread_theta+0));
@@ -130,7 +132,22 @@ int main(int argc, char **argv)
         *(thread_theta+j)=*(thread_theta+(j-1))+delta_theta;
         //printf("%e\n", *(thread_theta+j)*180/M_PI);
     }
-
+    */
+    
+     //leave angles in degress here
+    num_angles=(int) (((theta_jmax-theta_jmin)/delta_theta)) ;//*(180/M_PI));
+    thread_theta=malloc( num_angles *sizeof(double) );
+    *(thread_theta+0)=theta_jmin;//*(180/M_PI);
+    printf("%e\n", *(thread_theta+0));
+    
+    for (j=1;j<(num_angles); j++)
+    {
+        *(thread_theta+j)=*(thread_theta+(j-1))+delta_theta;
+        printf("%e\n", *(thread_theta+j));
+    }
+    
+    
+    
     //printf("half_threads: %d\n", half_threads);
     //start parallel section with half the threads possible and assign each thread to its value of theta by rewriting its private value of theta min and max that was read from mcrat
     omp_set_nested(1); //allow for nested parallelization
@@ -138,12 +155,13 @@ int main(int argc, char **argv)
     //omp_set_num_threads(num_thread);
     //#pragma omp parallel firstprivate(theta_jmin_thread, theta_jmax_thread, mc_dir, phPtr, framestart, scatt_framestart, num_ph, restrt, time_now, st, dirp, file_count, mc_filename, mc_operation, dt_max)
     //printf("%d\n", omp_get_num_threads() );
-    
-    #pragma omp parallel for num_threads(half_threads) private(angle_count)
-    for (angle_count=(int) (theta_jmin*(180/M_PI)); angle_count< (int) (theta_jmax*(180/M_PI))  ;angle_count++ )
+    //    for (angle_count=(int) (theta_jmin); angle_count< (int) (theta_jmax+1)  ;angle_count=angle_count+delta_theta )
+
+    #pragma omp parallel for num_threads(num_thread) private(angle_count)
+    for (angle_count=0; angle_count< num_angles ;angle_count++ )
     {
         
-        //printf("%d\n", omp_get_num_threads() );
+        printf("%d\t%lf\n", omp_get_thread_num(), delta_theta );
         double inj_radius;
         int frm2;
         char mc_filename[200]="";
@@ -157,13 +175,13 @@ int main(int argc, char **argv)
         double theta_jmin_thread=0, theta_jmax_thread=0;
         
                 
-        theta_jmin_thread= (angle_count)*(M_PI/180);//(*(thread_theta+omp_get_thread_num() ));
-        theta_jmax_thread= (angle_count+1)*(M_PI/180);//(*(thread_theta+omp_get_thread_num()+1 ));
-        //printf("Thread %d: %0.1lf, %0.1lf \n %d %d\n", omp_get_thread_num(),  theta_jmin_thread*180/M_PI,  theta_jmax_thread*180/M_PI, frm2_small, frm2_large );
+        theta_jmin_thread= (*(thread_theta+angle_count))*(M_PI/180);//(*(thread_theta+omp_get_thread_num() ));
+        theta_jmax_thread= ((*(thread_theta+angle_count))+delta_theta)*(M_PI/180);//(*(thread_theta+omp_get_thread_num()+1 ));
+        printf("Thread %d: %0.1lf, %0.1lf \n %d %d\n", omp_get_thread_num(),  theta_jmin_thread*180/M_PI,  theta_jmax_thread*180/M_PI, frm2_small, frm2_large );
         
         snprintf(mc_dir,sizeof(flash_prefix),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
         
-        //printf(">> Thread %d in  MCRaT: I am working on path: %s \n",omp_get_thread_num(), mc_dir  );
+        printf(">> Thread %d in  MCRaT: I am working on path: %s \n",omp_get_thread_num(), mc_dir  );
         
         if ((theta_jmin_thread >= 0) &&  (theta_jmax_thread <= (2*M_PI/180) )) //if within small angle (0-2 degrees) use _small inj_radius and frm2
         {
@@ -446,7 +464,7 @@ int main(int argc, char **argv)
                             //scatter the photon
                             //printf("Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
-                            photonScatter( (phPtr+ph_scatt_index), (ph_vxPtr), (ph_vyPtr), (ph_tempPtr), rng[omp_get_thread_num()] );
+                            photonScatter( (phPtr+ph_scatt_index), (ph_vxPtr), (ph_vyPtr), (ph_tempPtr), rng[omp_get_thread_num()] , fPtr);
                             
                             
                             if (frame_scatt_cnt%1000 == 0)

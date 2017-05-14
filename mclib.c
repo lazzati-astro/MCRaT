@@ -29,8 +29,8 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
 {
     //function to save the photons' positions and 4 momentum
     int i=0;
-    char mc_file_p0[200], mc_file_p1[200],mc_file_p2[200], mc_file_p3[200];
-    char mc_file_r0[200], mc_file_r1[200], mc_file_r2[200], mc_file_ns[200], mc_file_pw[200];
+    char mc_file_p0[200]="", mc_file_p1[200]="",mc_file_p2[200]="", mc_file_p3[200]="";
+    char mc_file_r0[200]="", mc_file_r1[200]="", mc_file_r2[200]="", mc_file_ns[200]="", mc_file_pw[200]="";
     FILE *fPtr=NULL, *fPtr1=NULL,*fPtr2=NULL,*fPtr3=NULL,*fPtr4=NULL,*fPtr5=NULL,*fPtr6=NULL,*fPtr7=NULL,*fPtr8=NULL;
     
     //make strings for proper files
@@ -113,7 +113,7 @@ void saveCheckpoint(char dir[200], int frame, int scatt_frame, int ph_num,double
     //function to save data necessary to restart simulation if it ends
     //need to save all photon data 
     FILE *fPtr=NULL;
-    char checkptfile[200];
+    char checkptfile[200]="";
     char restart;
     int i=0;
     
@@ -152,7 +152,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0, int *framesta
 {
     //function to read in data from checkpoint file
     FILE *fPtr=NULL;
-    char checkptfile[200];
+    char checkptfile[200]="";
     int i=0;
     //int frame, scatt_frame, ph_num, i=0;
     struct photon *phHolder=NULL; //pointer to struct to hold data read in from checkpoint file
@@ -220,11 +220,11 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0, int *framesta
     }
 }
 
-void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0,int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads)
+void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0,int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads)
 {
     //function to read mc.par file
 	FILE *fptr=NULL;
-	char buf[100];
+	char buf[100]="";
 	double theta_deg;
 	
 	//open file
@@ -275,14 +275,19 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
     
 	//theta jmin
 	fscanf(fptr, "%lf",&theta_deg);
-	*theta_jmin=theta_deg*M_PI/180;
+	*theta_jmin=theta_deg;//*M_PI/180; leave as degrees to manipulate processes 
 	//printf("%f\n", *theta_jmin );
 	
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%lf",&theta_deg);
-    *theta_j=theta_deg*M_PI/180;
+    *theta_j=theta_deg;//*M_PI/180;
+	//printf("%f\n", *theta_j );
+	
+	fgets(buf, 100,fptr);
+    
+    fscanf(fptr, "%lf",d_theta_j);
 	//printf("%f\n", *theta_j );
 	
 	fgets(buf, 100,fptr);
@@ -330,7 +335,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y,
     space = H5Dget_space (dset);
     
     H5Sget_simple_extent_dims(space, dims, NULL); //save dimesnions in dims
-    
+
     /*
      * Allocate array of pointers to rows. OPTIMIZE HERE: INITALIZE ALL THE BUFFERS AT ONCE IN 1 FOR LOOP
      */
@@ -720,9 +725,9 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                         }
                         else
                         {
-                            fr_max=(C_LIGHT*(*(temps+i)))/(0.29); //max frequency of bb
-                            bb_norm=pow((fr_max/(*(temps+i))),2.0)/(exp(PL_CONST*fr_max/K_B/(*(temps+i)))-1); //find value of bb at fr_max
-                            yfr_dum=(1.0/bb_norm)*pow((fr_dum/(*(temps+i))),2.0)/(exp((PL_CONST*fr_dum)/(K_B*(*(temps+i)) ))-1);//curve is normalized to vaue of bb @ max frequency
+                            fr_max=(5.88e10)*(*(temps+i));//(C_LIGHT*(*(temps+i)))/(0.29); //max frequency of bb
+                            bb_norm=(PL_CONST*fr_max * pow((fr_max/C_LIGHT),2.0))/(exp(PL_CONST*fr_max/(K_B*(*(temps+i))))-1); //find value of bb at fr_max
+                            yfr_dum=((1.0/bb_norm)*PL_CONST*fr_dum * pow((fr_dum/C_LIGHT),2.0))/(exp(PL_CONST*fr_dum/(K_B*(*(temps+i))))-1); //curve is normalized to vaue of bb @ max frequency
                         }
                         //printf("%lf, %lf,%lf,%e \n",(*(temps+i)),fr_dum, y_dum, yfr_dum);
                         
@@ -900,13 +905,16 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     double *temp, double *n_dens_lab, double *n_vx, double *n_vy,double *n_temp, gsl_rng * rand)
 {
     
-    int i=0, j=0, min_index=0;
+    int i=0;
+    
+    int j=0, min_index=0;
     double ph_x=0, ph_y=0, ph_phi=0, dist=0, dist_min=1e12;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
     double ph_v_norm=0, fl_v_norm=0;
     double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_temp_tmp=0 ;
     double rnd_tracker=0, n_dens_lab_min=0, n_vx_min=0, n_vy_min=0, n_temp_min=0;
-    int num_threads=omp_get_max_threads();
+    double block_dist=0;
+    int num_thread=2;//omp_get_max_threads();
     
     int index=0;
     double mfp=0,min_mfp=0, beta=0;
@@ -919,11 +927,11 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         gsl_rng_env_setup();
         rng_t = gsl_rng_ranlxs0;
 
-        rng = (gsl_rng **) malloc((num_threads ) * sizeof(gsl_rng *)); 
+        rng = (gsl_rng **) malloc((num_thread ) * sizeof(gsl_rng *)); 
         rng[0]=rand;
 
             //#pragma omp parallel for num_threads(nt)
-        for(i=1;i<num_threads;i++)
+        for(i=1;i<num_thread;i++)
         {
             rng[i] = gsl_rng_alloc (rng_t);
             gsl_rng_set(rng[i],gsl_rng_get(rand));
@@ -934,7 +942,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     //or just parallelize this part here
     
     min_mfp=1e12;
-    #pragma omp parallel for firstprivate( ph_x, ph_y, ph_phi, dist_min, dist, j, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp,  n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp ) 
+    #pragma omp parallel for num_threads(num_thread) firstprivate( ph_x, ph_y, ph_phi, dist_min, dist, j, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp,  n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp ) 
     for (i=0;i<num_ph; i++)
     {
         //printf("%e,%e\n", ((ph+i)->r0), ((ph+i)->r1));
@@ -944,26 +952,33 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
         
-        dist_min=1e12;//set dist to impossible value to make sure at least first distance calulated is saved
-        for(j=0;j<array_num;j++)
+         dist_min=1e12;//set dist to impossible value to make sure at least first distance calulated is saved 
+        block_dist=3e9;
+        while (dist_min==1e12) //if this is true, then the algorithm hasnt found blocks within the acceptable range given by block_dist
         {
-            //if the distance between them is within 3e9, to restrict number of possible calculations,  calulate the total distance between the box and photon 
-            if ( (fabs(ph_x- (*(x+j)))<3e9) && (fabs(ph_y- (*(y+j)))<3e9))
+            
+            for(j=0;j<array_num;j++)
             {
-                //printf("In if statement\n");
-                dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)) , 2.0),0.5);
-                //printf("Dist calculated as: %e, index: %d\n", dist, j);
-                //printf("In outer if statement, OLD: %e, %d\n", dist_min, min_index);
-                
-                if((dist<dist_min))
+                //if the distance between them is within 3e9, to restrict number of possible calculations,  calulate the total distance between the box and photon 
+                if ( (fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
                 {
-                    //printf("In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
-                    dist_min=dist; //save new minimum distance
-                    min_index=j; //save index
-                    //printf("New Min dist: %e, New min Index: %d\n", dist_min, min_index);
-                }
+                    //printf("In if statement\n");
+                    dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)) , 2.0),0.5);
+                    //fprintf(fPtr,"Dist calculated as: %e, index: %d\n", dist, j);
+                    //printf("In outer if statement, OLD: %e, %d\n", dist_min, min_index);
                 
+                    if((dist<dist_min))
+                    {
+                        //printf("In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
+                        dist_min=dist; //save new minimum distance
+                        min_index=j; //save index
+                        //fprintf(fPtr,"New Min dist: %e, New min Index: %d, Array_Num: %e\n", dist_min, min_index, array_num);
+                    }
+                
+                }
             }
+            block_dist*=10; //increase size of accepted distances for gris points, if dist_min==1e12 then the next time the acceptance range wil be larger
+        
         }
         //save values
         /*
@@ -1021,7 +1036,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     }
     
     //free rand number generator
-    for (i=1;i<num_threads;i++)
+    for (i=1;i<num_thread;i++)
     {
         gsl_rng_free(rng[i]);
     }
@@ -1035,7 +1050,6 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     return index;
     
 }
-
 void updatePhotonPosition(struct photon *ph, int num_ph, double t)
 {
     //move photons by speed of light
@@ -1069,7 +1083,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t)
 }
 
 
-void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double fluid_temp, gsl_rng * rand)
+void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double fluid_temp, gsl_rng * rand, FILE *fPtr)
 {
     //function to perform single photon scattering
     double ph_phi=0;    
@@ -1107,35 +1121,57 @@ void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double f
     *(ph_p+1)=(ph->p1);
     *(ph_p+2)=(ph->p2);
     *(ph_p+3)=(ph->p3);
+    
     /*
-    printf("Unscattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
-    printf("Fluid Beta: %e, %e, %e\n", *(fluid_beta+0),*(fluid_beta+1), *(fluid_beta+2));
+    fprintf(fPtr,"Unscattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
+    fprintf(fPtr,"Fluid Beta: %e, %e, %e\n", *(fluid_beta+0),*(fluid_beta+1), *(fluid_beta+2));
+    fflush(fPtr);
     */
     
     //first we bring the photon to the fluid's comoving frame
     lorentzBoost(fluid_beta, ph_p, ph_p_comov, 'p');
-    //printf("Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
     /*
-    printf("Before Scattering, In Comov_frame:\n");
-    printf("ph_comov: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+    fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
+    fflush(fPtr);
+    
+    fprintf(fPtr,"Before Scattering, In Comov_frame:\n");
+    fprintf(fPtr,"ph_comov: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+    fflush(fPtr);
     */
     
     //second we generate a thermal electron at the correct temperature
-    singleElectron(el_p_comov, fluid_temp, ph_p_comov, rand);
-    //printf("el_comov: %e, %e, %e,%e\n", *(el_p_comov+0), *(el_p_comov+1), *(el_p_comov+2), *(el_p_comov+3));
+    singleElectron(el_p_comov, fluid_temp, ph_p_comov, rand, fPtr);
+    /*
+    fprintf(fPtr,"el_comov: %e, %e, %e,%e\n", *(el_p_comov+0), *(el_p_comov+1), *(el_p_comov+2), *(el_p_comov+3));
+    fflush(fPtr);
+    */
     
     //third we perform the scattering and save scattered photon 4 monetum in ph_p_comov @ end of function
     singleComptonScatter(el_p_comov, ph_p_comov, rand);
-    //printf("After Scattering, After Lorentz Boost to Comov frame: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+    /*
+    fprintf(fPtr,"After Scattering, After Lorentz Boost to Comov frame: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+    fflush(fPtr);
+     * */
     
     //fourth we bring the photon back to the lab frame
      *(negative_fluid_beta+0)=-1*( *(fluid_beta+0));
      *(negative_fluid_beta+1)=-1*( *(fluid_beta+1));
      *(negative_fluid_beta+2)=-1*( *(fluid_beta+2));
     lorentzBoost(negative_fluid_beta, ph_p_comov, ph_p, 'p');
-    //printf("Scattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
-    //printf("Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
-    //printf("Old: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+    /*
+    fprintf(fPtr,"Scattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
+    fflush(fPtr);
+    fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
+    fflush(fPtr);
+    fprintf(fPtr,"Old: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+    fflush(fPtr);
+     * */
+    
+    if (((*(ph_p+0))*C_LIGHT/1.6e-9) > 1e4)
+    {
+            fprintf(fPtr,"Extremely High Photon Energy!!!!!!!!\n");
+             fflush(fPtr);
+    }
     
     //assign the photon its new lab 4 momentum
     (ph->p0)=(*(ph_p+0));
@@ -1157,7 +1193,7 @@ void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double f
     ph_p=NULL;negative_fluid_beta=NULL;ph_p_comov=NULL; el_p_comov=NULL;
 }
 
-void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand)
+void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr)
 {
     //generates an electron with random energy 
     
@@ -1167,7 +1203,7 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand)
     gsl_vector_view el_p_prime ; //create vector to hold rotated electron 4 momentum
     gsl_vector *result=gsl_vector_alloc (3);
     
-    //printf("Temp in singleElectron: %e\n", temp);
+    //fprintf(fPtr,"Temp in singleElectron: %e\n", temp);
     if (temp>= 1e7)
     {
         //printf("In if\n");
@@ -1533,7 +1569,8 @@ void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, 
         *(vx+i)=(vel*(*(x+i)))/pow(pow(*(x+i), 2)+ pow(*(y+i), 2) ,0.5);
         *(vy+i)=(vel*(*(y+i)))/pow(pow(*(x+i), 2)+ pow(*(y+i), 2) ,0.5);
         *(dens+i)=lumi/(4*M_PI*pow(*(r+i), 2.0)*pow(C_LIGHT, 3.0)*gamma_infinity*(*(gamma+i)));
-        *(dens_lab+i)=*(dens+i)*(*(gamma+i));
+        *(dens_lab+i)=(*(dens+i))*(*(gamma+i));
+        *(temp+i)=pow(3*(*(pres+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
     }
     
 }

@@ -15,15 +15,15 @@ struct photon
 
 void printPhotons(struct photon *ph, int num_ph, int frame, int  frame_inj,char dir[200] );
 
-void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0,int *last_frm, int *frm2_small,int *frm2_large,\
- double *ph_weight,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads);
+void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0,\
+    int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads);
 
 
 void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y, double **szx, double **szy, double **r,\
  double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, FILE *fPtr);
  
- void photonInjection( struct photon **ph, int *ph_num, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, int array_length, double fps, double theta_min, double theta_max,\
-double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temps, double *vx, double *vy, gsl_rng * rand);
+void photonInjection( struct photon **ph, int *ph_num, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, int array_length, double fps, double theta_min, double theta_max,\
+    double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temps, double *vx, double *vy, gsl_rng * rand);
 
 void lorentzBoost(double *boost, double *p_ph, double *result, char object);
 
@@ -34,9 +34,9 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     
 void updatePhotonPosition(struct photon *ph, int num_ph, double t);
 
-void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double fluid_temp, gsl_rng * rand);
+void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double fluid_temp, gsl_rng * rand,FILE *fPtr);
 
-void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand);
+void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr);
 
 void singleComptonScatter(double *el_comov, double *ph_comov, gsl_rng * rand);
 
