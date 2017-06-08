@@ -220,79 +220,88 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0, int *framesta
     }
 }
 
-void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0,int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads)
+void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads)
 {
     //function to read mc.par file
-	FILE *fptr=NULL;
-	char buf[100]="";
-	double theta_deg;
-	
-	//open file
-	fptr=fopen(file,"r");
-	//read in frames per sec and other variables outlined in main()
-	fscanf(fptr, "%lf",fps);
-	//printf("%f\n", *fps );
-	
-	fgets(buf, 100,fptr);
-	
-	fscanf(fptr, "%d",frm0);
-	//printf("%d\n", *frm0 );
-	
-	fgets(buf, 100,fptr);
-	
-	fscanf(fptr, "%d",last_frm);
-	//printf("%d\n", *last_frm );
+    FILE *fptr=NULL;
+    char buf[100]="";
+    double theta_deg;
     
-	
-	fgets(buf, 100,fptr);
-	
-	fscanf(fptr, "%d",frm2_small);
-    *frm2_small+=*frm0; //frame to go to is what is given in the file plus the starting frame
-	//printf("%d\n", *frm2_small );
-	
-	fgets(buf, 100,fptr);
-	
-	//fscanf(fptr, "%d",photon_num); remove photon num because we dont need this
-	//printf("%d\n", *photon_num );
+    //open file
+    fptr=fopen(file,"r");
+    //read in frames per sec and other variables outlined in main()
+    fscanf(fptr, "%lf",fps);
+    //printf("%f\n", *fps );
+    
+    fgets(buf, 100,fptr);
+    
+    fscanf(fptr, "%d",frm0_small);
+    //printf("%d\n", *frm0 );
+    
+    fgets(buf, 100,fptr);
+    
+    fscanf(fptr, "%d",frm0_large);
+    //printf("%d\n", *frm0 );
+    
+    fgets(buf, 100,fptr);
+    
+    fscanf(fptr, "%d",last_frm);
+    //printf("%d\n", *last_frm );
+    
+    
+    fgets(buf, 100,fptr);
+    
+    fscanf(fptr, "%d",frm2_small);
+    *frm2_small+=*frm0_small; //frame to go to is what is given in the file plus the starting frame
+    //printf("%d\n", *frm2_small );
+    
+    fgets(buf, 100,fptr);
+    
+    //fscanf(fptr, "%d",photon_num); remove photon num because we dont need this
+    //printf("%d\n", *photon_num );
     
     fscanf(fptr, "%d",frm2_large);
-    *frm2_large+=*frm0; //frame to go to is what is given in the file plus the starting frame
+    *frm2_large+=*frm0_large; //frame to go to is what is given in the file plus the starting frame
     //printf("%d\n", *frm2_large );
-	
-	fgets(buf, 100,fptr);
-	
-	//fgets(buf, 100,fptr);
-	
-	fscanf(fptr, "%lf",inj_radius_small);
-	//printf("%lf\n", *inj_radius_small );
-	
-	fgets(buf, 100,fptr);
+    
+    fgets(buf, 100,fptr);
+    
+    //fgets(buf, 100,fptr);
+    
+    fscanf(fptr, "%lf",inj_radius_small);
+    //printf("%lf\n", *inj_radius_small );
+    
+    fgets(buf, 100,fptr);
     
     fscanf(fptr, "%lf",inj_radius_large);
-	//printf("%lf\n", *inj_radius_large );
-	
-	fgets(buf, 100,fptr);
+    //printf("%lf\n", *inj_radius_large );
     
-	//theta jmin
-	fscanf(fptr, "%lf",&theta_deg);
-	*theta_jmin=theta_deg;//*M_PI/180; leave as degrees to manipulate processes 
-	//printf("%f\n", *theta_jmin );
-	
-	
-	fgets(buf, 100,fptr);
-	
-	fscanf(fptr, "%lf",&theta_deg);
+    fgets(buf, 100,fptr);
+    
+    //theta jmin
+    fscanf(fptr, "%lf",&theta_deg);
+    *theta_jmin=theta_deg;//*M_PI/180; leave as degrees to manipulate processes
+    //printf("%f\n", *theta_jmin );
+    
+    
+    fgets(buf, 100,fptr);
+    
+    fscanf(fptr, "%lf",&theta_deg);
     *theta_j=theta_deg;//*M_PI/180;
-	//printf("%f\n", *theta_j );
-	
-	fgets(buf, 100,fptr);
+    //printf("%f\n", *theta_j );
+    
+    fgets(buf, 100,fptr);
     
     fscanf(fptr, "%lf",d_theta_j);
-	//printf("%f\n", *theta_j );
-	
-	fgets(buf, 100,fptr);
+    //*theta_j=theta_deg;//*M_PI/180;
+    //printf("%f\n", *theta_j );
     
-    fscanf(fptr, "%lf",ph_weight);
+    fgets(buf, 100,fptr);
+    
+    fscanf(fptr, "%lf",ph_weight_small);
+    fgets(buf, 100,fptr);
+    
+    fscanf(fptr, "%lf",ph_weight_large);
     fgets(buf, 100,fptr);
     
     fscanf(fptr, "%d",min_photons);
@@ -309,8 +318,8 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
     fgets(buf, 100,fptr);
     
     fscanf(fptr, "%d",num_threads);
-	//close file
-	fclose(fptr);
+    //close file
+    fclose(fptr);
 }
 
 void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y, double **szx, double **szy, double **r,\
@@ -660,7 +669,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
             //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
                 if ((*(r+i) > (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) > theta_min) ) 
                 {
-                    ph_dens_calc=num_dens_coeff*2.0*M_PI*(*(x+i))*pow(*(temps+i),3.0)*pow(*(szx+i),2.0) /(ph_weight_adjusted) ; //a*T^3/(weight) dV, dV=2*PI*x*dx^2, 
+                    ph_dens_calc=(num_dens_coeff*2.0*M_PI*(*(x+i))*pow(*(temps+i),3.0)*pow(*(szx+i),2.0) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1) ; //a*T^3/(weight) dV, dV=2*PI*x*dx^2,
                      
                      (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
                      

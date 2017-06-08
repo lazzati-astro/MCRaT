@@ -50,16 +50,17 @@
 #include <omp.h>
 
 
-#define THISRUN "Spherical"
-#define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16TI/"
-#define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
-#define MC_PATH "CMC_16TI_SPHERICAL_PARALLEL/"
+#define THISRUN "Science"
+#define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/VARY/40sp_down/"
+//"/Users/Tylerparsotan/Documents/Box\ Sync/16OI/"
+#define FILEROOT "m0_rhop0.1big_hdf5_plt_cnt_"
+#define MC_PATH "CMC_40sp_down/"
 //#define MC_PATH "MC_16OI/Single_Photon_Cy_mc_total/"
 #define MCPAR "mc.par"
 
 int main(int argc, char **argv)
 {
-    //compile each time a macro is changed, have to supply the subfolder within the MC_PATH directory as a command line argument to the C program eg. MCRAT 1/
+    //compile each time a macro is changed
     
 	// Define variables
 	char flash_prefix[200]="";
@@ -70,8 +71,8 @@ int main(int argc, char **argv)
     char spect;//type of spectrum
     char restrt;//restart or not
     double fps, theta_jmin, theta_jmax ;//frames per second of sim, min opening angle of jet, max opening angle of jet in radians
-    double inj_radius_small, inj_radius_large,  ph_weight_suggest ;//radius at chich photons are injected into sim
-    int frm0,last_frm, frm2_small, frm2_large, j=0, min_photons, max_photons ;//frame starting from, last frame of sim, frame of last injection
+    double inj_radius_small, inj_radius_large,  ph_weight_suggest,ph_weight_small, ph_weight_large ; ;//radius at chich photons are injected into sim
+    int frm0_small, frm0_large,last_frm, frm2_small, frm2_large, j=0, min_photons, max_photons ;//frame starting from, last frame of sim, frame of last injection
     
     int num_thread=0, angle_count=0;
     int half_threads=floor((num_thread/2));
@@ -99,7 +100,7 @@ int main(int argc, char **argv)
     
     //printf(">> mc.py:  Reading mc.par\n");
     
-    readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0,&last_frm ,&frm2_small, &frm2_large, &ph_weight_suggest, &min_photons, &max_photons, &spect, &restrt, &num_thread); //thetas that comes out is in degrees
+    readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small , &frm0_large ,&last_frm ,&frm2_small, &frm2_large, &ph_weight_small, &ph_weight_large, &min_photons, &max_photons, &spect, &restrt, &num_thread); //thetas that comes out is in degrees
     
     //printf("small: %d large: %d weights: %e, %c\n", min_photons, max_photons, ph_weight_suggest, restrt);
     if (num_thread==0)
@@ -134,7 +135,7 @@ int main(int argc, char **argv)
     }
     */
     
-     //leave angles in degress here
+     //leave angles in degrees here
     num_angles=(int) (((theta_jmax-theta_jmin)/delta_theta)) ;//*(180/M_PI));
     thread_theta=malloc( num_angles *sizeof(double) );
     *(thread_theta+0)=theta_jmin;//*(180/M_PI);
@@ -163,7 +164,7 @@ int main(int argc, char **argv)
         
         printf("%d\t%lf\n", omp_get_thread_num(), delta_theta );
         double inj_radius;
-        int frm2;
+        int frm2, frm0;
         char mc_filename[200]="";
         char mc_filename_2[200]="";
         char mc_operation[200]="";
@@ -187,13 +188,17 @@ int main(int argc, char **argv)
         {
             inj_radius=inj_radius_small;
             frm2=frm2_small;
+            frm0=frm0_small;
+            ph_weight_suggest=ph_weight_small;
         }
         else
         {
             inj_radius=inj_radius_large;
             frm2=frm2_large;
+            frm0=frm0_large;
+            ph_weight_suggest=ph_weight_large;
         }
-        //printf("Thread %d: %0.1lf, %0.1lf \n %d %e\n", omp_get_thread_num(),  theta_jmin_thread*180/M_PI,  theta_jmax_thread*180/M_PI, frm2, inj_radius );
+        printf("Thread %d: %0.1lf, %0.1lf \n %d %e %d\n", omp_get_thread_num(),  theta_jmin_thread*180/M_PI,  theta_jmax_thread*180/M_PI, frm2, inj_radius, frm0 );
 
         //want to also have another set of threads that each has differing ranges of frame injections therefore do nested parallelism here so each thread can read its own checkpoint file
         //#pragma omp parallel num_threads(2) firstprivate(restrt)
@@ -397,6 +402,8 @@ int main(int argc, char **argv)
                     fprintf(fPtr,">> Thread %d with ancestor %d: Opening file...\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1));
                     fflush(fPtr);
                     
+                    //set new seed to increase randomness?
+                    gsl_rng_set(rng[omp_get_thread_num()], gsl_rng_get(rng[omp_get_thread_num()]));
                     
                     //put proper number at the end of the flash file
                     if (scatt_frame<10)

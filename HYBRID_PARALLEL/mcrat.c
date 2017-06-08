@@ -51,7 +51,7 @@
 #include <omp.h>
 #include "mpi.h"
 
-#define THISRUN "Spherical"
+#define THISRUN "Science"
 #define FILEPATH "/home/physics/parsotat/16OI/"
 #define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
 #define MC_PATH "MPI_CMC_16OI_SPHERICAL/"
@@ -71,8 +71,8 @@ int main(int argc, char **argv)
     char spect;//type of spectrum
     char restrt;//restart or not
     double fps, theta_jmin, theta_jmax ;//frames per second of sim, min opening angle of jet, max opening angle of jet in radians
-    double inj_radius_small, inj_radius_large,  ph_weight_suggest ;//radius at chich photons are injected into sim
-    int frm0,last_frm, frm2_small, frm2_large, j=0, min_photons, max_photons ;//frame starting from, last frame of sim, frame of last injection
+    double inj_radius_small, inj_radius_large,  ph_weight_suggest, ph_weight_small, ph_weight_large ;//radius at chich photons are injected into sim
+    int frm0,last_frm, frm2_small, frm2_large, j=0, min_photons, max_photons, frm0_small, frm0_large ;//frame starting from, last frame of sim, frame of last injection
     
     double inj_radius;
     int frm2;
@@ -135,7 +135,7 @@ int main(int argc, char **argv)
     
     //printf(">> mc.py:  Reading mc.par\n");
     
-    readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0,&last_frm ,&frm2_small, &frm2_large, &ph_weight_suggest, &min_photons, &max_photons, &spect, &restrt, &num_thread); //thetas that comes out is in radians
+    readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &ph_weight_small, &ph_weight_large, &min_photons, &max_photons, &spect, &restrt, &num_thread); //thetas that comes out is in radians
     
     //divide up angles and frame injections among threads DONT WANT NUMBER OF THREADS TO BE ODD
     //assign ranges to array that hold them
@@ -185,11 +185,15 @@ int main(int argc, char **argv)
         {
             inj_radius=inj_radius_small;
             frm2=frm2_small;
+            frm0=frm0_small;
+            ph_weight_suggest=ph_weight_small;
         }
         else
         {
             inj_radius=inj_radius_large;
             frm2=frm2_large;
+            frm0=frm0_large;
+            ph_weight_suggest=ph_weight_large;
         }
         
         
@@ -202,7 +206,7 @@ int main(int argc, char **argv)
             {
                 *(frame_array+j)=frm0+j ;
             	//printf("proc: %d frame: %d\n", angle_id, *(frame_array+j));
-	    }
+            }
             /*
             if ((theta_jmin_thread >= 0) &&  (theta_jmax_thread <= (2*M_PI/180) ))
             {
