@@ -46,17 +46,17 @@
 #include <dirent.h>
 #include <math.h>
 #include <gsl/gsl_rng.h>
-#include "mclib.h"
+//#include "mclib.h"
+#include "mclib_3d.h"
 #include <omp.h>
 
 
 #define THISRUN "Science"
-#define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/VARY/40sp_down/"
-//"/Users/Tylerparsotan/Documents/Box\ Sync/16OI/"
-#define FILEROOT "m0_rhop0.1big_hdf5_plt_cnt_"
-#define MC_PATH "CMC_40sp_down/"
+#define FILEPATH "/Users/Tylerparsotan/Documents/Box\ Sync/RIKEN_HYDRO_DATA/JP_HYDRODATA/"
+#define FILEROOT "u"
+#define MC_PATH "PHOTON_TEST/"
 //#define MC_PATH "MC_16OI/Single_Photon_Cy_mc_total/"
-#define MCPAR "mc.par"
+#define MCPAR "riken_mc.par"
 
 int main(int argc, char **argv)
 {
@@ -71,12 +71,13 @@ int main(int argc, char **argv)
     char spect;//type of spectrum
     char restrt;//restart or not
     double fps, theta_jmin, theta_jmax ;//frames per second of sim, min opening angle of jet, max opening angle of jet in radians
-    double inj_radius_small, inj_radius_large,  ph_weight_suggest,ph_weight_small, ph_weight_large ; ;//radius at chich photons are injected into sim
+    double inj_radius_small, inj_radius_large,  ph_weight_suggest ;//radius at chich photons are injected into sim
     int frm0_small, frm0_large,last_frm, frm2_small, frm2_large, j=0, min_photons, max_photons ;//frame starting from, last frame of sim, frame of last injection
     
     int num_thread=0, angle_count=0;
     int half_threads=floor((num_thread/2));
     int num_angles=0;
+    int dim_switch=0;
     double *thread_theta=NULL; //saves ranges of thetas for each thread to go through
     double delta_theta=0;
    
@@ -100,7 +101,7 @@ int main(int argc, char **argv)
     
     //printf(">> mc.py:  Reading mc.par\n");
     
-    readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small , &frm0_large ,&last_frm ,&frm2_small, &frm2_large, &ph_weight_small, &ph_weight_large, &min_photons, &max_photons, &spect, &restrt, &num_thread); //thetas that comes out is in degrees
+    readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small , &frm0_large ,&last_frm ,&frm2_small, &frm2_large, &ph_weight_suggest, &min_photons, &max_photons, &spect, &restrt, &num_thread, &dim_switch); //thetas that comes out is in degrees
     
     //printf("small: %d large: %d weights: %e, %c\n", min_photons, max_photons, ph_weight_suggest, restrt);
     if (num_thread==0)
@@ -189,14 +190,12 @@ int main(int argc, char **argv)
             inj_radius=inj_radius_small;
             frm2=frm2_small;
             frm0=frm0_small;
-            ph_weight_suggest=ph_weight_small;
         }
         else
         {
             inj_radius=inj_radius_large;
             frm2=frm2_large;
             frm0=frm0_large;
-            ph_weight_suggest=ph_weight_large;
         }
         printf("Thread %d: %0.1lf, %0.1lf \n %d %e %d\n", omp_get_thread_num(),  theta_jmin_thread*180/M_PI,  theta_jmax_thread*180/M_PI, frm2, inj_radius, frm0 );
 
@@ -207,11 +206,13 @@ int main(int argc, char **argv)
             char log_file[200]="";
             FILE *fPtr=NULL; //pointer to log file for each thread
             double *xPtr=NULL,  *yPtr=NULL,  *rPtr=NULL,  *thetaPtr=NULL,  *velxPtr=NULL,  *velyPtr=NULL,  *densPtr=NULL,  *presPtr=NULL,  *gammaPtr=NULL,  *dens_labPtr=NULL;
+            double *phiPtr=NULL, *velzPtr=NULL, *zPtr=NULL;
             double *szxPtr=NULL,*szyPtr=NULL, *tempPtr=NULL; //pointers to hold data from FLASH files
             int num_ph=0, array_num=0, ph_scatt_index=0, max_scatt=0, min_scatt=0,i=0; //number of photons produced in injection algorithm, number of array elleemnts from reading FLASH file, index of photon whch does scattering, generic counter
             double dt_max=0, thescatt=0, accum_time=0; 
             double  gamma_infinity=0, time_now=0, time_step=0, avg_scatt=0; //gamma_infinity not used?
-            double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0;// *ph_cosanglePtr=NULL ;
+            double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0, ph_vzPtr=0;// *ph_cosanglePtr=NULL ;
+            double min_r=0, max_r=0;
             int frame=0, scatt_frame=0, frame_scatt_cnt=0, scatt_framestart=0, framestart=0;
             struct photon *phPtr=NULL; //pointer to array of photons 
             
@@ -333,35 +334,27 @@ int main(int argc, char **argv)
                 
                 if (restrt=='r')
                 {
-                    //put proper number at the end of the flash file
-                    if (frame<10)
-                    {
-                        snprintf(flash_file,sizeof(flash_prefix), "%s%.3d%d",flash_prefix,000,frame);
-                    }
-                    else if (frame<100)
-                    {
-                        snprintf(flash_file,sizeof(flash_prefix), "%s%.2d%d",flash_prefix,00,frame);
-                    }
-                    else if (frame<1000)
-                    {
-                        snprintf(flash_file,sizeof(flash_prefix), "%s%d%d",flash_prefix,0,frame);
-                    }
-                    else
-                    {
-                        snprintf(flash_file,sizeof(flash_prefix), "%s%d",flash_prefix,frame);
-                    }
-                    
-                    fprintf(fPtr,">> Im Thread: %d with ancestor %d: Opening FLASH file %s\n",omp_get_thread_num(), omp_get_ancestor_thread_num(1), flash_file);
-                    fflush(fPtr);
-                    
+                       
                     //exit(0);
                     //read in FLASH file
                     //for a checkpoint implmentation, dont need to read the file yet
-                    #pragma omp critical
+                    if (dim_switch==0)
                     {
-                        readAndDecimate(flash_file, inj_radius, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                            &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, fPtr);
+                        //put proper number at the end of the flash file                    
+                        modifyFlashName(flash_file, flash_prefix, frame, dim_switch);
+                        fprintf(fPtr,">> Im Thread: %d with ancestor %d: Opening FLASH file %s\n",omp_get_thread_num(), omp_get_ancestor_thread_num(1), flash_file);
+                        fflush(fPtr);
                         
+                        #pragma omp critical
+                        {
+                            readAndDecimate(flash_file, inj_radius, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, fPtr);
+                        }
+                    }
+                    else
+                    {
+                        read_hydro(FILEPATH, frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fps, fPtr);
                     }
                     
                     //check for run type
@@ -379,7 +372,16 @@ int main(int argc, char **argv)
                     //for a checkpoint implmentation, dont need to inject photons, need to load photons' last saved data 
                     fprintf(fPtr,">>  Thread: %d with ancestor %d: Injecting photons\n",omp_get_thread_num(), omp_get_ancestor_thread_num(1));
                     fflush(fPtr);
-                    photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng[omp_get_thread_num()] ); 
+                    
+                    if (dim_switch==0)
+                    {
+                        photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng[omp_get_thread_num()] ); 
+                    }
+                    else
+                    {
+                        photonInjection3D(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, zPtr, szxPtr, szyPtr,rPtr,thetaPtr, phiPtr, tempPtr, velxPtr, velyPtr, velzPtr, rng[omp_get_thread_num()] ); 
+                    }
+                    
                     //printf("%d\n",num_ph); //num_ph is one more photon than i actually have
                     /*
                     for (i=0;i<num_ph;i++)
@@ -402,31 +404,25 @@ int main(int argc, char **argv)
                     fprintf(fPtr,">> Thread %d with ancestor %d: Opening file...\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1));
                     fflush(fPtr);
                     
-                    //set new seed to increase randomness?
-                    gsl_rng_set(rng[omp_get_thread_num()], gsl_rng_get(rng[omp_get_thread_num()]));
                     
-                    //put proper number at the end of the flash file
-                    if (scatt_frame<10)
+                    
+                    
+                    if (dim_switch==0)
                     {
-                        snprintf(flash_file,sizeof(flash_prefix), "%s%.3d%d",flash_prefix,000,scatt_frame);
-                    }
-                    else if (scatt_frame<100)
-                    {
-                        snprintf(flash_file,sizeof(flash_prefix), "%s%.2d%d",flash_prefix,00,scatt_frame);
-                    }
-                    else if (scatt_frame<1000)
-                    {
-                        snprintf(flash_file,sizeof(flash_prefix), "%s%d%d",flash_prefix,0,scatt_frame);
+                        //put proper number at the end of the flash file
+                        modifyFlashName(flash_file, flash_prefix, scatt_frame, dim_switch);
+                        #pragma omp critical
+                        {
+                            readAndDecimate(flash_file, inj_radius, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, fPtr);
+                        }
                     }
                     else
                     {
-                        snprintf(flash_file,sizeof(flash_prefix), "%s%d",flash_prefix,scatt_frame);
-                    }
-                    
-                    #pragma omp critical
-                    {
-                        readAndDecimate(flash_file, inj_radius, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                            &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, fPtr);
+                        phMinMax(phPtr, num_ph, &min_r, &max_r);
+                        
+                        read_hydro(FILEPATH, frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fps, fPtr);
                     }
                     
                     //check for run type
@@ -451,11 +447,11 @@ int main(int argc, char **argv)
                         //go through each photon and find blocks closest to each photon and properties of those blocks to calulate mean free path
                         //and choose the photon with the smallest mfp and calculate the timestep
                         
-                        ph_scatt_index=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, &time_step, xPtr,  yPtr, velxPtr,  velyPtr,  dens_labPtr, tempPtr,\
-                            &ph_dens_labPtr, &ph_vxPtr, &ph_vyPtr, &ph_tempPtr, rng[omp_get_thread_num()]);
+                        ph_scatt_index=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, &time_step, xPtr,  yPtr, zPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
+                            &ph_dens_labPtr, &ph_vxPtr, &ph_vyPtr, &ph_vzPtr, &ph_tempPtr, rng[omp_get_thread_num()], dim_switch);
                             
                         //printf("In main: %e, %d, %e, %e\n", *(ph_num_scatt+ph_scatt_index), ph_scatt_index, time_step, time_now);
-                        //printf("In main: %e, %d, %e, %e\n",((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
+                        printf("In main: %e, %d, %e, %e\n",((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
                         
                          if (time_step<dt_max)
                         {
@@ -471,10 +467,10 @@ int main(int argc, char **argv)
                             //scatter the photon
                             //printf("Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
-                            photonScatter( (phPtr+ph_scatt_index), (ph_vxPtr), (ph_vyPtr), (ph_tempPtr), rng[omp_get_thread_num()] , fPtr);
+                            photonScatter( (phPtr+ph_scatt_index), (ph_vxPtr), (ph_vyPtr), ph_vzPtr, (ph_tempPtr), rng[omp_get_thread_num()] , dim_switch, fPtr);
                             
                             
-                            if (frame_scatt_cnt%1000 == 0)
+                            //if (frame_scatt_cnt%1000 == 0)
                             {
                                 fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
                                 fprintf(fPtr,"The local temp is: %e\n", (ph_tempPtr));
@@ -506,7 +502,7 @@ int main(int argc, char **argv)
                 fflush(fPtr);
                 
                 printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir);
-                
+                exit(0);
                 //for a checkpoint implmentation,save the checkpoint file here after every 5 frames or something
                 //save the photons data, the scattering number data, the scatt_frame value, and the frame value
                 //WHAT IF THE PROGRAM STOPS AFTER THE LAST SCATT_FRAME, DURING THE FIRST SCATT_FRAME OF NEW FRAME VARIABLE - save restrt variable as 'r'

@@ -13,14 +13,13 @@
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_sf_bessel.h>
-#include "mclib.h"
+#include "mclib_3d.h"
 #include <omp.h>
 
 #define PROP_DIM1 1
 #define PROP_DIM2 8
 #define PROP_DIM3 8
 #define COORD_DIM1 2
-
 
 //define constants
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27;
@@ -221,88 +220,84 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0, int *framesta
     }
 }
 
-void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads)
+void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small,int *frm0_large,int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads, int *dim_switch)
 {
     //function to read mc.par file
-    FILE *fptr=NULL;
-    char buf[100]="";
-    double theta_deg;
-    
-    //open file
-    fptr=fopen(file,"r");
-    //read in frames per sec and other variables outlined in main()
-    fscanf(fptr, "%lf",fps);
-    //printf("%f\n", *fps );
-    
-    fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%d",frm0_small);
-    //printf("%d\n", *frm0 );
-    
-    fgets(buf, 100,fptr);
+	FILE *fptr=NULL;
+	char buf[100]="";
+	double theta_deg;
+	
+	//open file
+	fptr=fopen(file,"r");
+	//read in frames per sec and other variables outlined in main()
+	fscanf(fptr, "%lf",fps);
+	//printf("%f\n", *fps );
+	
+	fgets(buf, 100,fptr);
+	
+	fscanf(fptr, "%d",frm0_small);
+	//printf("%d\n", *frm0 );
+	
+	fgets(buf, 100,fptr);
     
     fscanf(fptr, "%d",frm0_large);
-    //printf("%d\n", *frm0 );
+	//printf("%d\n", *frm0 );
+	
+	fgets(buf, 100,fptr);
+	
+	fscanf(fptr, "%d",last_frm);
+	//printf("%d\n", *last_frm );
     
-    fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%d",last_frm);
-    //printf("%d\n", *last_frm );
-    
-    
-    fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%d",frm2_small);
+	
+	fgets(buf, 100,fptr);
+	
+	fscanf(fptr, "%d",frm2_small);
     *frm2_small+=*frm0_small; //frame to go to is what is given in the file plus the starting frame
-    //printf("%d\n", *frm2_small );
-    
-    fgets(buf, 100,fptr);
-    
-    //fscanf(fptr, "%d",photon_num); remove photon num because we dont need this
-    //printf("%d\n", *photon_num );
+	//printf("%d\n", *frm2_small );
+	
+	fgets(buf, 100,fptr);
+	
+	//fscanf(fptr, "%d",photon_num); remove photon num because we dont need this
+	//printf("%d\n", *photon_num );
     
     fscanf(fptr, "%d",frm2_large);
     *frm2_large+=*frm0_large; //frame to go to is what is given in the file plus the starting frame
     //printf("%d\n", *frm2_large );
-    
-    fgets(buf, 100,fptr);
-    
-    //fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%lf",inj_radius_small);
-    //printf("%lf\n", *inj_radius_small );
-    
-    fgets(buf, 100,fptr);
+	
+	fgets(buf, 100,fptr);
+	
+	//fgets(buf, 100,fptr);
+	
+	fscanf(fptr, "%lf",inj_radius_small);
+	//printf("%lf\n", *inj_radius_small );
+	
+	fgets(buf, 100,fptr);
     
     fscanf(fptr, "%lf",inj_radius_large);
-    //printf("%lf\n", *inj_radius_large );
+	//printf("%lf\n", *inj_radius_large );
+	
+	fgets(buf, 100,fptr);
     
-    fgets(buf, 100,fptr);
-    
-    //theta jmin
-    fscanf(fptr, "%lf",&theta_deg);
-    *theta_jmin=theta_deg;//*M_PI/180; leave as degrees to manipulate processes
-    //printf("%f\n", *theta_jmin );
-    
-    
-    fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%lf",&theta_deg);
+	//theta jmin
+	fscanf(fptr, "%lf",&theta_deg);
+	*theta_jmin=theta_deg;//*M_PI/180; leave as degrees to manipulate processes 
+	//printf("%f\n", *theta_jmin );
+	
+	
+	fgets(buf, 100,fptr);
+	
+	fscanf(fptr, "%lf",&theta_deg);
     *theta_j=theta_deg;//*M_PI/180;
-    //printf("%f\n", *theta_j );
-    
-    fgets(buf, 100,fptr);
+	//printf("%f\n", *theta_j );
+	
+	fgets(buf, 100,fptr);
     
     fscanf(fptr, "%lf",d_theta_j);
-    //*theta_j=theta_deg;//*M_PI/180;
-    //printf("%f\n", *theta_j );
+	//printf("%f\n", *theta_j );
+	
+	fgets(buf, 100,fptr);
     
-    fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%lf",ph_weight_small);
-    fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%lf",ph_weight_large);
+    fscanf(fptr, "%lf",ph_weight);
     fgets(buf, 100,fptr);
     
     fscanf(fptr, "%d",min_photons);
@@ -319,8 +314,12 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
     fgets(buf, 100,fptr);
     
     fscanf(fptr, "%d",num_threads);
-    //close file
-    fclose(fptr);
+    fgets(buf, 100,fptr);
+    
+    fscanf(fptr, "%d",dim_switch);
+    
+	//close file
+	fclose(fptr);
 }
 
 void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y, double **szx, double **szy, double **r,\
@@ -911,18 +910,18 @@ double *zeroNorm(double *p_ph)
     return p_ph;
 }
 
-int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *velx,  double *vely, double *dens_lab,\
-    double *temp, double *n_dens_lab, double *n_vx, double *n_vy,double *n_temp, gsl_rng * rand)
+int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *velx,  double *vely, double *velz, double *dens_lab,\
+    double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int dim_switch_3d)
 {
     
     int i=0;
     
     int j=0, min_index=0;
-    double ph_x=0, ph_y=0, ph_phi=0, dist=0, dist_min=1e12;
+    double ph_x=0, ph_y=0, ph_phi=0, dist=0, dist_min=1e12, ph_z=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
     double ph_v_norm=0, fl_v_norm=0;
-    double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_temp_tmp=0 ;
-    double rnd_tracker=0, n_dens_lab_min=0, n_vx_min=0, n_vy_min=0, n_temp_min=0;
+    double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
+    double rnd_tracker=0, n_dens_lab_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
     double block_dist=0;
     int num_thread=2;//omp_get_max_threads();
     
@@ -952,13 +951,21 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     //or just parallelize this part here
     
     min_mfp=1e12;
-    #pragma omp parallel for num_threads(num_thread) firstprivate( ph_x, ph_y, ph_phi, dist_min, dist, j, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp,  n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp ) 
+    #pragma omp parallel for num_threads(num_thread) firstprivate( ph_x, ph_y, ph_z, ph_phi, dist_min, dist, j, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp,  n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp ) 
     for (i=0;i<num_ph; i++)
     {
         //printf("%e,%e\n", ((ph+i)->r0), ((ph+i)->r1));
-        
+        if (dim_switch_3d==0)
+        {
         ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to FLASH x coordinate
         ph_y=((ph+i)->r2);
+        }
+        else
+        {
+            ph_x=((ph+i)->r0);
+            ph_y=((ph+i)->r1);
+            ph_z=((ph+i)->r2);
+        }
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
         
@@ -970,7 +977,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             for(j=0;j<array_num;j++)
             {
                 //if the distance between them is within 3e9, to restrict number of possible calculations,  calulate the total distance between the box and photon 
-                if ( (fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
+                if ((dim_switch_3d==0) &&(fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
                 {
                     //printf("In if statement\n");
                     dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)) , 2.0),0.5);
@@ -985,6 +992,17 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                         //fprintf(fPtr,"New Min dist: %e, New min Index: %d, Array_Num: %e\n", dist_min, min_index, array_num);
                     }
                 
+                }
+                else if ((dim_switch_3d==1) &&(fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist) && (fabs(ph_z- (*(z+j)))<block_dist))
+                {
+                    dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)),2.0 ) + pow(ph_z- (*(z+j)) , 2.0),0.5);
+                    if((dist<dist_min))
+                    {
+                        //printf("In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
+                        dist_min=dist; //save new minimum distance
+                        min_index=j; //save index
+                        //fprintf(fPtr,"New Min dist: %e, New min Index: %d, Array_Num: %e\n", dist_min, min_index, array_num);
+                    }
                 }
             }
             block_dist*=10; //increase size of accepted distances for gris points, if dist_min==1e12 then the next time the acceptance range wil be larger
@@ -1001,11 +1019,23 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         (n_vx_tmp)= (*(velx+min_index));
         (n_vy_tmp)= (*(vely+min_index));
         (n_temp_tmp)= (*(temp+min_index));
+        if (dim_switch_3d==1)
+        {
+            (n_vz_tmp)= (*(velz+min_index));
+        }
         
-        
-        fl_v_x=(*(velx+min_index))*cos(ph_phi);
-        fl_v_y=(*(velx+min_index))*sin(ph_phi);
-        fl_v_z=(*(vely+min_index));
+        if (dim_switch_3d==0)
+        {
+            fl_v_x=(*(velx+min_index))*cos(ph_phi);
+            fl_v_y=(*(velx+min_index))*sin(ph_phi);
+            fl_v_z=(*(vely+min_index));
+        }
+        else
+        {
+            fl_v_x=(*(velx+min_index));
+            fl_v_y=(*(vely+min_index));
+            fl_v_z=(*(velz+min_index));
+        }
         
         fl_v_norm=pow(pow(fl_v_x, 2.0)+pow(fl_v_y, 2.0)+pow(fl_v_z, 2.0), 0.5);
         ph_v_norm=pow(pow(((ph+i)->p1), 2.0)+pow(((ph+i)->p2), 2.0)+pow(((ph+i)->p3), 2.0), 0.5);
@@ -1013,7 +1043,14 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
         (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
         
-        beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
+         if (dim_switch_3d==0)
+         {
+            beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
+         }
+         else
+         {
+             beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)+pow((n_vz_tmp),2)),0.5);
+         }
         //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
         rnd_tracker=0;
         //while ((rnd_tracker<=0) || (rnd_tracker>=1))
@@ -1035,9 +1072,13 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             n_dens_lab_min= n_dens_lab_tmp;
             n_vx_min= n_vx_tmp;
             n_vy_min= n_vy_tmp;
+            if (dim_switch_3d==1)
+            {
+                n_vz_min= n_vz_tmp;
+            }
             n_temp_min= n_temp_tmp;
             index=i;
-            //printf("Thread is %d. new min: %e for photon %d with block properties: %e, %e, %e\n", omp_get_thread_num(), mfp, index, n_vx_tmp, n_vy_tmp, n_temp_tmp);
+            printf("Thread is %d. new min: %e for photon %d with block properties: %e, %e, %e\n", omp_get_thread_num(), mfp, index, n_vx_tmp, n_vy_tmp, n_temp_tmp);
             //printf("Ancestor: %d Total Threads: %d\n", omp_get_num_threads(), omp_get_ancestor_thread_num(2));
             #pragma omp flush(min_mfp)
         }
@@ -1055,6 +1096,10 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     *(n_dens_lab)= n_dens_lab_min;
     *(n_vx)= n_vx_min;
     *(n_vy)= n_vy_min;
+    if (dim_switch_3d==1)
+    {
+        *(n_vz)= n_vz_min;
+    }
     *(n_temp)= n_temp_min;
     (*time_step)=min_mfp/C_LIGHT;
     return index;
@@ -1093,7 +1138,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t)
 }
 
 
-void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double fluid_temp, gsl_rng * rand, FILE *fPtr)
+void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double flash_vz, double fluid_temp, gsl_rng * rand, int dim_switch_3d, FILE *fPtr)
 {
     //function to perform single photon scattering
     double ph_phi=0;    
@@ -1120,10 +1165,18 @@ void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double f
     //printf("ph_phi=%e\n", ph_phi);
     //convert flash coordinated into MCRaT coordinates
     //printf("Getting fluid_beta\n");
-    
-    (*(fluid_beta+0))=flash_vx*cos(ph_phi);
-    (*(fluid_beta+1))=flash_vx*sin(ph_phi);
-    (*(fluid_beta+2))=flash_vy;
+    if (dim_switch_3d==0)
+    {
+        (*(fluid_beta+0))=flash_vx*cos(ph_phi);
+        (*(fluid_beta+1))=flash_vx*sin(ph_phi);
+        (*(fluid_beta+2))=flash_vy;
+    }
+    else
+    {
+        (*(fluid_beta+0))=flash_vx;
+        (*(fluid_beta+1))=flash_vy;
+        (*(fluid_beta+2))=flash_vz;
+    }
     
     //fill in photon 4 momentum 
     //printf("filling in 4 momentum in photonScatter\n");
@@ -1661,6 +1714,44 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame)
     snprintf(cmd, sizeof(cmd), "%s%s", "rm ", filename_1);
     system(cmd);
     
+    
+}
+
+void modifyFlashName(char flash_file[200], char prefix[200], int frame, int dim_switch)
+{
+    int lim1=0, lim2=0, lim3=0;
+    
+    if (dim_switch==0)
+    {
+        //2D case
+        lim1=10;
+        lim2=100;
+        lim3=1000;
+    }
+    else
+    {
+        //3d case
+        lim1=100;
+        lim2=1000;
+        lim3=10000;
+    }
+    
+     if (frame<lim1)
+    {
+        snprintf(flash_file,200, "%s%.3d%d",prefix,000,frame);
+    }
+    else if (frame<lim2)
+    {
+        snprintf(flash_file,200, "%s%.2d%d",prefix,00,frame);
+    }
+    else if (frame<lim3)
+    {
+        snprintf(flash_file,200, "%s%d%d",prefix,0,frame);
+    }
+    else
+    {
+        snprintf(flash_file,200, "%s%d",prefix,frame);
+    }
     
 }
 
