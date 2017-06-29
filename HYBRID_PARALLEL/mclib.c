@@ -13,7 +13,7 @@
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_sf_bessel.h>
-#include "mclib.h"
+#include "mclib_3d.h"
 #include <omp.h>
 #include "mpi.h"
 
@@ -21,6 +21,8 @@
 #define PROP_DIM2 8
 #define PROP_DIM3 8
 #define COORD_DIM1 2
+#define R_DIM_2D 9120
+#define THETA_DIM_2D 2000
 
 //define constants
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27;
@@ -300,7 +302,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2,
     }
 }
 
-void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads)
+void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads,  int *dim_switch)
 {
     //function to read mc.par file
 	FILE *fptr=NULL;
@@ -311,29 +313,29 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
 	fptr=fopen(file,"r");
 	//read in frames per sec and other variables outlined in main()
 	fscanf(fptr, "%lf",fps);
-	//printf("%f\n", *fps );
+	printf("%f\n", *fps );
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%d",frm0_small);
-	//printf("%d\n", *frm0 );
+	printf("%d\n", *frm0_small );
 	
 	fgets(buf, 100,fptr);
     
     fscanf(fptr, "%d",frm0_large);
-	//printf("%d\n", *frm0 );
+	printf("%d\n", *frm0_large );
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%d",last_frm);
-	//printf("%d\n", *last_frm );
+	printf("%d\n", *last_frm );
     
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%d",frm2_small);
     *frm2_small+=*frm0_small; //frame to go to is what is given in the file plus the starting frame
-	//printf("%d\n", *frm2_small );
+	printf("%d\n", *frm2_small );
 	
 	fgets(buf, 100,fptr);
 	
@@ -342,43 +344,44 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
     
     fscanf(fptr, "%d",frm2_large);
     *frm2_large+=*frm0_large; //frame to go to is what is given in the file plus the starting frame
-    //printf("%d\n", *frm2_large );
+    printf("%d\n", *frm2_large );
 	
 	fgets(buf, 100,fptr);
 	
 	//fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%lf",inj_radius_small);
-	//printf("%lf\n", *inj_radius_small );
+	printf("%lf\n", *inj_radius_small );
 	
 	fgets(buf, 100,fptr);
     
     fscanf(fptr, "%lf",inj_radius_large);
-	//printf("%lf\n", *inj_radius_large );
+	printf("%lf\n", *inj_radius_large );
 	
 	fgets(buf, 100,fptr);
     
 	//theta jmin
 	fscanf(fptr, "%lf",&theta_deg);
 	*theta_jmin=theta_deg;//*M_PI/180; leave as degrees to manipulate processes 
-	//printf("%f\n", *theta_jmin );
+	printf("%f\n", *theta_jmin );
 	
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%lf",&theta_deg);
     *theta_j=theta_deg;//*M_PI/180;
-	//printf("%f\n", *theta_j );
+	printf("%f\n", *theta_j );
 	
 	fgets(buf, 100,fptr);
     
     fscanf(fptr, "%lf",d_theta_j);
     //*theta_j=theta_deg;//*M_PI/180;
-	//printf("%f\n", *theta_j );
+	printf("%f\n", *theta_j );
 	
 	fgets(buf, 100,fptr);
     
     fscanf(fptr, "%lf",ph_weight_small);
+    printf("%f\n", *ph_weight_small );
     fgets(buf, 100,fptr);
     
     fscanf(fptr, "%lf",ph_weight_large);
@@ -392,18 +395,24 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
     
     *spect=getc(fptr);
     fgets(buf, 100,fptr);
-    //printf("%c\n",*spect);
+    printf("%c\n",*spect);
     
     *restart=getc(fptr);
     fgets(buf, 100,fptr);
     
     fscanf(fptr, "%d",num_threads);
+    printf("%d\n",*num_threads);
+    fgets(buf, 100,fptr);
+    
+    fscanf(fptr, "%d",dim_switch);
+    printf("%d\n",*dim_switch);
+    
 	//close file
 	fclose(fptr);
 }
 
-void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y, double **szx, double **szy, double **r,\
- double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, FILE *fPtr)
+void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
+ double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, FILE *fPtr)
 {
     //function to read in data from FLASH file
     hid_t  file,dset, space;
@@ -416,6 +425,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y,
     double *velx_unprc=NULL, *vely_unprc=NULL, *dens_unprc=NULL, *pres_unprc=NULL, *x_unprc=NULL, *y_unprc=NULL, *r_unprc=NULL, *szx_unprc=NULL, *szy_unprc=NULL;
     int  i,j,count,x1_count, y1_count, r_count, **node_buffer=NULL, num_nodes=0;
     double x1[8]={-7.0/16,-5.0/16,-3.0/16,-1.0/16,1.0/16,3.0/16,5.0/16,7.0/16};
+    double ph_rmin=0, ph_rmax=0;
     
     //hdf5 parallel template for file
     //acc_tpl1 = H5Pcreate (H5P_FILE_ACCESS);
@@ -423,6 +433,12 @@ void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y,
     
     //xfer_plist = H5Pcreate (H5P_DATASET_XFER);
     //ret=H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE);
+    
+    if (ph_inj_switch==0)
+    {
+        ph_rmin=min_r;
+        ph_rmax=max_r;
+    }
     
     file = H5Fopen (flash_file, H5F_ACC_RDONLY, H5P_DEFAULT);
     
@@ -649,9 +665,19 @@ void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y,
     for (i=0;i<count;i++)
     {
         *(r_unprc+i)=pow((pow(*(x_unprc+i),2)+pow(*(y_unprc+i),2)),0.5);
-        if (*(r_unprc+i)> (0.95*r_inj) )
+        if (ph_inj_switch==0)
         {
-            r_count++;
+            if (*(r_unprc+i)> (0.95*r_inj) )
+            {
+                r_count++;
+            }
+        }
+        else
+        {
+            if (((ph_rmin - C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + C_LIGHT/fps) ))
+            {
+                r_count++;
+            }
         }
     }
         /*
@@ -684,22 +710,45 @@ void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y,
     j=0;
     for (i=0;i<count;i++)
     {
-        if (*(r_unprc+i)> (0.95*r_inj) )
+        if (ph_inj_switch==0)
         {
-            (*pres)[j]=*(pres_unprc+i);
-            (*velx)[j]=*(velx_unprc+i);
-            (*vely)[j]=*(vely_unprc+i);
-            (*dens)[j]=*(dens_unprc+i);
-            (*x)[j]=*(x_unprc+i);
-            (*y)[j]=*(y_unprc+i);
-            (*r)[j]=*(r_unprc+i);
-            (*szx)[j]=*(szx_unprc+i);
-            (*szy)[j]=*(szy_unprc+i);
-            (*theta)[j]=atan2( *(x_unprc+i) , *(y_unprc+i) );//theta in radians in relation to jet axis
-            (*gamma)[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
-            (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
-            (*temp)[j]=pow(3*(*(pres_unprc+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
-            j++;
+            if (*(r_unprc+i)> (0.95*r_inj) )
+            {
+                (*pres)[j]=*(pres_unprc+i);
+                (*velx)[j]=*(velx_unprc+i);
+                (*vely)[j]=*(vely_unprc+i);
+                (*dens)[j]=*(dens_unprc+i);
+                (*x)[j]=*(x_unprc+i);
+                (*y)[j]=*(y_unprc+i);
+                (*r)[j]=*(r_unprc+i);
+                (*szx)[j]=*(szx_unprc+i);
+                (*szy)[j]=*(szy_unprc+i);
+                (*theta)[j]=atan2( *(x_unprc+i) , *(y_unprc+i) );//theta in radians in relation to jet axis
+                (*gamma)[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
+                (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
+                (*temp)[j]=pow(3*(*(pres_unprc+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                j++;
+            }
+        }
+        else
+        {
+            if (((ph_rmin - C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + C_LIGHT/fps) ))
+            {
+                (*pres)[j]=*(pres_unprc+i);
+                (*velx)[j]=*(velx_unprc+i);
+                (*vely)[j]=*(vely_unprc+i);
+                (*dens)[j]=*(dens_unprc+i);
+                (*x)[j]=*(x_unprc+i);
+                (*y)[j]=*(y_unprc+i);
+                (*r)[j]=*(r_unprc+i);
+                (*szx)[j]=*(szx_unprc+i);
+                (*szy)[j]=*(szy_unprc+i);
+                (*theta)[j]=atan2( *(x_unprc+i) , *(y_unprc+i) );//theta in radians in relation to jet axis
+                (*gamma)[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
+                (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
+                (*temp)[j]=pow(3*(*(pres_unprc+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                j++;
+            }
         }
     }
     *number=j;
@@ -710,7 +759,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y,
 
 
 void photonInjection( struct photon **ph, int *ph_num, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, int array_length, double fps, double theta_min, double theta_max,\
-double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temps, double *vx, double *vy, gsl_rng * rand,  FILE *fPtr)
+double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temps, double *vx, double *vy, gsl_rng * rand,  int riken_switch, FILE *fPtr)
 {
     int i=0, block_cnt=0, *ph_dens=NULL, ph_tot=0, j=0,k=0;
     double ph_dens_calc=0.0, fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, fr_max=0, bb_norm=0, position_phi, ph_weight_adjusted;
@@ -734,11 +783,12 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     
     for(i=0;i<array_length;i++)
     {
+        
         //look at all boxes in width delta r=c/fps and within angles we are interested in NEED TO IMPLEMENT
             if ((*(r+i) > (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) > theta_min) ) 
             {
                 block_cnt++;
-            }
+                            }
     }
     //printf("Blocks: %d\n", block_cnt);
     
@@ -762,8 +812,16 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
             //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
                 if ((*(r+i) > (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) > theta_min) ) 
                 {
-                    ph_dens_calc=(num_dens_coeff*2.0*M_PI*(*(x+i))*pow(*(temps+i),3.0)*pow(*(szx+i),2.0) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1) ; //a*T^3/(weight) dV, dV=2*PI*x*dx^2,
-                     
+                    if (riken_switch==0)
+                    {
+                        //using FLASH
+                        ph_dens_calc=(num_dens_coeff*2.0*M_PI*(*(x+i))*pow(*(temps+i),3.0)*pow(*(szx+i),2.0) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1) ; //a*T^3/(weight) dV, dV=2*PI*x*dx^2,
+                    }
+                    else
+                    {
+                        ph_dens_calc=(num_dens_coeff*2.0*M_PI*(*(r+i))*pow(*(temps+i),3.0)*(*(szx+i))*(*(szy+i)) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1) ; //dV=2 *pi* r dr dtheta
+                    }
+                    
                      (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
                      
                     //printf("%d, %lf \n",*(ph_dens+j), ph_dens_calc);
@@ -828,7 +886,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                         }
                         else
                         {
-				fr_max=(5.88e10)*(*(temps+i));//(C_LIGHT*(*(temps+i)))/(0.29); //max frequency of bb
+                            fr_max=(5.88e10)*(*(temps+i));//(C_LIGHT*(*(temps+i)))/(0.29); //max frequency of bb
                             bb_norm=(PL_CONST*fr_max * pow((fr_max/C_LIGHT),2.0))/(exp(PL_CONST*fr_max/(K_B*(*(temps+i))))-1); //find value of bb at fr_max
                             yfr_dum=((1.0/bb_norm)*PL_CONST*fr_dum * pow((fr_dum/C_LIGHT),2.0))/(exp(PL_CONST*fr_dum/(K_B*(*(temps+i))))-1); //curve is normalized to vaue of bb @ max frequency
                         	
@@ -1020,18 +1078,18 @@ double *zeroNorm(double *p_ph)
     return p_ph;
 }
 
-int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *velx,  double *vely, double *dens_lab,\
-    double *temp, double *n_dens_lab, double *n_vx, double *n_vy,double *n_temp, gsl_rng * rand,  FILE *fPtr)
+int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *velx,  double *vely, double *velz, double *dens_lab,\
+                                   double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int dim_switch_3d, FILE *fPtr)
 {
     
     int i=0, j=0, min_index=0;
-    double ph_x=0, ph_y=0, ph_phi=0, dist=0, dist_min=1e12;
+    double ph_x=0, ph_y=0, ph_phi=0, dist=0, dist_min=1e12, ph_z=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
     double ph_v_norm=0, fl_v_norm=0;
-    double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_temp_tmp=0 ;
-    double rnd_tracker=0, n_dens_lab_min=0, n_vx_min=0, n_vy_min=0, n_temp_min=0;
+    double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
+    double rnd_tracker=0, n_dens_lab_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
     double block_dist=0;
-    int num_thread=8;//omp_get_max_threads();
+    int num_thread=2;//omp_get_max_threads();
     
     int index=0;
     double mfp=0,min_mfp=0, beta=0;
@@ -1059,13 +1117,22 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     //or just parallelize this part here
     
     min_mfp=1e12;
-    #pragma omp parallel for num_threads(num_thread) firstprivate( block_dist, ph_x, ph_y, ph_phi, dist_min, dist, j, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp,  n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp ) 
+    #pragma omp parallel for num_threads(num_thread) firstprivate( block_dist, ph_x, ph_y, ph_z, ph_phi, dist_min, dist, j, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
     for (i=0;i<num_ph; i++)
     {
         //printf("%e,%e\n", ((ph+i)->r0), ((ph+i)->r1));
         
-        ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to FLASH x coordinate
-        ph_y=((ph+i)->r2);
+        if (dim_switch_3d==0)
+        {
+            ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to FLASH x coordinate
+            ph_y=((ph+i)->r2);
+        }
+        else
+        {
+            ph_x=((ph+i)->r0);
+            ph_y=((ph+i)->r1);
+            ph_z=((ph+i)->r2);
+        }
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
         
@@ -1077,7 +1144,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             for(j=0;j<array_num;j++)
             {
                 //if the distance between them is within 3e9, to restrict number of possible calculations,  calulate the total distance between the box and photon 
-                if ( (fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
+                if ((dim_switch_3d==0) && (fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
                 {
                     //printf("In if statement\n");
                     dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)) , 2.0),0.5);
@@ -1092,6 +1159,17 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                         //fprintf(fPtr,"New Min dist: %e, New min Index: %d, Array_Num: %e\n", dist_min, min_index, array_num);
                     }
                 
+                }
+                else if ((dim_switch_3d==1) &&(fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist) && (fabs(ph_z- (*(z+j)))<block_dist))
+                {
+                    dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)),2.0 ) + pow(ph_z- (*(z+j)) , 2.0),0.5);
+                    if((dist<dist_min))
+                    {
+                        //printf("In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
+                        dist_min=dist; //save new minimum distance
+                        min_index=j; //save index
+                        //fprintf(fPtr,"New Min dist: %e, New min Index: %d, Array_Num: %e\n", dist_min, min_index, array_num);
+                    }
                 }
             }
             block_dist*=10; //increase size of accepted distances for gris points, if dist_min==1e12 then the next time the acceptance range wil be larger
@@ -1110,11 +1188,23 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         (n_vx_tmp)= (*(velx+min_index));
         (n_vy_tmp)= (*(vely+min_index));
         (n_temp_tmp)= (*(temp+min_index));
+        if (dim_switch_3d==1)
+        {
+            (n_vz_tmp)= (*(velz+min_index));
+        }
         
-        
-        fl_v_x=(*(velx+min_index))*cos(ph_phi);
-        fl_v_y=(*(velx+min_index))*sin(ph_phi);
-        fl_v_z=(*(vely+min_index));
+        if (dim_switch_3d==0)
+        {
+            fl_v_x=(*(velx+min_index))*cos(ph_phi);
+            fl_v_y=(*(velx+min_index))*sin(ph_phi);
+            fl_v_z=(*(vely+min_index));
+        }
+        else
+        {
+            fl_v_x=(*(velx+min_index));
+            fl_v_y=(*(vely+min_index));
+            fl_v_z=(*(velz+min_index));
+        }
         
         fl_v_norm=pow(pow(fl_v_x, 2.0)+pow(fl_v_y, 2.0)+pow(fl_v_z, 2.0), 0.5);
         ph_v_norm=pow(pow(((ph+i)->p1), 2.0)+pow(((ph+i)->p2), 2.0)+pow(((ph+i)->p3), 2.0), 0.5);
@@ -1122,7 +1212,14 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
         (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
         
-        beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
+        if (dim_switch_3d==0)
+        {
+            beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
+        }
+        else
+        {
+            beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)+pow((n_vz_tmp),2)),0.5);
+        }
         //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
         rnd_tracker=0;
         //while ((rnd_tracker<=0) || (rnd_tracker>=1))
@@ -1144,10 +1241,14 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             n_dens_lab_min= n_dens_lab_tmp;
             n_vx_min= n_vx_tmp;
             n_vy_min= n_vy_tmp;
+            if (dim_switch_3d==1)
+            {
+                n_vz_min= n_vz_tmp;
+            }
             n_temp_min= n_temp_tmp;
             index=i;
             //fprintf(fPtr, "Thread is %d. new min: %e for photon %d with block properties: %e, %e, %e Located at: %e, %e, Dist: %e\n", omp_get_thread_num(), mfp, index, n_vx_tmp, n_vy_tmp, n_temp_tmp, *(x+min_index), *(y+min_index), dist_min);
-            //fflush(fPtr);
+            fflush(fPtr);
             //printf("Ancestor: %d Total Threads: %d\n", omp_get_num_threads(), omp_get_ancestor_thread_num(2));
             #pragma omp flush(min_mfp)
         }
@@ -1165,6 +1266,10 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     *(n_dens_lab)= n_dens_lab_min;
     *(n_vx)= n_vx_min;
     *(n_vy)= n_vy_min;
+    if (dim_switch_3d==1)
+    {
+        *(n_vz)= n_vz_min;
+    }
     *(n_temp)= n_temp_min;
     (*time_step)=min_mfp/C_LIGHT;
     return index;
@@ -1204,7 +1309,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t)
 }
 
 
-void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double fluid_temp, gsl_rng * rand, FILE *fPtr)
+void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double flash_vz, double fluid_temp, gsl_rng * rand,int dim_switch_3d, FILE *fPtr)
 {
     //function to perform single photon scattering
     double ph_phi=0;    
@@ -1236,9 +1341,18 @@ void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double f
     //convert flash coordinated into MCRaT coordinates
     //printf("Getting fluid_beta\n");
     
-    (*(fluid_beta+0))=flash_vx*cos(ph_phi);
-    (*(fluid_beta+1))=flash_vx*sin(ph_phi);
-    (*(fluid_beta+2))=flash_vy;
+    if (dim_switch_3d==0)
+    {
+        (*(fluid_beta+0))=flash_vx*cos(ph_phi);
+        (*(fluid_beta+1))=flash_vx*sin(ph_phi);
+        (*(fluid_beta+2))=flash_vy;
+    }
+    else
+    {
+        (*(fluid_beta+0))=flash_vx;
+        (*(fluid_beta+1))=flash_vy;
+        (*(fluid_beta+2))=flash_vz;
+    }
     
     /*
     fprintf(fPtr,"FLASH v: %e, %e\n", flash_vx,flash_vy);
@@ -1714,7 +1828,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs)
     char filename_k[200]="", file_no_thread_num[200]="", cmd[2000]="", mcdata_type[200]="";
     
     //printf("Merging files in %s\n", dir);
-    #pragma omp parallel for num_threads(num_thread) firstprivate( filename_k, file_no_thread_num, cmd,mcdata_type ) private(i)
+    //#pragma omp parallel for num_threads(num_thread) firstprivate( filename_k, file_no_thread_num, cmd,mcdata_type ) private(i)
     for (i=start_frame;i<=last_frame;i++)
     {
         for (j=0;j<num_files;j++)
@@ -1799,4 +1913,262 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs)
     
 }
 
+void modifyFlashName(char flash_file[200], char prefix[200], int frame, int dim_switch)
+{
+    int lim1=0, lim2=0, lim3=0;
+    
+    if (dim_switch==0)
+    {
+        //2D case
+        lim1=10;
+        lim2=100;
+        lim3=1000;
+    }
+    else
+    {
+        //3d case
+        lim1=100;
+        lim2=1000;
+        lim3=10000;
+    }
+    
+    if (frame<lim1)
+    {
+        snprintf(flash_file,200, "%s%.3d%d",prefix,000,frame);
+    }
+    else if (frame<lim2)
+    {
+        snprintf(flash_file,200, "%s%.2d%d",prefix,00,frame);
+    }
+    else if (frame<lim3)
+    {
+        snprintf(flash_file,200, "%s%d%d",prefix,0,frame);
+    }
+    else
+    {
+        snprintf(flash_file,200, "%s%d",prefix,frame);
+    }
+}
+
+
+void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r, double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, FILE *fPtr)
+{
+    
+    FILE *hydroPtr=NULL;
+    char hydrofile[200]="", file_num[200]="", full_file[200]=""  ;
+    char buf[10]="";
+    int i=0, j=0, k=0, elem=0;
+    float buffer=0;
+    float *dens_unprc=malloc(sizeof(float)*R_DIM_2D*THETA_DIM_2D);
+    float *vel_r_unprc=malloc(sizeof(float)*R_DIM_2D*THETA_DIM_2D);
+    float *vel_theta_unprc=malloc(sizeof(float)*R_DIM_2D*THETA_DIM_2D);
+    float *pres_unprc=malloc(sizeof(float)*R_DIM_2D*THETA_DIM_2D);
+    double ph_rmin=0, ph_rmax=0;
+    double r_in=1e10;
+    //double *r_edge=malloc(sizeof(double)*(R_DIM_2D+1));
+    //double *dr=malloc(sizeof(double)*(R_DIM_2D));
+    double *r_unprc=malloc(sizeof(double)*R_DIM_2D);
+    double *theta_unprc=malloc(sizeof(double)*THETA_DIM_2D);
+    
+    if (ph_inj_switch==0)
+    {
+        ph_rmin=min_r;
+        ph_rmax=max_r;
+    }
+
+    //density
+    snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s%d%s",hydro_prefix,"u0", 1,"-", frame, ".data" );
+    
+    fprintf(fPtr,">> Opening file %s\n", hydrofile);
+    fflush(fPtr);
+    
+    hydroPtr=fopen(hydrofile, "rb");
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    fread(dens_unprc, sizeof(float)*R_DIM_2D*THETA_DIM_2D,R_DIM_2D*THETA_DIM_2D, hydroPtr); //data
+    fclose(hydroPtr);
+    
+    //V_r
+    snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s%d%s",hydro_prefix,"u0", 2,"-", frame, ".data" );
+    
+    hydroPtr=fopen(hydrofile, "rb");
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    fread(vel_r_unprc, sizeof(float)*R_DIM_2D*THETA_DIM_2D,R_DIM_2D*THETA_DIM_2D, hydroPtr); //data
+    fclose(hydroPtr);
+    
+    //V_theta
+    snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s%d%s",hydro_prefix,"u0", 3,"-", frame, ".data" );
+    
+    hydroPtr=fopen(hydrofile, "rb");
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    fread(vel_theta_unprc, sizeof(float)*R_DIM_2D*THETA_DIM_2D,R_DIM_2D*THETA_DIM_2D, hydroPtr); //data
+    fclose(hydroPtr);
+    
+    //u04 is phi component but is all 0
+    
+    //pres
+    snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s%d%s",hydro_prefix,"u0", 8,"-", frame, ".data" );
+    
+    hydroPtr=fopen(hydrofile, "rb");
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    fread(pres_unprc, sizeof(float)*R_DIM_2D*THETA_DIM_2D,R_DIM_2D*THETA_DIM_2D, hydroPtr); //data
+    fclose(hydroPtr);
+    
+     
+     for (j=THETA_DIM_2D-1;j<THETA_DIM_2D;j++)
+     {
+         for (k=R_DIM_2D-5;k<R_DIM_2D;k++)
+         {
+         
+             fprintf(fPtr,"Pres %d: %e\n", ( j*R_DIM_2D + k  ), *(pres_unprc+(j*R_DIM_2D + k  )));
+             fflush(fPtr);
+         
+         }
+     }
+     
+     
+    
+    
+    //R
+    snprintf(hydrofile,sizeof(hydrofile),"%s%s",hydro_prefix,"grid-x1.data" );
+    hydroPtr=fopen(hydrofile, "r");
+    fprintf(fPtr,">> Opening file %s\n", hydrofile);
+    fflush(fPtr);
+    
+    i=0;
+    while (i<R_DIM_2D)
+    {
+        fscanf(hydroPtr, "%lf", (r_unprc+i));  //read value
+        fgets(buf, 3,hydroPtr); //read comma
+        
+         if (i<5)
+         {
+             //printf("Here\n");
+             fprintf(fPtr,"R %d: %e\n", i, *(r_unprc+i));
+             fflush(fPtr);
+         }
+        
+        i++;
+    }
+    fclose(hydroPtr);
+
+    
+    //theta from y axis
+    snprintf(hydrofile,sizeof(hydrofile),"%s%s",hydro_prefix,"grid-x2.data" );
+    hydroPtr=fopen(hydrofile, "r");
+    
+    i=0;
+    while (i<THETA_DIM_2D)
+    {
+        fscanf(hydroPtr, "%lf", (theta_unprc+i));  //read value
+        fgets(buf, 3,hydroPtr); //read comma
+        
+        if (i<5)
+        {
+            fprintf(fPtr,"Theta %d: %e\n", i, *(theta_unprc+i));
+            fflush(fPtr);
+        }
+        
+        i++;
+    }
+    fclose(hydroPtr);
+    
+    //limit number of array elements
+    elem=0;
+    for (j=0;j<THETA_DIM_2D;j++)
+    {
+        for (k=0;k<R_DIM_2D;k++)
+        {
+            //if I have photons do selection differently than if injecting photons
+            if (ph_inj_switch==0)
+            {
+                //if calling this function when propagating photons, choose blocks based on where the photons are
+                if (((ph_rmin - 2*C_LIGHT/fps)<(*(r_unprc+k))) && (*(r_unprc+k)  < (ph_rmax + 2*C_LIGHT/fps) ))
+                {
+                    // *(pres_unprc+(i*R_DIM*THETA_DIM + j*R_DIM + k  )
+                    elem++;
+                }
+            }
+            else
+            {
+                //if calling this function to inject photons choose blocks based on injection parameters, r_inj, which is sufficient
+                if (((r_inj - C_LIGHT/fps)<(*(r_unprc+k))) && (*(r_unprc+k)  < (r_inj + C_LIGHT/fps) ))
+                {
+                    // *(pres_unprc+(i*R_DIM*THETA_DIM + j*R_DIM + k  )
+                    elem++;
+                }
+                
+            }
+            
+        }
+    }
+    //printf("Number of post restricted Elems: %d %e\n", elem, r_inj);
+    
+    (*pres)=malloc (elem * sizeof (double ));
+    (*velx)=malloc (elem * sizeof (double ));
+    (*vely)=malloc (elem * sizeof (double ));
+    (*dens)=malloc (elem * sizeof (double ));
+    (*x)=malloc (elem * sizeof (double ));
+    (*y)=malloc (elem * sizeof (double ));
+    (*r)=malloc (elem * sizeof (double ));
+    (*theta)=malloc (elem * sizeof (double ));
+    (*gamma)=malloc (elem * sizeof (double ));
+    (*dens_lab)=malloc (elem * sizeof (double ));
+    //szx becomes delta r szy becomes delta theta
+    (*szx)=malloc (elem * sizeof (double ));
+    (*szy)=malloc (elem * sizeof (double ));
+    (*temp)=malloc (elem * sizeof (double ));
+
+    elem=0;
+    for (j=0;j<THETA_DIM_2D;j++)
+    {
+        for (k=0;k<R_DIM_2D;k++)
+        {
+            if (ph_inj_switch==0)
+            {
+                if (((ph_rmin - 2*C_LIGHT/fps)<(*(r_unprc+k))) && (*(r_unprc+k)  < (ph_rmax + 2*C_LIGHT/fps) ))
+                {
+                    (*pres)[elem]=*(pres_unprc+(j*R_DIM_2D + k));
+                    (*velx)[elem]=(*(vel_r_unprc+(j*R_DIM_2D + k)))*sin(*(theta_unprc+j))+(*(vel_theta_unprc+(j*R_DIM_2D + k)))*cos(*(theta_unprc+j));
+                    (*vely)[elem]=(*(vel_r_unprc+(j*R_DIM_2D + k)))*cos(*(theta_unprc+j))-(*(vel_theta_unprc+(j*R_DIM_2D + k)))*sin(*(theta_unprc+j));
+                    (*dens)[elem]=*(dens_unprc+(j*R_DIM_2D + k));
+                    (*x)[elem]=(*(r_unprc+k))*sin(*(theta_unprc+j));
+                    (*y)[elem]=(*(r_unprc+k))*cos(*(theta_unprc+j));
+                    (*r)[elem]=*(r_unprc+k);
+                    (*szx)[elem]=(*(r_unprc+k))*((M_PI/2)/2000);
+                    (*szy)[elem]=(M_PI/2)/2000;
+                    (*theta)[elem]=*(theta_unprc+j);//theta in radians in relation to jet axis
+                    (*gamma)[elem]=pow(pow(1.0-(pow(*(vel_r_unprc+(j*R_DIM_2D + k)),2)+pow(*(vel_theta_unprc+(j*R_DIM_2D + k)),2)),0.5),-1); //v is in units of c
+                    (*dens_lab)[elem]= (*(dens_unprc+(j*R_DIM_2D + k))) * pow(pow(1.0-(pow(*(vel_r_unprc+(j*R_DIM_2D + k)),2)+pow(*(vel_theta_unprc+(j*R_DIM_2D + k)),2)),0.5),-1);
+                    (*temp)[elem]=pow(3*(*(pres_unprc+(j*R_DIM_2D + k)))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                    elem++;
+                }
+            }
+            else
+            {
+                if (((r_inj - C_LIGHT/fps)<(*(r_unprc+k))) && (*(r_unprc+k)  < (r_inj + C_LIGHT/fps) ))
+                {
+                    (*pres)[elem]=*(pres_unprc+(j*R_DIM_2D + k));
+                    (*velx)[elem]=(*(vel_r_unprc+(j*R_DIM_2D + k)))*sin(*(theta_unprc+j))+(*(vel_theta_unprc+(j*R_DIM_2D + k)))*cos(*(theta_unprc+j));
+                    (*vely)[elem]=(*(vel_r_unprc+(j*R_DIM_2D + k)))*cos(*(theta_unprc+j))-(*(vel_theta_unprc+(j*R_DIM_2D + k)))*sin(*(theta_unprc+j));
+                    (*dens)[elem]=*(dens_unprc+(j*R_DIM_2D + k));
+                    (*x)[elem]=(*(r_unprc+k))*sin(*(theta_unprc+j));
+                    (*y)[elem]=(*(r_unprc+k))*cos(*(theta_unprc+j));
+                    (*r)[elem]=*(r_unprc+k);
+                    (*szx)[elem]=(*(r_unprc+k))*((M_PI/2)/2000);
+                    (*szy)[elem]=(M_PI/2)/2000;
+                    (*theta)[elem]=*(theta_unprc+j);//theta in radians in relation to jet axis
+                    (*gamma)[elem]=pow(pow(1.0-(pow(*(vel_r_unprc+(j*R_DIM_2D + k)),2)+pow(*(vel_theta_unprc+(j*R_DIM_2D + k)),2)),0.5),-1); //v is in units of c
+                    (*dens_lab)[elem]= (*(dens_unprc+(j*R_DIM_2D + k))) * pow(pow(1.0-(pow(*(vel_r_unprc+(j*R_DIM_2D + k)),2)+pow(*(vel_theta_unprc+(j*R_DIM_2D + k)),2)),0.5),-1);
+                    (*temp)[elem]=pow(3*(*(pres_unprc+(j*R_DIM_2D + k)))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                    elem++;
+                    
+                }
+            }
+        }
+    }
+    *number=elem;
+    
+    
+    free(pres_unprc); free(vel_r_unprc);free(vel_theta_unprc);free(dens_unprc);free(r_unprc); free(theta_unprc);
+}
 
