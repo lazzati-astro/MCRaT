@@ -26,7 +26,7 @@
 
 //define constants
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27;
-const double K_B=1.380658e-16, M_P=1.6726231e-24, THOMP_X_SECT=6.65246e-25, M_EL=9.1093879e-28  ;
+const double K_B=1.380658e-16, M_P=1.6726231e-24, THOMP_X_SECT=6.65246e-25, M_EL=9.1093879e-28 ;
 
 void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200], int angle_rank )
 {
@@ -313,29 +313,29 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
 	fptr=fopen(file,"r");
 	//read in frames per sec and other variables outlined in main()
 	fscanf(fptr, "%lf",fps);
-	printf("%f\n", *fps );
+	//printf("%f\n", *fps );
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%d",frm0_small);
-	printf("%d\n", *frm0_small );
+	//printf("%d\n", *frm0_small );
 	
 	fgets(buf, 100,fptr);
     
     fscanf(fptr, "%d",frm0_large);
-	printf("%d\n", *frm0_large );
+	//printf("%d\n", *frm0_large );
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%d",last_frm);
-	printf("%d\n", *last_frm );
+	//printf("%d\n", *last_frm );
     
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%d",frm2_small);
     *frm2_small+=*frm0_small; //frame to go to is what is given in the file plus the starting frame
-	printf("%d\n", *frm2_small );
+	//printf("%d\n", *frm2_small );
 	
 	fgets(buf, 100,fptr);
 	
@@ -344,44 +344,44 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
     
     fscanf(fptr, "%d",frm2_large);
     *frm2_large+=*frm0_large; //frame to go to is what is given in the file plus the starting frame
-    printf("%d\n", *frm2_large );
+    //printf("%d\n", *frm2_large );
 	
 	fgets(buf, 100,fptr);
 	
 	//fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%lf",inj_radius_small);
-	printf("%lf\n", *inj_radius_small );
+	//printf("%lf\n", *inj_radius_small );
 	
 	fgets(buf, 100,fptr);
     
     fscanf(fptr, "%lf",inj_radius_large);
-	printf("%lf\n", *inj_radius_large );
+	//printf("%lf\n", *inj_radius_large );
 	
 	fgets(buf, 100,fptr);
     
 	//theta jmin
 	fscanf(fptr, "%lf",&theta_deg);
 	*theta_jmin=theta_deg;//*M_PI/180; leave as degrees to manipulate processes 
-	printf("%f\n", *theta_jmin );
+	//printf("%f\n", *theta_jmin );
 	
 	
 	fgets(buf, 100,fptr);
 	
 	fscanf(fptr, "%lf",&theta_deg);
     *theta_j=theta_deg;//*M_PI/180;
-	printf("%f\n", *theta_j );
+	//printf("%f\n", *theta_j );
 	
 	fgets(buf, 100,fptr);
     
     fscanf(fptr, "%lf",d_theta_j);
     //*theta_j=theta_deg;//*M_PI/180;
-	printf("%f\n", *theta_j );
+	//printf("%f\n", *theta_j );
 	
 	fgets(buf, 100,fptr);
     
     fscanf(fptr, "%lf",ph_weight_small);
-    printf("%f\n", *ph_weight_small );
+    //printf("%f\n", *ph_weight_small );
     fgets(buf, 100,fptr);
     
     fscanf(fptr, "%lf",ph_weight_large);
@@ -395,17 +395,17 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
     
     *spect=getc(fptr);
     fgets(buf, 100,fptr);
-    printf("%c\n",*spect);
+    //printf("%c\n",*spect);
     
     *restart=getc(fptr);
     fgets(buf, 100,fptr);
     
     fscanf(fptr, "%d",num_threads);
-    printf("%d\n",*num_threads);
+    //printf("%d\n",*num_threads);
     fgets(buf, 100,fptr);
     
     fscanf(fptr, "%d",dim_switch);
-    printf("%d\n",*dim_switch);
+    //printf("%d\n",*dim_switch);
     
 	//close file
 	fclose(fptr);
@@ -667,14 +667,15 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
         *(r_unprc+i)=pow((pow(*(x_unprc+i),2)+pow(*(y_unprc+i),2)),0.5);
         if (ph_inj_switch==0)
         {
-            if (*(r_unprc+i)> (0.95*r_inj) )
+            if (((ph_rmin - 2*C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + 2*C_LIGHT/fps) ))
             {
                 r_count++;
             }
+            
         }
         else
         {
-            if (((ph_rmin - C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + C_LIGHT/fps) ))
+            if (*(r_unprc+i)> (0.95*r_inj) )
             {
                 r_count++;
             }
@@ -712,7 +713,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     {
         if (ph_inj_switch==0)
         {
-            if (*(r_unprc+i)> (0.95*r_inj) )
+            if (((ph_rmin - 2*C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + 2*C_LIGHT/fps) ))
             {
                 (*pres)[j]=*(pres_unprc+i);
                 (*velx)[j]=*(velx_unprc+i);
@@ -732,7 +733,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
         }
         else
         {
-            if (((ph_rmin - C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + C_LIGHT/fps) ))
+            if (*(r_unprc+i)> (0.95*r_inj) )
             {
                 (*pres)[j]=*(pres_unprc+i);
                 (*velx)[j]=*(velx_unprc+i);

@@ -322,8 +322,8 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
 	fclose(fptr);
 }
 
-void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y, double **szx, double **szy, double **r,\
- double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, FILE *fPtr)
+void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
+ double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, FILE *fPtr)
 {
     //function to read in data from FLASH file
     hid_t  file,dset, space;
@@ -333,6 +333,13 @@ void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y,
     double *velx_unprc=NULL, *vely_unprc=NULL, *dens_unprc=NULL, *pres_unprc=NULL, *x_unprc=NULL, *y_unprc=NULL, *r_unprc=NULL, *szx_unprc=NULL, *szy_unprc=NULL;
     int  i,j,count,x1_count, y1_count, r_count, **node_buffer=NULL, num_nodes=0;
     double x1[8]={-7.0/16,-5.0/16,-3.0/16,-1.0/16,1.0/16,3.0/16,5.0/16,7.0/16};
+    double ph_rmin=0, ph_rmax=0;
+    
+    if (ph_inj_switch==0)
+    {
+        ph_rmin=min_r;
+        ph_rmax=max_r;
+    }
     
     file = H5Fopen (flash_file, H5F_ACC_RDONLY, H5P_DEFAULT);
     fprintf(fPtr, ">> mc.py: Reading positional, density, pressure, and velocity information...\n");
@@ -556,9 +563,20 @@ void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y,
     for (i=0;i<count;i++)
     {
         *(r_unprc+i)=pow((pow(*(x_unprc+i),2)+pow(*(y_unprc+i),2)),0.5);
-        if (*(r_unprc+i)> (0.95*r_inj) )
+        if (ph_inj_switch==0)
         {
-            r_count++;
+            if (((ph_rmin - 2*C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + 2*C_LIGHT/fps) ))
+            {
+                r_count++;
+            }
+            
+        }
+        else
+        {
+            if (*(r_unprc+i)> (0.95*r_inj) )
+            {
+                r_count++;
+            }
         }
     }
         /*
@@ -591,22 +609,45 @@ void readAndDecimate(char flash_file[200], double r_inj, double **x, double **y,
     j=0;
     for (i=0;i<count;i++)
     {
-        if (*(r_unprc+i)> (0.95*r_inj) )
+        if (ph_inj_switch==0)
         {
-            (*pres)[j]=*(pres_unprc+i);
-            (*velx)[j]=*(velx_unprc+i);
-            (*vely)[j]=*(vely_unprc+i);
-            (*dens)[j]=*(dens_unprc+i);
-            (*x)[j]=*(x_unprc+i);
-            (*y)[j]=*(y_unprc+i);
-            (*r)[j]=*(r_unprc+i);
-            (*szx)[j]=*(szx_unprc+i);
-            (*szy)[j]=*(szy_unprc+i);
-            (*theta)[j]=atan2( *(x_unprc+i) , *(y_unprc+i) );//theta in radians in relation to jet axis
-            (*gamma)[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
-            (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
-            (*temp)[j]=pow(3*(*(pres_unprc+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
-            j++;
+            if (((ph_rmin - 2*C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + 2*C_LIGHT/fps) ))
+            {
+                (*pres)[j]=*(pres_unprc+i);
+                (*velx)[j]=*(velx_unprc+i);
+                (*vely)[j]=*(vely_unprc+i);
+                (*dens)[j]=*(dens_unprc+i);
+                (*x)[j]=*(x_unprc+i);
+                (*y)[j]=*(y_unprc+i);
+                (*r)[j]=*(r_unprc+i);
+                (*szx)[j]=*(szx_unprc+i);
+                (*szy)[j]=*(szy_unprc+i);
+                (*theta)[j]=atan2( *(x_unprc+i) , *(y_unprc+i) );//theta in radians in relation to jet axis
+                (*gamma)[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
+                (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
+                (*temp)[j]=pow(3*(*(pres_unprc+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                j++;
+            }
+        }
+        else
+        {
+            if (*(r_unprc+i)> (0.95*r_inj) )
+            {
+                (*pres)[j]=*(pres_unprc+i);
+                (*velx)[j]=*(velx_unprc+i);
+                (*vely)[j]=*(vely_unprc+i);
+                (*dens)[j]=*(dens_unprc+i);
+                (*x)[j]=*(x_unprc+i);
+                (*y)[j]=*(y_unprc+i);
+                (*r)[j]=*(r_unprc+i);
+                (*szx)[j]=*(szx_unprc+i);
+                (*szy)[j]=*(szy_unprc+i);
+                (*theta)[j]=atan2( *(x_unprc+i) , *(y_unprc+i) );//theta in radians in relation to jet axis
+                (*gamma)[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
+                (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
+                (*temp)[j]=pow(3*(*(pres_unprc+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                j++;
+            }
         }
     }
     *number=j;

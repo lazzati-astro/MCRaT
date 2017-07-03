@@ -347,8 +347,8 @@ int main(int argc, char **argv)
                         
                         #pragma omp critical
                         {
-                            readAndDecimate(flash_file, inj_radius, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, fPtr);
+                            readAndDecimate(flash_file, inj_radius, fps, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
                         }
                     }
                     else
@@ -413,8 +413,9 @@ int main(int argc, char **argv)
                         modifyFlashName(flash_file, flash_prefix, scatt_frame, dim_switch);
                         #pragma omp critical
                         {
-                            readAndDecimate(flash_file, inj_radius, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, fPtr);
+                            phMinMax(phPtr, num_ph, &min_r, &max_r);
+                            readAndDecimate(flash_file, inj_radius, fps, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
                         }
                     }
                     else
