@@ -422,7 +422,7 @@ int main(int argc, char **argv)
                     {
                         phMinMax(phPtr, num_ph, &min_r, &max_r);
                         
-                        read_hydro(FILEPATH, frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
+                        read_hydro(FILEPATH, scatt_frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
                                 &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fps, fPtr);
                     }
                     

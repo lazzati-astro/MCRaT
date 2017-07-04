@@ -60,7 +60,7 @@
 #define MC_PATH "MPI_CMC_16OI_SPHERICAL/"
  */
 #define THISRUN "Science"
-#define FILEPATH "/Users/Tylerparsotan/Documents/Box\ Sync/RIKEN_HYDRO_DATA/2D/"
+#define FILEPATH "/Users/Tylerparsotan/Documents/Box\ Sync/RIKEN_HYDRO_DATA/2D/SMALL_DATASET/"
 #define FILEROOT "u"
 #define MC_PATH "PHOTON_TEST/"
 //#define MC_PATH "MC_16OI/Single_Photon_Cy_mc_total/"
@@ -463,7 +463,7 @@ int main(int argc, char **argv)
                         if (RIKEN_SWITCH==0)
                         {
                             //put proper number at the end of the flash file
-                            modifyFlashName(flash_file, flash_prefix, frame, dim_switch);
+                            modifyFlashName(flash_file, flash_prefix, scatt_frame, dim_switch);
                             phMinMax(phPtr, num_ph, &min_r, &max_r);
                             readAndDecimate(flash_file, inj_radius, fps, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                     &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
@@ -472,7 +472,7 @@ int main(int argc, char **argv)
                         {
                             phMinMax(phPtr, num_ph, &min_r, &max_r);
                             //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
-                            readHydro2D(FILEPATH, frame, inj_radius, fps, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                            readHydro2D(FILEPATH, scatt_frame, inj_radius, fps, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                         &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
                         
                         }
@@ -480,7 +480,7 @@ int main(int argc, char **argv)
                     else
                     {
                         phMinMax(phPtr, num_ph, &min_r, &max_r);
-                        read_hydro(FILEPATH, frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
+                        read_hydro(FILEPATH, scatt_frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
                                    &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fps, fPtr);
                     }
                     
