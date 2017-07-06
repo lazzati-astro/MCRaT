@@ -391,7 +391,7 @@ int main(int argc, char **argv)
                             //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
                             readHydro2D(FILEPATH, frame, inj_radius, fps, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                         &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
-                            //printf("%d\n\n", array_num);
+                            fprintf(fPtr, "%d\n\n", array_num);
                         }
                     }
                     else
@@ -577,6 +577,15 @@ int main(int argc, char **argv)
                     fflush(fPtr);
 
                     saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id);
+                    
+                     if (dim_switch==1)
+                    {
+                        if (RIKEN_SWITCH==1)
+                        {
+                            free(zPtr);free(phiPtr);free(velzPtr);
+                            zPtr=NULL; phiPtr=NULL; velzPtr=NULL;
+                        }
+                    }
                 
                     free(xPtr);free(yPtr);free(szxPtr);free(szyPtr);free(rPtr);free(thetaPtr);free(velxPtr);free(velyPtr);free(densPtr);free(presPtr);
                     free(gammaPtr);free(dens_labPtr);free(tempPtr);

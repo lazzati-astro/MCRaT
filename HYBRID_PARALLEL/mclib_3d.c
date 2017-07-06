@@ -72,6 +72,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     fread(&theta_max_index, sizeof(int)*1, 1,hydroPtr);
     fread(&r_min_index, sizeof(int)*1, 1,hydroPtr);
     fread(&r_max_index, sizeof(int)*1, 1,hydroPtr);
+    fclose(hydroPtr);
     
     //number of elements defined by this now
     elem=(r_max_index-r_min_index)*(theta_max_index-theta_min_index)*(phi_max_index-phi_min_index);
@@ -83,14 +84,21 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     theta_max_index--;
     
     //now with number of elements allocate data, remember last element is some garbage that only fortran uses
-    dens_unprc=malloc(sizeof(float)*elem);
-    vel_r_unprc=malloc(sizeof(float)*elem);
-    vel_theta_unprc=malloc(sizeof(float)*elem);
-    pres_unprc=malloc(sizeof(float)*elem);
-    vel_phi_unprc=malloc(sizeof(float)*elem);
+    dens_unprc=malloc(elem*sizeof(float));
+    vel_r_unprc=malloc(elem*sizeof(float));
+    vel_theta_unprc=malloc(elem*sizeof(float));
+    pres_unprc=malloc(elem*sizeof(float));
+    vel_phi_unprc=malloc(elem*sizeof(float));
     
-    
-    fread(dens_unprc, sizeof(float)*elem,elem, hydroPtr); //data
+    hydroPtr=fopen(full_file, "rb");
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran 
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr); //min and max indexes for the grid, dont need anymore so just save to dummy variable
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(dens_unprc, sizeof(float),elem, hydroPtr); //data
     fclose(hydroPtr);
     
     /*
@@ -122,7 +130,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     
-    fread(vel_r_unprc, sizeof(float)*elem,elem, hydroPtr);
+    fread(vel_r_unprc, sizeof(float),elem, hydroPtr);
     fclose(hydroPtr);
     
     /*
@@ -150,7 +158,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     
-    fread(vel_theta_unprc, sizeof(float)*elem,elem, hydroPtr);
+    fread(vel_theta_unprc, sizeof(float),elem, hydroPtr);
     fclose(hydroPtr);
     
     /*
@@ -178,7 +186,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     
-    fread(vel_phi_unprc, sizeof(float)*elem,elem, hydroPtr);
+    fread(vel_phi_unprc, sizeof(float),elem, hydroPtr);
     fclose(hydroPtr);
     
     /*
@@ -206,7 +214,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     
-    fread(pres_unprc, sizeof(float)*elem,elem, hydroPtr);
+    fread(pres_unprc, sizeof(float),elem, hydroPtr);
     fclose(hydroPtr);
     /*
     for (i=PHI_DIM-1;i<PHI_DIM;i++)

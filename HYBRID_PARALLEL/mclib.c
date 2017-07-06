@@ -130,7 +130,7 @@ void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int p
     {
         
         fPtr=fopen(checkptfile, "wb");
-        printf("%s\n", checkptfile);
+        //printf("%s\n", checkptfile);
     
         if (fPtr==NULL)
         {
@@ -139,29 +139,29 @@ void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int p
         
         restart='c';
         fwrite(&restart, sizeof(char), 1, fPtr);
-        printf("Rank: %d wrote restart %c\n", angle_rank, restart);
+        //printf("Rank: %d wrote restart %c\n", angle_rank, restart);
         fflush(stdout);
         fwrite(&frame, sizeof(int), 1, fPtr);
-        printf("Rank: %d wrote frame\n",  angle_rank);
+        //printf("Rank: %d wrote frame\n",  angle_rank);
         fflush(stdout);
         fwrite(&frame2, sizeof(int), 1, fPtr);
-        printf("Rank: %d wrote frame2\n",  angle_rank);
+        //printf("Rank: %d wrote frame2\n",  angle_rank);
         fflush(stdout);
         fwrite(&scatt_frame, sizeof(int), 1, fPtr);
-        printf("Rank: %d wrote scatt_frame\n",  angle_rank);
+        //printf("Rank: %d wrote scatt_frame\n",  angle_rank);
         fflush(stdout);
         fwrite(&time_now, sizeof(double), 1, fPtr);
-        printf("Rank: %d wrote time_now\n",  angle_rank);
+        //printf("Rank: %d wrote time_now\n",  angle_rank);
         fflush(stdout);
         fwrite(&ph_num, sizeof(int), 1, fPtr);
-        printf("Rank: %d wrote ph_num\n",  angle_rank);
+        //printf("Rank: %d wrote ph_num\n",  angle_rank);
         fflush(stdout);
         for(i=0;i<ph_num;i++)
         {
             fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
 		//fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
         }
-        printf("Rank: %d wrote photons\n",  angle_rank);
+        //printf("Rank: %d wrote photons\n",  angle_rank);
         fflush(stdout);
     }
     else if  (scatt_frame == frame)
@@ -170,7 +170,7 @@ void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int p
         system(command);
         
         fPtr=fopen(checkptfile, "wb");
-        printf("%s\n", checkptfile);
+        //printf("%s\n", checkptfile);
         fflush(stdout);
     
         if (fPtr==NULL)
@@ -180,36 +180,36 @@ void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int p
         
         restart='c';
         fwrite(&restart, sizeof(char), 1, fPtr);
-        printf("Rank: %d wrote restart %c\n", angle_rank, restart);
+        //printf("Rank: %d wrote restart %c\n", angle_rank, restart);
         fflush(stdout);
         fwrite(&frame, sizeof(int), 1, fPtr);
-        printf("Rank: %d wrote frame\n",  angle_rank);
+        //printf("Rank: %d wrote frame\n",  angle_rank);
         fflush(stdout);
         fwrite(&frame2, sizeof(int), 1, fPtr);
-        printf("Rank: %d wrote frame2\n",  angle_rank);
+        //printf("Rank: %d wrote frame2\n",  angle_rank);
         fflush(stdout);
         fwrite(&scatt_frame, sizeof(int), 1, fPtr);
-        printf("Rank: %d wrote scatt_frame\n",  angle_rank);
+        //printf("Rank: %d wrote scatt_frame\n",  angle_rank);
         fflush(stdout);
         fwrite(&time_now, sizeof(double), 1, fPtr);
-        printf("Rank: %d wrote time_now\n",  angle_rank);
+        //printf("Rank: %d wrote time_now\n",  angle_rank);
         fflush(stdout);
         fwrite(&ph_num, sizeof(int), 1, fPtr);
-        printf("Rank: %d wrote ph_num\n",  angle_rank);
+        //printf("Rank: %d wrote ph_num\n",  angle_rank);
         fflush(stdout);
         for(i=0;i<ph_num;i++)
         {
             //fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
             fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
         }
-        printf("Rank: %d wrote photons\n",  angle_rank);
+        //printf("Rank: %d wrote photons\n",  angle_rank);
         fflush(stdout);
         
     }
     else
     {
         fPtr=fopen(checkptfile, "wb");
-        printf("%s\n", checkptfile);
+        //printf("%s\n", checkptfile);
     
         if (fPtr==NULL)
         {
@@ -219,11 +219,11 @@ void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int p
         //just finished last iteration of scatt_frame
         restart='r';
         fwrite(&restart, sizeof(char), 1, fPtr);
-        printf("Rank: %d wrote restart %c\n", angle_rank, restart);
+        //printf("Rank: %d wrote restart %c\n", angle_rank, restart);
         fwrite(&frame, sizeof(int), 1, fPtr);
-         printf("Rank: %d wrote frame\n",  angle_rank);
+         //printf("Rank: %d wrote frame\n",  angle_rank);
         fwrite(&frame2, sizeof(int), 1, fPtr);
-         printf("Rank: %d wrote frame2\n",  angle_rank);
+         //printf("Rank: %d wrote frame2\n",  angle_rank);
     }
     fclose(fPtr);
     
@@ -1962,10 +1962,7 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     int all_index_buffer=0, r_min_index=0, r_max_index=0, theta_min_index=0, theta_max_index=0; //all_index_buffer contains phi_min, phi_max, theta_min, theta_max, r_min, r_max indexes to get from grid files
     int r_index=0, theta_index=0;
     float buffer=0;
-    float *dens_unprc=NULL;
-    float *vel_r_unprc=NULL;
-    float *vel_theta_unprc=NULL;
-    float *pres_unprc=NULL;
+    float *dens_unprc=NULL,*vel_r_unprc=NULL, *vel_theta_unprc=NULL,*pres_unprc=NULL;
     double ph_rmin=0, ph_rmax=0;
     double r_in=1e10;
     //double *r_edge=malloc(sizeof(double)*(R_DIM_2D+1));
@@ -1998,6 +1995,7 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     fread(&theta_max_index, sizeof(int)*1, 1,hydroPtr);
     fread(&r_min_index, sizeof(int)*1, 1,hydroPtr);
     fread(&r_max_index, sizeof(int)*1, 1,hydroPtr);
+    fclose(hydroPtr);
     
     elem=(r_max_index-r_min_index)*(theta_max_index-theta_min_index);
     fprintf(fPtr,"Elem %d\n", elem);
@@ -2011,12 +2009,28 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     theta_max_index--;
     
     //now with number of elements allocate data
-    dens_unprc=malloc(sizeof(float)*elem);
-    vel_r_unprc=malloc(sizeof(float)*elem);
-    vel_theta_unprc=malloc(sizeof(float)*elem);
-    pres_unprc=malloc(sizeof(float)*elem);
+    dens_unprc=malloc(elem*sizeof(float));
+    vel_r_unprc=malloc(elem*sizeof(float));
+    vel_theta_unprc=malloc(elem*sizeof(float));
+    pres_unprc=malloc(elem*sizeof(float));
     
-    fread(dens_unprc, sizeof(float)*elem,elem, hydroPtr); //read density data
+    
+    hydroPtr=fopen(full_file, "rb");
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr); //min and max indexes for the grid, dont need anymore so just save to dummy variable
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr); 
+    
+    /*
+    for (i=0;i<elem;i++)
+    {
+        fread((dens_unprc+i), sizeof(float),1, hydroPtr); //read  data
+    }
+    */
+    fread(dens_unprc, sizeof(float),elem, hydroPtr);
     fclose(hydroPtr);
     
     //V_r
@@ -2032,7 +2046,8 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);    
-    fread(vel_r_unprc, sizeof(float)*elem,elem, hydroPtr); //data
+    fread(vel_r_unprc, sizeof(float),elem, hydroPtr); //data
+    
     fclose(hydroPtr);
     
     //V_theta
@@ -2049,7 +2064,7 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     
-    fread(vel_theta_unprc, sizeof(float)*elem,elem, hydroPtr); //data
+    fread(vel_theta_unprc, sizeof(float), hydroPtr); //data
     fclose(hydroPtr);
     
     //u04 is phi component but is all 0
@@ -2068,13 +2083,14 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
 
-    fread(pres_unprc, sizeof(float)*elem,elem, hydroPtr); //data
+    fread(pres_unprc, sizeof(float),elem, hydroPtr); //data
+   
     fclose(hydroPtr);
     
      
-     for (j=(theta_max_index-theta_min_index)-1 ;j<theta_max_index-theta_min_index; j++)
+     for (j=0 ;j<theta_max_index-theta_min_index; j++)
      { 
-         for (k=(r_max_index-r_min_index)-5; k<r_max_index-r_min_index; k++)
+         for (k=0; k<r_max_index-r_min_index; k++)
          {
          
              fprintf(fPtr,"Pres %d: %e\n", ( j*(r_max_index-r_min_index)+k ), *(pres_unprc+( j*(r_max_index-r_min_index)+k )));
@@ -2097,14 +2113,14 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     {
         fscanf(hydroPtr, "%lf", (r_unprc+i));  //read value
         fgets(buf, 3,hydroPtr); //read comma
-        
+        /*
          if (i<5)
          {
              //printf("Here\n");
              fprintf(fPtr,"R %d: %e\n", i, *(r_unprc+i));
              fflush(fPtr);
          }
-        
+        */
         i++;
     }
     fclose(hydroPtr);
@@ -2113,19 +2129,21 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     //theta from y axis
     snprintf(hydrofile,sizeof(hydrofile),"%s%s",hydro_prefix,"grid-x2.data" );
     hydroPtr=fopen(hydrofile, "r");
+    fprintf(fPtr,">> Opening file %s\n", hydrofile);
+    fflush(fPtr);
     
     i=0;
     while (i<THETA_DIM_2D)
     {
         fscanf(hydroPtr, "%lf", (theta_unprc+i));  //read value
         fgets(buf, 3,hydroPtr); //read comma
-        
+        /*
         if (i<5)
         {
             fprintf(fPtr,"Theta %d: %e\n", i, *(theta_unprc+i));
             fflush(fPtr);
         }
-        
+        */
         i++;
     }
     fclose(hydroPtr);
@@ -2232,11 +2250,43 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
         }
     }
 
-    *number=elem;
-    fprintf(fPtr, "Number of post restricted Elems: %d %e\n", elem, r_inj);
-    fflush(fPtr);
+    (*number)=elem;
+    //fprintf(fPtr, "Number of post restricted Elems: %d %e\n", elem, r_inj);
+    //fflush(fPtr);
     
     
-    free(pres_unprc); free(vel_r_unprc);free(vel_theta_unprc);free(dens_unprc);free(r_unprc); free(theta_unprc); 
+    free(pres_unprc); //works when not being freed?
+    //fprintf(fPtr, "pres Done\n\n");
+    //fflush(fPtr);
+    
+    free(vel_r_unprc);
+    //fprintf(fPtr, "vel_r Done\n\n");
+    //fflush(fPtr);
+    
+    free(vel_theta_unprc);
+    //fprintf(fPtr, "vel_theta Done\n\n");
+    //fflush(fPtr);
+    
+    free(dens_unprc);
+    //fprintf(fPtr, "dens Done\n\n");
+    //fflush(fPtr);
+    
+    free(r_unprc); 
+    //fprintf(fPtr, "r Done\n\n");
+    //fflush(fPtr);
+    
+    free(theta_unprc); 
+    //fprintf(fPtr, "theta Done\n\n");
+    //fflush(fPtr);
+    
+    pres_unprc=NULL;
+    vel_r_unprc=NULL;
+    vel_theta_unprc=NULL;
+    dens_unprc=NULL;
+    r_unprc=NULL;
+    theta_unprc=NULL;
+    
+    //fprintf(fPtr, "ALL Done\n\n");
+    //fflush(fPtr);
 }
 
