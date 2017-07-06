@@ -2064,7 +2064,7 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     
-    fread(vel_theta_unprc, sizeof(float), hydroPtr); //data
+    fread(vel_theta_unprc, sizeof(float), elem, hydroPtr); //data
     fclose(hydroPtr);
     
     //u04 is phi component but is all 0
