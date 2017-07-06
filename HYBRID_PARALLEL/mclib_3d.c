@@ -574,7 +574,7 @@ void photonInjection3D( struct photon **ph, int *ph_num, double r_inj, double ph
     {
         //look at all boxes in width delta r=c/fps and within angles we are interested in NEED TO modify for RIKEN data- dont need r anymore, just theta and phi? (didnt work), just look at pojection on x-z plane
         theta_prime=acos(*(y+i)/(*(r+i))); //jet axis here is the y axis
-            if ( (theta_prime< theta_max) && (theta_prime > theta_min) ) //(*(r+i) > (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) &&
+            if ( (theta_prime< theta_max) && (theta_prime >= theta_min) ) //(*(r+i) > (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) &&
             {
                 //printf("%e\n", theta_prime );
                 block_cnt++;
@@ -602,7 +602,7 @@ void photonInjection3D( struct photon **ph, int *ph_num, double r_inj, double ph
             //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
                 //NEED TO modify for RIKEN data - modified
                 theta_prime=acos(*(y+i)/(*(r+i)));
-                if ( (theta_prime< theta_max) && (theta_prime > theta_min) )
+                if ( (theta_prime< theta_max) && (theta_prime >= theta_min) )
                 {
                     //NEED TO modify for RIKEN data - modified
                     ph_dens_calc=(num_dens_coeff*pow(*(temps+i),3.0)*pow(*(r+i),2)*sin(*(theta+i))* pow(*(szx+i),2.0)*(*(szy+i)) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1) ; //a*T^3/(weight) dV, dV=2*PI*x*dx^2,
@@ -649,7 +649,7 @@ void photonInjection3D( struct photon **ph, int *ph_num, double r_inj, double ph
     for (i=0;i<array_length;i++)
     {
         theta_prime=acos(*(y+i)/(*(r+i)));
-        if ( (theta_prime< theta_max) && (theta_prime > theta_min) )  //NEED TO modify for RIKEN data - modified
+        if ( (theta_prime< theta_max) && (theta_prime >= theta_min) )  //NEED TO modify for RIKEN data - modified
         {
 
             //*(temps+i)=0.76*(*(temps+i));

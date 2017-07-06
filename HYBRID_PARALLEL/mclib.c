@@ -434,9 +434,6 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     //function to read in data from FLASH file
     hid_t  file,dset, space;
     herr_t status;
-    herr_t ret;
-    hid_t acc_tpl1;
-    hid_t xfer_plist;
     hsize_t dims[2]={0,0}; //hold dimension size for coordinate data set (mostly interested in dims[0])
     double **vel_x_buffer=NULL, **vel_y_buffer=NULL, **dens_buffer=NULL, **pres_buffer=NULL, **coord_buffer=NULL, **block_sz_buffer=NULL;
     double *velx_unprc=NULL, *vely_unprc=NULL, *dens_unprc=NULL, *pres_unprc=NULL, *x_unprc=NULL, *y_unprc=NULL, *r_unprc=NULL, *szx_unprc=NULL, *szy_unprc=NULL;
@@ -812,7 +809,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     {
         
         //look at all boxes in width delta r=c/fps and within angles we are interested in NEED TO IMPLEMENT
-            if ((*(r+i) > (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) > theta_min) ) 
+            if ((*(r+i) >= (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) ) 
             {
                 block_cnt++;
                             }
@@ -837,7 +834,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
         {
             //printf("%d\n",i);
             //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
-                if ((*(r+i) > (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) > theta_min) ) 
+                if ((*(r+i) >= (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) ) 
                 {
                     if (riken_switch==0)
                     {
@@ -846,7 +843,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                     }
                     else
                     {
-                        ph_dens_calc=(num_dens_coeff*2.0*M_PI*(*(r+i))*pow(*(temps+i),3.0)*(*(szx+i))*(*(szy+i)) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1) ; //dV=2 *pi* r dr dtheta
+                        ph_dens_calc=(num_dens_coeff*2.0*M_PI*pow(*(r+i),2)*sin(*(theta+i))*pow(*(temps+i),3.0)*(*(szx+i))*(*(szy+i)) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1); //dV=2 *pi* r^2 Sin(theta) dr dtheta
                     }
                     
                      (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
@@ -891,7 +888,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     k=0;
     for (i=0;i<array_length;i++)
     {
-       if ((*(r+i) > (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) > theta_min) )
+       if ((*(r+i) >= (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) >= theta_min) )
         {
 
             //*(temps+i)=0.76*(*(temps+i));
@@ -1785,7 +1782,7 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
     
     for (i=0;i<ph_num;i++)
     {
-        sum+=((ph+i)->num_scatt);
+        sum+=((ph+i)->num_scatt)*((ph+i)->weight);
         
         if (((ph+i)->num_scatt) > temp_max )
         {
@@ -1873,7 +1870,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             increment=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
         }
         
-        for (j=0;j<num_files;j=j++)
+        for (j=0;j<num_files;j=j+1)
         {
             switch (j)
             {
@@ -1899,27 +1896,11 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     snprintf(cmd, sizeof(cmd), "%s%s %s%s", "cat ", filename_k, " >> ", file_no_thread_num);
                     system(cmd);
                 }
-                /*
-                else if (( access( filename_0, F_OK ) == -1 ) && ( access( filename_1, F_OK ) != -1 )  ) //filename_0 doesnt exist then cat filename_1 into its own file
-                {
-                    snprintf(cmd, sizeof(cmd), "%s%s%s%s", "cat ", filename_1, " > ", file_no_thread_num);
-                }
-                else if (( access( filename_0, F_OK ) != -1 ) && ( access( filename_1, F_OK ) == -1 )  ) //vice versa
-                {
-                    snprintf(cmd, sizeof(cmd), "%s%s%s%s", "cat ", filename_0, " > ", file_no_thread_num);
-                }
-                else
-                {
-                    printf("No mcdata files exist for frame %d\n", i);
-                }
-                */
                 
                 //remove file
                 snprintf(cmd, sizeof(cmd), "%s%s", "rm ", filename_k);
                 system(cmd);
                 
-                //snprintf(cmd, sizeof(cmd), "%s%s", "rm ", filename_1);
-                //system(cmd);
             }
             
             
@@ -1931,7 +1912,6 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
     {
         snprintf(file_no_thread_num,sizeof(file_no_thread_num),"%s%s", dir,"mcdata_PW.dat");
         snprintf(filename_k,sizeof(filename_k),"%s%s%d%s", dir,"mcdata_PW_",k,".dat");
-        //snprintf(filename_1,sizeof(filename_1),"%s%s", dir,"mcdata_PW_1.dat");
         
         if (( access( filename_k, F_OK ) != -1 )  )
         {
@@ -1939,17 +1919,12 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                 snprintf(cmd, sizeof(cmd), "%s%s %s%s", "cat ", filename_k, " >> ", file_no_thread_num);
                  system(cmd);
         }
-        
-        //snprintf(cmd, sizeof(cmd), "%s%s%s%s", "cat ", filename_1, " > ", file_no_thread_num);
-        
        
         
          //remove files
         snprintf(cmd, sizeof(cmd), "%s%s", "rm ", filename_k);
         system(cmd);
                 
-        //snprintf(cmd, sizeof(cmd), "%s%s", "rm ", filename_1);
-        //system(cmd);
 
     }
     
@@ -1999,7 +1974,7 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     FILE *hydroPtr=NULL;
     char hydrofile[200]="", file_num[200]="", full_file[200]="", file_end[200]=""  ;
     char buf[10]="";
-    int i=0, j=0, k=0, elem=0;
+    int i=0, j=0, k=0, elem=0, elem_factor=0;
     int all_index_buffer=0, r_min_index=0, r_max_index=0, theta_min_index=0, theta_max_index=0; //all_index_buffer contains phi_min, phi_max, theta_min, theta_max, r_min, r_max indexes to get from grid files
     int r_index=0, theta_index=0;
     float buffer=0;
@@ -2210,33 +2185,40 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     
     
     //limit number of array elements
+    //fill in radius array and find in how many places r > injection radius
+    elem_factor=0;
     elem=0;
-    for (j=0 ;j<(theta_max_index+1-theta_min_index); j++)
-     { 
-         for (k=0; k<(r_max_index+1-r_min_index); k++)
-         {
-            i=r_min_index+k; //look at indexes of r that are included in small hydro file
-            //if I have photons do selection differently than if injecting photons
-            if (ph_inj_switch==0)
+    while (elem==0)
+    {
+        elem_factor++;
+        elem=0;
+        for (j=0 ;j<(theta_max_index+1-theta_min_index); j++)
+        {   
+            for (k=0; k<(r_max_index+1-r_min_index); k++)
             {
-                //if calling this function when propagating photons, choose blocks based on where the photons are
-                if (((ph_rmin - 2*C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + 2*C_LIGHT/fps) ))
+                i=r_min_index+k; //look at indexes of r that are included in small hydro file
+                //if I have photons do selection differently than if injecting photons
+                if (ph_inj_switch==0)
                 {
-                    // *(pres_unprc+(i*R_DIM*THETA_DIM + j*R_DIM + k  )
-                    elem++;
+                    //if calling this function when propagating photons, choose blocks based on where the photons are
+                    if (((ph_rmin - elem_factor*C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + elem_factor*C_LIGHT/fps) ))
+                    {
+                        // *(pres_unprc+(i*R_DIM*THETA_DIM + j*R_DIM + k  )
+                        elem++;
+                    }
                 }
-            }
-            else
-            {
-                //if calling this function to inject photons choose blocks based on injection parameters, r_inj, which is sufficient
-                if (((r_inj - C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (r_inj + C_LIGHT/fps) ))
+                else
                 {
-                    // *(pres_unprc+(i*R_DIM*THETA_DIM + j*R_DIM + k  )
-                    elem++;
-                }
+                    //if calling this function to inject photons choose blocks based on injection parameters, r_inj, which is sufficient
+                    if (((r_inj - C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (r_inj + C_LIGHT/fps) ))
+                    {
+                        // *(pres_unprc+(i*R_DIM*THETA_DIM + j*R_DIM + k  )
+                        elem++;
+                    }
                 
-            }
+                }
             
+            }
         }
     }
     fprintf(fPtr, "Number of post restricted Elems: %d %e\n", elem, r_inj);
@@ -2268,7 +2250,7 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
             
             if (ph_inj_switch==0)
             {
-                if (((ph_rmin - 2*C_LIGHT/fps)<(*(r_unprc+r_index))) && (*(r_unprc+r_index)  < (ph_rmax + 2*C_LIGHT/fps) ))
+                if (((ph_rmin - elem_factor*C_LIGHT/fps)<(*(r_unprc+r_index))) && (*(r_unprc+r_index)  < (ph_rmax + elem_factor*C_LIGHT/fps) ))
                 {
                     (*pres)[elem]=*(pres_unprc+( j*(r_max_index+1-r_min_index)+k ));
                     (*velx)[elem]=(*(vel_r_unprc+( j*(r_max_index+1-r_min_index)+k )))*sin(*(theta_unprc+theta_index))+(*(vel_theta_unprc+( j*(r_max_index+1-r_min_index)+k )))*cos(*(theta_unprc+theta_index));
