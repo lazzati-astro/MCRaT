@@ -391,7 +391,7 @@ int main(int argc, char **argv)
                             //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
                             readHydro2D(FILEPATH, frame, inj_radius, fps, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                         &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
-                            fprintf(fPtr, "%d\n\n", array_num);
+                            //fprintf(fPtr, "%d\n\n", array_num);
                         }
                     }
                     else

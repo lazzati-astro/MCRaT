@@ -1997,16 +1997,16 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     fread(&r_max_index, sizeof(int)*1, 1,hydroPtr);
     fclose(hydroPtr);
     
-    elem=(r_max_index-r_min_index)*(theta_max_index-theta_min_index);
+    //fortran indexing starts @ 1, but C starts @ 0
+    r_min_index--;//=r_min_index-1;
+    r_max_index--;//=r_max_index-1;
+    theta_min_index--;//=theta_min_index-1;
+    theta_max_index--;//=theta_max_index-1;
+    
+    elem=(r_max_index+1-r_min_index)*(theta_max_index+1-theta_min_index); //max index is max number of elements minus 1, there add one to get total number of elements
     fprintf(fPtr,"Elem %d\n", elem);
     fprintf(fPtr,"Limits %d, %d, %d, %d, %d, %d\n", all_index_buffer, all_index_buffer, theta_min_index, theta_max_index, r_min_index, r_max_index); 
     fflush(fPtr);
-    
-    //fortran indexing starts @ 1, but C starts @ 0
-    r_min_index--;
-    r_max_index--;
-    theta_min_index--;
-    theta_max_index--;
     
     //now with number of elements allocate data
     dens_unprc=malloc(elem*sizeof(float));
@@ -2017,12 +2017,14 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     
     hydroPtr=fopen(full_file, "rb");
     fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
-    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr); //min and max indexes for the grid, dont need anymore so just save to dummy variable
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr); //min and max indexes for the grid
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr); //min and max indexes for the grid
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
-    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
-    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr); 
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
     
     /*
     for (i=0;i<elem;i++)
@@ -2040,12 +2042,15 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     
     hydroPtr=fopen(full_file, "rb");
     fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
-    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr); //min and max indexes for the grid, dont need anymore so just save to dummy variable
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr); //min and max indexes for the grid
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr); //min and max indexes for the grid
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
-    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
-    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);    
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    
     fread(vel_r_unprc, sizeof(float),elem, hydroPtr); //data
     
     fclose(hydroPtr);
@@ -2059,10 +2064,12 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr); //min and max indexes for the grid
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr); //min and max indexes for the grid
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
-    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
     
     fread(vel_theta_unprc, sizeof(float), elem, hydroPtr); //data
     fclose(hydroPtr);
@@ -2074,39 +2081,50 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     modifyFlashName(file_num, hydrofile, frame,0);
     snprintf(full_file, sizeof(full_file), "%s%s", file_num, file_end);
     
+    //fprintf(fPtr,">> Opening file %s\n", full_file);
+    //fflush(fPtr);
+    
     hydroPtr=fopen(full_file, "rb");
     fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr); //min and max indexes for the grid
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr); //min and max indexes for the grid
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
-    fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    
+    
+    //elem=(r_max_index-r_min_index)*(theta_max_index-theta_min_index);
+    //fprintf(fPtr,"Elem %d\n", elem);
+    //fprintf(fPtr,"Limits %d, %d, %d, %d, %d, %d\n", all_index_buffer, all_index_buffer, theta_min_index, theta_max_index, r_min_index, r_max_index); 
+    //fflush(fPtr);
 
     fread(pres_unprc, sizeof(float),elem, hydroPtr); //data
    
     fclose(hydroPtr);
     
-     
-     for (j=0 ;j<theta_max_index-theta_min_index; j++)
+    /*
+     //exit(0);  
+     for (j=0 ;j<(theta_max_index+1-theta_min_index); j++)
      { 
-         for (k=0; k<r_max_index-r_min_index; k++)
+         for (k=0; k<(r_max_index+1-r_min_index); k++)
          {
          
-             fprintf(fPtr,"Pres %d: %e\n", ( j*(r_max_index-r_min_index)+k ), *(pres_unprc+( j*(r_max_index-r_min_index)+k )));
+             fprintf(fPtr,"Pres %d: %e\n", ( j*(r_max_index+1-r_min_index)+k ), *(pres_unprc+( j*(r_max_index+1-r_min_index)+k )));
+             //fprintf(fPtr,"Pres %d: %e\n", ( j*(r_max_index)+k ), *(pres_unprc+( j*(r_max_index)+k )));
              fflush(fPtr);
          
          }
      }
-     
-     
-    
+         */
     
     //R
     snprintf(hydrofile,sizeof(hydrofile),"%s%s",hydro_prefix,"grid-x1.data" );
     hydroPtr=fopen(hydrofile, "r");
-    fprintf(fPtr,">> Opening file %s\n", hydrofile);
-    fflush(fPtr);
+    //fprintf(fPtr,">> Opening file %s\n", hydrofile);
+    //fflush(fPtr);
     
     i=0;
     while (i<R_DIM_2D)
@@ -2129,8 +2147,8 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     //theta from y axis
     snprintf(hydrofile,sizeof(hydrofile),"%s%s",hydro_prefix,"grid-x2.data" );
     hydroPtr=fopen(hydrofile, "r");
-    fprintf(fPtr,">> Opening file %s\n", hydrofile);
-    fflush(fPtr);
+    //fprintf(fPtr,">> Opening file %s\n", hydrofile);
+    //fflush(fPtr);
     
     i=0;
     while (i<THETA_DIM_2D)
@@ -2151,10 +2169,10 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     
     //limit number of array elements
     elem=0;
-    for (j=0; j<theta_max_index-theta_min_index; j++) 
-    {
-        for (k=0; k<r_max_index-r_min_index; k++)
-        {
+    for (j=0 ;j<(theta_max_index+1-theta_min_index); j++)
+     { 
+         for (k=0; k<(r_max_index+1-r_min_index); k++)
+         {
             i=r_min_index+k; //look at indexes of r that are included in small hydro file
             //if I have photons do selection differently than if injecting photons
             if (ph_inj_switch==0)
@@ -2199,10 +2217,10 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     (*temp)=malloc (elem * sizeof (double ));
 
     elem=0;
-    for (j=0; j<theta_max_index-theta_min_index; j++)  
-    {
-        for (k=0; k<r_max_index-r_min_index; k++)
-        {
+    for (j=0 ;j<(theta_max_index+1-theta_min_index); j++)
+     { 
+         for (k=0; k<(r_max_index+1-r_min_index); k++)
+         {
             r_index=r_min_index+k; //look at indexes of r that are included in small hydro file
             theta_index=theta_min_index+j;
             
@@ -2210,19 +2228,19 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
             {
                 if (((ph_rmin - 2*C_LIGHT/fps)<(*(r_unprc+r_index))) && (*(r_unprc+r_index)  < (ph_rmax + 2*C_LIGHT/fps) ))
                 {
-                    (*pres)[elem]=*(pres_unprc+( j*(r_max_index-r_min_index)+k ));
-                    (*velx)[elem]=(*(vel_r_unprc+( j*(r_max_index-r_min_index)+k )))*sin(*(theta_unprc+theta_index))+(*(vel_theta_unprc+( j*(r_max_index-r_min_index)+k )))*cos(*(theta_unprc+theta_index));
-                    (*vely)[elem]=(*(vel_r_unprc+( j*(r_max_index-r_min_index)+k )))*cos(*(theta_unprc+theta_index))-(*(vel_theta_unprc+( j*(r_max_index-r_min_index)+k )))*sin(*(theta_unprc+theta_index));
-                    (*dens)[elem]=*(dens_unprc+( j*(r_max_index-r_min_index)+k ));
+                    (*pres)[elem]=*(pres_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index ));
+                    (*velx)[elem]=(*(vel_r_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*sin(*(theta_unprc+theta_index))+(*(vel_theta_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*cos(*(theta_unprc+theta_index));
+                    (*vely)[elem]=(*(vel_r_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*cos(*(theta_unprc+theta_index))-(*(vel_theta_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*sin(*(theta_unprc+theta_index));
+                    (*dens)[elem]=*(dens_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index ));
                     (*x)[elem]=(*(r_unprc+r_index))*sin(*(theta_unprc+theta_index));
                     (*y)[elem]=(*(r_unprc+r_index))*cos(*(theta_unprc+theta_index));
                     (*r)[elem]=*(r_unprc+r_index);
                     (*szx)[elem]=(*(r_unprc+r_index))*((M_PI/2)/2000);
                     (*szy)[elem]=(M_PI/2)/2000;
                     (*theta)[elem]=*(theta_unprc+theta_index);//theta in radians in relation to jet axis
-                    (*gamma)[elem]=pow(pow(1.0-(pow(*(vel_r_unprc+( j*(r_max_index-r_min_index)+k )),2)+pow(*(vel_theta_unprc+( j*(r_max_index-r_min_index)+k )),2)),0.5),-1); //v is in units of c
-                    (*dens_lab)[elem]= (*(dens_unprc+( j*(r_max_index-r_min_index)+k ))) * pow(pow(1.0-(pow(*(vel_r_unprc+( j*(r_max_index-r_min_index)+k )),2)+pow(*(vel_theta_unprc+( j*(r_max_index-r_min_index)+k )),2)),0.5),-1);
-                    (*temp)[elem]=pow(3*(*(pres_unprc+( j*(r_max_index-r_min_index)+k )))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                    (*gamma)[elem]=pow(pow(1.0-(pow(*(vel_r_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )),2)+pow(*(vel_theta_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )),2)),0.5),-1); //v is in units of c
+                    (*dens_lab)[elem]= (*(dens_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index ))) * pow(pow(1.0-(pow(*(vel_r_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )),2)+pow(*(vel_theta_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )),2)),0.5),-1);
+                    (*temp)[elem]=pow(3*(*(pres_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
                     elem++;
                 }
             }
@@ -2230,19 +2248,19 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
             {
                 if (((r_inj - C_LIGHT/fps)<(*(r_unprc+r_index))) && (*(r_unprc+r_index)  < (r_inj + C_LIGHT/fps) ))
                 {
-                    (*pres)[elem]=*(pres_unprc+( j*(r_max_index-r_min_index)+k ));
-                    (*velx)[elem]=(*(vel_r_unprc+( j*(r_max_index-r_min_index)+k )))*sin(*(theta_unprc+theta_index))+(*(vel_theta_unprc+( j*(r_max_index-r_min_index)+k )))*cos(*(theta_unprc+theta_index));
-                    (*vely)[elem]=(*(vel_r_unprc+( j*(r_max_index-r_min_index)+k )))*cos(*(theta_unprc+theta_index))-(*(vel_theta_unprc+( j*(r_max_index-r_min_index)+k )))*sin(*(theta_unprc+theta_index));
-                    (*dens)[elem]=*(dens_unprc+( j*(r_max_index-r_min_index)+k ));
+                    (*pres)[elem]=*(pres_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index ));
+                    (*velx)[elem]=(*(vel_r_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*sin(*(theta_unprc+theta_index))+(*(vel_theta_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*cos(*(theta_unprc+theta_index));
+                    (*vely)[elem]=(*(vel_r_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*cos(*(theta_unprc+theta_index))-(*(vel_theta_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*sin(*(theta_unprc+theta_index));
+                    (*dens)[elem]=*(dens_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index ));
                     (*x)[elem]=(*(r_unprc+r_index))*sin(*(theta_unprc+theta_index));
                     (*y)[elem]=(*(r_unprc+r_index))*cos(*(theta_unprc+theta_index));
                     (*r)[elem]=*(r_unprc+r_index);
                     (*szx)[elem]=(*(r_unprc+r_index))*((M_PI/2)/2000);
                     (*szy)[elem]=(M_PI/2)/2000;
                     (*theta)[elem]=*(theta_unprc+theta_index);//theta in radians in relation to jet axis
-                    (*gamma)[elem]=pow(pow(1.0-(pow(*(vel_r_unprc+( j*(r_max_index-r_min_index)+k )),2)+pow(*(vel_theta_unprc+( j*(r_max_index-r_min_index)+k )),2)),0.5),-1); //v is in units of c
-                    (*dens_lab)[elem]= (*(dens_unprc+( j*(r_max_index-r_min_index)+k ))) * pow(pow(1.0-(pow(*(vel_r_unprc+( j*(r_max_index-r_min_index)+k )),2)+pow(*(vel_theta_unprc+( j*(r_max_index-r_min_index)+k )),2)),0.5),-1);
-                    (*temp)[elem]=pow(3*(*(pres_unprc+( j*(r_max_index-r_min_index)+k )))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                    (*gamma)[elem]=pow(pow(1.0-(pow(*(vel_r_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )),2)+pow(*(vel_theta_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )),2)),0.5),-1); //v is in units of c
+                    (*dens_lab)[elem]= (*(dens_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index ))) * pow(pow(1.0-(pow(*(vel_r_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )),2)+pow(*(vel_theta_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )),2)),0.5),-1);
+                    (*temp)[elem]=pow(3*(*(pres_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
                     elem++;
                     
                 }

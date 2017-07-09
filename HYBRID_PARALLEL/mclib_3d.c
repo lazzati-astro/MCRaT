@@ -74,14 +74,14 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     fread(&r_max_index, sizeof(int)*1, 1,hydroPtr);
     fclose(hydroPtr);
     
-    //number of elements defined by this now
-    elem=(r_max_index-r_min_index)*(theta_max_index-theta_min_index)*(phi_max_index-phi_min_index);
-    
     //fortran indexing starts @ 1, but C starts @ 0
     r_min_index--;
     r_max_index--;
     theta_min_index--;
     theta_max_index--;
+    
+    //number of elements defined by this now
+    elem=(r_max_index+1-r_min_index)*(theta_max_index+1-theta_min_index)*(phi_max_index+1-phi_min_index); //add 1 b/c max_index is 1 less than max number of elements in file
     
     //now with number of elements allocate data, remember last element is some garbage that only fortran uses
     dens_unprc=malloc(elem*sizeof(float));
@@ -98,6 +98,9 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    
     fread(dens_unprc, sizeof(float),elem, hydroPtr); //data
     fclose(hydroPtr);
     
@@ -129,6 +132,8 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
     
     fread(vel_r_unprc, sizeof(float),elem, hydroPtr);
     fclose(hydroPtr);
@@ -157,6 +162,8 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
     
     fread(vel_theta_unprc, sizeof(float),elem, hydroPtr);
     fclose(hydroPtr);
@@ -185,6 +192,8 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
     
     fread(vel_phi_unprc, sizeof(float),elem, hydroPtr);
     fclose(hydroPtr);
@@ -213,6 +222,8 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
     fread(&all_index_buffer, sizeof(int)*1, 1,hydroPtr);
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
+    fread(&buffer, sizeof(float), 1,hydroPtr); //random stuff about the file from fortran
     
     fread(pres_unprc, sizeof(float),elem, hydroPtr);
     fclose(hydroPtr);
@@ -351,11 +362,11 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     
     //limit number of array elements
     elem=0;
-    for (i=0;i<phi_max_index-phi_min_index;i++)
+    for (i=0;i<(phi_max_index+1-phi_min_index);i++)
     {
-        for (j=0;j<theta_max_index-theta_min_index;j++)
+        for (j=0;j<(theta_max_index+1-theta_min_index);j++)
         {
-            for (k=0;k<r_max_index-r_min_index;k++)
+            for (k=0;k<(r_max_index+1-r_min_index);k++)
             {
                 r_index=r_min_index+k;
                 //if I have photons do selection differently than if injecting photons
@@ -405,16 +416,16 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     
     //limit number of array elements
     elem=0;
-    for (i=0;i<phi_max_index-phi_min_index;i++)
+    for (i=0;i<(phi_max_index+1-phi_min_index);i++)
     {
-        for (j=0;j<theta_max_index-theta_min_index;j++)
+        for (j=0;j<(theta_max_index+1-theta_min_index);j++)
         {
-            for (k=0;k<r_max_index-r_min_index;k++)
+            for (k=0;k<(r_max_index+1-r_min_index);k++)
             {
                 r_index=r_min_index+k; //look at indexes of r that are included in small hydro file
                 theta_index=theta_min_index+j;
                 phi_index=phi_min_index+i;
-                hydro_index=(i*(r_max_index-r_min_index)*(theta_max_index-theta_min_index) + j*(r_max_index-r_min_index) + k  );
+                hydro_index=(phi_index*(r_max_index+1-r_min_index)*(theta_max_index+1-theta_min_index) + theta_index*(r_max_index+1-r_min_index) + r_index  );
                 
                 //if I have photons do selection differently than if injecting photons
                 if (ph_inj_switch==0)
