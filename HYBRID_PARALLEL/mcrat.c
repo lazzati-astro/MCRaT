@@ -539,6 +539,7 @@ int main(int argc, char **argv)
                                 fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
                                 fprintf(fPtr,"The local temp is: %e\n", (ph_tempPtr));
                                 fprintf(fPtr,"Average photon energy is: %e\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 and then do (*3e10/1.6e-9)
+                                fprintf(fPtr,"The last time step was: %lf.\nThe time now is: %lf\n", time_step,time_now);
                                 fflush(fPtr);
                             }
                             

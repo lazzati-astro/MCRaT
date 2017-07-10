@@ -425,7 +425,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
                 r_index=r_min_index+k; //look at indexes of r that are included in small hydro file
                 theta_index=theta_min_index+j;
                 phi_index=phi_min_index+i;
-                hydro_index=(phi_index*(r_max_index+1-r_min_index)*(theta_max_index+1-theta_min_index) + theta_index*(r_max_index+1-r_min_index) + r_index  );
+                hydro_index=(i*(r_max_index+1-r_min_index)*(theta_max_index+1-theta_min_index) + j*(r_max_index+1-r_min_index) + k  );
                 
                 //if I have photons do selection differently than if injecting photons
                 if (ph_inj_switch==0)

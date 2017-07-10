@@ -2105,8 +2105,8 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
    
     fclose(hydroPtr);
     
-    /*
-     //exit(0);  
+    
+      /*
      for (j=0 ;j<(theta_max_index+1-theta_min_index); j++)
      { 
          for (k=0; k<(r_max_index+1-r_min_index); k++)
@@ -2118,8 +2118,9 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
          
          }
      }
-         */
-    
+         exit(0); 
+    */
+     
     //R
     snprintf(hydrofile,sizeof(hydrofile),"%s%s",hydro_prefix,"grid-x1.data" );
     hydroPtr=fopen(hydrofile, "r");
@@ -2228,19 +2229,19 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
             {
                 if (((ph_rmin - 2*C_LIGHT/fps)<(*(r_unprc+r_index))) && (*(r_unprc+r_index)  < (ph_rmax + 2*C_LIGHT/fps) ))
                 {
-                    (*pres)[elem]=*(pres_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index ));
-                    (*velx)[elem]=(*(vel_r_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*sin(*(theta_unprc+theta_index))+(*(vel_theta_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*cos(*(theta_unprc+theta_index));
-                    (*vely)[elem]=(*(vel_r_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*cos(*(theta_unprc+theta_index))-(*(vel_theta_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*sin(*(theta_unprc+theta_index));
-                    (*dens)[elem]=*(dens_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index ));
+                    (*pres)[elem]=*(pres_unprc+( j*(r_max_index+1-r_min_index)+k ));
+                    (*velx)[elem]=(*(vel_r_unprc+( j*(r_max_index+1-r_min_index)+k )))*sin(*(theta_unprc+theta_index))+(*(vel_theta_unprc+( j*(r_max_index+1-r_min_index)+k )))*cos(*(theta_unprc+theta_index));
+                    (*vely)[elem]=(*(vel_r_unprc+( j*(r_max_index+1-r_min_index)+k )))*cos(*(theta_unprc+theta_index))-(*(vel_theta_unprc+( j*(r_max_index+1-r_min_index)+k )))*sin(*(theta_unprc+theta_index));
+                    (*dens)[elem]=*(dens_unprc+( j*(r_max_index+1-r_min_index)+k ));
                     (*x)[elem]=(*(r_unprc+r_index))*sin(*(theta_unprc+theta_index));
                     (*y)[elem]=(*(r_unprc+r_index))*cos(*(theta_unprc+theta_index));
                     (*r)[elem]=*(r_unprc+r_index);
                     (*szx)[elem]=(*(r_unprc+r_index))*((M_PI/2)/2000);
                     (*szy)[elem]=(M_PI/2)/2000;
                     (*theta)[elem]=*(theta_unprc+theta_index);//theta in radians in relation to jet axis
-                    (*gamma)[elem]=pow(pow(1.0-(pow(*(vel_r_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )),2)+pow(*(vel_theta_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )),2)),0.5),-1); //v is in units of c
-                    (*dens_lab)[elem]= (*(dens_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index ))) * pow(pow(1.0-(pow(*(vel_r_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )),2)+pow(*(vel_theta_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )),2)),0.5),-1);
-                    (*temp)[elem]=pow(3*(*(pres_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                    (*gamma)[elem]=pow(pow(1.0-(pow(*(vel_r_unprc+( j*(r_max_index+1-r_min_index)+k )),2)+pow(*(vel_theta_unprc+( j*(r_max_index+1-r_min_index)+k )),2)),0.5),-1); //v is in units of c
+                    (*dens_lab)[elem]= (*(dens_unprc+( j*(r_max_index+1-r_min_index)+k ))) * pow(pow(1.0-(pow(*(vel_r_unprc+( j*(r_max_index+1-r_min_index)+k )),2)+pow(*(vel_theta_unprc+( j*(r_max_index+1-r_min_index)+k )),2)),0.5),-1);
+                    (*temp)[elem]=pow(3*(*(pres_unprc+( j*(r_max_index+1-r_min_index)+k )))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
                     elem++;
                 }
             }
@@ -2248,19 +2249,19 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
             {
                 if (((r_inj - C_LIGHT/fps)<(*(r_unprc+r_index))) && (*(r_unprc+r_index)  < (r_inj + C_LIGHT/fps) ))
                 {
-                    (*pres)[elem]=*(pres_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index ));
-                    (*velx)[elem]=(*(vel_r_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*sin(*(theta_unprc+theta_index))+(*(vel_theta_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*cos(*(theta_unprc+theta_index));
-                    (*vely)[elem]=(*(vel_r_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*cos(*(theta_unprc+theta_index))-(*(vel_theta_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*sin(*(theta_unprc+theta_index));
-                    (*dens)[elem]=*(dens_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index ));
+                    (*pres)[elem]=*(pres_unprc+( j*(r_max_index+1-r_min_index)+k ));
+                    (*velx)[elem]=(*(vel_r_unprc+( j*(r_max_index+1-r_min_index)+k )))*sin(*(theta_unprc+theta_index))+(*(vel_theta_unprc+( j*(r_max_index+1-r_min_index)+k )))*cos(*(theta_unprc+theta_index));
+                    (*vely)[elem]=(*(vel_r_unprc+( j*(r_max_index+1-r_min_index)+k )))*cos(*(theta_unprc+theta_index))-(*(vel_theta_unprc+( j*(r_max_index+1-r_min_index)+k )))*sin(*(theta_unprc+theta_index));
+                    (*dens)[elem]=*(dens_unprc+( j*(r_max_index+1-r_min_index)+k ));
                     (*x)[elem]=(*(r_unprc+r_index))*sin(*(theta_unprc+theta_index));
                     (*y)[elem]=(*(r_unprc+r_index))*cos(*(theta_unprc+theta_index));
                     (*r)[elem]=*(r_unprc+r_index);
                     (*szx)[elem]=(*(r_unprc+r_index))*((M_PI/2)/2000);
                     (*szy)[elem]=(M_PI/2)/2000;
                     (*theta)[elem]=*(theta_unprc+theta_index);//theta in radians in relation to jet axis
-                    (*gamma)[elem]=pow(pow(1.0-(pow(*(vel_r_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )),2)+pow(*(vel_theta_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )),2)),0.5),-1); //v is in units of c
-                    (*dens_lab)[elem]= (*(dens_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index ))) * pow(pow(1.0-(pow(*(vel_r_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )),2)+pow(*(vel_theta_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )),2)),0.5),-1);
-                    (*temp)[elem]=pow(3*(*(pres_unprc+( theta_index*(r_max_index+1-r_min_index)+r_index )))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                    (*gamma)[elem]=pow(pow(1.0-(pow(*(vel_r_unprc+( j*(r_max_index+1-r_min_index)+k )),2)+pow(*(vel_theta_unprc+( j*(r_max_index+1-r_min_index)+k )),2)),0.5),-1); //v is in units of c
+                    (*dens_lab)[elem]= (*(dens_unprc+( j*(r_max_index+1-r_min_index)+k ))) * pow(pow(1.0-(pow(*(vel_r_unprc+( j*(r_max_index+1-r_min_index)+k )),2)+pow(*(vel_theta_unprc+( j*(r_max_index+1-r_min_index)+k )),2)),0.5),-1);
+                    (*temp)[elem]=pow(3*(*(pres_unprc+( j*(r_max_index+1-r_min_index)+k )))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
                     elem++;
                     
                 }
