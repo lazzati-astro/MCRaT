@@ -29,7 +29,8 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     char buf[10]="";
     int i=0, j=0, k=0, elem=0;
     int phi_min_index=0, phi_max_index=0, r_min_index=0, r_max_index=0, theta_min_index=0, theta_max_index=0; //all_index_buffer contains phi_min, phi_max, theta_min, theta_max, r_min, r_max indexes to get from grid files
-    int r_index=0, theta_index=0, phi_index=0, hydro_index=0, all_index_buffer=0;
+    int r_index=0, theta_index=0, phi_index=0, hydro_index=0, all_index_buffer=0, adjusted_remapping_index=0, dr_index=0;
+    int *remapping_indexes=NULL;
     float buffer=0;
     float *dens_unprc=NULL;
     float *vel_r_unprc=NULL;
@@ -38,8 +39,8 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     float *pres_unprc=NULL;
     double ph_rmin=0, ph_rmax=0;
     double r_in=1e10, r_ref=2e13;
-    double *r_edge=malloc(sizeof(double)*(R_DIM+1));
-    double *dr=malloc(sizeof(double)*(R_DIM));
+    double *r_edge=NULL;
+    double *dr=NULL;
     double *r_unprc=malloc(sizeof(double)*R_DIM);
     double *theta_unprc=malloc(sizeof(double)*THETA_DIM);
     double *phi_unprc=malloc(sizeof(double)*PHI_DIM);
@@ -79,9 +80,15 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     r_max_index--;
     theta_min_index--;
     theta_max_index--;
+    phi_min_index--;
+    phi_max_index--;
     
     //number of elements defined by this now
     elem=(r_max_index+1-r_min_index)*(theta_max_index+1-theta_min_index)*(phi_max_index+1-phi_min_index); //add 1 b/c max_index is 1 less than max number of elements in file
+    
+    fprintf(fPtr,"Elem %d\n", elem);
+    fprintf(fPtr,"Limits %d, %d, %d, %d, %d, %d\n", phi_min_index, phi_max_index, theta_min_index, theta_max_index, r_min_index, r_max_index); 
+    fflush(fPtr);
     
     //now with number of elements allocate data, remember last element is some garbage that only fortran uses
     dens_unprc=malloc(elem*sizeof(float));
@@ -258,22 +265,56 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     */
     
     //R
+    //remapping_indexes=getIndexesForRadialRemapping(hydro_prefix); //can run this once in debug mode to find out delta index for each remapping and number of total r elements 
+    //for given set of remappings on July 12th 2017, grid00-x1.data[420]=grid01-x1.data[0], grid01-x1.data[420]=grid02-x1.data[0], etc. total number of r is 3780
+    
+    
     if (frame<=1300)
     {
         snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"grid0", 0,"-x1.data" );
+        //adjusted_remapping_index=(*(remapping_indexes+0))+r_min_index ; //this if I am not hardcoding the dr index values
+        adjusted_remapping_index=(0*420)+r_min_index;
     }
     else if (frame<=2000)
     {
         snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"grid0", 1,"-x1.data" );
+        //adjusted_remapping_index=(*(remapping_indexes+1))+r_min_index;
+        adjusted_remapping_index=(1*420)+r_min_index;
     }
-    else
+    else if (frame<=10000)
     {
         snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"grid0", 2,"-x1.data" );
+        //adjusted_remapping_index=(*(remapping_indexes+2))+r_min_index;
+        adjusted_remapping_index=(2*420)+r_min_index;
     }
-    /*
+    else if (frame<=20000)
+    {
+        snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"grid0", 3,"-x1.data" );
+        //adjusted_remapping_index=(*(remapping_indexes+3))+r_min_index;
+        adjusted_remapping_index=(3*420)+r_min_index;
+    }
+    else if (frame<=35000)
+    {
+        snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"grid0", 4,"-x1.data" );
+        //adjusted_remapping_index=(*(remapping_indexes+4))+r_min_index;
+        adjusted_remapping_index=(4*420)+r_min_index;
+    }
+    else if (frame<=50000)
+    {
+        snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"grid0", 5,"-x1.data" );
+        //adjusted_remapping_index=(*(remapping_indexes+5))+r_min_index;
+        adjusted_remapping_index=(5*420)+r_min_index;
+    }
+    else if (frame<=60000)
+    {
+        snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"grid0", 6,"-x1.data" );
+        //adjusted_remapping_index=(*(remapping_indexes+6))+r_min_index;
+        adjusted_remapping_index=(6*420)+r_min_index;
+    }
+    
     fprintf(fPtr,"Reading Radius: %s\n", hydrofile);
     fflush(fPtr);
-    */
+    
     hydroPtr=fopen(hydrofile, "r");
     
     i=0;
@@ -293,29 +334,32 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     
     fclose(hydroPtr);
     
+    r_edge=malloc(sizeof(double)*(3780+1));
+    dr=malloc(sizeof(double)*(3780));
+    
     //calculate radial grid edges
     *(r_edge+0)=r_in;
     i=0;
-    for (i=1;i<R_DIM;i++)
+    for (i=1;i<3780;i++)
     {
         *(r_edge+i)=(*(r_edge+i-1))+((*(r_edge+i-1))*(M_PI/560)/(1+((*(r_edge+i-1))/r_ref))); //r_i = r_(i-1) + Dq r_(i-1) [1 + r_(i-1)/r0]-1
         *(dr+i-1)=(*(r_edge+i))-(*(r_edge+i-1));
-        /*
+        
         if (i<5)
         {
             fprintf(fPtr,"R Edge: %d: %e Dr: %e\n", i, *(r_edge+i), *(dr+i-1));
             fflush(fPtr);
         }
-        */
+        
     }
     free(r_edge);
     
     //Theta
     snprintf(hydrofile,sizeof(hydrofile),"%s%s",hydro_prefix,"grid-x2.data" );
-    /*
+    
     fprintf(fPtr,"Reading Theta: %s\n", hydrofile);
     fflush(fPtr);
-    */
+    
     hydroPtr=fopen(hydrofile, "r");
     
     i=0;
@@ -394,7 +438,8 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
         }
     }
     
-    //fprintf(fPtr,"Number of post restricted Elems: %d %e\n", elem, r_inj);
+    fprintf(fPtr,"Number of post restricted Elems: %d %e\n", elem, r_inj);
+    fflush(fPtr);
     
     //allocate space for new set of data
     (*pres)=malloc (elem * sizeof (double ));
@@ -425,6 +470,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
                 r_index=r_min_index+k; //look at indexes of r that are included in small hydro file
                 theta_index=theta_min_index+j;
                 phi_index=phi_min_index+i;
+                dr_index=adjusted_remapping_index+k;
                 hydro_index=(i*(r_max_index+1-r_min_index)*(theta_max_index+1-theta_min_index) + j*(r_max_index+1-r_min_index) + k  );
                 
                 //if I have photons do selection differently than if injecting photons
@@ -446,7 +492,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
                         (*y)[elem] = (*(r_unprc+r_index))*sin(*(theta_unprc+theta_index))*sin(*(phi_unprc+phi_index));
                         (*z)[elem] = (*(r_unprc+r_index))*cos(*(theta_unprc+theta_index));
                         (*szx)[elem] = M_PI/560; 
-                        (*szy)[elem] =  *(dr+r_index);
+                        (*szy)[elem] =  *(dr+dr_index);
                         (*velx)[elem]=((*(vel_r_unprc+hydro_index))*sin(*(theta_unprc+theta_index))*cos(*(phi_unprc+phi_index))) + ((*(vel_theta_unprc+hydro_index))*cos(*(theta_unprc+theta_index))*cos(*(phi_unprc+phi_index))) - ((*(vel_phi_unprc+hydro_index))*sin(*(phi_unprc+phi_index)));
                         (*vely)[elem]=((*(vel_r_unprc+hydro_index))*sin(*(theta_unprc+theta_index))*sin(*(phi_unprc+phi_index))) + ((*(vel_theta_unprc+hydro_index))*cos(*(theta_unprc+theta_index))*sin(*(phi_unprc+phi_index))) + ((*(vel_phi_unprc+hydro_index))*cos(*(phi_unprc+phi_index)));
                         (*velz)[elem]=((*(vel_r_unprc+hydro_index))*cos(*(theta_unprc+theta_index))) - ((*(vel_theta_unprc+hydro_index))*sin(*(theta_unprc+theta_index)));
@@ -472,7 +518,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
                         (*y)[elem] = (*(r_unprc+r_index))*sin(*(theta_unprc+theta_index))*sin(*(phi_unprc+phi_index));
                         (*z)[elem] = (*(r_unprc+r_index))*cos(*(theta_unprc+theta_index));
                         (*szx)[elem] = M_PI/560; 
-                        (*szy)[elem] =  *(dr+r_index);
+                        (*szy)[elem] =  *(dr+dr_index);
                         (*velx)[elem]=((*(vel_r_unprc+hydro_index))*sin(*(theta_unprc+theta_index))*cos(*(phi_unprc+phi_index))) + ((*(vel_theta_unprc+hydro_index))*cos(*(theta_unprc+theta_index))*cos(*(phi_unprc+phi_index))) - ((*(vel_phi_unprc+hydro_index))*sin(*(phi_unprc+phi_index)));
                         (*vely)[elem]=((*(vel_r_unprc+hydro_index))*sin(*(theta_unprc+theta_index))*sin(*(phi_unprc+phi_index))) + ((*(vel_theta_unprc+hydro_index))*cos(*(theta_unprc+theta_index))*sin(*(phi_unprc+phi_index))) + ((*(vel_phi_unprc+hydro_index))*cos(*(phi_unprc+phi_index)));
                         (*velz)[elem]=((*(vel_r_unprc+hydro_index))*cos(*(theta_unprc+theta_index))) - ((*(vel_theta_unprc+hydro_index))*sin(*(theta_unprc+theta_index)));
@@ -488,7 +534,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     
     *number=elem;
     
-    free(pres_unprc); free(dens_unprc); free(r_unprc); free(theta_unprc); free(phi_unprc);free(dr);free(vel_r_unprc); free(vel_theta_unprc); free(vel_phi_unprc);
+    free(pres_unprc); free(dens_unprc); free(r_unprc); free(theta_unprc); free(phi_unprc);free(dr);free(vel_r_unprc); free(vel_theta_unprc); free(vel_phi_unprc); 
     
 }
 
@@ -696,3 +742,131 @@ void photonInjection3D( struct photon **ph, int *ph_num, double r_inj, double ph
     *min=temp_r_min;
       
  }
+
+int *getIndexesForRadialRemapping(char hydro_prefix[200])
+{
+    FILE *hydroPtr=NULL;
+    char hydrofile[200]="";
+    char buf[10]="";
+    int i=0, j=0;
+    int *remapping_start_index=malloc(sizeof(int)*7); //what index out of total range of r does each remapping begin at
+    double r_in=1e10, r_ref=2e13;
+    double *r_unprc_0=malloc(sizeof(double)*R_DIM), *r_unprc_1=malloc(sizeof(double)*R_DIM), *r_unprc_2=malloc(sizeof(double)*R_DIM), *r_unprc_3=malloc(sizeof(double)*R_DIM);
+    double *r_unprc_4=malloc(sizeof(double)*R_DIM), *r_unprc_5=malloc(sizeof(double)*R_DIM), *r_unprc_6=malloc(sizeof(double)*R_DIM);
+    double *r_edge=NULL, *dr=NULL, *rPtr=NULL;
+    
+    for (i=0;i<7;i++)
+    {
+        snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"grid0", i,"-x1.data" );
+    
+        hydroPtr=fopen(hydrofile, "r");
+    
+        j=0;
+        while (j<R_DIM)
+        {
+            switch (i)
+            {
+                case 0: fscanf(hydroPtr, "%lf", (r_unprc_0+j));  //read value
+                case 1: fscanf(hydroPtr, "%lf", (r_unprc_1+j));
+                case 2: fscanf(hydroPtr, "%lf", (r_unprc_2+j));
+                case 3: fscanf(hydroPtr, "%lf", (r_unprc_3+j));
+                case 4: fscanf(hydroPtr, "%lf", (r_unprc_4+j));
+                case 5: fscanf(hydroPtr, "%lf", (r_unprc_5+j));
+                case 6: fscanf(hydroPtr, "%lf", (r_unprc_6+j));
+            
+            }
+            fgets(buf, 3,hydroPtr); //read comma
+            /*
+            if (i<5)
+            {
+                fprintf(fPtr,"R %d: %e\n", i, *(r_unprc+i));
+                fflush(fPtr);
+            }
+            */
+            j++;
+        }
+    
+        fclose(hydroPtr);
+    }
+    
+    //calculate the indexes in which each remapping takes over
+    j=0; //keeps track of indexes of all of the possible r values
+    i=0; //keeps track of index within a certain remapping, when get to R_DIM know that were @ end of last remapping b/c remappings overlap with one another
+    rPtr=r_unprc_0; //start off looking at 0th remapping
+    *(remapping_start_index+1)=j; //0th remapping starts at index 0
+    while (i<R_DIM)
+    {
+        if (*(rPtr+i)== *(r_unprc_1+0))
+        {
+            //if the element of the 0th remapping is equal to the 1st element of the 1st remapping, start to look at the 1st remapping
+            rPtr=r_unprc_1;
+            i=0;
+            *(remapping_start_index+1)=j;
+        }
+        else if (*(rPtr+i)== *(r_unprc_2+0))
+        {
+            rPtr=r_unprc_2;
+            i=0;
+            *(remapping_start_index+2)=j;
+        }
+        else if (*(rPtr+i)== *(r_unprc_3+0))
+        {
+            rPtr=r_unprc_3;
+            i=0;
+            *(remapping_start_index+3)=j;
+        }
+        else if (*(rPtr+i)== *(r_unprc_4+0))
+        {
+            rPtr=r_unprc_4;
+            i=0;
+            *(remapping_start_index+4)=j;
+        }
+        else if (*(rPtr+i)== *(r_unprc_5+0))
+        {
+            rPtr=r_unprc_5;
+            i=0;
+            *(remapping_start_index+5)=j;
+        }
+        else if (*(rPtr+i)== *(r_unprc_6+0))
+        {
+            rPtr=r_unprc_6;
+            i=0;
+            *(remapping_start_index+6)=j;
+        }
+        
+        j++;
+        i++;
+    }
+    
+    printf("Indexes %d, %d, %d, %d, %d, %d, %d\n Elems: %d\n", *(remapping_start_index+0), *(remapping_start_index+1), *(remapping_start_index+2), *(remapping_start_index+3), *(remapping_start_index+4), *(remapping_start_index+5), *(remapping_start_index+6), j);
+    exit(0);
+    r_edge=malloc(sizeof(double)*(j+1));
+    dr=malloc(sizeof(double)*j);
+    
+    //calculate radial grid edges
+    *(r_edge+0)=r_in;
+    i=0;
+    for (i=1;i<j;i++)
+    {
+        *(r_edge+i)=(*(r_edge+i-1))+((*(r_edge+i-1))*(M_PI/560)/(1+((*(r_edge+i-1))/r_ref))); //r_i = r_(i-1) + Dq r_(i-1) [1 + r_(i-1)/r0]-1
+        *(dr+i-1)=(*(r_edge+i))-(*(r_edge+i-1));
+        /*
+        if (i<5)
+        {
+            fprintf(fPtr,"R Edge: %d: %e Dr: %e\n", i, *(r_edge+i), *(dr+i-1));
+            fflush(fPtr);
+        }
+        */
+    }
+    free(r_edge);
+    free(r_unprc_0);
+    free(r_unprc_1);
+    free(r_unprc_2);
+    free(r_unprc_3);
+    free(r_unprc_4);
+    free(r_unprc_5);
+    free(r_unprc_6);
+    
+    return remapping_start_index;
+    
+}

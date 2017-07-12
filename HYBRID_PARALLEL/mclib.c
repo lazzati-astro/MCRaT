@@ -1732,15 +1732,16 @@ void singleComptonScatter(double *el_comov, double *ph_comov, gsl_rng * rand, FI
 
 double averagePhotonEnergy(struct photon *ph, int num_ph)
 {
-    //to calculate average photon energy
+    //to calculate weighted photon energy
     int i=0;
-    double sum=0;
+    double e_sum=0, w_sum=0;
     for (i=0;i<num_ph;i++)
     {
-        sum+=((ph+i)->p0);
+        e_sum+=(((ph+i)->p0)*((ph+i)->weight));
+        w_sum+=((ph+i)->weight);
     }
     
-    return (sum*C_LIGHT)/num_ph;
+    return (e_sum*C_LIGHT)/w_sum;
 }
 
 void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg )

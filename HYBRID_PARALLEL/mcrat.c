@@ -60,7 +60,7 @@
 #define MC_PATH "MPI_CMC_16OI_SPHERICAL/"
  */
 #define THISRUN "Science"
-#define FILEPATH "/Users/Tylerparsotan/Documents/Box\ Sync/RIKEN_HYDRO_DATA/2D/SMALL_DATASET/"
+#define FILEPATH "/Users/Tylerparsotan/Documents/Box\ Sync/RIKEN_HYDRO_DATA/3D/SMALL_DATASET/"
 #define FILEROOT "u"
 #define MC_PATH "PHOTON_TEST/"
 //#define MC_PATH "MC_16OI/Single_Photon_Cy_mc_total/"
@@ -83,6 +83,7 @@ int main(int argc, char **argv)
     double inj_radius_small, inj_radius_large,  ph_weight_suggest, ph_weight_small, ph_weight_large ;//radius at chich photons are injected into sim
     int frm0,last_frm, frm2_small, frm2_large, j=0, min_photons, max_photons, frm0_small, frm0_large ;//frame starting from, last frame of sim, frame of last injection
     int dim_switch=0;
+    int increment_inj=1, increment_scatt=1; //increments for injection loop and scattering loop, outer and inner loops respectively, the increment can change for RIKEN 3D hydro files
     
     double inj_radius;
     int frm2;
@@ -357,8 +358,13 @@ int main(int argc, char **argv)
             //for a checkpoint implementation, start from the last saved "frame" value and go to the saved "frm2" value
             
             //#pragma omp for 
-            for (frame=framestart;frame<=frm2;frame++)
+            for (frame=framestart;frame<=frm2;frame=frame+increment_inj)
             {
+                if ((RIKEN_SWITCH==1) && (dim_switch==1) && (frame==3000))
+                {
+                    increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                }
+                
                  if (restrt=='r')
                  {
                     time_now=frame/fps; //for a checkpoint implmentation, load the saved "time_now" value when reading the ckeckpoint file otherwise calculate it normally
@@ -446,8 +452,13 @@ int main(int argc, char **argv)
                     scatt_framestart=frame; //have to make sure that once the inner loop is done and the outer loop is incrememnted by one the inner loop starts at that new value and not the one read by readCheckpoint()
                 }
                 
-                for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame++)
+                for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame=scatt_frame+increment_scatt)
                 {
+                    if ((RIKEN_SWITCH==1) && (dim_switch==1) && (scatt_frame==3000))
+                    {
+                        increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                    }
+                    
                     fprintf(fPtr,">>\n");
                     fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Working on photons injected at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,frame, frm2);
                     fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: %s - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, THISRUN, scatt_frame);
@@ -539,7 +550,7 @@ int main(int argc, char **argv)
                                 fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
                                 fprintf(fPtr,"The local temp is: %e\n", (ph_tempPtr));
                                 fprintf(fPtr,"Average photon energy is: %e\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 and then do (*3e10/1.6e-9)
-                                fprintf(fPtr,"The last time step was: %lf.\nThe time now is: %lf\n", time_step,time_now);
+                                fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                                 fflush(fPtr);
                             }
                             
@@ -561,7 +572,7 @@ int main(int argc, char **argv)
                     phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt);
                         
                     fprintf(fPtr,"The number of scatterings in this frame is: %d\n", frame_scatt_cnt);
-                    fprintf(fPtr,"The last time step was: %lf.\nThe time now is: %lf\n", time_step,time_now);
+                    fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                     fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scattering for a photon is: %d\n", max_scatt, min_scatt);
                     fprintf(fPtr,"The average number of scatterings thus far is: %lf\n", avg_scatt);
                     fflush(fPtr);

@@ -7,3 +7,5 @@ void photonInjection3D( struct photon **ph, int *ph_num, double r_inj, double ph
 double *x, double *y, double *z, double *szx, double *szy, double *r, double *theta, double *phi, double *temps, double *vx, double *vy, double *vz, gsl_rng * rand, FILE *fPtr);
 
 void phMinMax(struct photon *ph, int ph_num, double *min, double *max);
+
+int *getIndexesForRadialRemapping(char hydro_prefix[200]);
