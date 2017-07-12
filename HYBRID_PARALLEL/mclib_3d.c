@@ -85,11 +85,11 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     
     //number of elements defined by this now
     elem=(r_max_index+1-r_min_index)*(theta_max_index+1-theta_min_index)*(phi_max_index+1-phi_min_index); //add 1 b/c max_index is 1 less than max number of elements in file
-    
+    /*
     fprintf(fPtr,"Elem %d\n", elem);
     fprintf(fPtr,"Limits %d, %d, %d, %d, %d, %d\n", phi_min_index, phi_max_index, theta_min_index, theta_max_index, r_min_index, r_max_index); 
     fflush(fPtr);
-    
+    */
     //now with number of elements allocate data, remember last element is some garbage that only fortran uses
     dens_unprc=malloc(elem*sizeof(float));
     vel_r_unprc=malloc(elem*sizeof(float));
@@ -344,13 +344,13 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     {
         *(r_edge+i)=(*(r_edge+i-1))+((*(r_edge+i-1))*(M_PI/560)/(1+((*(r_edge+i-1))/r_ref))); //r_i = r_(i-1) + Dq r_(i-1) [1 + r_(i-1)/r0]-1
         *(dr+i-1)=(*(r_edge+i))-(*(r_edge+i-1));
-        
+        /*
         if (i<5)
         {
             fprintf(fPtr,"R Edge: %d: %e Dr: %e\n", i, *(r_edge+i), *(dr+i-1));
             fflush(fPtr);
         }
-        
+        */
     }
     free(r_edge);
     
