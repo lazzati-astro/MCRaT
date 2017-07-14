@@ -149,6 +149,7 @@ int main(int argc, char **argv)
     //printf(">> mc.py:  Reading mc.par\n");
     
     readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &ph_weight_small, &ph_weight_large, &min_photons, &max_photons, &spect, &restrt, &num_thread,&dim_switch); //thetas that comes out is in degrees
+    printf("%c\n", restrt);
     
     //divide up angles and frame injections among threads DONT WANT NUMBER OF THREADS TO BE ODD
     //assign ranges to array that hold them
@@ -643,7 +644,9 @@ int main(int argc, char **argv)
         //merge files from each worker thread within a directory
         if (angle_id==0)
         {
-            dirFileMerge(mc_dir, frm0, last_frm, angle_procs); //only the master proc does this for each angle
+            printf(">> Proc %d with angles %0.1lf-%0.1lf: Merging Files\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+            fflush(fPtr);
+            dirFileMerge(mc_dir, frm0, last_frm, angle_procs, dim_switch, RIKEN_SWITCH); //only the master proc does this for each angle
         }
         
     } //end omp parallel section
