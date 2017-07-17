@@ -423,7 +423,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     hsize_t dims[2]={0,0}; //hold dimension size for coordinate data set (mostly interested in dims[0])
     double **vel_x_buffer=NULL, **vel_y_buffer=NULL, **dens_buffer=NULL, **pres_buffer=NULL, **coord_buffer=NULL, **block_sz_buffer=NULL;
     double *velx_unprc=NULL, *vely_unprc=NULL, *dens_unprc=NULL, *pres_unprc=NULL, *x_unprc=NULL, *y_unprc=NULL, *r_unprc=NULL, *szx_unprc=NULL, *szy_unprc=NULL;
-    int  i,j,count,x1_count, y1_count, r_count, **node_buffer=NULL, num_nodes=0;
+    int  i,j,count,x1_count, y1_count, r_count, **node_buffer=NULL, num_nodes=0, elem_factor=0;
     double x1[8]={-7.0/16,-5.0/16,-3.0/16,-1.0/16,1.0/16,3.0/16,5.0/16,7.0/16};
     double ph_rmin=0, ph_rmax=0;
     
@@ -661,25 +661,31 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     free (pres_buffer);free(dens_buffer);free(vel_x_buffer);free(vel_y_buffer);free(coord_buffer);free(block_sz_buffer);free(node_buffer);
     
     //fill in radius array and find in how many places r > injection radius
+    elem_factor=0;
     r_count=0;
-    for (i=0;i<count;i++)
+    while (r_count==0)
     {
-        *(r_unprc+i)=pow((pow(*(x_unprc+i),2)+pow(*(y_unprc+i),2)),0.5);
-        if (ph_inj_switch==0)
+        elem_factor++;
+        for (i=0;i<count;i++)
         {
-            if (((ph_rmin - 2*C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + 2*C_LIGHT/fps) ))
+            *(r_unprc+i)=pow((pow(*(x_unprc+i),2)+pow(*(y_unprc+i),2)),0.5);
+            if (ph_inj_switch==0)
             {
-                r_count++;
-            }
+                if (((ph_rmin - elem_factor*C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + elem_factor*C_LIGHT/fps) ))
+                {
+                    r_count++;
+                }
             
-        }
-        else
-        {
-            if (*(r_unprc+i)> (0.95*r_inj) )
+            }
+            else
             {
-                r_count++;
+                if (*(r_unprc+i)> (0.95*r_inj) )
+                {
+                    r_count++;
+                }
             }
         }
+    
     }
         /*
     //find in how many places r > injection radius
@@ -713,7 +719,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     {
         if (ph_inj_switch==0)
         {
-            if (((ph_rmin - 2*C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + 2*C_LIGHT/fps) ))
+            if (((ph_rmin - elem_factor*C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + elem_factor*C_LIGHT/fps) ))
             {
                 (*pres)[j]=*(pres_unprc+i);
                 (*velx)[j]=*(velx_unprc+i);

@@ -27,7 +27,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     FILE *hydroPtr=NULL;
     char hydrofile[200]="", file_num[200]="", full_file[200]="",file_end[200]=""  ;
     char buf[10]="";
-    int i=0, j=0, k=0, elem=0;
+    int i=0, j=0, k=0, elem=0, elem_factor=0;
     int phi_min_index=0, phi_max_index=0, r_min_index=0, r_max_index=0, theta_min_index=0, theta_max_index=0; //all_index_buffer contains phi_min, phi_max, theta_min, theta_max, r_min, r_max indexes to get from grid files
     int r_index=0, theta_index=0, phi_index=0, hydro_index=0, all_index_buffer=0, adjusted_remapping_index=0, dr_index=0;
     int *remapping_indexes=NULL;
@@ -404,41 +404,48 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     
     fclose(hydroPtr);
     
-    //limit number of array elements
+    //limit number of array elements PUT WHILE LOOP TO MAKE SURE NUMBER OF ELEMENTS >0
+    elem_factor=0;
     elem=0;
-    for (i=0;i<(phi_max_index+1-phi_min_index);i++)
+    while (elem==0)
     {
-        for (j=0;j<(theta_max_index+1-theta_min_index);j++)
+        elem_factor++;
+        for (i=0;i<(phi_max_index+1-phi_min_index);i++)
         {
-            for (k=0;k<(r_max_index+1-r_min_index);k++)
+            for (j=0;j<(theta_max_index+1-theta_min_index);j++)
             {
-                r_index=r_min_index+k;
-                //if I have photons do selection differently than if injecting photons
-                if (ph_inj_switch==0)
+                for (k=0;k<(r_max_index+1-r_min_index);k++)
                 {
-                    //if calling this function when propagating photons, choose blocks based on where the photons are
-                    if (((ph_rmin - 2*C_LIGHT/fps)<(*(r_unprc+r_index))) && (*(r_unprc+r_index)  < (ph_rmax + 2*C_LIGHT/fps) ))
+                    r_index=r_min_index+k;
+                    //if I have photons do selection differently than if injecting photons
+                    if (ph_inj_switch==0)
                     {
-                        // *(pres_unprc+(i*R_DIM*THETA_DIM + j*R_DIM + k  )
-                        elem++;
+                        //printf("R's:%d, %e\n", k, *(r_unprc+r_index));
+                        //if calling this function when propagating photons, choose blocks based on where the photons are
+                        if (((ph_rmin - elem_factor*C_LIGHT/fps)<(*(r_unprc+r_index))) && (*(r_unprc+r_index)  < (ph_rmax + elem_factor*C_LIGHT/fps) ))
+                        {
+                            // *(pres_unprc+(i*R_DIM*THETA_DIM + j*R_DIM + k  )
+                            elem++;
+                        }
                     }
-                }
-                else
-                {
-                    //if calling this function to inject photons choose blocks based on injection parameters, r_inj, which is sufficient 
-                    if (((r_inj - C_LIGHT/fps)<(*(r_unprc+r_index))) && (*(r_unprc+r_index)  < (r_inj + C_LIGHT/fps) ))
+                    else
                     {
-                        // *(pres_unprc+(i*R_DIM*THETA_DIM + j*R_DIM + k  )
-                        elem++;
-                    }
+                        //if calling this function to inject photons choose blocks based on injection parameters, r_inj, which is sufficient 
+                        if (((r_inj - elem_factor*C_LIGHT/fps)<(*(r_unprc+r_index))) && (*(r_unprc+r_index)  < (r_inj + elem_factor*C_LIGHT/fps) ))
+                        {
+                            // *(pres_unprc+(i*R_DIM*THETA_DIM + j*R_DIM + k  )
+                            elem++;
+                        }
                     
-                }
+                    }
         
+                }
             }
         }
     }
     
     fprintf(fPtr,"Number of post restricted Elems: %d %e\n", elem, r_inj);
+    //fprintf(fPtr,"Ph_min, Ph_max: %e, %e\n With c: min: %e max: %e \n", ph_rmin, ph_rmax, (ph_rmin - 2*C_LIGHT/fps), (ph_rmax + 2*C_LIGHT/fps));
     fflush(fPtr);
     
     //allocate space for new set of data
@@ -477,7 +484,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
                 if (ph_inj_switch==0)
                 {
                     //if calling this function when propagating photons, choose blocks based on where the photons are
-                    if (((ph_rmin - 2*C_LIGHT/fps)<(*(r_unprc+r_index))) && (*(r_unprc+r_index)  < (ph_rmax + 2*C_LIGHT/fps) ))
+                    if (((ph_rmin - elem_factor*C_LIGHT/fps)<(*(r_unprc+r_index))) && (*(r_unprc+r_index)  < (ph_rmax + elem_factor*C_LIGHT/fps) ))
                     {
                         (*pres)[elem] = *(pres_unprc+hydro_index);
                         (*dens)[elem] = *(dens_unprc+hydro_index);
@@ -504,7 +511,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
                 else
                 {
                     //if calling this function to inject photons choose blocks based on injection parameters, r_inj, which is sufficient 
-                    if (((r_inj - C_LIGHT/fps)<(*(r_unprc+r_index))) && (*(r_unprc+r_index)  < (r_inj + C_LIGHT/fps) ))
+                    if (((r_inj - elem_factor*C_LIGHT/fps)<(*(r_unprc+r_index))) && (*(r_unprc+r_index)  < (r_inj + elem_factor*C_LIGHT/fps) ))
                     {
                         (*pres)[elem] = *(pres_unprc+hydro_index);
                         (*dens)[elem] = *(dens_unprc+hydro_index);
