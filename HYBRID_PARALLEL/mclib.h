@@ -51,7 +51,7 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
 
 void saveCheckpoint(char dir[200], int frame,  int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph , int last_frame, int angle_rank);
 
-void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank );
+void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank,int dim_switch, int riken_switch );
 
 void dirFileMerge(char dir[200], int start_frame, int last_frame, int angle_rank,int dim_switch, int riken_switch);
 

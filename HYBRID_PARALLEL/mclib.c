@@ -229,7 +229,7 @@ void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int p
     
 }
 
-void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank )
+void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int dim_switch, int riken_switch )
 {
     //function to read in data from checkpoint file
     FILE *fPtr=NULL;
@@ -256,7 +256,16 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2,
         if((*restart)=='c')
         {
             fread(scatt_framestart, sizeof(int), 1, fPtr);
+            
+            if ((riken_switch==1) && (dim_switch==1) && ((*scatt_framestart)>=3000))
+            {
+                *scatt_framestart+=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1                        
+            }
+            else
+            {
             *scatt_framestart+=1; //add one to start at the next frame after the simulation was interrrupted
+            }
+
             //printf("%d\n", *scatt_framestart);
             fread(time, sizeof(double), 1, fPtr);
             //printf("%e\n", *time);
@@ -287,7 +296,15 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2,
         }
         else
         {
+            if ((riken_switch==1) && (dim_switch==1) && ((*framestart)>=3000))
+            {
+                *framestart+=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1                        
+            }
+            else
+            {
             *framestart+=1; //if the  checkpoint file saved and the program was inturrupted before the frame variable had just increased and before the scatt_frame iteration was saved, add one to the frame start
+            }
+            
             *scatt_framestart=(*framestart);
         }
         
@@ -661,10 +678,11 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     free (pres_buffer);free(dens_buffer);free(vel_x_buffer);free(vel_y_buffer);free(coord_buffer);free(block_sz_buffer);free(node_buffer);
     
     //fill in radius array and find in how many places r > injection radius
-    elem_factor=0;
+    elem_factor=1;
     r_count=0;
     while (r_count==0)
     {
+        r_count=0;
         elem_factor++;
         for (i=0;i<count;i++)
         {
@@ -685,7 +703,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
                 }
             }
         }
-    
+        //fprintf(fPtr, "r_count: %d count: %d\n", r_count, count);
     }
         /*
     //find in how many places r > injection radius
@@ -724,6 +742,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
                 (*pres)[j]=*(pres_unprc+i);
                 (*velx)[j]=*(velx_unprc+i);
                 (*vely)[j]=*(vely_unprc+i);
+                
                 (*dens)[j]=*(dens_unprc+i);
                 (*x)[j]=*(x_unprc+i);
                 (*y)[j]=*(y_unprc+i);
@@ -759,6 +778,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
         }
     }
     *number=j;
+    //fprintf(fPtr, "number: %d\n", j);
     
     free(pres_unprc); free(velx_unprc);free(vely_unprc);free(dens_unprc);free(x_unprc); free(y_unprc);free(r_unprc);free(szx_unprc);free(szy_unprc);
     
@@ -1127,7 +1147,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     #pragma omp parallel for num_threads(num_thread) firstprivate( block_dist, ph_x, ph_y, ph_z, ph_phi, dist_min, dist, j, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
     for (i=0;i<num_ph; i++)
     {
-        //printf("%e,%e\n", ((ph+i)->r0), ((ph+i)->r1));
+        //printf("%d, %e,%e\n", i, ((ph+i)->r0), ((ph+i)->r1));
         
         if (dim_switch_3d==0)
         {
@@ -1141,11 +1161,12 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             ph_z=((ph+i)->r2);
         }
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
+        
         ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
         
-        dist_min=1e12;//set dist to impossible value to make sure at least first distance calulated is saved 
+        dist_min=1e15;//set dist to impossible value to make sure at least first distance calulated is saved 
         block_dist=3e9;
-        while (dist_min==1e12) //if this is true, then the algorithm hasnt found blocks within the acceptable range given by block_dist
+        while (dist_min==1e15) //if this is true, then the algorithm hasnt found blocks within the acceptable range given by block_dist
         {
             
             for(j=0;j<array_num;j++)
@@ -1153,17 +1174,24 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 //if the distance between them is within 3e9, to restrict number of possible calculations,  calulate the total distance between the box and photon 
                 if ((dim_switch_3d==0) && (fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
                 {
-                    //printf("In if statement\n");
+                    /*
+                    if (i==281)
+                    {
+                    printf("In if statement\n");
+                    fprintf(fPtr,"Dist calculated as: %e, index: %d\n", dist, j);
+                    }
+                     */
                     dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)) , 2.0),0.5);
                     //fprintf(fPtr,"Dist calculated as: %e, index: %d\n", dist, j);
                     //printf("In outer if statement, OLD: %e, %d\n", dist_min, min_index);
                 
                     if((dist<dist_min))
                     {
-                        //printf("In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
+                        //fprintf(fPtr,"In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
                         dist_min=dist; //save new minimum distance
                         min_index=j; //save index
-                        //fprintf(fPtr,"New Min dist: %e, New min Index: %d, Array_Num: %e\n", dist_min, min_index, array_num);
+                        //printf("New Min dist: %e, New min Index: %d, Array_Num: %d\n", dist_min, min_index, array_num);
+                        
                     }
                 
                 }
@@ -1182,7 +1210,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             block_dist*=10; //increase size of accepted distances for gris points, if dist_min==1e12 then the next time the acceptance range wil be larger
         
         }
-        
+         //fprintf(fPtr,"Outside\n");
         
         //save values
         /*
@@ -1255,7 +1283,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             n_temp_min= n_temp_tmp;
             index=i;
             //fprintf(fPtr, "Thread is %d. new min: %e for photon %d with block properties: %e, %e, %e Located at: %e, %e, Dist: %e\n", omp_get_thread_num(), mfp, index, n_vx_tmp, n_vy_tmp, n_temp_tmp, *(x+min_index), *(y+min_index), dist_min);
-            fflush(fPtr);
+            //fflush(fPtr);
             //printf("Ancestor: %d Total Threads: %d\n", omp_get_num_threads(), omp_get_ancestor_thread_num(2));
             #pragma omp flush(min_mfp)
         }

@@ -60,12 +60,12 @@
 #define MC_PATH "MPI_CMC_16OI_SPHERICAL/"
  */
 #define THISRUN "Science"
-#define FILEPATH "/Users/Tylerparsotan/Documents/Box\ Sync/RIKEN_HYDRO_DATA/3D/SMALL_DATASET/"
-#define FILEROOT "u"
-#define MC_PATH "PHOTON_TEST/"
+#define FILEPATH "/Users/Tylerparsotan/Documents/Box Sync/1spike/"
+#define FILEROOT "m0_rhop0.1big_hdf5_plt_cnt_"
+#define MC_PATH "CMC_1spike/"
 //#define MC_PATH "MC_16OI/Single_Photon_Cy_mc_total/"
-#define MCPAR "riken_mc.par"
-#define RIKEN_SWITCH 1
+#define MCPAR "mc.par"
+#define RIKEN_SWITCH 0
 
 int main(int argc, char **argv)
 {
@@ -146,7 +146,7 @@ int main(int argc, char **argv)
     snprintf(mc_file,sizeof(flash_prefix),"%s%s%s",FILEPATH, MC_PATH,MCPAR);
 
     
-    //printf(">> mc.py:  Reading mc.par\n");
+    printf(">> mc.py:  Reading mc.par: %s\n", mc_file);
     
     readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &ph_weight_small, &ph_weight_large, &min_photons, &max_photons, &spect, &restrt, &num_thread,&dim_switch); //thetas that comes out is in degrees
     printf("%c\n", restrt);
@@ -258,7 +258,7 @@ int main(int argc, char **argv)
                 printf(">> mc.py:  Reading checkpoint\n");
                 //#pragma omp critical
                 {
-                    readCheckpoint(mc_dir, &phPtr, frm0, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id);
+                    readCheckpoint(mc_dir, &phPtr, frm0, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, dim_switch, RIKEN_SWITCH);
                 
                 /*
                 for (i=0;i<num_ph;i++)
@@ -552,8 +552,8 @@ int main(int argc, char **argv)
                       
                         
                         //printf("In main: %e, %d, %e, %e\n", *(ph_num_scatt+ph_scatt_index), ph_scatt_index, time_step, time_now);
-                        //fprintf(fPtr, "In main: %e, %d, %e, %e\n",((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
-                        //fflush(fPtr);
+                        fprintf(fPtr, "In main: %e, %d, %e, %e\n",((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
+                        fflush(fPtr);
                         
                          if (time_step<dt_max)
                         {
@@ -567,7 +567,7 @@ int main(int argc, char **argv)
                             updatePhotonPosition(phPtr, num_ph, time_step);
                             
                             //scatter the photon
-                            //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
+                            fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
                             photonScatter( (phPtr+ph_scatt_index), (ph_vxPtr), (ph_vyPtr),ph_vzPtr, (ph_tempPtr), rng, dim_switch, fPtr );
                             
@@ -591,7 +591,7 @@ int main(int argc, char **argv)
                             updatePhotonPosition(phPtr, num_ph, dt_max);
                         }
                         
-                        //printf("In main 2: %e, %d, %e, %e\n", ((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
+                        printf("In main 2: %e, %d, %e, %e\n", ((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
 
                     }
                     

@@ -409,6 +409,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     elem=0;
     while (elem==0)
     {
+        elem=0;
         elem_factor++;
         for (i=0;i<(phi_max_index+1-phi_min_index);i++)
         {
@@ -735,13 +736,13 @@ void photonInjection3D( struct photon **ph, int *ph_num, double r_inj, double ph
         if (ph_r > temp_r_max )
         {
             temp_r_max=ph_r;
-            //printf("The new max is: %e\n", temp_r_max);
+            printf("The new max is: %e\n", temp_r_max);
         }
         
         if ((i==0) || (ph_r<temp_r_min))
         {
             temp_r_min=ph_r;
-            //printf("The new min is: %e\n", temp_r_min);
+            printf("The new min is: %e\n", temp_r_min);
         }
     }
     
@@ -846,7 +847,7 @@ int *getIndexesForRadialRemapping(char hydro_prefix[200])
     }
     
     printf("Indexes %d, %d, %d, %d, %d, %d, %d\n Elems: %d\n", *(remapping_start_index+0), *(remapping_start_index+1), *(remapping_start_index+2), *(remapping_start_index+3), *(remapping_start_index+4), *(remapping_start_index+5), *(remapping_start_index+6), j);
-    exit(0);
+    //exit(0);
     r_edge=malloc(sizeof(double)*(j+1));
     dr=malloc(sizeof(double)*j);
     
