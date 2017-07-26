@@ -350,14 +350,14 @@ int main(int argc, char **argv)
             if ((RIKEN_SWITCH==1) && (dim_switch==1) && (framestart>=3000))
             {
                 increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-                //fps_modified=1;
+                fps_modified=1;
             }
-            //else
-            //{
-            //    fps_modified=fps;
-            //}
+            else
+            {
+                fps_modified=fps;
+            }
             
-            dt_max=1.0/fps;
+            dt_max=1.0/fps_modified;
            
             MPI_Barrier(angle_comm); 
             snprintf(log_file,sizeof(log_file),"%s%s%d%s",mc_dir,"mc_output_", angle_id,".log" );
@@ -379,12 +379,12 @@ int main(int argc, char **argv)
                 if ((RIKEN_SWITCH==1) && (dim_switch==1) && (frame>=3000))
                 {
                     increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-                    //fps_modified=1;
+                    fps_modified=1;
                 }
-                //else
-                //{
-                 //   fps_modified=fps;
-                //}
+                else
+                {
+                    fps_modified=fps;
+                }
                 
                  if (restrt=='r')
                  {
@@ -410,13 +410,13 @@ int main(int argc, char **argv)
                         fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
                         fflush(fPtr);
                         
-                        readAndDecimate(flash_file, inj_radius, fps, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                        readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                 &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
                         }
                         else
                         {
                             //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
-                            readHydro2D(FILEPATH, frame, inj_radius, fps, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                            readHydro2D(FILEPATH, frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                         &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
                             //fprintf(fPtr, "%d\n\n", array_num);
                         }
@@ -427,7 +427,7 @@ int main(int argc, char **argv)
                         fflush(fPtr);
                         
                         read_hydro(FILEPATH, frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                   &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fps, fPtr);
+                                   &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fps_modified, fPtr);
                     }
                     
                     //check for run type
@@ -449,11 +449,11 @@ int main(int argc, char **argv)
                     
                     if (dim_switch==0)
                     {
-                        photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng, RIKEN_SWITCH, fPtr );
+                        photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng, RIKEN_SWITCH, fPtr );
                     }
                     else
                     {
-                        photonInjection3D(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, zPtr, szxPtr, szyPtr,rPtr,thetaPtr, phiPtr, tempPtr, velxPtr, velyPtr, velzPtr, rng, fPtr);
+                        photonInjection3D(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, zPtr, szxPtr, szyPtr,rPtr,thetaPtr, phiPtr, tempPtr, velxPtr, velyPtr, velzPtr, rng, fPtr);
 
                     }
                     
@@ -478,15 +478,15 @@ int main(int argc, char **argv)
                     if ((RIKEN_SWITCH==1) && (dim_switch==1) && (scatt_frame>=3000))
                     {
                         increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-                        //fps_modified=1;
+                        fps_modified=1; //therefore dt between files become 1 second
                         
                     }
-                    //else
-                    //{
-                    //    fps_modified=fps;
-                    //}
+                    else
+                    {
+                        fps_modified=fps;
+                    }
                     
-                    dt_max=1.0/fps;
+                    dt_max=1.0/fps_modified; //if working with RIKEN files and scatt_frame>=3000 dt  is 1 second between each subsequent frame
                     
                     fprintf(fPtr,">>\n");
                     fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Working on photons injected at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,frame, frm2);
@@ -505,14 +505,14 @@ int main(int argc, char **argv)
                             //put proper number at the end of the flash file
                             modifyFlashName(flash_file, flash_prefix, scatt_frame, dim_switch);
                             phMinMax(phPtr, num_ph, &min_r, &max_r);
-                            readAndDecimate(flash_file, inj_radius, fps, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                            readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                     &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
                         }
                         else
                         {
                             phMinMax(phPtr, num_ph, &min_r, &max_r);
                             //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
-                            readHydro2D(FILEPATH, scatt_frame, inj_radius, fps, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                            readHydro2D(FILEPATH, scatt_frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                         &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
                         
                         }
@@ -521,7 +521,7 @@ int main(int argc, char **argv)
                     {
                         phMinMax(phPtr, num_ph, &min_r, &max_r);
                         read_hydro(FILEPATH, scatt_frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                   &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fps, fPtr);
+                                   &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fps_modified, fPtr);
                     }
                     
                     
@@ -544,6 +544,8 @@ int main(int argc, char **argv)
                     while (time_now<((scatt_frame+increment_scatt)/fps))
                     {
                         //if simulation time is less than the simulation time of the next frame, keep scattering in this frame
+                        //for RIKEN hydro data, theres still 10 fps but after frame 3000, file increment is 10 not 1, therefore modify dt_max not fps
+                        
                         //go through each photon and find blocks closest to each photon and properties of those blocks to calulate mean free path
                         //and choose the photon with the smallest mfp and calculate the timestep
                         
