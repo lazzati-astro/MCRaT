@@ -354,6 +354,7 @@ int main(int argc, char **argv)
             }
             else
             {
+                increment_inj=1;
                 fps_modified=fps;
             }
             
@@ -383,6 +384,7 @@ int main(int argc, char **argv)
                 }
                 else
                 {
+                    increment_inj=1;
                     fps_modified=fps;
                 }
                 
@@ -483,6 +485,7 @@ int main(int argc, char **argv)
                     }
                     else
                     {
+                        increment_inj=1;
                         fps_modified=fps;
                     }
                     

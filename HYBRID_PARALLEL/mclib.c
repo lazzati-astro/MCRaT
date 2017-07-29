@@ -1782,7 +1782,7 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
     
     for (i=0;i<ph_num;i++)
     {
-        sum+=((ph+i)->num_scatt)*((ph+i)->weight);
+        sum+=((ph+i)->num_scatt);
         
         if (((ph+i)->num_scatt) > temp_max )
         {
