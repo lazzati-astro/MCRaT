@@ -485,7 +485,7 @@ int main(int argc, char **argv)
                     }
                     else
                     {
-                        increment_inj=1;
+                        increment_scatt=1;
                         fps_modified=fps;
                     }
                     
