@@ -219,11 +219,8 @@ void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int p
         //just finished last iteration of scatt_frame
         restart='r';
         fwrite(&restart, sizeof(char), 1, fPtr);
-        //printf("Rank: %d wrote restart %c\n", angle_rank, restart);
         fwrite(&frame, sizeof(int), 1, fPtr);
-         //printf("Rank: %d wrote frame\n",  angle_rank);
         fwrite(&frame2, sizeof(int), 1, fPtr);
-         //printf("Rank: %d wrote frame2\n",  angle_rank);
     }
     fclose(fPtr);
     
@@ -441,13 +438,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     double x1[8]={-7.0/16,-5.0/16,-3.0/16,-1.0/16,1.0/16,3.0/16,5.0/16,7.0/16};
     double ph_rmin=0, ph_rmax=0;
     
-    //hdf5 parallel template for file
-    //acc_tpl1 = H5Pcreate (H5P_FILE_ACCESS);
-    //ret = H5Pset_fapl_mpio(acc_tpl1, MPI_COMM_WORLD, MPI_INFO_NULL);
-    
-    //xfer_plist = H5Pcreate (H5P_DATASET_XFER);
-    //ret=H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE);
-    
+
     if (ph_inj_switch==0)
     {
         ph_rmin=min_r;
@@ -508,9 +499,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
          pres_buffer[i] = pres_buffer[0] + i * PROP_DIM1*PROP_DIM2*PROP_DIM3;
      }
      
-//    for (i=1; i<dims[0]; i++)
-//        coord_buffer[i] = coord_buffer[0] + i * dims[1];
-    
+
     //read data such that first column is x and second column is y
     //printf("Reading Dataset\n");
     status = H5Dread (dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,coord_buffer[0]);
@@ -523,13 +512,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
 
     dset = H5Dopen (file, "block size", H5P_DEFAULT);
 
-//    block_sz_buffer= (double **) malloc (dims[0] * sizeof (double *));
-//
-//    block_sz_buffer[0] = (double *) malloc (dims[0] * COORD_DIM1 * sizeof (double));
-//    
-//    for (i=1; i<dims[0]; i++){
-//        block_sz_buffer[i] = block_sz_buffer[0] + i * COORD_DIM1;
-//    }
+
     //printf("Reading Dataset\n");
     status = H5Dread (dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,block_sz_buffer[0]);
     
@@ -539,12 +522,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     //printf("Reading node type\n");
     dset = H5Dopen (file, "node type", H5P_DEFAULT);
 
-//    node_buffer= (int **) malloc (dims[0] * sizeof (int *));
-//    node_buffer[0] = (int *) malloc (dims[0] * sizeof (int));
-//
-//    for (i=1; i<dims[0]; i++){
-//        node_buffer[i] = node_buffer[0] + i ;
-//    }
+
     //printf("Reading Dataset\n");
     status = H5Dread (dset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT,node_buffer[0]);
     status = H5Dclose (dset);
@@ -552,13 +530,6 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     //printf("Reading velx\n");
     dset = H5Dopen (file, "velx", H5P_DEFAULT);
 
-//   vel_x_buffer= (double **) malloc (dims[0] * sizeof (double *));
-//   vel_x_buffer[0]= (double *) malloc (dims[0] * PROP_DIM1  *PROP_DIM2*PROP_DIM3* sizeof (double));
-//
-//   for (i=1; i<dims[0]; i++)
-//   {
-//        vel_x_buffer[i] = vel_x_buffer[0] + i * PROP_DIM1*PROP_DIM2*PROP_DIM3;
-//   }
    //printf("Reading Dataset\n");
     status = H5Dread (dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,vel_x_buffer[0]);
     status = H5Dclose (dset);
@@ -566,13 +537,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     //printf("Reading vely\n");
     dset = H5Dopen (file, "vely", H5P_DEFAULT);
 
-//     vel_y_buffer= (double **) malloc (dims[0] * sizeof (double *));
-//     vel_y_buffer[0]= (double *) malloc (dims[0] * PROP_DIM1  *PROP_DIM2*PROP_DIM3* sizeof (double));
-//
-//     for (i=1; i<dims[0]; i++)
-//     {
-//        vel_y_buffer[i] = vel_y_buffer[0] + i * PROP_DIM1*PROP_DIM2*PROP_DIM3;
-//     }
+
     //printf("Reading Dataset\n");
     status = H5Dread (dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,vel_y_buffer[0]);
     status = H5Dclose (dset);
@@ -580,13 +545,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     //printf("Reading dens\n");
     dset = H5Dopen (file, "dens", H5P_DEFAULT);
 
-//    dens_buffer= (double **) malloc (dims[0] * sizeof (double *));
-//    dens_buffer[0]= (double *) malloc (dims[0] * PROP_DIM1  *PROP_DIM2*PROP_DIM3* sizeof (double));
-//     for (i=1; i<dims[0]; i++)
-//     {
-//        dens_buffer[i] = dens_buffer[0] + i * PROP_DIM1*PROP_DIM2*PROP_DIM3;
-//     }
-     
+
     //printf("Reading Dataset\n");
     status = H5Dread (dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,dens_buffer[0]);
     status = H5Dclose (dset);    
@@ -595,12 +554,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
 
     dset = H5Dopen (file, "pres", H5P_DEFAULT);
 
-//    pres_buffer= (double **) malloc (dims[0] * sizeof (double *));
-//    pres_buffer[0]= (double *) malloc (dims[0] * PROP_DIM1  *PROP_DIM2*PROP_DIM3* sizeof (double));
-//     for (i=1; i<dims[0]; i++)
-//     {
-//        pres_buffer[i] = pres_buffer[0] + i * PROP_DIM1*PROP_DIM2*PROP_DIM3;
-//     }
+
     //printf("Reading Dataset\n");
     status = H5Dread (dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,pres_buffer[0]);
     status = H5Dclose (dset);
@@ -702,17 +656,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
         }
         //fprintf(fPtr, "r_count: %d count: %d\n", r_count, count);
     }
-        /*
-    //find in how many places r > injection radius
-    r_count=0;
-    for (i=0;i<count;i++)
-    {
-        if (*(r_unprc+i)> (0.95*r_inj) )
-        {
-            r_count++;
-        }
-    }
-    */
+       
     //allocate memory to hold processed data
     (*pres)=malloc (r_count * sizeof (double ));
     (*velx)=malloc (r_count * sizeof (double ));
@@ -1082,12 +1026,7 @@ double *zeroNorm(double *p_ph)
         //fprintf(fPtr,"in zero norm if\n");
         //fflush(fPtr);
         //go through and correct 4 momentum assuming the energy is correct
-        /*
-        for (i=1;i<4;i++)
-        {
-            *(p_ph+i)= ((*(p_ph+i))/(normalizing_factor))*(*(p_ph+0));
-        }
-         */
+        
         *(p_ph+1)= ((*(p_ph+1))/(normalizing_factor))*(*(p_ph+0));
         *(p_ph+2)= ((*(p_ph+2))/(normalizing_factor))*(*(p_ph+0));
         *(p_ph+3)= ((*(p_ph+3))/(normalizing_factor))*(*(p_ph+0));
@@ -1171,13 +1110,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 //if the distance between them is within 3e9, to restrict number of possible calculations,  calulate the total distance between the box and photon 
                 if ((dim_switch_3d==0) && (fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
                 {
-                    /*
-                    if (i==281)
-                    {
-                    printf("In if statement\n");
-                    fprintf(fPtr,"Dist calculated as: %e, index: %d\n", dist, j);
-                    }
-                     */
+                   
                     dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)) , 2.0),0.5);
                     //fprintf(fPtr,"Dist calculated as: %e, index: %d\n", dist, j);
                     //printf("In outer if statement, OLD: %e, %d\n", dist_min, min_index);
@@ -1210,12 +1143,6 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
          //fprintf(fPtr,"Outside\n");
         
         //save values
-        /*
-        *(n_dens_lab+i)= (*(dens_lab+min_index));
-        *(n_vx+i)= (*(velx+min_index));
-        *(n_vy+i)= (*(vely+min_index));
-        *(n_temp+i)= (*(temp+min_index));
-        */
         (n_dens_lab_tmp)= (*(dens_lab+min_index));
         (n_vx_tmp)= (*(velx+min_index));
         (n_vy_tmp)= (*(vely+min_index));
@@ -1254,12 +1181,10 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         }
         //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
         rnd_tracker=0;
-        //while ((rnd_tracker<=0) || (rnd_tracker>=1))
-        //{
+        
             rnd_tracker=gsl_rng_uniform_pos(rng[omp_get_thread_num()]);
-            //rnd_tracker=gsl_rng_uniform_pos(rand);
             //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
-        //}
+        
         mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOMP_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths 
         //if (mfp<0)
         //{
@@ -1281,7 +1206,6 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             index=i;
             //fprintf(fPtr, "Thread is %d. new min: %e for photon %d with block properties: %e, %e, %e Located at: %e, %e, Dist: %e\n", omp_get_thread_num(), mfp, index, n_vx_tmp, n_vy_tmp, n_temp_tmp, *(x+min_index), *(y+min_index), dist_min);
             //fflush(fPtr);
-            //printf("Ancestor: %d Total Threads: %d\n", omp_get_num_threads(), omp_get_ancestor_thread_num(2));
             #pragma omp flush(min_mfp)
         }
 
@@ -1351,19 +1275,7 @@ void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double f
     double *fluid_beta=malloc(3*sizeof(double));//pointer to hold fluid velocity vector
     double *negative_fluid_beta=malloc(3*sizeof(double));//pointer to hold negative fluid velocity vector
     
-    /*
-    printf("%p\n", ph_p);
-    ph_p=calloc(4*sizeof(double),0); 
-    printf("%p\n", ph_p);
-    el_p_comov=calloc(4*sizeof(double),0);
-    printf("%p\n", el_p_comov);
-    ph_p_comov=calloc(4*sizeof(double),0);
-    printf("%p\n", ph_p_comov);
-    fluid_beta=calloc(3*sizeof(double),0);
-    printf("%p\n", fluid_beta);
-    negative_fluid_beta=calloc(3*sizeof(double),0);
-    printf("Done calling calloc\n");
-     */
+    
     ph_phi=atan2((ph->r1), ((ph->r0)));
     /*
     fprintf(fPtr,"ph_phi=%e\n", ph_phi);
@@ -1456,15 +1368,10 @@ void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double f
     //printf("Done assigning values to original struct\n");
 	
     free(el_p_comov); 
-    //printf("done here\n");
     free(ph_p_comov);
-    //printf("done here\n");
-    free(fluid_beta); // ?maybe not? getting an error checksum for freed object - object was probably modified after being freed.
-    //printf("done here\n");
+    free(fluid_beta); 
     free(negative_fluid_beta);
-    //printf("done here\n");
     free(ph_p);
-    //printf("done here\n");
     ph_p=NULL;negative_fluid_beta=NULL;ph_p_comov=NULL; el_p_comov=NULL;
 }
 
@@ -1571,10 +1478,8 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
     printf("Final EL_P_vec: %e, %e, %e,%e\n", *(el_p+0), gsl_vector_get(&el_p_prime.vector,0), gsl_vector_get(&el_p_prime.vector,1), gsl_vector_get(&el_p_prime.vector,2));
     */
     
-    //gsl_rng_free (rand); 
-    //printf("freeing pointers in singleElectron\n");
+    
     gsl_matrix_free (rot);gsl_vector_free(result);
-    //printf("Done freeing pointers in singleElectron\n");
 }
 
 void singleComptonScatter(double *el_comov, double *ph_comov, gsl_rng * rand, FILE *fPtr)
@@ -1859,11 +1764,12 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
     //function to merge files in mcdir produced by various threads
     int i=0, j=0, k=0, num_files=8, num_thread=8; //omp_get_max_threads() number of files is number of types of mcdata files there are
     int increment=1;
-    char filename_k[200]="", file_no_thread_num[200]="", cmd[2000]="", mcdata_type[200]="";
+    char filename_k[200]="", file_no_thread_num[200]="", cmd[200]="", mcdata_type[200]="";
     
-    //printf("Merging files in %s\n", dir);
+    //printf("Merging files in %s\n", dir); 
     //#pragma omp parallel for num_threads(num_thread) firstprivate( filename_k, file_no_thread_num, cmd,mcdata_type,num_files, increment ) private(i,j,k)
-    for (i=start_frame;i<=last_frame;i=i+increment)
+    // i < last frame because calculation before this function gives last_frame as the first frame of the next process set of frames to merge files for
+    for (i=start_frame;i<last_frame;i=i+increment)
     {
         if ((riken_switch==1) && (dim_switch==1) && (i>=3000))
         {
@@ -1908,25 +1814,27 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
         }
     }
     
-    //merge photon weight files
-    for (k=0;k<numprocs;k++)
+    if (angle_id==0)
     {
-        snprintf(file_no_thread_num,sizeof(file_no_thread_num),"%s%s", dir,"mcdata_PW.dat");
-        snprintf(filename_k,sizeof(filename_k),"%s%s%d%s", dir,"mcdata_PW_",k,".dat");
-        
-        if (( access( filename_k, F_OK ) != -1 )  )
+        //merge photon weight files
+        for (k=0;k<numprocs;k++)
         {
+            snprintf(file_no_thread_num,sizeof(file_no_thread_num),"%s%s", dir,"mcdata_PW.dat");
+            snprintf(filename_k,sizeof(filename_k),"%s%s%d%s", dir,"mcdata_PW_",k,".dat");
+        
+            if (( access( filename_k, F_OK ) != -1 )  )
+            {
                 //if they both do make command to cat the together always in the same order
                 snprintf(cmd, sizeof(cmd), "%s%s %s%s", "cat ", filename_k, " >> ", file_no_thread_num);
                  system(cmd);
-        }
+            }
        
         
-         //remove files
-        snprintf(cmd, sizeof(cmd), "%s%s", "rm ", filename_k);
-        system(cmd);
+            //remove files
+            snprintf(cmd, sizeof(cmd), "%s%s", "rm ", filename_k);
+            system(cmd);
                 
-
+        }
     }
     
 }

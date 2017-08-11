@@ -58,12 +58,18 @@
 #define FILEPATH "/home/physics/parsotat/16OI/"
 #define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
 #define MC_PATH "MPI_CMC_16OI_SPHERICAL/"
- */
+ 
 #define THISRUN "Science"
 #define FILEPATH "/Users/Tylerparsotan/Documents/Box Sync/1spike/"
 #define FILEROOT "m0_rhop0.1big_hdf5_plt_cnt_"
 #define MC_PATH "CMC_1spike/"
 //#define MC_PATH "MC_16OI/Single_Photon_Cy_mc_total/"
+ * */
+ #define THISRUN "Science"
+#define FILEPATH "/home/physics/parsotat/16OM/"
+#define FILEROOT "rhd_jet_big_16OM_hdf5_plt_cnt_"
+#define MC_PATH "DIR_TEST/"
+
 #define MCPAR "mc.par"
 #define RIKEN_SWITCH 0
 
@@ -113,7 +119,7 @@ int main(int argc, char **argv)
     
     int num_thread=0, angle_count=0;
     int num_angles=0;
-    int *frame_array=NULL, *proc_frame_array=NULL, proc_frame_size=0;
+    int *frame_array=NULL, *proc_frame_array=NULL, *element_num=NULL, proc_frame_size=0;
     double *thread_theta=NULL; //saves ranges of thetas for each thread to go through
     double delta_theta=1;
     
@@ -149,7 +155,7 @@ int main(int argc, char **argv)
     printf(">> mc.py:  Reading mc.par: %s\n", mc_file);
     
     readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &ph_weight_small, &ph_weight_large, &min_photons, &max_photons, &spect, &restrt, &num_thread,&dim_switch); //thetas that comes out is in degrees
-    printf("%c\n", restrt);
+    //printf("%c\n", restrt);
     
     //divide up angles and frame injections among threads DONT WANT NUMBER OF THREADS TO BE ODD
     //assign ranges to array that hold them
@@ -210,15 +216,8 @@ int main(int argc, char **argv)
             ph_weight_suggest=ph_weight_large;
         }
         
-        /*
-        if ((RIKEN_SWITCH==1) && (dim_switch==1))
-        {
-            may need for RIKEN 3D data in which fps changes from 10 to 1
-        }
-    */
         //make vector to hold the frames we are injecting in, vector should have (frm2-frm0)/angle_procs slots, if fps is const
             proc_frame_size=ceil((frm2-frm0)/ (float) angle_procs);
-            proc_frame_array=malloc(proc_frame_size*sizeof(int));
             frame_array=malloc(((frm2-frm0)+1)*sizeof(int));
             
             for (j=0;j<((frm2-frm0)+1); j++)
@@ -226,16 +225,6 @@ int main(int argc, char **argv)
                 *(frame_array+j)=frm0+j ;
             	//printf("proc: %d frame: %d\n", angle_id, *(frame_array+j));
             }
-            /*
-            if ((theta_jmin_thread >= 0) &&  (theta_jmax_thread <= (2*M_PI/180) ))
-            {
-                MPI_Scatter(frame_array, proc_frame_size, MPI_INT, proc_frame_array,proc_frame_size, MPI_INT, 0,  angle_comm ); //have to get different frm2 for the larger angle data from 0 only gives small angle frm2
-            }
-            else
-            {
-                MPI_Scatter(frame_array, proc_frame_size, MPI_INT, proc_frame_array,proc_frame_size, MPI_INT, 2,  angle_comm );
-            }
-       */
        
             
         {
@@ -282,11 +271,6 @@ int main(int argc, char **argv)
             {
                 mkdir(mc_dir, 0777); //make the directory with full permissions
                 
-                /*
-                framestart=*(proc_frame_array+0); //frm0; //if restarting then start from parameters given in mc.par file
-                frm2=*(proc_frame_array+(proc_frame_size-1));
-                scatt_framestart=frm0;
-                 * */
                 
             }
             else 
@@ -340,11 +324,6 @@ int main(int argc, char **argv)
                         
                     }
                 }
-                /*
-                framestart=*(proc_frame_array+0); //frm0; //if restarting then start from parameters given in mc.par file
-                frm2=*(proc_frame_array+(proc_frame_size-1));
-                scatt_framestart=frm0;
-                 * */
             }
             
             if ((RIKEN_SWITCH==1) && (dim_switch==1) && (framestart>=3000))
@@ -557,16 +536,15 @@ int main(int argc, char **argv)
                                                                       &ph_dens_labPtr, &ph_vxPtr, &ph_vyPtr, &ph_vzPtr, &ph_tempPtr, rng, dim_switch, fPtr);
                         
                       
-                        /*
-                        fprintf(fPtr, "In main: %e, %d, %e, %e\n",((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
-                        fflush(fPtr);
-                        */
+                        
+                        //fprintf(fPtr, "In main: %e, %d, %e, %e\n",((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
+                        //fflush(fPtr);
+                        
                         
                          if (time_step<dt_max)
                         {
                             
                             //update number of scatterings and time
-                            //(*(ph_num_scatt+ph_scatt_index))+=1;
                             ((phPtr+ph_scatt_index)->num_scatt)+=1;
                             frame_scatt_cnt+=1;
                             time_now+=time_step;
@@ -613,9 +591,6 @@ int main(int argc, char **argv)
                 
                     printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, angle_id);
                     //exit(0);
-                    //for a checkpoint implmentation,save the checkpoint file here after every 5 frames or something
-                    //save the photons data, the scattering number data, the scatt_frame value, and the frame value
-                    //WHAT IF THE PROGRAM STOPS AFTER THE LAST SCATT_FRAME, DURING THE FIRST SCATT_FRAME OF NEW FRAME VARIABLE - save restrt variable as 'r'
                     fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Making checkpoint file\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     fflush(fPtr);
                 
@@ -638,6 +613,7 @@ int main(int argc, char **argv)
                     xPtr=NULL; yPtr=NULL;  rPtr=NULL;thetaPtr=NULL;velxPtr=NULL;velyPtr=NULL;densPtr=NULL;presPtr=NULL;gammaPtr=NULL;dens_labPtr=NULL;
                     szxPtr=NULL; szyPtr=NULL; tempPtr=NULL;
                 }
+                
                 restrt='r';//set this to make sure that the next iteration of propogating photons doesnt use the values from the last reading of the checkpoint file
                 free(phPtr); 
                 phPtr=NULL;
@@ -650,7 +626,6 @@ int main(int argc, char **argv)
         MPI_Barrier(angle_comm);
         
         //merge files from each worker thread within a directory
-        if (angle_id==0)
         {
             increment_scatt=1;
             file_count=0;
@@ -667,6 +642,14 @@ int main(int argc, char **argv)
             //holds number of files for each process to merge
             proc_frame_size=floor(file_count/ (float) angle_procs);
             frame_array=malloc(file_count*sizeof(int));
+            proc_frame_array=malloc(angle_procs*sizeof(int)); //sets index of each proceesed acquired value
+            element_num=malloc(angle_procs*sizeof(int));
+            
+            for (i=0;i<angle_procs;i++)
+            {
+                *(proc_frame_array+i)=i*proc_frame_size;
+                *(element_num+i)=1;
+            }
             
             //make vector with the files in order to pass them to each of the processes
             increment_scatt=1;
@@ -680,10 +663,13 @@ int main(int argc, char **argv)
                 
                 *(frame_array+file_count)=i ;
                 file_count++;
-            	//printf("proc: %d frame: %d\n", angle_id, *(frame_array+j));
+                 //printf("file_count: %d frame: %d\n",  file_count-1, *(frame_array+file_count-1));
             }
             //pass  first frame number that each rpocess should start to merge, can calulate the file it should merge until
-            MPI_Scatterv(frame_array, 1, angle_id*proc_frame_size, MPI_INT, &frm0, 1, MPI_INT, 0, angle_comm);
+            MPI_Scatterv(frame_array, element_num, proc_frame_array, MPI_INT, &frm0, 1, MPI_INT, 0, angle_comm);
+            
+            //fprintf(fPtr, "Value: frm0: ,%d\n", frm0);
+            //fflush(fPtr);
             
             //make sure all files get merged by giving the rest to the last process
             if (angle_id==angle_procs-1)
