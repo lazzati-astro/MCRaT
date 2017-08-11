@@ -648,12 +648,70 @@ int main(int argc, char **argv)
         }//end omp parallel inner section
         
         MPI_Barrier(angle_comm);
+        
         //merge files from each worker thread within a directory
         if (angle_id==0)
         {
-            printf(">> Proc %d with angles %0.1lf-%0.1lf: Merging Files\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+            increment_scatt=1;
+            file_count=0;
+            
+            //count number of files
+            for (i=frm0;i<=last_frm;i=i+increment_scatt)
+            {
+                if ((RIKEN_SWITCH==1) && (dim_switch==1) && (i>=3000))
+                {
+                    increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1                        
+                }
+                file_count++;
+            }
+            //holds number of files for each process to merge
+            proc_frame_size=floor(file_count/ (float) angle_procs);
+            frame_array=malloc(file_count*sizeof(int));
+            
+            //make vector with the files in order to pass them to each of the processes
+            increment_scatt=1;
+            file_count=0;
+            for (i=frm0;i<=last_frm;i=i+increment_scatt)
+            {
+                if ((RIKEN_SWITCH==1) && (dim_switch==1) && (i>=3000))
+                {
+                    increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1                        
+                }
+                
+                *(frame_array+file_count)=i ;
+                file_count++;
+            	//printf("proc: %d frame: %d\n", angle_id, *(frame_array+j));
+            }
+            //pass  first frame number that each rpocess should start to merge, can calulate the file it should merge until
+            MPI_Scatterv(frame_array, 1, angle_id*proc_frame_size, MPI_INT, &frm0, 1, MPI_INT, 0, angle_comm);
+            
+            //make sure all files get merged by giving the rest to the last process
+            if (angle_id==angle_procs-1)
+            {
+                proc_frame_size=file_count-proc_frame_size*(angle_procs-1); //for last process take over the remaining number of files
+            }
+            //calculate what the last file the preocess should merge up to
+            i=0;
+            last_frm=frm0;
+            while(i<proc_frame_size)
+            {
+                if ((RIKEN_SWITCH==1) && (dim_switch==1) && (last_frm>=3000))
+                {
+                    increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1                        
+                }
+                else
+                {
+                    increment_scatt=1;
+                }
+                
+                last_frm+=increment_scatt;
+                i++;
+            }
+            
+            
+            fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
             fflush(fPtr);
-            dirFileMerge(mc_dir, frm0, last_frm, angle_procs, dim_switch, RIKEN_SWITCH); //only the master proc does this for each angle
+            dirFileMerge(mc_dir, frm0, last_frm, angle_procs, angle_id, dim_switch, RIKEN_SWITCH, fPtr); //only the master proc does this for each angle
         }
         
     } //end omp parallel section

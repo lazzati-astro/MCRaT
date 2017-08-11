@@ -1854,15 +1854,15 @@ void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, 
 }
 
 
-void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, int dim_switch, int riken_switch)
+void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, int angle_id, int dim_switch, int riken_switch, FILE *fPtr )
 {
     //function to merge files in mcdir produced by various threads
-    int i=0, j=0, k=0, num_files=8, num_thread=8; //number of files is number of types of mcdata files there are
+    int i=0, j=0, k=0, num_files=8, num_thread=8; //omp_get_max_threads() number of files is number of types of mcdata files there are
     int increment=1;
     char filename_k[200]="", file_no_thread_num[200]="", cmd[2000]="", mcdata_type[200]="";
     
     //printf("Merging files in %s\n", dir);
-    //#pragma omp parallel for num_threads(num_thread) firstprivate( filename_k, file_no_thread_num, cmd,mcdata_type ) private(i)
+    //#pragma omp parallel for num_threads(num_thread) firstprivate( filename_k, file_no_thread_num, cmd,mcdata_type,num_files, increment ) private(i,j,k)
     for (i=start_frame;i<=last_frame;i=i+increment)
     {
         if ((riken_switch==1) && (dim_switch==1) && (i>=3000))
@@ -1893,6 +1893,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                 if (( access( filename_k, F_OK ) != -1 )  )
                 {
                     //if they both do make command to cat the together always in the same order
+                    //fprintf(fPtr, "Merging: %s\n", filename_k);
                     snprintf(cmd, sizeof(cmd), "%s%s %s%s", "cat ", filename_k, " >> ", file_no_thread_num);
                     system(cmd);
                 }

@@ -53,7 +53,7 @@ void saveCheckpoint(char dir[200], int frame,  int frame2, int scatt_frame, int 
 
 void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank,int dim_switch, int riken_switch );
 
-void dirFileMerge(char dir[200], int start_frame, int last_frame, int angle_rank,int dim_switch, int riken_switch);
+void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs,  int angle_id, int dim_switch, int riken_switch, FILE *fPtr);
 
 void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array);
 
