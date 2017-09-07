@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <dirent.h>
 #include "hdf5.h"
@@ -226,7 +227,7 @@ void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int p
     
 }
 
-void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int dim_switch, int riken_switch )
+void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, bool is_3d_sim, int riken_switch )
 {
     //function to read in data from checkpoint file
     FILE *fPtr=NULL;
@@ -254,7 +255,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2,
         {
             fread(scatt_framestart, sizeof(int), 1, fPtr);
             
-            if ((riken_switch==1) && (dim_switch==1) && ((*scatt_framestart)>=3000))
+            if ((riken_switch==1) && (is_3d_sim) && ((*scatt_framestart)>=3000))
             {
                 *scatt_framestart+=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1                        
             }
@@ -286,14 +287,14 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2,
                 (*ph)[i].r2=phHolder->r2; 
                 (*ph)[i].num_scatt=phHolder->num_scatt;
                 (*ph)[i].weight=phHolder->weight;
-                
+                (*ph)[i].nearest_block_index=phHolder->nearest_block_index;
             }
             
             free(phHolder);
         }
         else
         {
-            if ((riken_switch==1) && (dim_switch==1) && ((*framestart)>=3000))
+            if ((riken_switch==1) && (is_3d_sim) && ((*framestart)>=3000))
             {
                 *framestart+=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1                        
             }
@@ -316,7 +317,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2,
     }
 }
 
-void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads,  int *dim_switch)
+void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads,  bool *is_3d_sim)
 {
     //function to read mc.par file
 	FILE *fptr=NULL;
@@ -418,8 +419,8 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
     //printf("%d\n",*num_threads);
     fgets(buf, 100,fptr);
     
-    fscanf(fptr, "%d",dim_switch);
-    //printf("%d\n",*dim_switch);
+    fscanf(fptr, "%d",is_3d_sim);
+    //printf("%d\n",*is_3d_sim);
     
 	//close file
 	fclose(fptr);
@@ -756,7 +757,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
             if ((*(r+i) >= (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) ) 
             {
                 block_cnt++;
-                            }
+            }
     }
     //printf("Blocks: %d\n", block_cnt);
     
@@ -858,7 +859,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                             bb_norm=(PL_CONST*fr_max * pow((fr_max/C_LIGHT),2.0))/(exp(PL_CONST*fr_max/(K_B*(*(temps+i))))-1); //find value of bb at fr_max
                             yfr_dum=((1.0/bb_norm)*PL_CONST*fr_dum * pow((fr_dum/C_LIGHT),2.0))/(exp(PL_CONST*fr_dum/(K_B*(*(temps+i))))-1); //curve is normalized to vaue of bb @ max frequency
                         	
-			}
+                        }
                         //printf("%lf, %lf,%lf,%e \n",(*(temps+i)),fr_dum, y_dum, yfr_dum);
                         
                     }
@@ -893,6 +894,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                 (*ph)[ph_tot].r2=(*(y+i)); //y coordinate in flash becomes z coordinate in MCRaT
                 (*ph)[ph_tot].num_scatt=0;
                 (*ph)[ph_tot].weight=ph_weight_adjusted;
+                (*ph)[ph_tot].nearest_block_index=i;
                 //printf("%d\n",ph_tot);
                 ph_tot++;
             }
@@ -1041,17 +1043,19 @@ double *zeroNorm(double *p_ph)
     return p_ph;
 }
 
-int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *velx,  double *vely, double *velz, double *dens_lab,\
-                                   double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int dim_switch_3d, FILE *fPtr)
+int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
+                                   double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, bool is_3d_sim, bool find_nearest_block_switch, int riken_switch, FILE *fPtr)
 {
     
-    int i=0, j=0, min_index=0;
+    int i=0, j=0, min_index=0, ph_block_index=0;
     double ph_x=0, ph_y=0, ph_phi=0, dist=0, dist_min=1e12, ph_z=0;
+    double x0=0, x1=0, x2=0, sz_x0=0, sz_x1=0, sz_x2=0; //coordinate and sizes of grid block, in cartesian its x,y,z in spherical its r,theta,phi
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
     double ph_v_norm=0, fl_v_norm=0;
     double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
     double rnd_tracker=0, n_dens_lab_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
     double block_dist=0;
+    bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block 
     int num_thread=2;//omp_get_max_threads();
     
     int index=0;
@@ -1080,65 +1084,114 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     //or just parallelize this part here
     
     min_mfp=1e12;
-    #pragma omp parallel for num_threads(num_thread) firstprivate( block_dist, ph_x, ph_y, ph_z, ph_phi, dist_min, dist, j, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
+    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, block_dist, ph_block_index, ph_x, ph_y, ph_z, ph_phi, dist_min, dist, j, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, x0, x1, x2, sz_x0, sz_x1, sz_x2) private(i) shared(min_mfp )
     for (i=0;i<num_ph; i++)
     {
         //printf("%d, %e,%e\n", i, ((ph+i)->r0), ((ph+i)->r1));
         
-        if (dim_switch_3d==0)
+        ph_block_index=(ph+i)->nearest_block_index; //get the index of the grid nearest the photon
+        
+        if (!is_3d_sim)
         {
             ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to FLASH x coordinate
             ph_y=((ph+i)->r2);
+            ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
+            
+            if (riken_switch==1)
+            {
+                x0=pow(pow((*(x+ph_block_index)),2.0)+pow((*(y+ph_block_index)),2.0), 0.5);
+                x1=atan2((*(x+ph_block_index)), (*(y+ph_block_index)));
+                
+                sz_x0=(*(szx+ph_block_index));
+                sz_x1=(*(szy+ph_block_index));
+                
+                //pow(pow( ph_x, 2.0) + pow(ph_y, 2.0),0.5)      atan2(ph_x, ph_y)
+                is_in_block= (fabs(pow(pow( ph_x, 2.0) + pow(ph_y, 2.0),0.5) - x0) <= sz_x0/2.0) && (fabs(atan2(ph_x, ph_y) - x1 ) <= sz_x1/2.0);
+            }
+            else
+            {
+                x0=(*(x+ph_block_index));
+                x1=(*(y+ph_block_index));
+                
+                sz_x0=(*(szx+ph_block_index));
+                sz_x1=(*(szy+ph_block_index));
+                
+                is_in_block= (fabs(ph_x-x0) <= sz_x0/2.0) && (fabs(ph_y-x1) <= sz_x1/2.0);
+            }
+            
         }
         else
         {
             ph_x=((ph+i)->r0);
             ph_y=((ph+i)->r1);
             ph_z=((ph+i)->r2);
+            
+            if (riken_switch==1)
+            {
+                x0=pow(pow((*(x+ph_block_index)), 2.0) + pow((*(y+ph_block_index)),2.0 ) + pow((*(z+ph_block_index)) , 2.0),0.5);
+                x1=acos((*(z+ph_block_index))/pow(pow((*(x+ph_block_index)), 2.0) + pow((*(y+ph_block_index)),2.0 ) + pow((*(z+ph_block_index)) , 2.0),0.5));
+                x2=atan2((*(y+ph_block_index)), (*(x+ph_block_index)));
+                
+                sz_x0=(*(szy+ph_block_index));
+                sz_x1=(*(szx+ph_block_index));
+                sz_x2=(*(szx+ph_block_index));
+                
+                is_in_block= (fabs(pow(pow( ph_x, 2.0) + pow(ph_y, 2.0)+pow(ph_z, 2.0),0.5) - x0) <= sz_x0/2.0) &&  (fabs(acos(ph_z/pow(pow(ph_x, 2.0) + pow(ph_y,2.0 ) + pow(ph_z , 2.0),0.5)) - x1 ) <= sz_x1/2.0)  && (fabs(atan2(ph_y, ph_x) - x2 ) <= sz_x2/2.0);
+            }
         }
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         
-        ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
-        
-        dist_min=1e15;//set dist to impossible value to make sure at least first distance calulated is saved 
-        block_dist=3e9;
-        while (dist_min==1e15) //if this is true, then the algorithm hasnt found blocks within the acceptable range given by block_dist
+        if (!find_nearest_block_switch && is_in_block)
         {
-            
-            for(j=0;j<array_num;j++)
+            //keep the saved grid index
+            min_index=(ph+i)->nearest_block_index;
+        }
+        else
+        {
+            //find the new index of the block closest to the photon
+            dist_min=1e15;//set dist to impossible value to make sure at least first distance calulated is saved 
+            block_dist=3e9;
+            while (dist_min==1e15) //if this is true, then the algorithm hasnt found blocks within the acceptable range given by block_dist
             {
-                //if the distance between them is within 3e9, to restrict number of possible calculations,  calulate the total distance between the box and photon 
-                if ((dim_switch_3d==0) && (fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
+            
+                for(j=0;j<array_num;j++)
                 {
+                    //if the distance between them is within 3e9, to restrict number of possible calculations,  calulate the total distance between the box and photon 
+                    if ((!is_3d_sim) && (fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
+                    {
                    
-                    dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)) , 2.0),0.5);
-                    //fprintf(fPtr,"Dist calculated as: %e, index: %d\n", dist, j);
-                    //printf("In outer if statement, OLD: %e, %d\n", dist_min, min_index);
+                        dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)) , 2.0),0.5);
+                        //fprintf(fPtr,"Dist calculated as: %e, index: %d\n", dist, j);
+                        //printf("In outer if statement, OLD: %e, %d\n", dist_min, min_index);
                 
-                    if((dist<dist_min))
-                    {
-                        //fprintf(fPtr,"In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
-                        dist_min=dist; //save new minimum distance
-                        min_index=j; //save index
-                        //printf("New Min dist: %e, New min Index: %d, Array_Num: %d\n", dist_min, min_index, array_num);
+                        if((dist<dist_min))
+                        {
+                            //fprintf(fPtr,"In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
+                            dist_min=dist; //save new minimum distance
+                            min_index=j; //save index
+                            //printf("New Min dist: %e, New min Index: %d, Array_Num: %d\n", dist_min, min_index, array_num);
                         
-                    }
+                        }
                 
-                }
-                else if ((dim_switch_3d==1) &&(fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist) && (fabs(ph_z- (*(z+j)))<block_dist))
-                {
-                    dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)),2.0 ) + pow(ph_z- (*(z+j)) , 2.0),0.5);
-                    if((dist<dist_min))
+                    }
+                    else if ((is_3d_sim) &&(fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist) && (fabs(ph_z- (*(z+j)))<block_dist))
                     {
-                        //printf("In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
-                        dist_min=dist; //save new minimum distance
-                        min_index=j; //save index
-                        //fprintf(fPtr,"New Min dist: %e, New min Index: %d, Array_Num: %e\n", dist_min, min_index, array_num);
+                        dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)),2.0 ) + pow(ph_z- (*(z+j)) , 2.0),0.5);
+                        if((dist<dist_min))
+                        {
+                            //printf("In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
+                            dist_min=dist; //save new minimum distance
+                            min_index=j; //save index
+                            //fprintf(fPtr,"New Min dist: %e, New min Index: %d, Array_Num: %e\n", dist_min, min_index, array_num);
+                        }
                     }
                 }
-            }
-            block_dist*=10; //increase size of accepted distances for gris points, if dist_min==1e12 then the next time the acceptance range wil be larger
+                block_dist*=10; //increase size of accepted distances for gris points, if dist_min==1e12 then the next time the acceptance range wil be larger
         
+            }
+            
+            (ph+i)->nearest_block_index=min_index; //save the index 
+            
         }
          //fprintf(fPtr,"Outside\n");
         
@@ -1147,12 +1200,12 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         (n_vx_tmp)= (*(velx+min_index));
         (n_vy_tmp)= (*(vely+min_index));
         (n_temp_tmp)= (*(temp+min_index));
-        if (dim_switch_3d==1)
+        if (is_3d_sim)
         {
             (n_vz_tmp)= (*(velz+min_index));
         }
         
-        if (dim_switch_3d==0)
+        if (!is_3d_sim)
         {
             fl_v_x=(*(velx+min_index))*cos(ph_phi);
             fl_v_y=(*(velx+min_index))*sin(ph_phi);
@@ -1171,7 +1224,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
         (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
         
-        if (dim_switch_3d==0)
+        if (!is_3d_sim)
         {
             beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
         }
@@ -1198,7 +1251,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             n_dens_lab_min= n_dens_lab_tmp;
             n_vx_min= n_vx_tmp;
             n_vy_min= n_vy_tmp;
-            if (dim_switch_3d==1)
+            if (is_3d_sim)
             {
                 n_vz_min= n_vz_tmp;
             }
@@ -1222,7 +1275,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     *(n_dens_lab)= n_dens_lab_min;
     *(n_vx)= n_vx_min;
     *(n_vy)= n_vy_min;
-    if (dim_switch_3d==1)
+    if (is_3d_sim)
     {
         *(n_vz)= n_vz_min;
     }
@@ -1265,7 +1318,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t)
 }
 
 
-void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double flash_vz, double fluid_temp, gsl_rng * rand,int dim_switch_3d, FILE *fPtr)
+void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double flash_vz, double fluid_temp, gsl_rng * rand,bool is_3d_sim, FILE *fPtr)
 {
     //function to perform single photon scattering
     double ph_phi=0;    
@@ -1285,7 +1338,7 @@ void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double f
     //convert flash coordinated into MCRaT coordinates
     //printf("Getting fluid_beta\n");
     
-    if (dim_switch_3d==0)
+    if (!is_3d_sim)
     {
         (*(fluid_beta+0))=flash_vx*cos(ph_phi);
         (*(fluid_beta+1))=flash_vx*sin(ph_phi);
@@ -1759,7 +1812,7 @@ void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, 
 }
 
 
-void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, int angle_id, int dim_switch, int riken_switch, FILE *fPtr )
+void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, int angle_id, bool is_3d_sim, int riken_switch, FILE *fPtr )
 {
     //function to merge files in mcdir produced by various threads
     int i=0, j=0, k=0, num_files=8, num_thread=8; //omp_get_max_threads() number of files is number of types of mcdata files there are
@@ -1774,7 +1827,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
         fprintf(fPtr, "Merging files for frame: %d\n", i);
         fflush(fPtr);
         
-        if ((riken_switch==1) && (dim_switch==1) && (i>=3000))
+        if ((riken_switch==1) && (is_3d_sim) && (i>=3000))
         {
             increment=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
         }
@@ -1842,11 +1895,11 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
     
 }
 
-void modifyFlashName(char flash_file[200], char prefix[200], int frame, int dim_switch)
+void modifyFlashName(char flash_file[200], char prefix[200], int frame, bool is_3d_sim)
 {
     int lim1=0, lim2=0, lim3=0;
     
-    if (dim_switch==0)
+    if (!is_3d_sim)
     {
         //2D case
         lim1=10;

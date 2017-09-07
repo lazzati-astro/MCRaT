@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <dirent.h>
 #include "hdf5.h"
@@ -499,8 +500,8 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
                         (*x)[elem] = (*(r_unprc+r_index))*sin(*(theta_unprc+theta_index))*cos(*(phi_unprc+phi_index));
                         (*y)[elem] = (*(r_unprc+r_index))*sin(*(theta_unprc+theta_index))*sin(*(phi_unprc+phi_index));
                         (*z)[elem] = (*(r_unprc+r_index))*cos(*(theta_unprc+theta_index));
-                        (*szx)[elem] = M_PI/560; 
-                        (*szy)[elem] =  *(dr+dr_index);
+                        (*szx)[elem] =  *(dr+dr_index);
+                        (*szy)[elem] =  M_PI/560;
                         (*velx)[elem]=((*(vel_r_unprc+hydro_index))*sin(*(theta_unprc+theta_index))*cos(*(phi_unprc+phi_index))) + ((*(vel_theta_unprc+hydro_index))*cos(*(theta_unprc+theta_index))*cos(*(phi_unprc+phi_index))) - ((*(vel_phi_unprc+hydro_index))*sin(*(phi_unprc+phi_index)));
                         (*vely)[elem]=((*(vel_r_unprc+hydro_index))*sin(*(theta_unprc+theta_index))*sin(*(phi_unprc+phi_index))) + ((*(vel_theta_unprc+hydro_index))*cos(*(theta_unprc+theta_index))*sin(*(phi_unprc+phi_index))) + ((*(vel_phi_unprc+hydro_index))*cos(*(phi_unprc+phi_index)));
                         (*velz)[elem]=((*(vel_r_unprc+hydro_index))*cos(*(theta_unprc+theta_index))) - ((*(vel_theta_unprc+hydro_index))*sin(*(theta_unprc+theta_index)));
@@ -525,8 +526,8 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
                         (*x)[elem] = (*(r_unprc+r_index))*sin(*(theta_unprc+theta_index))*cos(*(phi_unprc+phi_index));
                         (*y)[elem] = (*(r_unprc+r_index))*sin(*(theta_unprc+theta_index))*sin(*(phi_unprc+phi_index));
                         (*z)[elem] = (*(r_unprc+r_index))*cos(*(theta_unprc+theta_index));
-                        (*szx)[elem] = M_PI/560; 
-                        (*szy)[elem] =  *(dr+dr_index);
+                        (*szx)[elem] =  *(dr+dr_index);
+                        (*szy)[elem] =  M_PI/560;
                         (*velx)[elem]=((*(vel_r_unprc+hydro_index))*sin(*(theta_unprc+theta_index))*cos(*(phi_unprc+phi_index))) + ((*(vel_theta_unprc+hydro_index))*cos(*(theta_unprc+theta_index))*cos(*(phi_unprc+phi_index))) - ((*(vel_phi_unprc+hydro_index))*sin(*(phi_unprc+phi_index)));
                         (*vely)[elem]=((*(vel_r_unprc+hydro_index))*sin(*(theta_unprc+theta_index))*sin(*(phi_unprc+phi_index))) + ((*(vel_theta_unprc+hydro_index))*cos(*(theta_unprc+theta_index))*sin(*(phi_unprc+phi_index))) + ((*(vel_phi_unprc+hydro_index))*cos(*(phi_unprc+phi_index)));
                         (*velz)[elem]=((*(vel_r_unprc+hydro_index))*cos(*(theta_unprc+theta_index))) - ((*(vel_theta_unprc+hydro_index))*sin(*(theta_unprc+theta_index)));
@@ -605,7 +606,7 @@ void photonInjection3D( struct photon **ph, int *ph_num, double r_inj, double ph
                 if ( (theta_prime< theta_max) && (theta_prime >= theta_min) )
                 {
                     //NEED TO modify for RIKEN data - modified
-                    ph_dens_calc=(num_dens_coeff*pow(*(temps+i),3.0)*pow(*(r+i),2)*sin(*(theta+i))* pow(*(szx+i),2.0)*(*(szy+i)) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)+pow(*(vz+i),2)),0.5),-1) ; //a*T^3/(weight) dV, dV=2*PI*x*dx^2,
+                    ph_dens_calc=(num_dens_coeff*pow(*(temps+i),3.0)*pow(*(r+i),2)*sin(*(theta+i))* pow(*(szy+i),2.0)*(*(szx+i)) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)+pow(*(vz+i),2)),0.5),-1) ; //a*T^3/(weight) dV, dV=2*PI*x*dx^2,
                      
                      (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
                      
