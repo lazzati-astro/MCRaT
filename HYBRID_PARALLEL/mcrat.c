@@ -43,7 +43,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -89,7 +88,8 @@ int main(int argc, char **argv)
     double fps, fps_modified, theta_jmin, theta_jmax ;//frames per second of sim, min opening angle of jet, max opening angle of jet in radians
     double inj_radius_small, inj_radius_large,  ph_weight_suggest, ph_weight_small, ph_weight_large ;//radius at chich photons are injected into sim
     int frm0,last_frm, frm2_small, frm2_large, j=0, min_photons, max_photons, frm0_small, frm0_large ;//frame starting from, last frame of sim, frame of last injection
-    bool is_3d_sim=0;
+    int dim_switch=0;
+    int find_nearest_grid_switch=0;
     int increment_inj=1, increment_scatt=1; //increments for injection loop and scattering loop, outer and inner loops respectively, the increment can change for RIKEN 3D hydro files
     
     double inj_radius;
@@ -113,11 +113,9 @@ int main(int argc, char **argv)
     int num_ph=0, array_num=0, ph_scatt_index=0, max_scatt=0, min_scatt=0,i=0; //number of photons produced in injection algorithm, number of array elleemnts from reading FLASH file, index of photon whch does scattering, generic counter
     double dt_max=0, thescatt=0, accum_time=0; 
     double  gamma_infinity=0, time_now=0, time_step=0, avg_scatt=0; //gamma_infinity not used?
-    double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0, ph_vzPtr=0;// *ph_cosanglePtr=NULL ;
+    double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0, ph_vzPtr=0;;// *ph_cosanglePtr=NULL ;
     double min_r=0, max_r=0;
-    int frame=0, scatt_frame=0, scatt_framestart=0, framestart=0;
-    bool find_nearest_grid_switch=0; //when this is 1, the function findNearestPropertiesAndMinMFP by default finds the index of the grid block closest to each photon
-    unsigned long long frame_scatt_cnt=0;
+    int frame=0, scatt_frame=0, frame_scatt_cnt=0, scatt_framestart=0, framestart=0;
     struct photon *phPtr=NULL; //pointer to array of photons 
     
     int num_thread=0, angle_count=0;
@@ -157,7 +155,7 @@ int main(int argc, char **argv)
     
     printf(">> mc.py:  Reading mc.par: %s\n", mc_file);
     
-    readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &ph_weight_small, &ph_weight_large, &min_photons, &max_photons, &spect, &restrt, &num_thread,&is_3d_sim); //thetas that comes out is in degrees
+    readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &ph_weight_small, &ph_weight_large, &min_photons, &max_photons, &spect, &restrt, &num_thread,&dim_switch); //thetas that comes out is in degrees
     //printf("%c\n", restrt);
     
     //divide up angles and frame injections among threads DONT WANT NUMBER OF THREADS TO BE ODD
@@ -250,7 +248,7 @@ int main(int argc, char **argv)
                 printf(">> mc.py:  Reading checkpoint\n");
                 //#pragma omp critical
                 {
-                    readCheckpoint(mc_dir, &phPtr, frm0, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, is_3d_sim, RIKEN_SWITCH);
+                    readCheckpoint(mc_dir, &phPtr, frm0, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, dim_switch, RIKEN_SWITCH);
                 
                 /*
                 for (i=0;i<num_ph;i++)
@@ -329,7 +327,7 @@ int main(int argc, char **argv)
                 }
             }
             
-            if ((RIKEN_SWITCH==1) && (is_3d_sim) && (framestart>=3000))
+            if ((RIKEN_SWITCH==1) && (dim_switch==1) && (framestart>=3000))
             {
                 increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
                 fps_modified=1;
@@ -359,7 +357,7 @@ int main(int argc, char **argv)
             //#pragma omp for 
             for (frame=framestart;frame<=frm2;frame=frame+increment_inj)
             {
-                if ((RIKEN_SWITCH==1) && (is_3d_sim) && (frame>=3000))
+                if ((RIKEN_SWITCH==1) && (dim_switch==1) && (frame>=3000))
                 {
                     increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
                     fps_modified=1;
@@ -383,13 +381,13 @@ int main(int argc, char **argv)
                 {
                     
                     
-                    if (!is_3d_sim)
+                    if (dim_switch==0)
                     {
                         if (RIKEN_SWITCH==0)
                         {
                             //if using FLASH data for 2D
                         //put proper number at the end of the flash file
-                        modifyFlashName(flash_file, flash_prefix, frame, is_3d_sim);
+                        modifyFlashName(flash_file, flash_prefix, frame, dim_switch);
                         
                         fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
                         fflush(fPtr);
@@ -431,7 +429,7 @@ int main(int argc, char **argv)
                     fprintf(fPtr,">>  Proc: %d with angles %0.1lf-%0.1lf: Injecting photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     fflush(fPtr);
                     
-                    if (!is_3d_sim)
+                    if (dim_switch==0)
                     {
                         photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng, RIKEN_SWITCH, fPtr );
                     }
@@ -459,7 +457,7 @@ int main(int argc, char **argv)
                 
                 for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame=scatt_frame+increment_scatt)
                 {
-                    if ((RIKEN_SWITCH==1) && (is_3d_sim) && (scatt_frame>=3000))
+                    if ((RIKEN_SWITCH==1) && (dim_switch==1) && (scatt_frame>=3000))
                     {
                         increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
                         fps_modified=1; //therefore dt between files become 1 second
@@ -483,12 +481,12 @@ int main(int argc, char **argv)
                     gsl_rng_set(rng, gsl_rng_get(rng));
                     
                    
-                    if (!is_3d_sim)
+                    if (dim_switch==0)
                     {
                         if (RIKEN_SWITCH==0)
                         {
                             //put proper number at the end of the flash file
-                            modifyFlashName(flash_file, flash_prefix, scatt_frame, is_3d_sim);
+                            modifyFlashName(flash_file, flash_prefix, scatt_frame, dim_switch);
                             phMinMax(phPtr, num_ph, &min_r, &max_r);
                             readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                     &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
@@ -496,7 +494,7 @@ int main(int argc, char **argv)
                         else
                         {
                             phMinMax(phPtr, num_ph, &min_r, &max_r);
-                            //if using RIKEN hydro data for 2D szx becomes delta r and szy becomes delta theta
+                            //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
                             readHydro2D(FILEPATH, scatt_frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                         &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
                         
@@ -505,7 +503,6 @@ int main(int argc, char **argv)
                     else
                     {
                         phMinMax(phPtr, num_ph, &min_r, &max_r);
-                        //szx=delta theta and delta phi and szy is delta r
                         read_hydro(FILEPATH, scatt_frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
                                    &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fps_modified, fPtr);
                     }
@@ -528,6 +525,7 @@ int main(int argc, char **argv)
                     
                     frame_scatt_cnt=0;
                     find_nearest_grid_switch=1; // set to true so the function findNearestPropertiesAndMinMFP by default finds the index of the grid block closest to each photon since we just read in a file and the prior index is invalid
+
                     while (time_now<((scatt_frame+increment_scatt)/fps))
                     {
                         //if simulation time is less than the simulation time of the next frame, keep scattering in this frame
@@ -538,9 +536,10 @@ int main(int argc, char **argv)
                         
 
                         ph_scatt_index=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, &time_step, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
-                                                                      &ph_dens_labPtr, &ph_vxPtr, &ph_vyPtr, &ph_vzPtr, &ph_tempPtr, rng, is_3d_sim, find_nearest_grid_switch, RIKEN_SWITCH, fPtr);
+                                                                      &ph_dens_labPtr, &ph_vxPtr, &ph_vyPtr, &ph_vzPtr, &ph_tempPtr, rng, dim_switch, find_nearest_grid_switch, RIKEN_SWITCH, fPtr);
                         
-                         find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
+                        find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
+
                         
                         //fprintf(fPtr, "In main: %e, %d, %e, %e\n",((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
                         //fflush(fPtr);
@@ -559,12 +558,12 @@ int main(int argc, char **argv)
                             //scatter the photon
                             //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
-                            photonScatter( (phPtr+ph_scatt_index), (ph_vxPtr), (ph_vyPtr),ph_vzPtr, (ph_tempPtr), rng, is_3d_sim, fPtr );
+                            photonScatter( (phPtr+ph_scatt_index), (ph_vxPtr), (ph_vyPtr),ph_vzPtr, (ph_tempPtr), rng, dim_switch, fPtr );
                             
                             
                             if (frame_scatt_cnt%1000 == 0)
                             {
-                                fprintf(fPtr,"Scattering Number: %llu\n", frame_scatt_cnt);
+                                fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
                                 fprintf(fPtr,"The local temp is: %e\n", (ph_tempPtr));
                                 fprintf(fPtr,"Average photon energy is: %e\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 and then do (*3e10/1.6e-9)
                                 fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
@@ -588,7 +587,7 @@ int main(int argc, char **argv)
                     //get scattering statistics
                     phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt);
                         
-                    fprintf(fPtr,"The number of scatterings in this frame is: %llu\n", frame_scatt_cnt);
+                    fprintf(fPtr,"The number of scatterings in this frame is: %d\n", frame_scatt_cnt);
                     fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                     fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scattering for a photon is: %d\n", max_scatt, min_scatt);
                     fprintf(fPtr,"The average number of scatterings thus far is: %lf\n", avg_scatt);
@@ -604,7 +603,7 @@ int main(int argc, char **argv)
 
                     saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id);
                     
-                     if (is_3d_sim)
+                     if (dim_switch==1)
                     {
                         if (RIKEN_SWITCH==1)
                         {
@@ -631,82 +630,83 @@ int main(int argc, char **argv)
         MPI_Barrier(angle_comm);
         
         //merge files from each worker thread within a directory
+        //merge files from each worker thread within a directory
         {
             /*
-            increment_scatt=1;
-            file_count=0;
-            
-            //count number of files
-            for (i=frm0;i<=last_frm;i=i+increment_scatt)
-            {
-                if ((RIKEN_SWITCH==1) && (is_3d_sim) && (i>=3000))
-                {
-                    increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1                        
-                }
-                file_count++;
-            }
-            //holds number of files for each process to merge
-            proc_frame_size=floor(file_count/ (float) angle_procs);
-            frame_array=malloc(file_count*sizeof(int));
-            proc_frame_array=malloc(angle_procs*sizeof(int)); //sets index of each proceesed acquired value
-            element_num=malloc(angle_procs*sizeof(int));
-            
-            for (i=0;i<angle_procs;i++)
-            {
-                *(proc_frame_array+i)=i*proc_frame_size;
-                *(element_num+i)=1;
-            }
-            
-            //make vector with the files in order to pass them to each of the processes
-            increment_scatt=1;
-            file_count=0;
-            for (i=frm0;i<=last_frm;i=i+increment_scatt)
-            {
-                if ((RIKEN_SWITCH==1) && (is_3d_sim) && (i>=3000))
-                {
-                    increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1                        
-                }
-                
-                *(frame_array+file_count)=i ;
-                file_count++;
-                 //printf("file_count: %d frame: %d\n",  file_count-1, *(frame_array+file_count-1));
-            }
-            //pass  first frame number that each rpocess should start to merge, can calulate the file it should merge until
-            MPI_Scatterv(frame_array, element_num, proc_frame_array, MPI_INT, &frm0, 1, MPI_INT, 0, angle_comm);
-            
-            //fprintf(fPtr, "Value: frm0: ,%d\n", frm0);
-            //fflush(fPtr);
-            
-            //make sure all files get merged by giving the rest to the last process
-            if (angle_id==angle_procs-1)
-            {
-                proc_frame_size=file_count-proc_frame_size*(angle_procs-1); //for last process take over the remaining number of files
-            }
-            //calculate what the last file the preocess should merge up to
-            i=0;
-            last_frm=frm0;
-            while(i<proc_frame_size)
-            {
-                if ((RIKEN_SWITCH==1) && (is_3d_sim) && (last_frm>=3000))
-                {
-                    increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1                        
-                }
-                else
-                {
-                    increment_scatt=1;
-                }
-                
-                last_frm+=increment_scatt;
-                i++;
-            }
-            
-            */
+             increment_scatt=1;
+             file_count=0;
+             
+             //count number of files
+             for (i=frm0;i<=last_frm;i=i+increment_scatt)
+             {
+             if ((RIKEN_SWITCH==1) && (is_3d_sim) && (i>=3000))
+             {
+             increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+             }
+             file_count++;
+             }
+             //holds number of files for each process to merge
+             proc_frame_size=floor(file_count/ (float) angle_procs);
+             frame_array=malloc(file_count*sizeof(int));
+             proc_frame_array=malloc(angle_procs*sizeof(int)); //sets index of each proceesed acquired value
+             element_num=malloc(angle_procs*sizeof(int));
+             
+             for (i=0;i<angle_procs;i++)
+             {
+             *(proc_frame_array+i)=i*proc_frame_size;
+             *(element_num+i)=1;
+             }
+             
+             //make vector with the files in order to pass them to each of the processes
+             increment_scatt=1;
+             file_count=0;
+             for (i=frm0;i<=last_frm;i=i+increment_scatt)
+             {
+             if ((RIKEN_SWITCH==1) && (is_3d_sim) && (i>=3000))
+             {
+             increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+             }
+             
+             *(frame_array+file_count)=i ;
+             file_count++;
+             //printf("file_count: %d frame: %d\n",  file_count-1, *(frame_array+file_count-1));
+             }
+             //pass  first frame number that each rpocess should start to merge, can calulate the file it should merge until
+             MPI_Scatterv(frame_array, element_num, proc_frame_array, MPI_INT, &frm0, 1, MPI_INT, 0, angle_comm);
+             
+             //fprintf(fPtr, "Value: frm0: ,%d\n", frm0);
+             //fflush(fPtr);
+             
+             //make sure all files get merged by giving the rest to the last process
+             if (angle_id==angle_procs-1)
+             {
+             proc_frame_size=file_count-proc_frame_size*(angle_procs-1); //for last process take over the remaining number of files
+             }
+             //calculate what the last file the preocess should merge up to
+             i=0;
+             last_frm=frm0;
+             while(i<proc_frame_size)
+             {
+             if ((RIKEN_SWITCH==1) && (is_3d_sim) && (last_frm>=3000))
+             {
+             increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+             }
+             else
+             {
+             increment_scatt=1;
+             }
+             
+             last_frm+=increment_scatt;
+             i++;
+             }
+             
+             */
             if (angle_id==0)
             {
-            fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
-            fflush(fPtr);
-            
-                dirFileMerge(mc_dir, frm0, last_frm, angle_procs, angle_id, is_3d_sim, RIKEN_SWITCH, fPtr); //only the master proc does this for each angle
+                fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
+                fflush(fPtr);
+                
+                dirFileMerge(mc_dir, frm0, last_frm, angle_procs, angle_id, dim_switch, RIKEN_SWITCH, fPtr); //only the master proc does this for each angle
             }
         }
         
