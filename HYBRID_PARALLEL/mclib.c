@@ -287,7 +287,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2,
                 (*ph)[i].r2=phHolder->r2; 
                 (*ph)[i].num_scatt=phHolder->num_scatt;
                 (*ph)[i].weight=phHolder->weight;
-                
+                (*ph)[i].nearest_block_index= phHolder->nearest_block_index;
             }
             
             free(phHolder);
@@ -1089,7 +1089,14 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     for (i=0;i<num_ph; i++)
     {
         //printf("%d, %e,%e\n", i, ((ph+i)->r0), ((ph+i)->r1));
-        ph_block_index=(ph+i)->nearest_block_index;
+        if (find_nearest_block_switch==0)
+        {
+            ph_block_index=(ph+i)->nearest_block_index; //if starting a new frame the number of indexes can change and cause a seg fault
+        }
+        else
+        {
+            ph_block_index=0; //if starting a new frame set index=0 to avoid this issue
+        }
         
         if (dim_switch_3d==0)
         {
