@@ -632,18 +632,18 @@ int main(int argc, char **argv)
         //merge files from each worker thread within a directory
         //merge files from each worker thread within a directory
         {
-            /*
+            
              increment_scatt=1;
              file_count=0;
              
              //count number of files
              for (i=frm0;i<=last_frm;i=i+increment_scatt)
              {
-             if ((RIKEN_SWITCH==1) && (is_3d_sim) && (i>=3000))
-             {
-             increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-             }
-             file_count++;
+                if ((RIKEN_SWITCH==1) && (dim_switch==1) && (i>=3000))
+                {
+                    increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                }
+                file_count++;
              }
              //holds number of files for each process to merge
              proc_frame_size=floor(file_count/ (float) angle_procs);
@@ -653,8 +653,8 @@ int main(int argc, char **argv)
              
              for (i=0;i<angle_procs;i++)
              {
-             *(proc_frame_array+i)=i*proc_frame_size;
-             *(element_num+i)=1;
+                *(proc_frame_array+i)=i*proc_frame_size;
+                *(element_num+i)=1;
              }
              
              //make vector with the files in order to pass them to each of the processes
@@ -662,14 +662,14 @@ int main(int argc, char **argv)
              file_count=0;
              for (i=frm0;i<=last_frm;i=i+increment_scatt)
              {
-             if ((RIKEN_SWITCH==1) && (is_3d_sim) && (i>=3000))
-             {
-             increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-             }
+                if ((RIKEN_SWITCH==1) && (dim_switch==1) && (i>=3000))
+                {
+                    increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                }
              
-             *(frame_array+file_count)=i ;
-             file_count++;
-             //printf("file_count: %d frame: %d\n",  file_count-1, *(frame_array+file_count-1));
+                *(frame_array+file_count)=i ;
+                file_count++;
+                //printf("file_count: %d frame: %d\n",  file_count-1, *(frame_array+file_count-1));
              }
              //pass  first frame number that each rpocess should start to merge, can calulate the file it should merge until
              MPI_Scatterv(frame_array, element_num, proc_frame_array, MPI_INT, &frm0, 1, MPI_INT, 0, angle_comm);
@@ -680,33 +680,33 @@ int main(int argc, char **argv)
              //make sure all files get merged by giving the rest to the last process
              if (angle_id==angle_procs-1)
              {
-             proc_frame_size=file_count-proc_frame_size*(angle_procs-1); //for last process take over the remaining number of files
+                proc_frame_size=file_count-proc_frame_size*(angle_procs-1); //for last process take over the remaining number of files
              }
              //calculate what the last file the preocess should merge up to
              i=0;
              last_frm=frm0;
              while(i<proc_frame_size)
              {
-             if ((RIKEN_SWITCH==1) && (is_3d_sim) && (last_frm>=3000))
-             {
-             increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-             }
-             else
-             {
-             increment_scatt=1;
+                if ((RIKEN_SWITCH==1) && (dim_switch==1) && (last_frm>=3000))
+                {
+                    increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                }
+                else
+                {
+                    increment_scatt=1;
+                }
+             
+                last_frm+=increment_scatt;
+                i++;
              }
              
-             last_frm+=increment_scatt;
-             i++;
-             }
              
-             */
-            if (angle_id==0)
+            //if (angle_id==0)
             {
                 fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
                 fflush(fPtr);
                 
-                dirFileMerge(mc_dir, frm0, last_frm, angle_procs, angle_id, dim_switch, RIKEN_SWITCH, fPtr); //only the master proc does this for each angle
+                dirFileMerge(mc_dir, frm0, last_frm, angle_procs, angle_id, dim_switch, RIKEN_SWITCH, fPtr); 
             }
         }
         

@@ -1043,118 +1043,11 @@ double *zeroNorm(double *p_ph)
     return p_ph;
 }
 
-int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
-                                   double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int dim_switch_3d, int find_nearest_block_switch, int riken_switch, FILE *fPtr)
+int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z,  int dim_switch_3d)
 {
+    double dist=0, dist_min=1e15, block_dist=0;
+    int min_index=0, j=0;
     
-    int i=0, j=0, min_index=0, ph_block_index=0;
-    double ph_x=0, ph_y=0, ph_phi=0, dist=0, dist_min=1e12, ph_z=0;
-    double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
-    double x0=0, x1=0, x2=0, sz_x0=0, sz_x1=0, sz_x2=0; //coordinate and sizes of grid block, in cartesian its x,y,z in spherical its r,theta,phi
-
-    double ph_v_norm=0, fl_v_norm=0;
-    double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
-    double rnd_tracker=0, n_dens_lab_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
-    double block_dist=0;
-    int num_thread=2;//omp_get_max_threads();
-    bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
-    
-    int index=0;
-    double mfp=0,min_mfp=0, beta=0;
-        
-        
-    //initialize gsl random number generator fo each thread
-    
-        const gsl_rng_type *rng_t;
-        gsl_rng **rng;
-        gsl_rng_env_setup();
-        rng_t = gsl_rng_ranlxs0;
-
-        rng = (gsl_rng **) malloc((num_thread ) * sizeof(gsl_rng *)); 
-        rng[0]=rand;
-
-            //#pragma omp parallel for num_threads(nt)
-        for(i=1;i<num_thread;i++)
-        {
-            rng[i] = gsl_rng_alloc (rng_t);
-            gsl_rng_set(rng[i],gsl_rng_get(rand));
-        }
-       
-    //go through each photon and find the blocks around it and then get the distances to all of those blocks and choose the one thats the shortest distance away
-    //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
-    //or just parallelize this part here
-    
-    min_mfp=1e12;
-    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, block_dist, ph_block_index, ph_x, ph_y, ph_z, ph_phi, dist_min, dist, j, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, x0, x1, x2, sz_x0, sz_x1, sz_x2) private(i) shared(min_mfp )
-    for (i=0;i<num_ph; i++)
-    {
-        //printf("%d, %e,%e\n", i, ((ph+i)->r0), ((ph+i)->r1));
-        if (find_nearest_block_switch==0)
-        {
-            ph_block_index=(ph+i)->nearest_block_index; //if starting a new frame the number of indexes can change and cause a seg fault
-        }
-        else
-        {
-            ph_block_index=0; //if starting a new frame set index=0 to avoid this issue
-        }
-        
-        if (dim_switch_3d==0)
-        {
-            ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to FLASH x coordinate
-            ph_y=((ph+i)->r2);
-            ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
-            
-            if (riken_switch==1)
-            {
-                x0=pow(pow((*(x+ph_block_index)),2.0)+pow((*(y+ph_block_index)),2.0), 0.5);
-                x1=atan2((*(x+ph_block_index)), (*(y+ph_block_index)));
-                
-                sz_x0=(*(szx+ph_block_index));
-                sz_x1=(*(szy+ph_block_index));
-                
-                //pow(pow( ph_x, 2.0) + pow(ph_y, 2.0),0.5)      atan2(ph_x, ph_y)
-                is_in_block= (fabs(pow(pow( ph_x, 2.0) + pow(ph_y, 2.0),0.5) - x0) <= sz_x0/2.0) && (fabs(atan2(ph_x, ph_y) - x1 ) <= sz_x1/2.0);
-            }
-            else
-            {
-                x0=(*(x+ph_block_index));
-                x1=(*(y+ph_block_index));
-                
-                sz_x0=(*(szx+ph_block_index));
-                sz_x1=(*(szy+ph_block_index));
-                
-                is_in_block= (fabs(ph_x-x0) <= sz_x0/2.0) && (fabs(ph_y-x1) <= sz_x1/2.0);
-            }
-        }
-        else
-        {
-            ph_x=((ph+i)->r0);
-            ph_y=((ph+i)->r1);
-            ph_z=((ph+i)->r2);
-            
-            if (riken_switch==1)
-            {
-                x0=pow(pow((*(x+ph_block_index)), 2.0) + pow((*(y+ph_block_index)),2.0 ) + pow((*(z+ph_block_index)) , 2.0),0.5);
-                x1=acos((*(z+ph_block_index))/pow(pow((*(x+ph_block_index)), 2.0) + pow((*(y+ph_block_index)),2.0 ) + pow((*(z+ph_block_index)) , 2.0),0.5));
-                x2=atan2((*(y+ph_block_index)), (*(x+ph_block_index)));
-                
-                sz_x0=(*(szy+ph_block_index));
-                sz_x1=(*(szx+ph_block_index));
-                sz_x2=(*(szx+ph_block_index));
-                
-                is_in_block= (fabs(pow(pow( ph_x, 2.0) + pow(ph_y, 2.0)+pow(ph_z, 2.0),0.5) - x0) <= sz_x0/2.0) &&  (fabs(acos(ph_z/pow(pow(ph_x, 2.0) + pow(ph_y,2.0 ) + pow(ph_z , 2.0),0.5)) - x1 ) <= sz_x1/2.0)  && (fabs(atan2(ph_y, ph_x) - x2 ) <= sz_x2/2.0);
-            }
-        }
-        //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
-        
-        if (find_nearest_block_switch==0 && is_in_block)
-        {
-            //keep the saved grid index
-            min_index=(ph+i)->nearest_block_index;
-        }
-        else
-        {
-            //find the new index of the block closest to the photon
             dist_min=1e15;//set dist to impossible value to make sure at least first distance calulated is saved
             block_dist=3e9;
             while (dist_min==1e15) //if this is true, then the algorithm hasnt found blocks within the acceptable range given by block_dist
@@ -1195,6 +1088,175 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 block_dist*=10; //increase size of accepted distances for gris points, if dist_min==1e12 then the next time the acceptance range wil be larger
                 
             }
+            
+            return min_index;
+}
+
+int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int dim_switch_3d, int riken_switch)
+{
+    int i=0, within_block_index=0;
+    bool is_in_block=0; //boolean to determine if the photon is outside of a grid
+    
+    for (i=0;i<array_num;i++)
+    {
+        is_in_block=checkInBlock(i,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
+        
+        if (is_in_block)
+        {
+            within_block_index=i;
+            //change for loop index once the block is found so the code doesnt search the rest of the grids to see if the photon is within those grids
+            i=array_num;
+        }
+        
+    }
+    
+    return within_block_index;
+}
+
+
+int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int dim_switch_3d, int riken_switch)
+{
+    bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
+    double x0=0, x1=0, x2=0, sz_x0=0, sz_x1=0, sz_x2=0; //coordinate and sizes of grid block, in cartesian its x,y,z in spherical its r,theta,phi
+    int return_val=0;
+
+    
+        if (dim_switch_3d==0)
+        {
+            
+            if (riken_switch==1)
+            {
+                x0=pow(pow((*(x+block_index)),2.0)+pow((*(y+block_index)),2.0), 0.5);
+                x1=atan2((*(x+block_index)), (*(y+block_index)));
+                
+                sz_x0=(*(szx+block_index));
+                sz_x1=(*(szy+block_index));
+                
+                //pow(pow( ph_x, 2.0) + pow(ph_y, 2.0),0.5)      atan2(ph_x, ph_y)
+                is_in_block= (fabs(pow(pow( ph_x, 2.0) + pow(ph_y, 2.0),0.5) - x0) <= sz_x0/2.0) && (fabs(atan2(ph_x, ph_y) - x1 ) <= sz_x1/2.0);
+            }
+            else
+            {
+                x0=(*(x+block_index));
+                x1=(*(y+block_index));
+                
+                sz_x0=(*(szx+block_index));
+                sz_x1=(*(szy+block_index));
+                
+                is_in_block= (fabs(ph_x-x0) <= sz_x0/2.0) && (fabs(ph_y-x1) <= sz_x1/2.0);
+            }
+        }
+        else
+        {
+            if (riken_switch==1)
+            {
+                x0=pow(pow((*(x+block_index)), 2.0) + pow((*(y+block_index)),2.0 ) + pow((*(z+block_index)) , 2.0),0.5);
+                x1=acos((*(z+block_index))/pow(pow((*(x+block_index)), 2.0) + pow((*(y+block_index)),2.0 ) + pow((*(z+block_index)) , 2.0),0.5));
+                x2=atan2((*(y+block_index)), (*(x+block_index)));
+                
+                sz_x0=(*(szy+block_index));
+                sz_x1=(*(szx+block_index));
+                sz_x2=(*(szx+block_index));
+                
+                is_in_block= (fabs(pow(pow( ph_x, 2.0) + pow(ph_y, 2.0)+pow(ph_z, 2.0),0.5) - x0) <= sz_x0/2.0) &&  (fabs(acos(ph_z/pow(pow(ph_x, 2.0) + pow(ph_y,2.0 ) + pow(ph_z , 2.0),0.5)) - x1 ) <= sz_x1/2.0)  && (fabs(atan2(ph_y, ph_x) - x2 ) <= sz_x2/2.0);
+            }
+        }
+        
+        if (is_in_block)
+        {
+            return_val=1;
+        }
+        else
+        {
+            return_val=0;
+        }
+    
+    return return_val;
+}
+
+int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
+                                   double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int dim_switch_3d, int find_nearest_block_switch, int riken_switch, FILE *fPtr)
+{
+    
+    int i=0, min_index=0, ph_block_index=0;
+    double ph_x=0, ph_y=0, ph_phi=0, ph_z=0;
+    double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
+
+    double ph_v_norm=0, fl_v_norm=0;
+    double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
+    double rnd_tracker=0, n_dens_lab_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
+    int num_thread=2;//omp_get_max_threads();
+    bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
+    
+    int index=0;
+    double mfp=0,min_mfp=0, beta=0;
+        
+        
+    //initialize gsl random number generator fo each thread
+    
+        const gsl_rng_type *rng_t;
+        gsl_rng **rng;
+        gsl_rng_env_setup();
+        rng_t = gsl_rng_ranlxs0;
+
+        rng = (gsl_rng **) malloc((num_thread ) * sizeof(gsl_rng *)); 
+        rng[0]=rand;
+
+            //#pragma omp parallel for num_threads(nt)
+        for(i=1;i<num_thread;i++)
+        {
+            rng[i] = gsl_rng_alloc (rng_t);
+            gsl_rng_set(rng[i],gsl_rng_get(rand));
+        }
+       
+    //go through each photon and find the blocks around it and then get the distances to all of those blocks and choose the one thats the shortest distance away
+    //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
+    //or just parallelize this part here
+    
+    min_mfp=1e12;
+    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
+    for (i=0;i<num_ph; i++)
+    {
+        //printf("%d, %e,%e\n", i, ((ph+i)->r0), ((ph+i)->r1));
+        if (find_nearest_block_switch==0)
+        {
+            ph_block_index=(ph+i)->nearest_block_index; //if starting a new frame the number of indexes can change and cause a seg fault
+        }
+        else
+        {
+            ph_block_index=0; //if starting a new frame set index=0 to avoid this issue
+        }
+        
+        if (dim_switch_3d==0)
+        {
+            ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to FLASH x coordinate
+            ph_y=((ph+i)->r2);
+            ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
+            
+        }
+        else
+        {
+            ph_x=((ph+i)->r0);
+            ph_y=((ph+i)->r1);
+            ph_z=((ph+i)->r2);
+            
+        }
+        //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
+        
+        is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
+        
+        if (find_nearest_block_switch==0 && is_in_block)
+        {
+            //keep the saved grid index
+            min_index=ph_block_index;
+        }
+        else
+        {
+            //find the new index of the block closest to the photon
+            //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z,   dim_switch_3d); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
+            
+            //find the new index of the block that the photon is actually in
+            min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
             
             (ph+i)->nearest_block_index=min_index; //save the index
             
