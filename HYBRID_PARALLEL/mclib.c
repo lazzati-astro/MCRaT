@@ -1114,6 +1114,7 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
 }
 
 
+
 int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int dim_switch_3d, int riken_switch)
 {
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
@@ -1353,6 +1354,267 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     return index;
     
 }
+
+int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
+                                   double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int dim_switch_3d, int find_nearest_block_switch, int riken_switch, FILE *fPtr)
+{
+    /*
+     * THIS FUNCTION IS WRITTEN JUST FOR 2D SIMS AS OF NOW 
+    */
+    int i=0, j=0, min_index=0, ph_block_index=0;
+    int left_block_index=0, right_block_index=0, bottom_block_index=0, top_block_index=0, all_adjacent_block_indexes[4];
+    double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, dist=0, left_dist_min=0, right_dist_min=0, top_dist_min=0, bottom_dist_min=0, dv=0, v=0;
+    double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
+    double r=0, theta=0;
+
+    double ph_v_norm=0, fl_v_norm=0;
+    double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0;
+    double rnd_tracker=0, n_dens_lab_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
+    int num_thread=2;//omp_get_max_threads();
+    bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
+    
+    int index=0;
+    double mfp=0,min_mfp=0, beta=0;
+        
+        
+    //initialize gsl random number generator fo each thread
+    
+        const gsl_rng_type *rng_t;
+        gsl_rng **rng;
+        gsl_rng_env_setup();
+        rng_t = gsl_rng_ranlxs0;
+
+        rng = (gsl_rng **) malloc((num_thread ) * sizeof(gsl_rng *)); 
+        rng[0]=rand;
+
+            //#pragma omp parallel for num_threads(nt)
+        for(i=1;i<num_thread;i++)
+        {
+            rng[i] = gsl_rng_alloc (rng_t);
+            gsl_rng_set(rng[i],gsl_rng_get(rand));
+        }
+       
+    //go through each photon and find the blocks around it and then get the distances to all of those blocks and choose the one thats the shortest distance away
+    //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
+    //or just parallelize this part here
+    
+    min_mfp=1e12;
+    #pragma omp parallel for num_threads(num_thread) firstprivate( r, theta,dv, v, all_adjacent_block_indexes, j, left_block_index, right_block_index, top_block_index, bottom_block_index, is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
+    for (i=0;i<num_ph; i++)
+    {
+        //printf("%d, %e,%e\n", i, ((ph+i)->r0), ((ph+i)->r1));
+        if (find_nearest_block_switch==0)
+        {
+            ph_block_index=(ph+i)->nearest_block_index; //if starting a new frame the number of indexes can change and cause a seg fault
+        }
+        else
+        {
+            ph_block_index=0; //if starting a new frame set index=0 to avoid this issue
+        }
+        
+        if (dim_switch_3d==0)
+        {
+            ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to FLASH x coordinate
+            ph_y=((ph+i)->r2);
+            ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
+            
+        }
+        else
+        {
+            ph_x=((ph+i)->r0);
+            ph_y=((ph+i)->r1);
+            ph_z=((ph+i)->r2);
+            
+        }
+        //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
+        
+        is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
+        
+        if (find_nearest_block_switch==0 && is_in_block)
+        {
+            //keep the saved grid index
+            min_index=ph_block_index;
+        }
+        else
+        {
+            //find the new index of the block closest to the photon
+            //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z,   dim_switch_3d); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
+            
+            //find the new index of the block that the photon is actually in
+            min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
+            
+            (ph+i)->nearest_block_index=min_index; //save the index
+            
+        }
+        
+        //look for the blocks surounding the block of interest and order them by the 
+        left_dist_min=1e15;//set dist to impossible value to make sure at least first distance calulated is saved
+        right_dist_min=1e15;
+        top_dist_min=1e15;
+        bottom_dist_min=1e15;
+        for (j=0;j<array_num;j++)
+        {
+            if ((dim_switch_3d==0))
+            {
+                dist= pow(pow((*(x+min_index))- (*(x+j)), 2.0) + pow((*(y+min_index))- (*(y+j)) , 2.0),0.5);
+            }
+            else 
+            {
+                dist= pow(pow((*(x+min_index))- (*(x+j)), 2.0) + pow((*(y+min_index))- (*(y+j)),2.0 ) + pow((*(z+min_index))- (*(z+j)) , 2.0),0.5);
+            }
+            
+            if ((*(x+j))<(*(x+min_index)) && (dist < left_dist_min) )
+            {
+                left_block_index=j;
+                left_dist_min=dist;
+            }
+            else if ((*(x+j))>(*(x+min_index)) && (dist < right_dist_min))
+            {
+                right_block_index=j;
+                right_dist_min=dist;
+            }
+            
+            if ((*(y+j))<(*(y+min_index)) && (dist < bottom_dist_min) )
+            {
+                bottom_block_index=j;
+                bottom_dist_min=dist;
+            }
+            else if ((*(y+j))>(*(y+min_index)) && (dist < top_dist_min) )
+            {
+                top_block_index=j;
+                top_dist_min=dist;
+            }
+        
+        }
+        all_adjacent_block_indexes[0]=left_block_index;
+        all_adjacent_block_indexes[1]=right_block_index;
+        all_adjacent_block_indexes[2]=bottom_block_index;
+        all_adjacent_block_indexes[3]=top_block_index;       
+        
+        //do a weighted average of the 4 nearest grids based on volume
+        v=0;
+        (n_dens_lab_tmp)=0;
+        (n_vx_tmp)= 0;
+        (n_vy_tmp)= 0;
+        (n_temp_tmp)= 0;
+        (n_vz_tmp)= 0;
+            
+        for (j=0;j<4;j++)
+        {
+             if (riken_switch==0)
+            {
+                //using FLASH
+                dv=2.0*M_PI*(*(x+all_adjacent_block_indexes[j]))*pow(*(szx+all_adjacent_block_indexes[j]),2.0)  ; 
+            }
+            else
+            {
+                r=pow(pow((*(x+all_adjacent_block_indexes[j])),2.0)+pow((*(y+all_adjacent_block_indexes[j])),2.0), 0.5);
+                theta=atan2((*(x+all_adjacent_block_indexes[j])), (*(y+all_adjacent_block_indexes[j])));
+                dv=2.0*M_PI*pow(r,2)*sin(theta)*(*(szx+all_adjacent_block_indexes[j]))*(*(szy+all_adjacent_block_indexes[j])) ; 
+            }
+            v+=dv;
+            
+            //save values
+            (n_dens_lab_tmp)+= (*(dens_lab+all_adjacent_block_indexes[j]))*dv;
+            (n_vx_tmp)+= (*(velx+all_adjacent_block_indexes[j]))*dv;
+            (n_vy_tmp)+= (*(vely+all_adjacent_block_indexes[j]))*dv;
+            (n_temp_tmp)+= (*(temp+all_adjacent_block_indexes[j]))*dv;
+            if (dim_switch_3d==1)
+            {
+                (n_vz_tmp)+= (*(velz+all_adjacent_block_indexes[j]))*dv;
+            }
+            
+        }
+        
+
+         //fprintf(fPtr,"Outside\n");
+        
+        //save values
+        (n_dens_lab_tmp)/= v;
+        (n_vx_tmp)/= v;
+        (n_vy_tmp)/= v;
+        (n_temp_tmp)/= v;
+        if (dim_switch_3d==1)
+        {
+            (n_vz_tmp)/= v;
+        }
+        
+        if (dim_switch_3d==0)
+        {
+            fl_v_x=n_vx_tmp*cos(ph_phi);
+            fl_v_y=n_vx_tmp*sin(ph_phi);
+            fl_v_z=n_vy_tmp;
+        }
+        else
+        {
+            fl_v_x=n_vx_tmp;
+            fl_v_y=n_vy_tmp;
+            fl_v_z=n_vz_tmp;
+        }
+        
+        fl_v_norm=pow(pow(fl_v_x, 2.0)+pow(fl_v_y, 2.0)+pow(fl_v_z, 2.0), 0.5);
+        ph_v_norm=pow(pow(((ph+i)->p1), 2.0)+pow(((ph+i)->p2), 2.0)+pow(((ph+i)->p3), 2.0), 0.5);
+        
+        //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
+        (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
+        
+        if (dim_switch_3d==0)
+        {
+            beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
+        }
+        else
+        {
+            beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)+pow((n_vz_tmp),2)),0.5);
+        }
+        //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
+        rnd_tracker=0;
+        
+        rnd_tracker=gsl_rng_uniform_pos(rng[omp_get_thread_num()]);
+        
+        mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOMP_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths 
+        
+        
+        #pragma omp critical 
+        if ( mfp<min_mfp)
+        {
+            min_mfp=mfp;
+            n_dens_lab_min= n_dens_lab_tmp;
+            n_vx_min= n_vx_tmp;
+            n_vy_min= n_vy_tmp;
+            if (dim_switch_3d==1)
+            {
+                n_vz_min= n_vz_tmp;
+            }
+            n_temp_min= n_temp_tmp;
+            index=i;
+            //fprintf(fPtr, "Thread is %d. new min: %e for photon %d with block properties: %e, %e, %e Located at: %e, %e, Dist: %e\n", omp_get_thread_num(), mfp, index, n_vx_tmp, n_vy_tmp, n_temp_tmp, *(x+min_index), *(y+min_index), dist_min);
+            //fflush(fPtr);
+            #pragma omp flush(min_mfp)
+        }
+
+        
+    }
+    
+    //free rand number generator
+    for (i=1;i<num_thread;i++)
+    {
+        gsl_rng_free(rng[i]);
+    }
+    free(rng);
+    
+    *(n_dens_lab)= n_dens_lab_min;
+    *(n_vx)= n_vx_min;
+    *(n_vy)= n_vy_min;
+    if (dim_switch_3d==1)
+    {
+        *(n_vz)= n_vz_min;
+    }
+    *(n_temp)= n_temp_min;
+    (*time_step)=min_mfp/C_LIGHT;
+    return index;
+    
+}
+
 
 void updatePhotonPosition(struct photon *ph, int num_ph, double t)
 {
