@@ -185,7 +185,7 @@ int main(int argc, char **argv)
      //printf("%d\n", procs_per_angle);
      
      MPI_Comm angle_comm;
-     //if (restrt=='r') //uncomment this when I run MCRAT for sims that didnt originally save angle_procs 
+     if (restrt=='r') //uncomment this when I run MCRAT for sims that didnt originally save angle_procs 
      {
         
         MPI_Comm_split(MPI_COMM_WORLD, myid/procs_per_angle , myid, &angle_comm);
@@ -199,7 +199,6 @@ int main(int argc, char **argv)
         
         snprintf(mc_dir,sizeof(flash_prefix),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
      }
-     /*
      else
      {
          MPI_Group sub_world_group;
@@ -445,7 +444,7 @@ int main(int argc, char **argv)
         free(all_cont_process_idPtr);
         free(each_num_to_restart_per_anglePtr);
     }
-        */
+        
          MPI_Barrier(MPI_COMM_WORLD);
         
         if ((theta_jmin_thread >= 0) &&  (theta_jmax_thread <= (2*M_PI/180) )) //if within small angle (0-2 degrees) use _small inj_radius and frm2 have to think about this for larger domains
@@ -869,10 +868,10 @@ int main(int argc, char **argv)
                 free(phPtr); 
                 phPtr=NULL;
                 
-                 fprintf(fPtr, "Process %d has completed the MC calculation.\n", angle_id);
-                 fflush(fPtr);
             } 
             
+            fprintf(fPtr, "Process %d has completed the MC calculation.\n", angle_id);
+            fflush(fPtr);
         
         }//end omp parallel inner section
         
