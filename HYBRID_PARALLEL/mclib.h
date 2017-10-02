@@ -24,7 +24,6 @@ void printPhotons(struct photon *ph, int num_ph, int frame, int  frame_inj,char 
 void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large,\
 int *last_frm, int *frm2_small,int *frm2_large, double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads,  int *dim_switch);
 
-
 void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
  double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, FILE *fPtr);
  
@@ -59,9 +58,9 @@ double averagePhotonEnergy(struct photon *ph, int num_ph);
 
 void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg );
 
-void saveCheckpoint(char dir[200], int frame,  int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph , int last_frame, int angle_rank);
+void saveCheckpoint(char dir[200], int frame,  int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph , int last_frame, int angle_rank, int angle_size);
 
-void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank,int dim_switch, int riken_switch );
+void readCheckpoint(char dir[200], struct photon **ph,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size, int dim_switch, int riken_switch );
 
 void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs,  int angle_id, int dim_switch, int riken_switch, FILE *fPtr);
 
@@ -75,3 +74,4 @@ void modifyFlashName(char flash_file[200], char prefix[200], int frame, int dim_
 void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
                      double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, FILE *fPtr);
 
+int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200],  char *restart, int angle_rank,  int angle_procs, int dim_switch, int riken_switch);

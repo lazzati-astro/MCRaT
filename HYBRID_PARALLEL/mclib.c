@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <glob.h>
 #include <unistd.h>
 #include <dirent.h>
 #include "hdf5.h"
@@ -28,6 +29,113 @@
 //define constants
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27;
 const double K_B=1.380658e-16, M_P=1.6726231e-24, THOMP_X_SECT=6.65246e-25, M_EL=9.1093879e-28 ;
+
+int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200],  char *restart, int angle_rank,  int angle_procs, int dim_switch, int riken_switch)
+{
+    int i=0, j=0, val=0, original_num_procs=-1, rand_num=0;
+    int frame2=0, framestart=0, scatt_framestart=0, ph_num=0;
+    double time=0;
+    char mc_chkpt_files[200]="";
+    struct photon *phPtr=NULL; //pointer to array of photons 
+    //DIR * dirp;
+    //struct dirent * entry;
+    //struct stat st = {0};
+    glob_t  files;
+        
+    //if (angle_rank==0)
+    {
+        //find number of mc_checkpt files there are
+        //loop through them and find out which prior processes didnt finish and keep track of which ones didnt
+        snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s", dir,"mc_chkpt_*" );
+        val=glob(mc_chkpt_files, 0, NULL,&files );
+    
+        printf("TEST: %s\n", mc_chkpt_files);
+    
+        //look @ a file by choosing rand int between 0 and files.gl_pathc and if the file exists open and read it to get the actual value for the old number of angle_procs
+        srand(angle_rank);
+        //printf("NUM_FILES: %d\n",files.gl_pathc);
+        
+        rand_num=rand() % files.gl_pathc;
+        snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s%d%s", dir,"mc_chkpt_",  rand_num,".dat" );
+        printf("TEST: %s\n", mc_chkpt_files);
+    
+        if ( access( mc_chkpt_files, F_OK ) == -1 )
+        {
+            while(( access( mc_chkpt_files, F_OK ) == -1 ) )
+            {
+                rand_num=rand() % files.gl_pathc;
+                snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s%d%s", dir,"mc_chkpt_",  rand_num,".dat" );
+                //printf("TEST: %s\n", mc_chkpt_files);
+            }
+        }
+        readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, restart, &time, rand_num, &original_num_procs, dim_switch, riken_switch);
+    
+        //original_num_procs= 70;
+        
+        
+    }
+    
+    //(*proc_array)=malloc (original_num_procs * sizeof (int )); //allocate space to pointer to hold the old process angle_id's
+    int count_procs[original_num_procs], count=0;
+            int cont_procs[original_num_procs];
+            //create array of files including any checkpoint file which may not have been created yet b/c old process was still in 1st frame of scattering
+            
+            for (j=0;j<original_num_procs;j++)
+            {
+                count_procs[j]=j;
+                cont_procs[j]=-1; //set to impossible value for previous mpi process rank that needs to be con't
+            }
+            
+            int limit= (angle_rank != angle_procs-1) ? (angle_rank+1)*original_num_procs/angle_procs : original_num_procs;
+            //char mc_chkpt_files[200]="";
+            
+            printf("Angle ID: %d, start_num: %d, limit: %d\n", angle_rank, (angle_rank*original_num_procs/angle_procs),  limit);
+            
+            count=0;
+            for (j=floor(angle_rank*original_num_procs/angle_procs);j<limit;j++)
+            {
+                snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s%d%s", dir,"mc_chkpt_",  j,".dat" );
+                //printf("TEST: %s\n", mc_chkpt_files);
+                if ( access( mc_chkpt_files, F_OK ) != -1 )
+                {
+                    readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, restart, &time, count_procs[j], &i, dim_switch, riken_switch);
+                    free(phPtr); 
+                    phPtr=NULL;
+                    
+                    if (framestart<frame2)
+                    {
+                        cont_procs[count]=j;
+                        printf("ACCEPTED: %s\n", mc_chkpt_files);
+                        count++;
+                    }
+                }
+                else
+                {
+                    cont_procs[count]=j;
+                    printf("ACCEPTED: %s\n", mc_chkpt_files);
+                    count++;
+                }
+                               
+            }
+    
+    (*proc_array)=malloc (count * sizeof (int )); //allocate space to pointer to hold the old process angle_id's
+    count=0;
+    for (i=0;i<original_num_procs;i++)
+    {
+        if (cont_procs[i]!=-1)
+        {
+            (*proc_array)[count]=cont_procs[i];
+            count++;
+        }
+    }
+    
+    //save number of old processes this process counted need to be restarted  
+    *counted_cont_procs=count;
+    
+    globfree(& files);
+    return original_num_procs;
+}
+
 
 void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200], int angle_rank )
 {
@@ -112,7 +220,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     //printf("%s\n%s\n%s\n", mc_file_p0, mc_file_r0, mc_file_ns);
 }
 
-void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph, int last_frame, int angle_rank )
+void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph, int last_frame, int angle_rank,int angle_size )
 {
     //function to save data necessary to restart simulation if it ends
     //need to save all photon data 
@@ -137,7 +245,7 @@ void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int p
         {
             printf("Cannot open %s to save checkpoint\n", checkptfile);
         }
-        
+        fwrite(&angle_size, sizeof(int), 1, fPtr);
         restart='c';
         fwrite(&restart, sizeof(char), 1, fPtr);
         //printf("Rank: %d wrote restart %c\n", angle_rank, restart);
@@ -178,7 +286,7 @@ void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int p
         {
             printf("Cannot open %s to save checkpoint\n", checkptfile);
         }
-        
+        fwrite(&angle_size, sizeof(int), 1, fPtr);
         restart='c';
         fwrite(&restart, sizeof(char), 1, fPtr);
         //printf("Rank: %d wrote restart %c\n", angle_rank, restart);
@@ -218,6 +326,7 @@ void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int p
         }
         
         //just finished last iteration of scatt_frame
+        fwrite(&angle_size, sizeof(int), 1, fPtr);
         restart='r';
         fwrite(&restart, sizeof(char), 1, fPtr);
         fwrite(&frame, sizeof(int), 1, fPtr);
@@ -227,7 +336,7 @@ void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int p
     
 }
 
-void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int dim_switch, int riken_switch )
+void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size , int dim_switch, int riken_switch )
 {
     //function to read in data from checkpoint file
     FILE *fPtr=NULL;
@@ -244,7 +353,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int frame0,  int *frame2,
     if (access( checkptfile, F_OK ) != -1) //if you can access the file, open and read it
     {
         fPtr=fopen(checkptfile, "rb");
-        
+        //fread(angle_size, sizeof(int), 1, fPtr); //uncomment once I run MCRAT for the sims that didnt save this originally
         fread(restart, sizeof(char), 1, fPtr);
         //printf("%c\n", *restart);
         fread(framestart, sizeof(int), 1, fPtr);

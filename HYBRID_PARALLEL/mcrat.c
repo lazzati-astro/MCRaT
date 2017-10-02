@@ -65,10 +65,16 @@
 #define MC_PATH "CMC_1spike/"
 //#define MC_PATH "MC_16OI/Single_Photon_Cy_mc_total/"
  * */
+ /*
  #define THISRUN "Science"
 #define FILEPATH "/home/physics/parsotat/16OM/"
 #define FILEROOT "rhd_jet_big_16OM_hdf5_plt_cnt_"
 #define MC_PATH "DIR_TEST/"
+*/
+ #define THISRUN "Science"
+#define FILEPATH "/Users/Tylerparsotan/Downloads/"
+#define FILEROOT "rhd_jet_big_16OM_hdf5_plt_cnt_"
+#define MC_PATH "CONT_TEST/"
 
 #define MCPAR "mc.par"
 #define RIKEN_SWITCH 0
@@ -125,7 +131,6 @@ int main(int argc, char **argv)
     double delta_theta=1;
     
     int myid, numprocs, angle_procs, angle_id, procs_per_angle;
-    //int color=1;
     
    
    //new OpenMPI stuff
@@ -148,8 +153,6 @@ int main(int argc, char **argv)
     
     //make strings of proper directories etc.
 	snprintf(flash_prefix,sizeof(flash_prefix),"%s%s",FILEPATH,FILEROOT );
-	//snprintf(mc_dir,sizeof(flash_prefix),"%s%s",FILEPATH,MC_PATH);
-    //snprintf(mc_file,sizeof(flash_prefix),"%s%s",mc_dir, MCPAR);
     snprintf(mc_file,sizeof(flash_prefix),"%s%s%s",FILEPATH, MC_PATH,MCPAR);
 
     
@@ -161,8 +164,7 @@ int main(int argc, char **argv)
     //divide up angles and frame injections among threads DONT WANT NUMBER OF THREADS TO BE ODD
     //assign ranges to array that hold them
     
-    //delta_theta=1; put this in mc.par file
-    //leave angles in degress here
+    //leave angles in degrees here
     num_angles=(int) (((theta_jmax-theta_jmin)/delta_theta)) ;//*(180/M_PI));
     thread_theta=malloc( num_angles *sizeof(double) );
     *(thread_theta+0)=theta_jmin;//*(180/M_PI);
@@ -182,27 +184,271 @@ int main(int argc, char **argv)
      procs_per_angle= numprocs/num_angles;
      //printf("%d\n", procs_per_angle);
      
-    MPI_Comm angle_comm;
-    MPI_Comm_split(MPI_COMM_WORLD, myid/procs_per_angle , myid, &angle_comm);
+     MPI_Comm angle_comm;
+     //if (restrt=='r') //uncomment this when I run MCRAT for sims that didnt originally save angle_procs 
+     {
         
-    MPI_Comm_rank(angle_comm, &angle_id);
-    MPI_Comm_size(angle_comm, &angle_procs);
-
-    //printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d\n", myid, numprocs, angle_id, angle_procs);
-    
-    
-    //for (angle_count=((int) (theta_jmin*(180/M_PI))) + myid ; angle_count< (int) (theta_jmax*(180/M_PI))  ;angle_count+=numprocs )
-    {
+        MPI_Comm_split(MPI_COMM_WORLD, myid/procs_per_angle , myid, &angle_comm);
+        MPI_Comm_rank(angle_comm, &angle_id);
+        MPI_Comm_size(angle_comm, &angle_procs);
         
+        //printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d\n", myid, numprocs, angle_id, angle_procs);    
                 
         theta_jmin_thread= (*(thread_theta+  (myid/procs_per_angle))) *(M_PI/180);
         theta_jmax_thread= theta_jmin_thread+(delta_theta*(M_PI/180));
         
         snprintf(mc_dir,sizeof(flash_prefix),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
+     }
+     /*
+     else
+     {
+         MPI_Group sub_world_group;
+         MPI_Comm sub_world_comm;
+         int incl_procs[procs_per_angle*num_angles], count, sub_world_id;
+         int total_num_to_restart=0, old_num_angle_procs=0;
+         int color=1;
+         int  *all_cont_process_idPtr=NULL, *each_num_to_restart_per_anglePtr=NULL, *tmp=NULL;
+        //for restart='c' case if the number of processes isnt a multiple of procs_per_angle*num_angles make a comm out of those that are in order to analyze files and count number of processes for each angle range need to con't
+        count=0;
+        for (j=0;j<numprocs;j++)
+        {
+            if (j<procs_per_angle*num_angles)
+            {
+                incl_procs[count]=j;
+                count++;
+            }
+        }
         
-        //printf(">> Thread %d in  MCRaT: I am working on path: %s \n",omp_get_thread_num(), mc_dir  );
+        if (myid<procs_per_angle*num_angles)
+        {
+            int myid_2=0;
+            // Get the group of processes in MPI_COMM_WORLD and make a sub group to go through checkpoint files
+            MPI_Group world_group;
+            MPI_Comm root_angle_comm;
+            
+            MPI_Comm_group(MPI_COMM_WORLD, &world_group);
+            MPI_Group_incl(world_group, procs_per_angle*num_angles, incl_procs, &sub_world_group);
+            MPI_Comm_create_group(MPI_COMM_WORLD, sub_world_group, 0, &sub_world_comm);
+            MPI_Comm_rank(sub_world_comm, &myid_2);
         
-        if ((theta_jmin_thread >= 0) &&  (theta_jmax_thread <= (2*M_PI/180) )) //if within small angle (0-2 degrees) use _small inj_radius and frm2 have to think abou tthis for larger domains
+            MPI_Comm_split(sub_world_comm, myid_2/procs_per_angle , myid_2, &angle_comm);
+            MPI_Comm_rank(angle_comm, &angle_id);
+            MPI_Comm_size(angle_comm, &angle_procs);
+    
+            //create group of all the processes that have angle_id==0
+            if (angle_id==0)
+            {
+                color=0; //set different color for root processes in each group of angle_comm
+            }
+            MPI_Comm_split(sub_world_comm, color , myid_2, &root_angle_comm); //create comm to exchange info about number of processes to restart for each angle range
+            
+        
+            printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d\n", myid, numprocs, angle_id, angle_procs);    
+                
+            theta_jmin_thread= (*(thread_theta+  (myid_2/procs_per_angle))) *(M_PI/180);
+            theta_jmax_thread= theta_jmin_thread+(delta_theta*(M_PI/180));
+        
+            snprintf(mc_dir,sizeof(flash_prefix),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
+        
+            //call the function to count the num of processes for each angle range that need to be con't
+            int  count_cont_procs=0, total_cont_procs_angle=0, global_cont_procs=0;
+            int *cont_proc_idsPtr=NULL, *total_cont_procs_angle_Ptr=NULL, *displPtr=NULL; //becomes the size of the number of old procceses 
+            int *cont_proc_ids_anglePtr=NULL;
+            
+            old_num_angle_procs=getOrigNumProcesses(&count_cont_procs,  &cont_proc_idsPtr, mc_dir, &restrt, angle_id,  angle_procs,  dim_switch, RIKEN_SWITCH);
+            
+            total_cont_procs_angle_Ptr=malloc(angle_procs*sizeof(int));
+            displPtr=malloc(angle_procs*sizeof(int));
+            MPI_Gather(&count_cont_procs,1,MPI_INT, total_cont_procs_angle_Ptr, 1, MPI_INT, 0,angle_comm );//hold the number of elements that each process will send the root process
+            
+            MPI_Barrier(angle_comm);
+            MPI_Barrier(sub_world_comm);
+            if (angle_id==0)
+            {
+                printf("1st gather: %d, %d, %d\n", *(total_cont_procs_angle_Ptr), *(total_cont_procs_angle_Ptr+1), *(total_cont_procs_angle_Ptr+2));
+            }
+            
+            MPI_Reduce(&count_cont_procs, &total_cont_procs_angle, 1, MPI_INT, MPI_SUM, 0, angle_comm); //for each angle sum the number of procs to continue and pass it to the root for angle_comm
+            
+            cont_proc_ids_anglePtr=malloc(total_cont_procs_angle*sizeof(int)); //each root proc in angle comm has to hold the id's of the old set of processes to cont
+            
+            *(displPtr+0)=0;
+            if (angle_id==0)
+            {
+                for (j=1;j<angle_procs;j++)
+                {
+                    *(displPtr+j)=(*(displPtr+j-1))+(*(total_cont_procs_angle_Ptr+j-1 )); //set the displacement for each proces to put its vector of pprocess IDs that need to be continued
+                }
+                
+            }
+            
+            MPI_Gatherv(cont_proc_idsPtr,count_cont_procs,MPI_INT, cont_proc_ids_anglePtr, total_cont_procs_angle_Ptr, displPtr , MPI_INT, 0,angle_comm ); //send the vectors with the ids of the old processes that need to be cont to root in angle_comm
+            
+            MPI_Barrier(angle_comm);
+            MPI_Barrier(sub_world_comm);
+            
+            if (angle_id==0)
+            {
+                printf("Total Cont Procs: %d\n", total_cont_procs_angle);
+                for (j=0;j<total_cont_procs_angle;j++)
+                {
+                    {
+                        printf("ID: %d\n", *(cont_proc_ids_anglePtr+j));
+                    }
+                }
+            }
+            
+            //each root for angle_comm has the number of processes each angle range needs to restart and the array of what the IDs of those processes used to be
+            //now have to combine all that info for rank 0 in MPI_COMM_WORLD and then end it to all processes in MPI_COMM_WORLD
+            //if (myid==0)
+            {
+                free(displPtr);
+                displPtr=NULL;
+                //initalize variables to hold all data
+                
+                
+                each_num_to_restart_per_anglePtr=malloc(num_angles*sizeof(int));
+                displPtr=malloc(num_angles*sizeof(int));
+                *(displPtr+0)=0;
+            }
+            
+            MPI_Barrier(angle_comm);
+            MPI_Barrier(sub_world_comm);
+            
+            MPI_Reduce(&total_cont_procs_angle, &total_num_to_restart, 1, MPI_INT, MPI_SUM, 0, root_angle_comm); //for each angle sum the number of procs to continue and pass it to the root for MPI_COMM_WORLD
+            
+            MPI_Gather(&total_cont_procs_angle,1,MPI_INT, each_num_to_restart_per_anglePtr, 1, MPI_INT, 0,root_angle_comm );//hold the number of elements that each process sent the root  for MPI_COMM_WORLD
+            
+            
+            if (myid==0)
+            {
+                for (j=1;j<num_angles;j++)
+                {
+                    *(displPtr+j)=(*(displPtr+j-1))+(*(each_num_to_restart_per_anglePtr+j-1 )); //set the displacement for each proces to put its vector of pprocess IDs that need to be continued
+                }
+            }
+            
+            //if (myid==0)
+            {
+                all_cont_process_idPtr=malloc(total_num_to_restart*sizeof(int));
+            }
+            
+            MPI_Gatherv(cont_proc_ids_anglePtr, total_cont_procs_angle, MPI_INT, all_cont_process_idPtr, each_num_to_restart_per_anglePtr,   displPtr, MPI_INT, 0, root_angle_comm);
+            
+            MPI_Barrier(angle_comm);
+            MPI_Barrier(sub_world_comm);
+            
+            if (myid==0)
+            {
+                printf("Global Cont Procs: %d\n", total_num_to_restart);
+                for (j=0;j<total_num_to_restart;j++)
+                {
+                    {
+                        printf("Global ID: %d\n", *(all_cont_process_idPtr+j));
+                    }
+                }
+            }
+            
+            //destroy the old comms
+            MPI_Barrier(angle_comm);
+            MPI_Barrier(sub_world_comm);
+            //destroy current angle comm and recreate a new one 
+            MPI_Comm_free(&root_angle_comm);
+            MPI_Comm_free(&angle_comm);
+            MPI_Comm_free(&sub_world_comm);
+            MPI_Group_free(&sub_world_group);
+            MPI_Group_free(&world_group);
+            free(cont_proc_idsPtr);
+            free(cont_proc_ids_anglePtr);
+            free(total_cont_procs_angle_Ptr);
+            free(displPtr);
+            //free(each_num_to_restart_per_anglePtr);
+            //free(all_cont_process_idPtr);
+        }
+        
+        //send all of myid==0 data to all processes in MPI_COMM_WORLD 
+        MPI_Bcast( &total_num_to_restart, 1, MPI_INT, 0, MPI_COMM_WORLD );
+        if (myid != 0 )
+        {
+            //allocate data of appropriate size for all processes to hold the data from MPI_Bcast
+            tmp=realloc(all_cont_process_idPtr,total_num_to_restart *sizeof(int));
+            if (tmp!=NULL)
+            {
+                all_cont_process_idPtr=tmp;
+            }
+            else
+            {
+                printf("Error with reserving space to hold data about restarting process ID's\n");
+            }
+            //free(tmp);
+            tmp=realloc(each_num_to_restart_per_anglePtr, num_angles*sizeof(int));
+            if (tmp!=NULL)
+            {
+                each_num_to_restart_per_anglePtr=tmp;
+            }
+            else
+            {
+                printf("Error with reserving space to hold data about restarting process numbers for each angle range\n");
+            }
+            //free(tmp);
+        }
+        
+        MPI_Bcast( all_cont_process_idPtr, total_num_to_restart, MPI_INT, 0, MPI_COMM_WORLD );
+        MPI_Bcast( each_num_to_restart_per_anglePtr, num_angles, MPI_INT, 0, MPI_COMM_WORLD );
+        MPI_Bcast( &old_num_angle_procs, 1, MPI_INT, 0, MPI_COMM_WORLD );
+        
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (myid==numprocs-1)
+        {
+            printf("Number of processes: %d\n", old_num_angle_procs);
+            printf("restarting process numbers for each angle range: %d, %d, %d\n", *(each_num_to_restart_per_anglePtr), *(each_num_to_restart_per_anglePtr+1), *(each_num_to_restart_per_anglePtr+2));
+        }
+        
+        //assign proper number of processes to each angle range to con't sims and then reset angle_id to original value from when simulation was first started
+        color=0; //by default all processes have this value
+        
+        count=0;
+        for (j=0;j<num_angles;j++)
+        {
+            if (myid>=count   &&   myid<count+(*(each_num_to_restart_per_anglePtr+j)) )
+            {
+                color=j;
+            }
+            count+=(*(each_num_to_restart_per_anglePtr+j));
+            printf("Myid: %d, Color: %d, Count %d, Num To Start Per Angle: %d\n", myid, color, count, (*(each_num_to_restart_per_anglePtr+j)));
+        }
+        
+        
+        MPI_Comm_split(MPI_COMM_WORLD, color , myid, &angle_comm);
+        MPI_Comm_rank(angle_comm, &angle_id);
+        MPI_Comm_size(angle_comm, &angle_procs);
+        
+        printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d\n", myid, numprocs, angle_id, angle_procs);
+        
+        angle_procs=old_num_angle_procs;
+        
+        //reset the angle for each process
+        theta_jmin_thread= (*(thread_theta+  color)) *(M_PI/180);
+        theta_jmax_thread= theta_jmin_thread+(delta_theta*(M_PI/180));
+                
+        //reset the angle_id for each process
+        count=0;
+        for (j=0;j<color;j++)
+        {
+            count+=(*(each_num_to_restart_per_anglePtr+j));
+        }
+        
+        angle_id=(*(all_cont_process_idPtr+count+angle_id));
+        
+        snprintf(mc_dir,sizeof(flash_prefix),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
+
+        free(all_cont_process_idPtr);
+        free(each_num_to_restart_per_anglePtr);
+    }
+        */
+         MPI_Barrier(MPI_COMM_WORLD);
+        
+        if ((theta_jmin_thread >= 0) &&  (theta_jmax_thread <= (2*M_PI/180) )) //if within small angle (0-2 degrees) use _small inj_radius and frm2 have to think about this for larger domains
         {
             inj_radius=inj_radius_small;
             frm2=frm2_small;
@@ -248,7 +494,7 @@ int main(int argc, char **argv)
                 printf(">> mc.py:  Reading checkpoint\n");
                 //#pragma omp critical
                 {
-                    readCheckpoint(mc_dir, &phPtr, frm0, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, dim_switch, RIKEN_SWITCH);
+                    readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs, dim_switch, RIKEN_SWITCH);
                 
                 /*
                 for (i=0;i<num_ph;i++)
@@ -268,7 +514,7 @@ int main(int argc, char **argv)
                 }
                 }
             }
-            else if (stat(mc_dir, &st) == -1)
+            else if ((stat(mc_dir, &st) == -1) && (restrt=='r'))
             {
                 mkdir(mc_dir, 0777); //make the directory with full permissions
                 
@@ -305,8 +551,8 @@ int main(int argc, char **argv)
                                     //printf("%s\n",mc_operation);
                                     system(mc_operation);
                                     
-                                    //snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s%d%s","exec rm ", mc_dir,"mcdata_",i,"_*");
-                                    //system(mc_operation);
+                                    snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s%d%s","exec rm ", mc_dir,"mcdata_",i,"_*");
+                                    system(mc_operation);
                                 }
                             
                             }
@@ -343,7 +589,7 @@ int main(int argc, char **argv)
             MPI_Barrier(angle_comm); 
             snprintf(log_file,sizeof(log_file),"%s%s%d%s",mc_dir,"mc_output_", angle_id,".log" );
             printf("%s\n",log_file);
-            fPtr=fopen(log_file, "w");
+            fPtr=fopen(log_file, "a");
             
             printf( "Im Proc %d with angles %0.1lf-%0.1lf proc_frame_size is %d Starting on Frame: %d Injecting until %d scatt_framestart: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, proc_frame_size, framestart, frm2, scatt_framestart);
             
@@ -355,6 +601,7 @@ int main(int argc, char **argv)
             //for a checkpoint implementation, start from the last saved "frame" value and go to the saved "frm2" value
             
             //#pragma omp for 
+            
             for (frame=framestart;frame<=frm2;frame=frame+increment_inj)
             {
                 if ((RIKEN_SWITCH==1) && (dim_switch==1) && (frame>=3000))
@@ -442,10 +689,10 @@ int main(int argc, char **argv)
                     
                     
                     //printf("This many Photons: %d\n",num_ph); //num_ph is one more photon than i actually have
-                    /*
-                    for (i=0;i<num_ph;i++)v
-                        printf("%e,%e,%e \n",(phPtr+i)->r0, (phPtr+i)->r1, (phPtr+i)->r2 );
-                    */
+                    
+                    //for (i=0;i<num_ph;i++)
+                    //    printf("%e,%e,%e \n",(phPtr+i)->r0, (phPtr+i)->r1, (phPtr+i)->r2 );
+                    
                 }
                 
                 //scatter photons all the way thoughout the jet
@@ -601,7 +848,7 @@ int main(int argc, char **argv)
                     fprintf(fPtr, " mc_dir: %s\nframe %d\nfrm2: %d\nscatt_frame: %d\n num_photon: %d\ntime_now: %e\nlast_frame: %d\n", mc_dir, frame, frm2, scatt_frame, num_ph, time_now, last_frm  );
                     fflush(fPtr);
 
-                    saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id);
+                    saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id, angle_procs);
                     
                      if (dim_switch==1)
                     {
@@ -622,6 +869,8 @@ int main(int argc, char **argv)
                 free(phPtr); 
                 phPtr=NULL;
                 
+                 fprintf(fPtr, "Process %d has completed the MC calculation.\n", angle_id);
+                 fflush(fPtr);
             } 
             
         
@@ -629,7 +878,6 @@ int main(int argc, char **argv)
         
         MPI_Barrier(angle_comm);
         
-        //merge files from each worker thread within a directory
         //merge files from each worker thread within a directory
         {
             
@@ -645,7 +893,11 @@ int main(int argc, char **argv)
                 }
                 file_count++;
              }
+             
              //holds number of files for each process to merge
+             MPI_Comm_size(angle_comm, &angle_procs); //to get the proper number of processes within the group
+             MPI_Comm_rank(angle_comm, &angle_id); //reset the value of angle_id to what it should actualy be to properly distribute files to merge
+             
              proc_frame_size=floor(file_count/ (float) angle_procs);
              frame_array=malloc(file_count*sizeof(int));
              proc_frame_array=malloc(angle_procs*sizeof(int)); //sets index of each proceesed acquired value
@@ -674,8 +926,8 @@ int main(int argc, char **argv)
              //pass  first frame number that each rpocess should start to merge, can calulate the file it should merge until
              MPI_Scatterv(frame_array, element_num, proc_frame_array, MPI_INT, &frm0, 1, MPI_INT, 0, angle_comm);
              
-             //fprintf(fPtr, "Value: frm0: ,%d\n", frm0);
-             //fflush(fPtr);
+             fprintf(fPtr, "Value: last_frm: ,%d\n", file_count);
+             fflush(fPtr);
              
              //make sure all files get merged by giving the rest to the last process
              if (angle_id==angle_procs-1)
@@ -703,15 +955,14 @@ int main(int argc, char **argv)
              
             //if (angle_id==0)
             {
-                fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
+                //fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
+                printf( ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
                 fflush(fPtr);
                 
-                dirFileMerge(mc_dir, frm0, last_frm, angle_procs, angle_id, dim_switch, RIKEN_SWITCH, fPtr); 
+                //dirFileMerge(mc_dir, frm0, last_frm, angle_procs, angle_id, dim_switch, RIKEN_SWITCH, fPtr); 
             }
         }
-        
-    } //end omp parallel section
-    
+            
     fclose(fPtr);
     gsl_rng_free (rng);
    	 
