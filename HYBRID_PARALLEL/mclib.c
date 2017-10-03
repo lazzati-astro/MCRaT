@@ -35,7 +35,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
     int i=0, j=0, val=0, original_num_procs=-1, rand_num=0;
     int frame2=0, framestart=0, scatt_framestart=0, ph_num=0;
     double time=0;
-    char mc_chkpt_files[200]="";
+    char mc_chkpt_files[200]="", restrt=*restart; //define new variable that wont write over the restrt variable in the main part of the code, when its put into the readCheckpoint function
     struct photon *phPtr=NULL; //pointer to array of photons 
     //DIR * dirp;
     //struct dirent * entry;
@@ -68,7 +68,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
                 //printf("TEST: %s\n", mc_chkpt_files);
             }
         }
-        readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, restart, &time, rand_num, &original_num_procs, dim_switch, riken_switch);
+        readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, &restrt, &time, rand_num, &original_num_procs, dim_switch, riken_switch);
     
         //original_num_procs= 70;
         
