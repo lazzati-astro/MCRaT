@@ -125,7 +125,7 @@ int main(int argc, char **argv)
     struct photon *phPtr=NULL; //pointer to array of photons 
     
     int num_thread=0, angle_count=0;
-    int num_angles=0;
+    int num_angles=0, old_num_angle_procs=0; //old_num_angle_procs is to hold the old number of procs in each angle when cont sims, if  restarting sims this gets set to angle_procs
     int *frame_array=NULL, *proc_frame_array=NULL, *element_num=NULL, proc_frame_size=0;
     double *thread_theta=NULL; //saves ranges of thetas for each thread to go through
     double delta_theta=1;
@@ -198,13 +198,15 @@ int main(int argc, char **argv)
         theta_jmax_thread= theta_jmin_thread+(delta_theta*(M_PI/180));
         
         snprintf(mc_dir,sizeof(flash_prefix),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
+        
+        old_num_angle_procs=angle_procs;
      }
      else
      {
          MPI_Group sub_world_group;
          MPI_Comm sub_world_comm;
          int incl_procs[procs_per_angle*num_angles], count, sub_world_id;
-         int total_num_to_restart=0, old_num_angle_procs=0;
+         int total_num_to_restart=0;
          int color=1;
          int  *all_cont_process_idPtr=NULL, *each_num_to_restart_per_anglePtr=NULL, *tmp=NULL;
         //for restart='c' case if the number of processes isnt a multiple of procs_per_angle*num_angles make a comm out of those that are in order to analyze files and count number of processes for each angle range need to con't
@@ -603,6 +605,7 @@ int main(int argc, char **argv)
             
             for (frame=framestart;frame<=frm2;frame=frame+increment_inj)
             {
+                /*
                 if ((RIKEN_SWITCH==1) && (dim_switch==1) && (frame>=3000))
                 {
                     increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
@@ -847,7 +850,7 @@ int main(int argc, char **argv)
                     fprintf(fPtr, " mc_dir: %s\nframe %d\nfrm2: %d\nscatt_frame: %d\n num_photon: %d\ntime_now: %e\nlast_frame: %d\n", mc_dir, frame, frm2, scatt_frame, num_ph, time_now, last_frm  );
                     fflush(fPtr);
 
-                    saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id, angle_procs);
+                    saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id, old_num_angle_procs);
                     
                      if (dim_switch==1)
                     {
@@ -867,7 +870,7 @@ int main(int argc, char **argv)
                 restrt='r';//set this to make sure that the next iteration of propogating photons doesnt use the values from the last reading of the checkpoint file
                 free(phPtr); 
                 phPtr=NULL;
-                
+                */
             } 
             
             fprintf(fPtr, "Process %d has completed the MC calculation.\n", angle_id);
@@ -925,8 +928,8 @@ int main(int argc, char **argv)
              //pass  first frame number that each rpocess should start to merge, can calulate the file it should merge until
              MPI_Scatterv(frame_array, element_num, proc_frame_array, MPI_INT, &frm0, 1, MPI_INT, 0, angle_comm);
              
-             fprintf(fPtr, "Value: last_frm: ,%d\n", file_count);
-             fflush(fPtr);
+             //fprintf(fPtr, "Value: last_frm: ,%d\n", file_count);
+             //fflush(fPtr);
              
              //make sure all files get merged by giving the rest to the last process
              if (angle_id==angle_procs-1)
@@ -955,12 +958,15 @@ int main(int argc, char **argv)
             //if (angle_id==0)
             {
                 //fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
-                printf( ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
+                fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
                 fflush(fPtr);
                 
-                dirFileMerge(mc_dir, frm0, last_frm, angle_procs, angle_id, dim_switch, RIKEN_SWITCH, fPtr); 
+                dirFileMerge(mc_dir, frm0, last_frm, old_num_angle_procs, angle_id, dim_switch, RIKEN_SWITCH, fPtr); 
             }
         }
+        
+        fprintf(fPtr, "Process %d has completed merging files.\n", angle_id);
+        fflush(fPtr);
             
     fclose(fPtr);
     gsl_rng_free (rng);

@@ -70,7 +70,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
         }
         readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, &restrt, &time, rand_num, &original_num_procs, dim_switch, riken_switch);
     
-        //original_num_procs= 70;
+        original_num_procs= 70;
         
         
     }
@@ -353,7 +353,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
     if (access( checkptfile, F_OK ) != -1) //if you can access the file, open and read it
     {
         fPtr=fopen(checkptfile, "rb");
-        fread(angle_size, sizeof(int), 1, fPtr); //uncomment once I run MCRAT for the sims that didnt save this originally
+        //fread(angle_size, sizeof(int), 1, fPtr); //uncomment once I run MCRAT for the sims that didnt save this originally
         fread(restart, sizeof(char), 1, fPtr);
         //printf("%c\n", *restart);
         fread(framestart, sizeof(int), 1, fPtr);
