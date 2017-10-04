@@ -30,7 +30,7 @@
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27;
 const double K_B=1.380658e-16, M_P=1.6726231e-24, THOMP_X_SECT=6.65246e-25, M_EL=9.1093879e-28 ;
 
-int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200],  char *restart, int angle_rank,  int angle_procs, int dim_switch, int riken_switch)
+int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200],  char *restart, int angle_rank,  int angle_procs, int last_frame, int dim_switch, int riken_switch)
 {
     int i=0, j=0, val=0, original_num_procs=-1, rand_num=0;
     int frame2=0, framestart=0, scatt_framestart=0, ph_num=0;
@@ -75,7 +75,6 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
         
     }
     
-    //(*proc_array)=malloc (original_num_procs * sizeof (int )); //allocate space to pointer to hold the old process angle_id's
     int count_procs[original_num_procs], count=0;
             int cont_procs[original_num_procs];
             //create array of files including any checkpoint file which may not have been created yet b/c old process was still in 1st frame of scattering
@@ -102,7 +101,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
                     free(phPtr); 
                     phPtr=NULL;
                     
-                    if (framestart<frame2)
+                    if ((framestart<frame2) || (scatt_framestart!=last_frame)) //add another condition here
                     {
                         cont_procs[count]=j;
                         printf("ACCEPTED: %s\n", mc_chkpt_files);
