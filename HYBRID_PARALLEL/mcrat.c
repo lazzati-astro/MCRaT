@@ -256,7 +256,7 @@ int main(int argc, char **argv)
             int *cont_proc_idsPtr=NULL, *total_cont_procs_angle_Ptr=NULL, *displPtr=NULL; //becomes the size of the number of old procceses 
             int *cont_proc_ids_anglePtr=NULL;
             
-            old_num_angle_procs=getOrigNumProcesses(&count_cont_procs,  &cont_proc_idsPtr, mc_dir, &restrt, angle_id,  angle_procs,  last_frm, dim_switch, RIKEN_SWITCH);
+            old_num_angle_procs=getOrigNumProcesses(&count_cont_procs,  &cont_proc_idsPtr, mc_dir, angle_id,  angle_procs,  last_frm, dim_switch, RIKEN_SWITCH);
             
             total_cont_procs_angle_Ptr=malloc(angle_procs*sizeof(int));
             displPtr=malloc(angle_procs*sizeof(int));
@@ -266,7 +266,7 @@ int main(int argc, char **argv)
             MPI_Barrier(sub_world_comm);
             if (angle_id==0)
             {
-                printf("1st gather: %d, %d, %d\n", *(total_cont_procs_angle_Ptr), *(total_cont_procs_angle_Ptr+1), *(total_cont_procs_angle_Ptr+2));
+                printf("Angle_procs: %d 1st gather: %d, %d, %d\n", angle_procs, *(total_cont_procs_angle_Ptr), *(total_cont_procs_angle_Ptr+1), *(total_cont_procs_angle_Ptr+2));
             }
             
             MPI_Reduce(&count_cont_procs, &total_cont_procs_angle, 1, MPI_INT, MPI_SUM, 0, angle_comm); //for each angle sum the number of procs to continue and pass it to the root for angle_comm
@@ -279,6 +279,7 @@ int main(int argc, char **argv)
                 for (j=1;j<angle_procs;j++)
                 {
                     *(displPtr+j)=(*(displPtr+j-1))+(*(total_cont_procs_angle_Ptr+j-1 )); //set the displacement for each proces to put its vector of pprocess IDs that need to be continued
+                    printf("Displacement: %d\n", *(displPtr+j));
                 }
                 
             }

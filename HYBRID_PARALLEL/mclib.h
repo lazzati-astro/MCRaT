@@ -74,4 +74,4 @@ void modifyFlashName(char flash_file[200], char prefix[200], int frame, int dim_
 void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
                      double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, FILE *fPtr);
 
-int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200],  char *restart, int angle_rank,  int angle_procs, int last_frame, int dim_switch, int riken_switch);
+int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200], int angle_rank,  int angle_procs, int last_frame, int dim_switch, int riken_switch);
