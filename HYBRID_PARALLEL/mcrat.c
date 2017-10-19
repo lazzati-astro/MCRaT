@@ -370,84 +370,94 @@ int main(int argc, char **argv)
         
         //send all of myid==0 data to all processes in MPI_COMM_WORLD 
         MPI_Bcast( &total_num_to_restart, 1, MPI_INT, 0, MPI_COMM_WORLD );
-        if (myid != 0 )
+        
+        if (total_num_to_restart>0)
         {
-            //allocate data of appropriate size for all processes to hold the data from MPI_Bcast
-            tmp=realloc(all_cont_process_idPtr,total_num_to_restart *sizeof(int));
-            if (tmp!=NULL)
+            if (myid != 0 )
             {
-                all_cont_process_idPtr=tmp;
+                //allocate data of appropriate size for all processes to hold the data from MPI_Bcast
+                tmp=realloc(all_cont_process_idPtr,total_num_to_restart *sizeof(int));
+                if (tmp!=NULL)
+                {
+                    all_cont_process_idPtr=tmp;
+                }
+                else
+                {
+                    printf("Error with reserving space to hold data about restarting process ID's\n");
+                }
+                //free(tmp);
+                tmp=realloc(each_num_to_restart_per_anglePtr, num_angles*sizeof(int));
+                if (tmp!=NULL)
+                {
+                    each_num_to_restart_per_anglePtr=tmp;
+                }
+                else
+                {
+                    printf("Error with reserving space to hold data about restarting process numbers for each angle range\n");
+                }
+                //free(tmp);
             }
-            else
+        
+            MPI_Bcast( all_cont_process_idPtr, total_num_to_restart, MPI_INT, 0, MPI_COMM_WORLD );
+            MPI_Bcast( each_num_to_restart_per_anglePtr, num_angles, MPI_INT, 0, MPI_COMM_WORLD );
+            MPI_Bcast( &old_num_angle_procs, 1, MPI_INT, 0, MPI_COMM_WORLD );
+        
+            MPI_Barrier(MPI_COMM_WORLD);
+            if (myid==numprocs-1)
             {
-                printf("Error with reserving space to hold data about restarting process ID's\n");
+                printf("Number of processes: %d\n", old_num_angle_procs);
+                printf("restarting process numbers for each angle range: %d, %d, %d\n", *(each_num_to_restart_per_anglePtr), *(each_num_to_restart_per_anglePtr+1), *(each_num_to_restart_per_anglePtr+2));
             }
-            //free(tmp);
-            tmp=realloc(each_num_to_restart_per_anglePtr, num_angles*sizeof(int));
-            if (tmp!=NULL)
+        
+            //assign proper number of processes to each angle range to con't sims and then reset angle_id to original value from when simulation was first started
+            color=0; //by default all processes have this value
+        
+            count=0;
+            for (j=0;j<num_angles;j++)
             {
-                each_num_to_restart_per_anglePtr=tmp;
+                if (myid>=count   &&   myid<count+(*(each_num_to_restart_per_anglePtr+j)) )
+                {
+                    color=j;
+                }   
+                count+=(*(each_num_to_restart_per_anglePtr+j));
+                printf("Myid: %d, Color: %d, Count %d, Num To Start Per Angle: %d\n", myid, color, count, (*(each_num_to_restart_per_anglePtr+j)));
             }
-            else
-            {
-                printf("Error with reserving space to hold data about restarting process numbers for each angle range\n");
-            }
-            //free(tmp);
-        }
-        
-        MPI_Bcast( all_cont_process_idPtr, total_num_to_restart, MPI_INT, 0, MPI_COMM_WORLD );
-        MPI_Bcast( each_num_to_restart_per_anglePtr, num_angles, MPI_INT, 0, MPI_COMM_WORLD );
-        MPI_Bcast( &old_num_angle_procs, 1, MPI_INT, 0, MPI_COMM_WORLD );
-        
-        MPI_Barrier(MPI_COMM_WORLD);
-        if (myid==numprocs-1)
-        {
-            printf("Number of processes: %d\n", old_num_angle_procs);
-            printf("restarting process numbers for each angle range: %d, %d, %d\n", *(each_num_to_restart_per_anglePtr), *(each_num_to_restart_per_anglePtr+1), *(each_num_to_restart_per_anglePtr+2));
-        }
-        
-        //assign proper number of processes to each angle range to con't sims and then reset angle_id to original value from when simulation was first started
-        color=0; //by default all processes have this value
-        
-        count=0;
-        for (j=0;j<num_angles;j++)
-        {
-            if (myid>=count   &&   myid<count+(*(each_num_to_restart_per_anglePtr+j)) )
-            {
-                color=j;
-            }
-            count+=(*(each_num_to_restart_per_anglePtr+j));
-            printf("Myid: %d, Color: %d, Count %d, Num To Start Per Angle: %d\n", myid, color, count, (*(each_num_to_restart_per_anglePtr+j)));
-        }
         
         
-        MPI_Comm_split(MPI_COMM_WORLD, color , myid, &angle_comm);
-        MPI_Comm_rank(angle_comm, &angle_id);
-        MPI_Comm_size(angle_comm, &angle_procs);
+            MPI_Comm_split(MPI_COMM_WORLD, color , myid, &angle_comm);
+            MPI_Comm_rank(angle_comm, &angle_id);
+            MPI_Comm_size(angle_comm, &angle_procs);
         
-        printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d\n", myid, numprocs, angle_id, angle_procs);
+            printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d\n", myid, numprocs, angle_id, angle_procs);
         
-        angle_procs=old_num_angle_procs;
+            angle_procs=old_num_angle_procs;
         
-        //reset the angle for each process
-        theta_jmin_thread= (*(thread_theta+  color)) *(M_PI/180);
-        theta_jmax_thread= theta_jmin_thread+(delta_theta*(M_PI/180));
+            //reset the angle for each process
+            theta_jmin_thread= (*(thread_theta+  color)) *(M_PI/180);
+            theta_jmax_thread= theta_jmin_thread+(delta_theta*(M_PI/180));
                 
-        //reset the angle_id for each process
-        count=0;
-        for (j=0;j<color;j++)
-        {
-            count+=(*(each_num_to_restart_per_anglePtr+j));
+            //reset the angle_id for each process
+            count=0;
+            for (j=0;j<color;j++)
+            {
+                count+=(*(each_num_to_restart_per_anglePtr+j));
+            }
+        
+            angle_id=(*(all_cont_process_idPtr+count+angle_id));
+        
+            snprintf(mc_dir,sizeof(flash_prefix),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
         }
-        
-        angle_id=(*(all_cont_process_idPtr+count+angle_id));
-        
-        snprintf(mc_dir,sizeof(flash_prefix),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
-
+        else
+        {
+            //if there are no more processes to continue just break up processes normally  so they read in checkpoint files of completed processes and jump to merging files
+            MPI_Comm_split(MPI_COMM_WORLD, myid/procs_per_angle , myid, &angle_comm);
+            MPI_Comm_rank(angle_comm, &angle_id);
+            MPI_Comm_size(angle_comm, &angle_procs);
+        }
         free(all_cont_process_idPtr);
         free(each_num_to_restart_per_anglePtr);
     }
-        
+      
          MPI_Barrier(MPI_COMM_WORLD);
         
         if ((theta_jmin_thread >= 0) &&  (theta_jmax_thread <= (2*M_PI/180) )) //if within small angle (0-2 degrees) use _small inj_radius and frm2 have to think about this for larger domains
@@ -495,7 +505,7 @@ int main(int argc, char **argv)
             {
                 printf(">> mc.py:  Reading checkpoint\n");
                 //#pragma omp critical
-                {
+                
                     readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs, dim_switch, RIKEN_SWITCH);
                 
                 /*
@@ -514,7 +524,7 @@ int main(int argc, char **argv)
                 {
                     printf(">> Rank %d with angles %0.1lf-%0.1lf: Continuing simulation by injecting photons at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,framestart, frm2); //starting with new photon injection is same as restarting sim
                 }
-                }
+                
             }
             else if ((stat(mc_dir, &st) == -1) && (restrt=='r'))
             {
@@ -606,7 +616,7 @@ int main(int argc, char **argv)
             
             for (frame=framestart;frame<=frm2;frame=frame+increment_inj)
             {
-                /*
+                
                 if ((RIKEN_SWITCH==1) && (dim_switch==1) && (frame>=3000))
                 {
                     increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
@@ -871,9 +881,9 @@ int main(int argc, char **argv)
                 restrt='r';//set this to make sure that the next iteration of propogating photons doesnt use the values from the last reading of the checkpoint file
                 free(phPtr); 
                 phPtr=NULL;
-                */
+                
             } 
-            
+            saveCheckpoint(mc_dir, frame, frm2, scatt_frame, 0, time_now, phPtr, last_frm, angle_id, old_num_angle_procs); //this is for processes using the old code that didnt restart efficiently
             fprintf(fPtr, "Process %d has completed the MC calculation.\n", angle_id);
             fflush(fPtr);
         
