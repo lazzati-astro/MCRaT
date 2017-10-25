@@ -48,11 +48,13 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     
 void updatePhotonPosition(struct photon *ph, int num_ph, double t);
 
-void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double flash_vz, double fluid_temp, gsl_rng * rand,int dim_switch_3d, FILE *fPtr);
+double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, gsl_rng * rand, int dim_switch_3d, FILE *fPtr);
 
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr);
 
-void singleComptonScatter(double *el_comov, double *ph_comov, gsl_rng * rand, FILE *fPtr);
+int singleScatter(double *el_comov, double *ph_comov, gsl_rng * rand, FILE *fPtr);
+
+int comptonScattering(double *theta, double *phi, gsl_rng * rand, FILE *fPtr);
 
 double averagePhotonEnergy(struct photon *ph, int num_ph);
 

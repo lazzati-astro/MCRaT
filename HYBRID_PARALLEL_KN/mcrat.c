@@ -802,30 +802,24 @@ int main(int argc, char **argv)
                         find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
 
                         
-                        //fprintf(fPtr, "In main: %d, %e, Newest Method results: %d, %e\n", ph_scatt_index, time_step, *(sorted_indexes+0), *(all_time_steps+(*(sorted_indexes+0))) );
-                        //fflush(fPtr);
-                        //for (i=1;i<num_ph;i++)
-                        //{
-                        //    fprintf(fPtr, "Newest Method results: %d, %e\n", *(sorted_indexes+i), *(all_time_steps+(*(sorted_indexes+i))) );
-                        //}
+                        fprintf(fPtr, "In main: %d, %e, Newest Method results: %d, %e\n", ph_scatt_index, time_step, *(sorted_indexes+0), *(all_time_steps+(*(sorted_indexes+0))) );
+                        fflush(fPtr);
+                        for (i=1;i<num_ph;i++)
+                        {
+                            fprintf(fPtr, "Newest Method results: %d, %e\n", *(sorted_indexes+i), *(all_time_steps+(*(sorted_indexes+i))) );
+                        }
                         
-                        //exit(0);
                         
                          if (time_step<dt_max)
                         {
-                            
-                            //update number of scatterings and time
-                            ((phPtr+ph_scatt_index)->num_scatt)+=1;
                             frame_scatt_cnt+=1;
-                            time_now+=time_step;
-                            
-                            updatePhotonPosition(phPtr, num_ph, time_step);
                             
                             //scatter the photon
                             //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
-                            photonScatter( (phPtr+ph_scatt_index), (ph_vxPtr), (ph_vyPtr),ph_vzPtr, (ph_tempPtr), rng, dim_switch, fPtr );
-                            
+                            time_step=photonScatter( phPtr, num_ph, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, rng, dim_switch, fPtr );
+                            exit(0);
+                            time_now+=time_step;
                             
                             if (frame_scatt_cnt%1000 == 0)
                             {
