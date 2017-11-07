@@ -258,6 +258,12 @@ int main(int argc, char **argv)
             
             old_num_angle_procs=getOrigNumProcesses(&count_cont_procs,  &cont_proc_idsPtr, mc_dir, angle_id,  angle_procs,  last_frm, dim_switch, RIKEN_SWITCH);
             
+            if (old_num_angle_procs==-1)
+            {
+                printf("MCRAT wasnt able to get a value of old_num_angle_procs to continue the simulation. Now exiting to prevent data corruption.\n" );
+                MPI_Abort(MPI_COMM_WORLD, 1);
+            }
+            
             total_cont_procs_angle_Ptr=malloc(angle_procs*sizeof(int));
             displPtr=malloc(angle_procs*sizeof(int));
             MPI_Gather(&count_cont_procs,1,MPI_INT, total_cont_procs_angle_Ptr, 1, MPI_INT, 0,angle_comm );//hold the number of elements that each process will send the root process
@@ -295,7 +301,7 @@ int main(int argc, char **argv)
                 for (j=0;j<total_cont_procs_angle;j++)
                 {
                     {
-                        printf("ID: %d\n", *(cont_proc_ids_anglePtr+j));
+                        printf("Number: %d ID: %d\n",j,  *(cont_proc_ids_anglePtr+j));
                     }
                 }
             }
@@ -375,6 +381,7 @@ int main(int argc, char **argv)
         {
             if (myid != 0 )
             {
+                printf("Proc: %d, Global Cont Procs: %d\n", myid, total_num_to_restart);
                 //allocate data of appropriate size for all processes to hold the data from MPI_Bcast
                 tmp=realloc(all_cont_process_idPtr,total_num_to_restart *sizeof(int));
                 if (tmp!=NULL)
@@ -386,6 +393,7 @@ int main(int argc, char **argv)
                     printf("Error with reserving space to hold data about restarting process ID's\n");
                 }
                 //free(tmp);
+                printf("Proc: %d, Num_angles: %d\n", myid, num_angles);
                 tmp=realloc(each_num_to_restart_per_anglePtr, num_angles*sizeof(int));
                 if (tmp!=NULL)
                 {
@@ -397,7 +405,8 @@ int main(int argc, char **argv)
                 }
                 //free(tmp);
             }
-        
+            
+            MPI_Barrier(MPI_COMM_WORLD);
             MPI_Bcast( all_cont_process_idPtr, total_num_to_restart, MPI_INT, 0, MPI_COMM_WORLD );
             MPI_Bcast( each_num_to_restart_per_anglePtr, num_angles, MPI_INT, 0, MPI_COMM_WORLD );
             MPI_Bcast( &old_num_angle_procs, 1, MPI_INT, 0, MPI_COMM_WORLD );
@@ -812,24 +821,21 @@ int main(int argc, char **argv)
                         
                          if (time_step<dt_max)
                         {
-                            frame_scatt_cnt+=1;
-                            
                             //scatter the photon
                             //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
-                            time_step=photonScatter( phPtr, num_ph, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, rng, dim_switch, fPtr );
-                            exit(0);
+                            time_step=photonScatter( phPtr, num_ph, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, rng, dim_switch, fPtr );
                             time_now+=time_step;
                             
                             if (frame_scatt_cnt%1000 == 0)
                             {
                                 fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
-                                fprintf(fPtr,"The local temp is: %e\n", (ph_tempPtr));
+                                fprintf(fPtr,"The local temp is: %e\n", *(tempPtr + (phPtr+ph_scatt_index)->nearest_block_index) );
                                 fprintf(fPtr,"Average photon energy is: %e\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 and then do (*3e10/1.6e-9)
                                 fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                                 fflush(fPtr);
                             }
-                            
+                            exit(0);
                         }
                         else
                         {

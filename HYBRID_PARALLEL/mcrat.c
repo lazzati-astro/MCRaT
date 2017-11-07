@@ -258,6 +258,11 @@ int main(int argc, char **argv)
             
             old_num_angle_procs=getOrigNumProcesses(&count_cont_procs,  &cont_proc_idsPtr, mc_dir, angle_id,  angle_procs,  last_frm, dim_switch, RIKEN_SWITCH);
             
+            if (angle_id==0)
+            {
+                printf("Angle_procs: %d 1st gather: %d, %d, %d\n", angle_procs, *(total_cont_procs_angle_Ptr), *(total_cont_procs_angle_Ptr+1), *(total_cont_procs_angle_Ptr+2));
+            }
+            
             total_cont_procs_angle_Ptr=malloc(angle_procs*sizeof(int));
             displPtr=malloc(angle_procs*sizeof(int));
             MPI_Gather(&count_cont_procs,1,MPI_INT, total_cont_procs_angle_Ptr, 1, MPI_INT, 0,angle_comm );//hold the number of elements that each process will send the root process

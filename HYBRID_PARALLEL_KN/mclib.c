@@ -353,7 +353,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
     if (access( checkptfile, F_OK ) != -1) //if you can access the file, open and read it
     {
         fPtr=fopen(checkptfile, "rb");
-        if ((angle_rank==2) || (angle_rank==3) || (angle_rank==4) || (angle_rank==5))
+        //if ((angle_rank==2) || (angle_rank==3) || (angle_rank==4) || (angle_rank==5))
         {
             fread(angle_size, sizeof(int), 1, fPtr); //uncomment once I run MCRAT for the sims that didnt save this originally
         }
@@ -1742,10 +1742,10 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t)
 }
 
 
-double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, gsl_rng * rand,int dim_switch_3d, FILE *fPtr)
+double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand,int dim_switch_3d, FILE *fPtr)
 {
     //function to perform single photon scattering
-    int  i=0, index=0, scatter_did_occur=0; //variable scatter_did_occur is to keep track of wether a scattering actually occured or not
+    int  i=0, index=0, ph_index=0, scatter_did_occur=0; //variable scatter_did_occur is to keep track of wether a scattering actually occured or not
     double scatt_time=0, old_scatt_time=0; //keep track of new time to scatter vs old time to scatter to know how much to incrementally propagate the photons if necessary
     double ph_phi=0, flash_vx=0, flash_vy=0, flash_vz=0, fluid_temp=0;    
     double *ph_p=malloc(4*sizeof(double)); //pointer to hold only photon 4 momentum @ start
@@ -1762,13 +1762,15 @@ double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int 
     
     while (i<num_ph && scatter_did_occur==0)
     {
-        scatt_time= *(all_time_steps+(*(sorted_indexes+i))); //get the time until the photon scatters
+        ph_index=(*(sorted_indexes+i));
+        
+        scatt_time= *(all_time_steps+ph_index); //get the time until the photon scatters
         updatePhotonPosition(ph, num_ph, scatt_time-old_scatt_time);
         
-        fprintf(fPtr,"i: %d, Photon: %d, Delta t=%e\n", i, (*(sorted_indexes+i)), scatt_time-old_scatt_time);
+        fprintf(fPtr,"i: %d, Photon: %d, Delta t=%e\n", i, ph_index, scatt_time-old_scatt_time);
         fflush(fPtr);
         
-        index=(ph+(*(sorted_indexes+i)))->nearest_block_index; //the sorted_indexes gives index of photon with smallest time to potentially scatter then extract the index of the block closest to that photon
+        index=(ph+ph_index)->nearest_block_index; //the sorted_indexes gives index of photon with smallest time to potentially scatter then extract the index of the block closest to that photon
     
         flash_vx=*(all_flash_vx+  index);
         flash_vy=*(all_flash_vy+  index);
@@ -1779,7 +1781,7 @@ double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int 
         }
     
     
-        ph_phi=atan2(((ph+(*(sorted_indexes+i)))->r1), (((ph+(*(sorted_indexes+i)))->r0)));
+        ph_phi=atan2(((ph+ph_index)->r1), (((ph+ph_index)->r0)));
         /*
         fprintf(fPtr,"ph_phi=%e\n", ph_phi);
         fflush(fPtr);
@@ -1808,10 +1810,10 @@ double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int 
     
         //fill in photon 4 momentum 
         //printf("filling in 4 momentum in photonScatter\n");
-        *(ph_p+0)=((ph+(*(sorted_indexes+i)))->p0);
-        *(ph_p+1)=((ph+(*(sorted_indexes+i)))->p1);
-        *(ph_p+2)=((ph+(*(sorted_indexes+i)))->p2);
-        *(ph_p+3)=((ph+(*(sorted_indexes+i)))->p3);
+        *(ph_p+0)=((ph+ph_index)->p0);
+        *(ph_p+1)=((ph+ph_index)->p1);
+        *(ph_p+2)=((ph+ph_index)->p2);
+        *(ph_p+3)=((ph+ph_index)->p3);
     
         /*
         fprintf(fPtr,"Unscattered Photon in Lab frame: %e, %e, %e,%e, %e, %e, %e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3), (ph->r0), (ph->r1), (ph->r2));
@@ -1869,22 +1871,23 @@ double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int 
             //fprintf(fPtr, "Old: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
     
             //assign the photon its new lab 4 momentum
-            ((ph+(*(sorted_indexes+i)))->p0)=(*(ph_p+0));
-            ((ph+(*(sorted_indexes+i)))->p1)=(*(ph_p+1));
-            ((ph+(*(sorted_indexes+i)))->p2)=(*(ph_p+2));
-            ((ph+(*(sorted_indexes+i)))->p3)=(*(ph_p+3));
+            ((ph+ph_index)->p0)=(*(ph_p+0));
+            ((ph+ph_index)->p1)=(*(ph_p+1));
+            ((ph+ph_index)->p2)=(*(ph_p+2));
+            ((ph+ph_index)->p3)=(*(ph_p+3));
             //printf("Done assigning values to original struct\n");
     
             //incremement that photons number of scatterings
         
-            ((ph+(*(sorted_indexes+i)))->num_scatt)+=1;
+            ((ph+ph_index)->num_scatt)+=1;
+            *frame_scatt_cnt+=1; //incrememnt total number of scatterings
         }
     
         old_scatt_time=scatt_time;
         i++;
 	}
     
-    *scattered_ph_index=index; //save the index of the photon that was scattered
+    *scattered_ph_index=ph_index; //save the index of the photon that was scattered
     
     fprintf(fPtr,"scatt_time: %e \n", scatt_time);
     fflush(fPtr);
@@ -2251,13 +2254,13 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double *polarizat
         {
             if (polarization)
             {
-                double b=0, a=0;
+                double u=0, q=0;
                 //if we are considering polarization calulate the norm for the distributiion to be between 1 and 0
-                phi_max=atan(b/a);
+                phi_max=atan(u/q)/2.0;
                 
                 phi_y_dum=gsl_rng_uniform(rand);
                 phi_dum=gsl_rng_uniform(rand)*2*M_PI;
-                f_phi_dum=f_theta_dum + pow(mu, -2.0)*pow(sin(theta_dum), 3.0) * (a*cos(2*phi_dum)+b*sin(2*phi_dum));
+                f_phi_dum=(f_theta_dum + pow(mu, -2.0)*pow(sin(theta_dum), 3.0) * (q*cos(2*phi_dum)+u*sin(2*phi_dum)))/phi_max; //change the signs on q and u based on the conventions that I use
                 
                 fprintf(fPtr,"phi_y_dum: %e, theta_dum: %e, mu: %e, f_theta_dum: %e, phi_dum: %e, f_phi_dum: %e\n", phi_y_dum, theta_dum, mu, f_theta_dum, phi_dum, f_phi_dum);
                 fflush(fPtr);
@@ -2266,7 +2269,7 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double *polarizat
             {
                 //not considering polarization therefore can jjst sample between 0 and 2*pi evenly
                 phi_dum=gsl_rng_uniform(rand)*2*M_PI;
-                phi_y_dum=0; // this is to exit the while statement
+                phi_y_dum=-1; // this is to exit the while statement
                 
                 fprintf(fPtr," phi_dum: %e\n", phi_dum);
                 fflush(fPtr);

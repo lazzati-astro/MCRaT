@@ -352,7 +352,6 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
     if (access( checkptfile, F_OK ) != -1) //if you can access the file, open and read it
     {
         fPtr=fopen(checkptfile, "rb");
-        if ((angle_rank==2) || (angle_rank==3) || (angle_rank==4) || (angle_rank==5))
         {
             fread(angle_size, sizeof(int), 1, fPtr); //uncomment once I run MCRAT for the sims that didnt save this originally
         }
