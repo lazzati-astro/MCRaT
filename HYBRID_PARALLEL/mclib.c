@@ -15,6 +15,7 @@
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_sf_bessel.h>
+#include <gsl/gsl_permutation.h>
 #include "mclib_3d.h"
 #include <omp.h>
 #include "mpi.h"
@@ -1296,12 +1297,14 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     double ph_v_norm=0, fl_v_norm=0;
     double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
     double rnd_tracker=0, n_dens_lab_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
-    int num_thread=2;//omp_get_max_threads();
+    int num_thread=3;//omp_get_num_threads();
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
     
     int index=0;
     double mfp=0,min_mfp=0, beta=0;
-        
+    double *all_time_steps=malloc(num_ph*sizeof(double));
+    gsl_permutation *perm = gsl_permutation_alloc(num_ph); //to hold sorted indexes of smallest to largest time_steps
+    gsl_vector_view all_time_steps_vector;
         
     //initialize gsl random number generator fo each thread
     
@@ -1419,30 +1422,8 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
         
         mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOMP_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths 
-        //if (mfp<0)
-        //{
-            //printf("\nThread: %d Photon: %d mfp: %e  cos_angle: %e beta: %e dens_lab: %e rnd_tracker: %e\n\n",omp_get_thread_num(), i, mfp, n_cosangle , beta,n_dens_lab_tmp, rnd_tracker );
-        //}
         
-        #pragma omp critical 
-        if ( mfp<min_mfp)
-        {
-            min_mfp=mfp;
-            n_dens_lab_min= n_dens_lab_tmp;
-            n_vx_min= n_vx_tmp;
-            n_vy_min= n_vy_tmp;
-            if (dim_switch_3d==1)
-            {
-                n_vz_min= n_vz_tmp;
-            }
-            n_temp_min= n_temp_tmp;
-            index=i;
-            //fprintf(fPtr, "Thread is %d. new min: %e for photon %d with block properties: %e, %e, %e Located at: %e, %e, Dist: %e\n", omp_get_thread_num(), mfp, index, n_vx_tmp, n_vy_tmp, n_temp_tmp, *(x+min_index), *(y+min_index), dist_min);
-            //fflush(fPtr);
-            #pragma omp flush(min_mfp)
-        }
-
-        
+        *(all_time_steps+i)=mfp/C_LIGHT;
     }
     
     //free rand number generator
@@ -1452,15 +1433,29 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     }
     free(rng);
     
-    *(n_dens_lab)= n_dens_lab_min;
-    *(n_vx)= n_vx_min;
-    *(n_vy)= n_vy_min;
+    //save variables I need
+    all_time_steps_vector=gsl_vector_view_array(all_time_steps, num_ph); //makes a vector to use the time steps in another gsl function
+    gsl_sort_vector_index (perm, &all_time_steps_vector.vector); //sorts timesteps from smallest to largest and saves the indexes fo the smallest to largest elements in perm, the all_time_steps vector stays in the same order as before (ordered by photons)
+    //for (i=0;i<num_ph;i++)
+    //{
+    //    *(sorted_indexes+i)= (int) perm->data[i]; //save sorted indexes to array to use outside of function
+    //}
+    
+    
+    (*time_step)=*(all_time_steps+( (int) perm->data[0] ));
+    index= (int) perm->data[0] ;//first element of sorted array, index of photon
+    min_index=(ph+index)->nearest_block_index; //index of FLASH element closest to photon that will scatter
+    
+    *(n_dens_lab)= (*(dens_lab+min_index));
+    *(n_vx)= (*(velx+min_index));
+    *(n_vy)= (*(vely+min_index));
+    *(n_temp)= (*(temp+min_index));
     if (dim_switch_3d==1)
     {
-        *(n_vz)= n_vz_min;
+        *(n_vz)= (*(velz+min_index));
     }
-    *(n_temp)= n_temp_min;
-    (*time_step)=min_mfp/C_LIGHT;
+    
+    free (all_time_steps);
     return index;
     
 }
