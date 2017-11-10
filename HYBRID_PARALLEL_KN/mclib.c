@@ -16,6 +16,8 @@
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_sf_bessel.h>
 #include <gsl/gsl_permutation.h>
+#include <gsl/gsl_sort.h>
+#include <gsl/gsl_sort_vector.h>
 #include "mclib_3d.h"
 #include <omp.h>
 #include "mpi.h"
@@ -1004,6 +1006,10 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                 (*ph)[ph_tot].r0= (*(x+i))*cos(position_phi); //put photons @ center of box that they are supposed to be in with random phi 
                 (*ph)[ph_tot].r1=(*(x+i))*sin(position_phi) ;
                 (*ph)[ph_tot].r2=(*(y+i)); //y coordinate in flash becomes z coordinate in MCRaT
+                (*ph)[ph_tot].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1 
+                (*ph)[ph_tot].s1=0;
+                (*ph)[ph_tot].s2=0;
+                (*ph)[ph_tot].s3=0;
                 (*ph)[ph_tot].num_scatt=0;
                 (*ph)[ph_tot].weight=ph_weight_adjusted;
                 (*ph)[ph_tot].nearest_block_index=0;
@@ -1444,6 +1450,8 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     
     (*time_step)=*(all_time_steps+(*(sorted_indexes+0)));
     index= *(sorted_indexes+0);//first element of sorted array
+    
+    gsl_permutation_free(perm);
     return index;
     
 }

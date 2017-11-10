@@ -16,6 +16,8 @@
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_sf_bessel.h>
 #include <gsl/gsl_permutation.h>
+#include <gsl/gsl_sort.h>
+#include <gsl/gsl_sort_vector.h>
 #include "mclib_3d.h"
 #include <omp.h>
 #include "mpi.h"
@@ -1297,12 +1299,12 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     double ph_v_norm=0, fl_v_norm=0;
     double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
     double rnd_tracker=0, n_dens_lab_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
-    int num_thread=3;//omp_get_num_threads();
+    int num_thread=omp_get_num_threads();
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
     
     int index=0;
     double mfp=0,min_mfp=0, beta=0;
-    double *all_time_steps=malloc(num_ph*sizeof(double));
+    double *all_time_steps=NULL;
     gsl_permutation *perm = gsl_permutation_alloc(num_ph); //to hold sorted indexes of smallest to largest time_steps
     gsl_vector_view all_time_steps_vector;
         
@@ -1326,7 +1328,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     //go through each photon and find the blocks around it and then get the distances to all of those blocks and choose the one thats the shortest distance away
     //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
     //or just parallelize this part here
-    
+    all_time_steps=malloc(num_ph*sizeof(double));
     min_mfp=1e12;
     #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
     for (i=0;i<num_ph; i++)
@@ -1456,6 +1458,8 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     }
     
     free (all_time_steps);
+    gsl_permutation_free(perm);
+    all_time_steps=NULL;
     return index;
     
 }

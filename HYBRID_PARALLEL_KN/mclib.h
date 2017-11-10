@@ -13,6 +13,10 @@ struct photon
     double r0; //x in MCRaT coordinates
     double r1; //y
     double r2; //z
+    double s0; //stokes I always 1
+    double s1; //stokes Q/I 
+    double s2; //stokes U/I
+    double s3; //Stokes V/I
     double num_scatt;
     double weight; //each photon should have equal weight, sp this shouldnt matter, weight in mc.par file but across injections can have varying weights
     int nearest_block_index; //index that  allows for extraction of information of the hydro grid block closest to the photon
@@ -55,6 +59,8 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
 int singleScatter(double *el_comov, double *ph_comov, gsl_rng * rand, FILE *fPtr);
 
 int comptonScattering(double *theta, double *phi, gsl_rng * rand, FILE *fPtr);
+
+int kleinNishinaScatter(double *theta, double *phi, double p0, double *polarization, gsl_rng * rand, FILE *fPtr);
 
 double averagePhotonEnergy(struct photon *ph, int num_ph);
 
