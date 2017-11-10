@@ -2260,7 +2260,7 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double *polarizat
                 
                 phi_y_dum=gsl_rng_uniform(rand);
                 phi_dum=gsl_rng_uniform(rand)*2*M_PI;
-                f_phi_dum=(f_theta_dum + pow(mu, -2.0)*pow(sin(theta_dum), 3.0) * (q*cos(2*phi_dum)+u*sin(2*phi_dum)))/phi_max; //change the signs on q and u based on the conventions that I use
+                f_phi_dum=(f_theta_dum + pow(mu, -2.0)*pow(sin(theta_dum), 3.0) * (q*cos(2*phi_dum)-u*sin(2*phi_dum)))/phi_max; //signs on q and u based on Lundman/ McMaster
                 
                 fprintf(fPtr,"phi_y_dum: %e, theta_dum: %e, mu: %e, f_theta_dum: %e, phi_dum: %e, f_phi_dum: %e\n", phi_y_dum, theta_dum, mu, f_theta_dum, phi_dum, f_phi_dum);
                 fflush(fPtr);
