@@ -323,25 +323,28 @@ int main(int argc, char **argv)
             MPI_Barrier(angle_comm);
             MPI_Barrier(sub_world_comm);
             
-            MPI_Reduce(&total_cont_procs_angle, &total_num_to_restart, 1, MPI_INT, MPI_SUM, 0, root_angle_comm); //for each angle sum the number of procs to continue and pass it to the root for MPI_COMM_WORLD
-            
-            MPI_Gather(&total_cont_procs_angle,1,MPI_INT, each_num_to_restart_per_anglePtr, 1, MPI_INT, 0,root_angle_comm );//hold the number of elements that each process sent the root  for MPI_COMM_WORLD
-            
-            
-            if (myid==0)
+            if (angle_id==0)
             {
-                for (j=1;j<num_angles;j++)
+                //this is the part where all the root processes of angle_comm transfer thier info to the root proc of MPI_WORLD
+                MPI_Reduce(&total_cont_procs_angle, &total_num_to_restart, 1, MPI_INT, MPI_SUM, 0, root_angle_comm); //for each angle sum the number of procs to continue and pass it to the root for MPI_COMM_WORLD
+            
+                MPI_Gather(&total_cont_procs_angle,1,MPI_INT, each_num_to_restart_per_anglePtr, 1, MPI_INT, 0,root_angle_comm );//hold the number of elements that each process sent the root  for MPI_COMM_WORLD
+            
+            
+                if (myid==0)
                 {
-                    *(displPtr+j)=(*(displPtr+j-1))+(*(each_num_to_restart_per_anglePtr+j-1 )); //set the displacement for each proces to put its vector of pprocess IDs that need to be continued
+                    for (j=1;j<num_angles;j++)
+                    {
+                        *(displPtr+j)=(*(displPtr+j-1))+(*(each_num_to_restart_per_anglePtr+j-1 )); //set the displacement for each proces to put its vector of pprocess IDs that need to be continued
+                    }
                 }
-            }
             
-            //if (myid==0)
-            {
+            
                 all_cont_process_idPtr=malloc(total_num_to_restart*sizeof(int));
-            }
             
-            MPI_Gatherv(cont_proc_ids_anglePtr, total_cont_procs_angle, MPI_INT, all_cont_process_idPtr, each_num_to_restart_per_anglePtr,   displPtr, MPI_INT, 0, root_angle_comm);
+            
+                MPI_Gatherv(cont_proc_ids_anglePtr, total_cont_procs_angle, MPI_INT, all_cont_process_idPtr, each_num_to_restart_per_anglePtr,   displPtr, MPI_INT, 0, root_angle_comm);
+            }
             
             MPI_Barrier(angle_comm);
             MPI_Barrier(sub_world_comm);
