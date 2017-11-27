@@ -76,7 +76,7 @@
 #define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
 #define MC_PATH "TEST/"
 
-#define MCPAR "cmc.par"
+#define MCPAR "mc.par"
 #define RIKEN_SWITCH 0
 
 int main(int argc, char **argv)

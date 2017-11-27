@@ -1780,6 +1780,20 @@ void mullerMatrixRotation(double theta, double *s, FILE *fPtr)
     
 }
 
+void rotateStokesAxis(double theta, double *y_axis, double *x_axis, double *rotated_axis )
+{
+    gsl_vector_view y=gsl_vector_view_array(y_axis, 3);
+    gsl_vector_view x=gsl_vector_view_array(x_axis, 3);
+    gsl_vector_view y_rot=gsl_vector_view_array(rotated_axis, 3);
+    
+    //rotate y_tilde CW around the photon velocity vector by theta, https://math.stackexchange.com/questions/511370/how-to-rotate-one-vector-about-another
+    // in python: np.linalg.norm(y_tilde_perp)*((y_tilde_perp*(np.cos(theta)/np.linalg.norm(y_tilde_perp) )) + (np.sin(theta)*x_tilde/np.linalg.norm(x_tilde))  ) here y_tilde_perp is just y_tilde since its already orthogonal to v_ph
+    gsl_blas_daxpy(cos(theta), &y.vector, &y_rot.vector); //y_tilde_perp*np.cos(theta)
+    gsl_blas_daxpy(gsl_blas_dnrm2(&y.vector)*sin(theta)/gsl_blas_dnrm2(&x.vector), &x.vector, &y_rot.vector); //y_tilde_perp*np.cos(theta) + np.linalg.norm(y_tilde_perp)*np.sin(theta)*x_tilde/np.linalg.norm(x_tilde) is saved into y_rot
+    gsl_blas_dscal(1.0/gsl_blas_dnrm2(&y_rot.vector), &y_rot.vector);
+    
+}
+
 void stokesRotation(double *v, double *p_ph, double *p_ph_boosted, double *x_tilde, double *y_tilde, double *s, FILE *fPtr)
 {
     double dotprod_1, dotprod_2;
@@ -1825,9 +1839,10 @@ void stokesRotation(double *v, double *p_ph, double *p_ph_boosted, double *x_til
     
     //rotate y_tilde CW around the photon velocity vector by theta, https://math.stackexchange.com/questions/511370/how-to-rotate-one-vector-about-another
     // in python: np.linalg.norm(y_tilde_perp)*((y_tilde_perp*(np.cos(theta)/np.linalg.norm(y_tilde_perp) )) + (np.sin(theta)*x_tilde/np.linalg.norm(x_tilde))  ) here y_tilde_perp is just y_tilde since its already orthogonal to v_ph
-    gsl_blas_daxpy(cos(theta), &y.vector, y_rot); //y_tilde_perp*np.cos(theta)
-    gsl_blas_daxpy(gsl_blas_dnrm2(&y.vector)*sin(theta)/gsl_blas_dnrm2(&x.vector), &x.vector, y_rot); //y_tilde_perp*np.cos(theta) + np.linalg.norm(y_tilde_perp)*np.sin(theta)*x_tilde/np.linalg.norm(x_tilde) is saved into y_rot
-    gsl_blas_dscal(1.0/gsl_blas_dnrm2(y_rot), y_rot);
+    //gsl_blas_daxpy(cos(theta), &y.vector, y_rot); //y_tilde_perp*np.cos(theta)
+    //gsl_blas_daxpy(gsl_blas_dnrm2(&y.vector)*sin(theta)/gsl_blas_dnrm2(&x.vector), &x.vector, y_rot); //y_tilde_perp*np.cos(theta) + np.linalg.norm(y_tilde_perp)*np.sin(theta)*x_tilde/np.linalg.norm(x_tilde) is saved into y_rot
+    //gsl_blas_dscal(1.0/gsl_blas_dnrm2(y_rot), y_rot);
+    rotateStokesAxis(theta, y_tilde, x_tilde,gsl_vector_ptr(y_rot, 0));
     
     //now calculate cross product of y_rot and p_ph_boosted to get the new x_tilde axis in the new reference frame
     gsl_vector_set(x_rot, 0, gsl_vector_get(y_rot, 1)*gsl_vector_get(&v_ph_boosted.vector, 2) - gsl_vector_get(y_rot, 2)*gsl_vector_get(&v_ph_boosted.vector, 1)  ); //x component
@@ -1876,6 +1891,7 @@ double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int 
     double *x_tilde=malloc(3*sizeof(double));//pointer to hold the x axis of the 'stokes plane' which is orthogonal to the photon velocity vector
     double *y_tilde=malloc(3*sizeof(double));//pointer to hold the y axis of the 'stokes plane'
     double *s=malloc(4*sizeof(double)); //vector to hold the stokes parameters for a given photon
+    double *x_tilde_2=malloc(3*sizeof(double)); //to find the new x_tilde after the scattering
     
     i=0;
     old_scatt_time=0;
@@ -1989,12 +2005,11 @@ double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int 
     
         //third we perform the scattering and save scattered photon 4 monetum in ph_p_comov @ end of function
         scatter_did_occur=singleScatter(el_p_comov, ph_p_comov, x_tilde, y_tilde, s, rand, fPtr);
-        
     
         //fprintf(fPtr,"After Scattering, After Lorentz Boost to Comov frame: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
         //fflush(fPtr);
-     
-        if (scatter_did_occur==1)
+        scatter_did_occur=0;
+        //if (scatter_did_occur==1)
         {
             fprintf(fPtr,"Within the if!\n");
             fflush(fPtr);
@@ -2005,8 +2020,11 @@ double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int 
             *(negative_fluid_beta+1)=-1*( *(fluid_beta+1));
             *(negative_fluid_beta+2)=-1*( *(fluid_beta+2));
             lorentzBoost(negative_fluid_beta, ph_p_comov, ph_p, 'p',  fPtr);
-            //fprintf(fPtr,"Scattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
+            fprintf(fPtr,"Scattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
             //fflush(fPtr);
+            
+            stokesRotation(negative_fluid_beta, ph_p_comov, ph_p, x_tilde, y_tilde, s, fPtr);
+            
             if (((*(ph_p+0))*C_LIGHT/1.6e-9) > 1e4)
             {
                 fprintf(fPtr,"Extremely High Photon Energy!!!!!!!!\n");
@@ -2021,17 +2039,35 @@ double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int 
             ((ph+ph_index)->p2)=(*(ph_p+2));
             ((ph+ph_index)->p3)=(*(ph_p+3));
             //printf("Done assigning values to original struct\n");
+            
+            //find the last rotation of the stokes plane to put it in the y_tilde=-theta_hat and x_tilde = phi_hat directions
+            theta=acos((*(ph_p+3))/(*(ph_p+0)));
+            phi=atan2((*(ph_p+2)),(*(ph_p+1)));
+            //find x_tilde after scattering x_tilde b/c I can pass it to the function to get how much y_tilde will need to be rotated by and thus how much s needs to be rotated
+            *(x_tilde_2+0)=-sin(phi); 
+            *(x_tilde_2+1)=cos(phi);
+            *(x_tilde_2+2)=0.0;
+            
+            stokesRotation(x_tilde_2, ph_p, ph_p, x_tilde, y_tilde, s, fPtr);
+            fprintf(fPtr, "Theta: %e Phi %e Lab: x_tilde: %e, %e, %e, y_tilde: %e %e %e\n", theta, phi, *(x_tilde+0), *(x_tilde+1), *(x_tilde+2), *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
+
+            //save stokes parameters
+            ((ph+ph_index)->s0)=*(s+0); //I ==1
+            ((ph+ph_index)->s1)=*(s+1);
+            ((ph+ph_index)->s2)=*(s+2);
+            ((ph+ph_index)->s3)=*(s+3);
     
             //incremement that photons number of scatterings
-        
             ((ph+ph_index)->num_scatt)+=1;
             *frame_scatt_cnt+=1; //incrememnt total number of scatterings
+            
+            //exit(0);
         }
     
         old_scatt_time=scatt_time;
         i++;
 	}
-    
+    exit(0);
     *scattered_ph_index=ph_index; //save the index of the photon that was scattered
     
     fprintf(fPtr,"scatt_time: %e \n", scatt_time);
@@ -2042,6 +2078,10 @@ double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int 
     free(fluid_beta); 
     free(negative_fluid_beta);
     free(ph_p);
+    free(s);
+    free(x_tilde);
+    free(y_tilde);
+    free(x_tilde_2);
     ph_p=NULL;negative_fluid_beta=NULL;ph_p_comov=NULL; el_p_comov=NULL;
     
     //retrun total time elapsed to scatter a photon
@@ -2160,7 +2200,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y
     //This routine performs a scattering between a photon and a moving electron.
     int i=0, scattering_occured=0;
     double dotprod_1; //to test orthogonality
-    double *y_axis_electron_rest_frame=malloc(3*sizeof(double)); //basis vector of the y axis in the elctron rest frame
+    double *z_axis_electron_rest_frame=malloc(3*sizeof(double)); //basis vector of the y axis in the elctron rest frame
     double *el_v=malloc(3*sizeof(double));
     double *negative_el_v=malloc(3*sizeof(double));
     double *ph_p_prime=malloc(4*sizeof(double));//use this to keep track of how the ph 4 momentum changes with each rotation
@@ -2169,6 +2209,8 @@ int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y
     double y_dum, f_x_dum, x_dum;
     gsl_matrix *rot0= gsl_matrix_calloc (3, 3); //create matricies thats 3x3 to do rotations
     gsl_matrix *rot1= gsl_matrix_calloc (3, 3);
+    gsl_matrix *scatt= gsl_matrix_calloc (4, 4); //fano's matrix for scattering stokes parameters
+    gsl_vector *scatt_result=gsl_vector_alloc (4);
     gsl_vector *result0=gsl_vector_alloc (3); //vectors to hold results of rotations
     gsl_vector *result1=gsl_vector_alloc (3); 
     gsl_vector *result=gsl_vector_alloc (4); 
@@ -2177,12 +2219,12 @@ int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y
     gsl_vector *y_tilde_rot_result=gsl_vector_alloc (3); 
     gsl_vector_view ph_p ; //create vector to hold comoving photon and electron 4 momentum
     gsl_vector_view el_p ;
-    gsl_vector_view stokes, x_tilde_rot, y_tilde_rot;
+    gsl_vector_view stokes, x_tilde_rot, y_tilde_rot, test;
     
     //fill in y-axis basis vector
-    *(y_axis_electron_rest_frame+0)=0;
-    *(y_axis_electron_rest_frame+1)=1;
-    *(y_axis_electron_rest_frame+2)=0;
+    *(z_axis_electron_rest_frame+0)=0;
+    *(z_axis_electron_rest_frame+1)=0;
+    *(z_axis_electron_rest_frame+2)=1;
     
     //fill in electron velocity array and photon 4 momentum
     *(el_v+0)=(*(el_comov+1))/(*(el_comov+0));
@@ -2199,6 +2241,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y
     stokesRotation(el_v, ph_comov, ph_p_prime, x_tilde, y_tilde, s, fPtr);
     x_tilde_rot=gsl_vector_view_array(x_tilde, 3);
     y_tilde_rot=gsl_vector_view_array(y_tilde, 3);
+    stokes=gsl_vector_view_array(s, 4);
     
     fprintf(fPtr, "y_tilde: %e, %e, %e\n", *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
     
@@ -2207,8 +2250,6 @@ int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y
     
     gsl_blas_ddot(&y_tilde_rot.vector, &ph_p.vector, &dotprod_1);
     fprintf(fPtr, "After lorentz boost Angle between the  y_tilde_rot and the photon velocity vector is: %e\n", acos(dotprod_1/ gsl_blas_dnrm2(&ph_p.vector))*180/M_PI);
-
-    
     
     phi0=atan2(*(ph_p_prime+2), *(ph_p_prime+1) );
     fprintf(fPtr,"Photon Phi: %e\n", phi0);
@@ -2272,29 +2313,68 @@ int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y
     //rotate the stokes plane to make the y_tilde axis aligned with the z axis of the elctron rest frame
     gsl_blas_ddot(&y_tilde_rot.vector, &ph_p.vector, &dotprod_1);
     fprintf(fPtr, "Angle between the  y_tilde_rot and the photon velocity vector is: %e\n", acos(dotprod_1/ gsl_blas_dnrm2(&ph_p.vector))*180/M_PI);
-    stokesRotation(y_axis_electron_rest_frame, ph_p_prime, ph_p_prime, x_tilde, y_tilde, s, fPtr); //pass y axis since the function rotates by theta-(pi/2) and techically boosted 
+    stokesRotation(z_axis_electron_rest_frame, ph_p_prime, ph_p_prime, x_tilde, y_tilde, s, fPtr); //pass z axis since the function rotates by theta-(pi/2)  and want y_tilde to be perp to x-z plane and x_tilde to be parallel w/ that plane
     fprintf(fPtr, "y_tilde: %e, %e, %e \n", *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
     gsl_blas_ddot(&y_tilde_rot.vector, &ph_p.vector, &dotprod_1);
     fprintf(fPtr, "Angle between the  y_tilde_rot and the photon velocity vector is: %e\n", acos(dotprod_1/ gsl_blas_dnrm2(&ph_p.vector))*180/M_PI);
     
     //determine if the scattering will occur between photon and electron
     //scattering_occured=comptonScatter(&theta, &phi, rand, fPtr); //determine the angles phi and theta for the photon to scatter into using thompson differential cross section 
-    scattering_occured=kleinNishinaScatter(&theta, &phi, *(ph_p_prime+0), s, rand, fPtr);//determine the angles phi and theta for the photon to scatter into using KN differential cross section, if the photon will end up scattering
+    scattering_occured=kleinNishinaScatter(&theta, &phi, *(ph_p_prime+0), *(s+1), *(s+2), rand, fPtr);//determine the angles phi and theta for the photon to scatter into using KN differential cross section, if the photon will end up scattering
     
     fprintf(fPtr,"Phi: %e, Theta: %e\n", phi, theta);
     
-    exit(0);
     
-    //perform scattering and compute new 4-momenta of electron and photon
-    //scattered photon 4 momentum
-    gsl_vector_set(result, 0, (*(ph_p_prime+0))/(1+ (( (*(ph_p_prime+0))*(1-cos(theta)) )/(M_EL*C_LIGHT )) ) ); //DOUBLE CHECK HERE!!!! 
-    gsl_vector_set(result, 1, gsl_vector_get(result,0)*cos(theta) );
-    gsl_vector_set(result, 2, gsl_vector_get(result,0)*sin(theta)*sin(phi) );
-    gsl_vector_set(result, 3, gsl_vector_get(result,0)*sin(theta)*cos(phi) );
-    //printf("%e\n", gsl_vector_get(result,0));
-        
     if (scattering_occured==1)
     {
+        //perform scattering and compute new 4-momenta of electron and photon
+        //scattered photon 4 momentum
+        gsl_vector_set(result, 0, (*(ph_p_prime+0))/(1+ (( (*(ph_p_prime+0))*(1-cos(theta)) )/(M_EL*C_LIGHT )) ) ); //DOUBLE CHECK HERE!!!! scattered energy of photon
+        gsl_vector_set(result, 1, gsl_vector_get(result,0)*cos(theta) );
+        gsl_vector_set(result, 2, gsl_vector_get(result,0)*sin(theta)*sin(phi) );//assume phi is clockwise from z to y
+        gsl_vector_set(result, 3, gsl_vector_get(result,0)*sin(theta)*cos(phi) );
+        fprintf(fPtr, "New ph_p0=%e Old= %e\n", gsl_vector_get(result,0), *(ph_p_prime+0));
+        gsl_vector_fprintf(fPtr,result, "%e" );
+        
+        //do the scattering of the stokes vector
+        //rotate it by -phi and then scatter it and rotate back and then renormalize it such that i=1
+        mullerMatrixRotation(-phi, s, fPtr);
+        gsl_matrix_set(scatt, 0,0,1.0+pow(cos(theta), 2.0)+((1-cos(theta))*((*(ph_p_prime+0)) - gsl_vector_get(result,0))/(M_EL*C_LIGHT ) ) ); //following lundman's matrix
+        gsl_matrix_set(scatt, 0,1, pow(sin(theta), 2.0));
+        gsl_matrix_set(scatt, 1,0, pow(sin(theta), 2.0));
+        gsl_matrix_set(scatt, 1,1,1.0+pow(cos(theta), 2.0));
+        gsl_matrix_set(scatt, 2,2, 2.0*cos(theta));
+        gsl_matrix_set(scatt, 3,3, 2.0*cos(theta)+ ((cos(theta))*(1-cos(theta))*((*(ph_p_prime+0)) - gsl_vector_get(result,0))/(M_EL*C_LIGHT )) );
+        gsl_blas_dgemv(CblasNoTrans, 1, scatt, &stokes.vector, 0, scatt_result);
+        
+        fprintf(fPtr,"before s: %e, %e, %e,%e\n", gsl_vector_get(&stokes.vector,0), gsl_vector_get(&stokes.vector,1), gsl_vector_get(&stokes.vector,2), gsl_vector_get(&stokes.vector,3));
+        fprintf(fPtr,"Scatt Matrix 0: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 0,0), gsl_matrix_get(scatt, 0,1), gsl_matrix_get(scatt, 0,2), gsl_matrix_get(scatt, 0,3));
+        fprintf(fPtr,"Scatt Matrix 1: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 1,0), gsl_matrix_get(scatt, 1,1), gsl_matrix_get(scatt, 1,2), gsl_matrix_get(scatt, 1,3));
+        fprintf(fPtr,"Scatt Matrix 2: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 2,0), gsl_matrix_get(scatt, 2,1), gsl_matrix_get(scatt, 2,2), gsl_matrix_get(scatt, 2,3));
+        fprintf(fPtr,"Scatt Matrix 3: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 3,0), gsl_matrix_get(scatt, 3,1), gsl_matrix_get(scatt, 3,2), gsl_matrix_get(scatt, 3,3));
+        fprintf(fPtr,"s: %e, %e, %e,%e\n", gsl_vector_get(scatt_result,0), gsl_vector_get(scatt_result,1), gsl_vector_get(scatt_result,2), gsl_vector_get(scatt_result,3));
+        
+        //normalize and rotate back
+        *(s+0)=gsl_vector_get(scatt_result,0)/gsl_vector_get(scatt_result,0); //should be 1.0
+        *(s+1)=gsl_vector_get(scatt_result,1)/gsl_vector_get(scatt_result,0);
+        *(s+2)=gsl_vector_get(scatt_result,2)/gsl_vector_get(scatt_result,0);
+        *(s+3)=gsl_vector_get(scatt_result,3)/gsl_vector_get(scatt_result,0);
+        fprintf(fPtr,"s after norm: %e, %e, %e,%e\n", gsl_vector_get(&stokes.vector,0), gsl_vector_get(&stokes.vector,1), gsl_vector_get(&stokes.vector,2), gsl_vector_get(&stokes.vector,3));
+
+        
+        //mullerMatrixRotation(phi, s, fPtr); no rotation. s is defined in the plane of k-k_0, there fore find the new y_tilde and x_tilde axis for this frame
+        
+        //recalc x_tilde from rotation about y by angle theta do x_tilde=y_tilde X v_ph
+        test =gsl_vector_view_array(gsl_vector_ptr(result, 1), 3);
+       
+        //scatt_result is a dummy, dont need to change the stokes parameters here, just need to find the axis such that y is out of the plane of k_o-k see Ito figure 12 in polarized emission from stratisfied jets
+        stokesRotation(gsl_vector_ptr(result, 1), ph_p_prime, gsl_vector_ptr(result, 0), x_tilde, y_tilde, gsl_vector_ptr(scatt_result, 0), fPtr); //makes y_tilde perp to plane of old and scattered ph_p, this is how scattered stokes parameters is defined
+        gsl_blas_ddot(&y_tilde_rot.vector, &test.vector, &dotprod_1);
+        fprintf(fPtr, "Angle between the  y_tilde_rot and the photon velocity vector is: %e\n", acos(dotprod_1/ gsl_blas_dnrm2(&test.vector))*180/M_PI);
+        gsl_vector_fprintf(fPtr,&y_tilde_rot.vector, "%e" );
+        gsl_vector_fprintf(fPtr,&x_tilde_rot.vector, "%e" );
+        
+        //exit(0);
         //calculate electron 4 momentum OPTIMIZE HERE: DONT USE A FOR LOOP HERE!!!! Done
         //prescattered photon 4 momentum
         gsl_vector_set(whole_ph_p, 0, (*(ph_p_prime+0)));
@@ -2327,6 +2407,8 @@ int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y
         gsl_matrix_set(rot1, 0,2,sin(-phi1));
         gsl_matrix_set(rot1, 2,0,-sin(-phi1));
         gsl_blas_dgemv(CblasNoTrans, 1, rot1, &ph_p.vector, 0, result1);
+        gsl_blas_dgemv(CblasNoTrans, 1, rot1, &x_tilde_rot.vector, 0, x_tilde_rot_result ); //rotate the stokes plane and save it to ()_tilde_rot_result
+        gsl_blas_dgemv(CblasNoTrans, 1, rot1, &y_tilde_rot.vector, 0, y_tilde_rot_result );
         /*
         printf("Photon Phi: %e\n", phi1);
         printf("Rotation Matrix 0: %e,%e, %e\n", gsl_matrix_get(rot1, 0,0), gsl_matrix_get(rot1, 0,1), gsl_matrix_get(rot1, 0,2));
@@ -2347,7 +2429,9 @@ int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y
         gsl_matrix_set(rot0, 0,1,sin(-phi0));
         gsl_matrix_set(rot0, 1,0,-sin(-phi0));
         gsl_blas_dgemv(CblasNoTrans, 1, rot0, &ph_p.vector, 0, result0);
-    
+        gsl_blas_dgemv(CblasNoTrans, 1, rot0, x_tilde_rot_result, 0, &x_tilde_rot.vector);
+        gsl_blas_dgemv(CblasNoTrans, 1, rot0, y_tilde_rot_result, 0, &y_tilde_rot.vector);
+
         /*
         printf("Photon Phi: %e\n", phi0);
         printf("Rotation Matrix 0: %e,%e, %e\n", gsl_matrix_get(rot0, 0,0), gsl_matrix_get(rot0, 0,1), gsl_matrix_get(rot0, 0,2));
@@ -2358,6 +2442,10 @@ int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y
         *(ph_p_prime+1)=gsl_vector_get(result0,0);
         *(ph_p_prime+2)=gsl_vector_get(result0,1); 
         *(ph_p_prime+3)=gsl_vector_get(result0,2); 
+        
+        gsl_blas_ddot(&y_tilde_rot.vector, &ph_p.vector, &dotprod_1);
+        fprintf(fPtr, "Angle between the  y_tilde_rot and the photon velocity vector is: %e\n", acos(dotprod_1/ gsl_blas_dnrm2(&ph_p.vector))*180/M_PI);
+        
         //printf("Undo rotation 1: %e, %e, %e, %e\n",  *(ph_p_prime+0), *(ph_p_prime+1),  *(ph_p_prime+2),  *(ph_p_prime+3));
         //deboost photon to lab frame
         *(negative_el_v+0)=(-1*(*(el_v+0)));
@@ -2366,11 +2454,15 @@ int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y
     
         lorentzBoost(negative_el_v, ph_p_prime, ph_comov, 'p', fPtr);
         //printf("Undo boost 1: %e, %e, %e, %e\n",  *(ph_comov+0), *(ph_comov+1),  *(ph_comov+2),  *(ph_comov+3));
+        
+        stokesRotation(negative_el_v, ph_p_prime, ph_comov, x_tilde, y_tilde, s, fPtr);
+        
+        //exit(0);
     }
     
-    gsl_matrix_free(rot0); gsl_matrix_free(rot1);gsl_vector_free(result0);gsl_vector_free(result1);gsl_vector_free(result);
-    //gsl_rng_free (rand); 
-    gsl_vector_free(whole_ph_p);free(ph_p_prime);free(el_p_prime);free(el_v); free(negative_el_v); free(y_axis_electron_rest_frame);
+    gsl_matrix_free(rot0); gsl_matrix_free(rot1);gsl_matrix_free(scatt);gsl_vector_free(result0);gsl_vector_free(result1);gsl_vector_free(result);
+    gsl_vector_free(x_tilde_rot_result);gsl_vector_free(y_tilde_rot_result);gsl_vector_free(scatt_result);
+    gsl_vector_free(whole_ph_p);free(ph_p_prime);free(el_p_prime);free(el_v); free(negative_el_v); free(z_axis_electron_rest_frame);
     
     return scattering_occured;
 }
@@ -2398,13 +2490,11 @@ int comptonScattering(double *theta, double *phi, gsl_rng * rand, FILE *fPtr)
 }
 
 
-int kleinNishinaScatter(double *theta, double *phi, double p0, double *polarization, gsl_rng * rand, FILE *fPtr)
+int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double u, gsl_rng * rand, FILE *fPtr)
 {
     double phi_dum=0, theta_dum=0, f_phi_dum=0, f_theta_dum=0, phi_y_dum=0, theta_y_dum=0, KN_x_section_over_thomson_x_section=0, rand_num=0;
     double mu=0, phi_norm=0, phi_max=0;
-    double u=*(polarization+2), q=*(polarization+1); //important stokes parameters here
     int will_scatter=0;
-    
     double energy_ratio=  p0/(M_EL*C_LIGHT ); //h*nu / mc^2 , units of p0 is erg/c 
     
     //determine the KN cross section over the thomson cross section From RYBICKI AND LIGHTMAN pg 197
