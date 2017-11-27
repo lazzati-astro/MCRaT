@@ -2049,7 +2049,7 @@ double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int 
             *(x_tilde_2+2)=0.0;
             
             stokesRotation(x_tilde_2, ph_p, ph_p, x_tilde, y_tilde, s, fPtr);
-            fprintf(fPtr, "Theta: %e Phi %e Lab: x_tilde: %e, %e, %e, y_tilde: %e %e %e\n", theta, phi, *(x_tilde+0), *(x_tilde+1), *(x_tilde+2), *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
+            fprintf(fPtr, "Theta: %e Phi %e Lab: x_tilde: %e, %e, %e, y_tilde: %e %e %e\n\n\n", theta, phi, *(x_tilde+0), *(x_tilde+1), *(x_tilde+2), *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
 
             //save stokes parameters
             ((ph+ph_index)->s0)=*(s+0); //I ==1
