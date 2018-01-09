@@ -546,6 +546,7 @@ int main(int argc, char **argv)
             }
             else 
             {
+                //THIS PART HAS TO BE CHANGED FOR NEW HDF5 FILES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 if (angle_id==0)
                 {
                     printf(">> proc %d with angles %0.1lf-%0.1lf:  Cleaning directory \n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
@@ -798,7 +799,7 @@ int main(int argc, char **argv)
                     
                     frame_scatt_cnt=0;
                     find_nearest_grid_switch=1; // set to true so the function findNearestPropertiesAndMinMFP by default finds the index of the grid block closest to each photon since we just read in a file and the prior index is invalid
-
+                    /*
                     while (time_now<((scatt_frame+increment_scatt)/fps))
                     {
                         //if simulation time is less than the simulation time of the next frame, keep scattering in this frame
@@ -852,7 +853,7 @@ int main(int argc, char **argv)
                         //printf("In main 2: %e, %d, %e, %e\n", ((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
 
                     }
-                    
+                    */
                     //get scattering statistics
                     phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt);
                         
@@ -862,7 +863,7 @@ int main(int argc, char **argv)
                     fprintf(fPtr,"The average number of scatterings thus far is: %lf\n", avg_scatt);
                     fflush(fPtr);
                 
-                    printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, angle_id);
+                    printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, angle_id, fPtr);
                     
                     fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Making checkpoint file\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     fflush(fPtr);
@@ -871,6 +872,8 @@ int main(int argc, char **argv)
                     fflush(fPtr);
 
                     saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id, old_num_angle_procs);
+                    
+                    
                     
                      if (dim_switch==1)
                     {
@@ -898,6 +901,8 @@ int main(int argc, char **argv)
             saveCheckpoint(mc_dir, frame, frm2, scatt_frame, 0, time_now, phPtr, last_frm, angle_id, old_num_angle_procs); //this is for processes using the old code that didnt restart efficiently
             fprintf(fPtr, "Process %d has completed the MC calculation.\n", angle_id);
             fflush(fPtr);
+            
+            exit(0);
         
         }//end omp parallel inner section
         

@@ -139,87 +139,450 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
 }
 
 
-void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200], int angle_rank )
+void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200], int angle_rank, FILE *fPtr )
 {
     //function to save the photons' positions and 4 momentum
-    int i=0;
-    char mc_file_p0[200]="", mc_file_p1[200]="",mc_file_p2[200]="", mc_file_p3[200]="";
-    char mc_file_r0[200]="", mc_file_r1[200]="", mc_file_r2[200]="", mc_file_ns[200]="", mc_file_pw[200]="";
-    FILE *fPtr=NULL, *fPtr1=NULL,*fPtr2=NULL,*fPtr3=NULL,*fPtr4=NULL,*fPtr5=NULL,*fPtr6=NULL,*fPtr7=NULL,*fPtr8=NULL;
     
-    //make strings for proper files
-    snprintf(mc_file_p0,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_P0_", angle_rank, ".dat" );
-    snprintf(mc_file_p1,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_P1_", angle_rank, ".dat" );
-    snprintf(mc_file_p2,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_P2_", angle_rank, ".dat" );
-    snprintf(mc_file_p3,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_P3_", angle_rank, ".dat" );
-    snprintf(mc_file_r0,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_R0_", angle_rank, ".dat" );
-    snprintf(mc_file_r1,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_R1_", angle_rank, ".dat" );
-    snprintf(mc_file_r2,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_R2_", angle_rank, ".dat" );
-    snprintf(mc_file_ns,sizeof(mc_file_p0),"%s%s%d%s%d%s",dir,"mcdata_", frame,"_NS_", angle_rank, ".dat" ); //for number of scatterings each photon went through
-    if (frame==frame_inj) //if the frame is the same one that the photons were injected in, save the photon weights
-    {
-        snprintf(mc_file_pw,sizeof(mc_file_p0),"%s%s%d%s",dir,"mcdata_PW_", angle_rank, ".dat" ); 
-    }
+     //now using hdf5 file for each process w/ group structure /(weights or Hydro File #)/(p0,p1,p2,p3, r0, r1, r2, s0, s1, s2, or num_scatt)
+     
+     //open the file if it exists and see if the group exists for the given frame, if frame doesnt exist then write datasets for all photons as extendable
+     //if the frame does exist then read information from the prewritten data and then add new data to it as extended chunk
+     
+     
+     int i=0, rank=1;
+    char mc_file[200]="", group[200]="";
+    double p0[num_ph], p1[num_ph], p2[num_ph], p3[num_ph] , r0[num_ph], r1[num_ph], r2[num_ph], num_scatt[num_ph], weight[num_ph];
+    double s0[num_ph], s1[num_ph], s2[num_ph], s3[num_ph];
+    hid_t  file, file_init, dspace, fspace, mspace, prop, group_id;
+    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight; 
+    herr_t status, status_group;
+    hsize_t dims[1]={num_ph}, dims_old[1]={0}; //1 is the number of dimansions for the dataset, called rank
+    hsize_t maxdims[1]={H5S_UNLIMITED};
+    hsize_t      size[1];
+    hsize_t      offset[1];
     
-    //save the energy
-    fPtr=fopen(mc_file_p0, "a");
-    fPtr1=fopen(mc_file_p1, "a");
-    fPtr2=fopen(mc_file_p2, "a");
-    fPtr3=fopen(mc_file_p3, "a");
-    fPtr4=fopen(mc_file_r0, "a");
-    fPtr5=fopen(mc_file_r1, "a");
-    fPtr6=fopen(mc_file_r2, "a");
-    fPtr7=fopen(mc_file_ns, "a");
-    if (frame==frame_inj)
-    {
-        fPtr8=fopen(mc_file_pw, "a");
-    }
-    //printf("Writing P0\n");
+    //save photon data into large arrays
     for (i=0;i<num_ph;i++)
     {
-        fprintf(fPtr,"%0.13e\t",  (ph+i)->p0);
-        //printf("%d: %0.13e \n", i, (ph+i)->p0);
-        
-        fprintf(fPtr1,"%0.13e\t",  (ph+i)->p1);
-        //printf("%d: %0.13e \n", i, (ph+i)->p1);
-        
-        fprintf(fPtr2,"%0.13e\t",  (ph+i)->p2);
-        //printf("%d: %0.13e \n", i, (ph+i)->p2);
-        
-        fprintf(fPtr3,"%0.13e\t",  (ph+i)->p3);
-        //printf("%d: %0.13e \n", i, (ph+i)->p3);
-        
-        fprintf(fPtr4,"%0.13e\t",  (ph+i)->r0);
-        //printf("%d: %0.13e \n", i, (ph+i)->r0);
-        
-        fprintf(fPtr5,"%0.13e\t",  (ph+i)->r1);
-        //printf("%d: %0.13e \n", i, (ph+i)->r1);
-        
-        fprintf(fPtr6,"%0.13e\t",  (ph+i)->r2);
-        //printf("%d: %0.13e \n", i, (ph+i)->r2);
-        
-        //fprintf(fPtr7,"%0.13e\t",  *(ph_num_scatt+i));
-        fprintf(fPtr7,"%e\t",  (ph+i)->num_scatt);
-        //printf("%d: %0.13e \n", i, (ph+i)->num_scatt);
-        if (frame==frame_inj)
+        p0[i]= ((ph+i)->p0);
+        p1[i]= ((ph+i)->p1);
+        p2[i]= ((ph+i)->p2);
+        p3[i]= ((ph+i)->p3);
+        r0[i]= ((ph+i)->r0);
+        r1[i]= ((ph+i)->r1);
+        r2[i]= ((ph+i)->r2);
+        s0[i]= ((ph+i)->s0);
+        s1[i]= ((ph+i)->s1);
+        s2[i]= ((ph+i)->s2);
+        s3[i]= ((ph+i)->s3);
+        num_scatt[i]= ((ph+i)->num_scatt);
+        if (frame==frame_inj) //if the frame is the same one that the photons were injected in, save the photon weights
         {
-            fprintf(fPtr8,"%e\t",  (ph+i)->weight);
+            weight[i]= ((ph+i)->weight);
         }
-    }    
-    fclose(fPtr);
-    fclose(fPtr1);
-    fclose(fPtr2);
-    fclose(fPtr3);
-    fclose(fPtr4);
-    fclose(fPtr5);
-    fclose(fPtr6);
-    fclose(fPtr7);
-    if (frame==frame_inj)
-    {
-        fclose(fPtr8);
+        
     }
     
-    //printf("%s\n%s\n%s\n", mc_file_p0, mc_file_r0, mc_file_ns);
+    
+    //make strings for file name and group
+    snprintf(mc_file,sizeof(mc_file),"%s%s%d%s",dir,"mcdata_proc_", angle_rank, ".h5" );
+    snprintf(group,sizeof(mc_file),"%d",frame );
+    
+    //see if file exists, if not create it, if it does just open it
+    status = H5Eset_auto(NULL, NULL, NULL); //turn off automatic error printing
+    file_init=H5Fcreate(mc_file, H5F_ACC_EXCL, H5P_DEFAULT, H5P_DEFAULT); //see if the file initially does/doesnt exist
+    file=file_init;
+    status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr); //turn on auto error printing
+
+    
+    if (file_init<0)
+    {
+        //the file exists, open it with read write 
+        file=H5Fopen(mc_file, H5F_ACC_RDWR, H5P_DEFAULT);
+        //printf("In IF\n");
+        
+        //see if the group exists
+        status = H5Eset_auto(NULL, NULL, NULL);
+        status_group = H5Gget_objinfo (file, group, 0, NULL);
+        //status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+        
+        fprintf(fPtr, group);
+        if (status_group == 0)
+        {   
+            fprintf (fPtr, "The group exists.\n");
+        }
+        else 
+        {
+            fprintf (fPtr, "The group either does NOT exist\n or some other error occurred.\n"); 
+        }
+        
+    }
+    
+    
+    if ((file_init>=0) || (status_group != 0) )
+    {
+        //printf("In IF\n");
+        
+        //the file has been newly created or if the group does not exist then  create the group for the frame
+        group_id = H5Gcreate2(file, group, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        
+        
+        /* Modify dataset creation properties, i.e. enable chunking  */
+        prop = H5Pcreate (H5P_DATASET_CREATE);
+        status = H5Pset_chunk (prop, rank, dims);
+    
+        /* Create the data space with unlimited dimensions. */
+        dspace = H5Screate_simple (rank, dims, maxdims);
+    
+        /* Create a new dataset within the file using chunk creation properties.  */
+        dset_p0 = H5Dcreate2 (group_id, "P0", H5T_NATIVE_DOUBLE, dspace,
+                            H5P_DEFAULT, prop, H5P_DEFAULT);
+        
+        dset_p1 = H5Dcreate2 (group_id, "P1", H5T_NATIVE_DOUBLE, dspace,
+                            H5P_DEFAULT, prop, H5P_DEFAULT);
+        
+        dset_p2 = H5Dcreate2 (group_id, "P2", H5T_NATIVE_DOUBLE, dspace,
+                            H5P_DEFAULT, prop, H5P_DEFAULT);
+        
+        dset_p3 = H5Dcreate2 (group_id, "P3", H5T_NATIVE_DOUBLE, dspace,
+                            H5P_DEFAULT, prop, H5P_DEFAULT);
+                            
+         dset_r0 = H5Dcreate2 (group_id, "R0", H5T_NATIVE_DOUBLE, dspace,
+                            H5P_DEFAULT, prop, H5P_DEFAULT);
+        
+        dset_r1 = H5Dcreate2 (group_id, "R1", H5T_NATIVE_DOUBLE, dspace,
+                            H5P_DEFAULT, prop, H5P_DEFAULT);
+        
+        dset_r2 = H5Dcreate2 (group_id, "R2", H5T_NATIVE_DOUBLE, dspace,
+                            H5P_DEFAULT, prop, H5P_DEFAULT);
+                            
+        dset_s0 = H5Dcreate2 (group_id, "S0", H5T_NATIVE_DOUBLE, dspace,
+                            H5P_DEFAULT, prop, H5P_DEFAULT);
+        
+        dset_s1 = H5Dcreate2 (group_id, "S1", H5T_NATIVE_DOUBLE, dspace,
+                            H5P_DEFAULT, prop, H5P_DEFAULT);
+        
+        dset_s2 = H5Dcreate2 (group_id, "S2", H5T_NATIVE_DOUBLE, dspace,
+                            H5P_DEFAULT, prop, H5P_DEFAULT);
+        
+        dset_s3 = H5Dcreate2 (group_id, "S3", H5T_NATIVE_DOUBLE, dspace,
+                            H5P_DEFAULT, prop, H5P_DEFAULT);
+                            
+        dset_num_scatt = H5Dcreate2 (group_id, "Num_Scatt", H5T_NATIVE_DOUBLE, dspace,
+                            H5P_DEFAULT, prop, H5P_DEFAULT);
+                            
+        if (frame==frame_inj) //if the frame is the same one that the photons were injected in, save the photon weights
+        {
+            dset_weight = H5Dcreate2 (file, "Weight", H5T_NATIVE_DOUBLE, dspace,
+                            H5P_DEFAULT, prop, H5P_DEFAULT);
+        }
+                         
+        /* Write data to dataset */
+        status = H5Dwrite (dset_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, p0);
+        
+        status = H5Dwrite (dset_p1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, p1);
+                        
+        status = H5Dwrite (dset_p2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, p2);
+                        
+        status = H5Dwrite (dset_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, p3);
+                        
+        status = H5Dwrite (dset_r0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, r0);
+        
+        status = H5Dwrite (dset_r1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, r1);
+                        
+        status = H5Dwrite (dset_r2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, r2);
+                        
+        status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, s0);
+        
+        status = H5Dwrite (dset_s1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, s1);
+                        
+        status = H5Dwrite (dset_s2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, s2);
+                        
+        status = H5Dwrite (dset_s3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, s3);
+                        
+        status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, num_scatt);
+        
+        if (frame==frame_inj)
+        {
+            status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                            H5P_DEFAULT, weight);
+        }
+    
+    }
+    else
+    {
+        //if the group already exists then extend it
+        //find the size of it now
+        
+        /* Open an existing group of the specified file. */
+        group_id = H5Gopen2(file, group, H5P_DEFAULT);
+        dset_p0 = H5Dopen (group_id, "P0", H5P_DEFAULT); //open dataset
+    
+        //get dimensions of array and save it
+        dspace = H5Dget_space (dset_p0);
+    
+        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+        
+        //extend the dataset
+        size[0] = dims[0]+ dims_old[0];
+        status = H5Dset_extent (dset_p0, size);
+        
+        /* Select a hyperslab in extended portion of dataset  */
+        fspace = H5Dget_space (dset_p0);
+        offset[0] = dims_old[0];
+        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                  dims, NULL); 
+                                  
+        /* Define memory space */
+        mspace = H5Screate_simple (rank, dims, NULL);
+        
+        /* Write the data to the extended portion of dataset  */
+        status = H5Dwrite (dset_p0, H5T_NATIVE_DOUBLE, mspace, fspace,
+                        H5P_DEFAULT, p0);
+        status = H5Sclose (dspace);
+        status = H5Sclose (mspace);
+        status = H5Sclose (fspace);
+    
+        dset_p1 = H5Dopen (group_id, "P1", H5P_DEFAULT); //open dataset
+        dspace = H5Dget_space (dset_p1);
+        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+        size[0] = dims[0]+ dims_old[0];
+        status = H5Dset_extent (dset_p1, size);
+        fspace = H5Dget_space (dset_p1);
+        offset[0] = dims_old[0];
+        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                  dims, NULL); 
+        mspace = H5Screate_simple (rank, dims, NULL);
+        status = H5Dwrite (dset_p1, H5T_NATIVE_DOUBLE, mspace, fspace,
+                            H5P_DEFAULT, p1);
+        status = H5Sclose (dspace);
+        status = H5Sclose (mspace);
+        status = H5Sclose (fspace);
+        
+        dset_p2 = H5Dopen (group_id, "P2", H5P_DEFAULT); //open dataset
+        dspace = H5Dget_space (dset_p2);
+        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+        size[0] = dims[0]+ dims_old[0];
+        status = H5Dset_extent (dset_p2, size);
+        fspace = H5Dget_space (dset_p2);
+        offset[0] = dims_old[0];
+        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                  dims, NULL); 
+        mspace = H5Screate_simple (rank, dims, NULL);
+        status = H5Dwrite (dset_p2, H5T_NATIVE_DOUBLE, mspace, fspace,
+                            H5P_DEFAULT, p2);
+        status = H5Sclose (dspace);
+        status = H5Sclose (mspace);
+        status = H5Sclose (fspace);
+        
+        dset_p3 = H5Dopen (group_id, "P3", H5P_DEFAULT); //open dataset
+        dspace = H5Dget_space (dset_p3);
+        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+        size[0] = dims[0]+ dims_old[0];
+        status = H5Dset_extent (dset_p3, size);
+        fspace = H5Dget_space (dset_p3);
+        offset[0] = dims_old[0];
+        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                  dims, NULL); 
+        mspace = H5Screate_simple (rank, dims, NULL);
+        status = H5Dwrite (dset_p3, H5T_NATIVE_DOUBLE, mspace, fspace,
+                            H5P_DEFAULT, p3);
+        status = H5Sclose (dspace);
+        status = H5Sclose (mspace);
+        status = H5Sclose (fspace);
+        
+        dset_r0 = H5Dopen (group_id, "R0", H5P_DEFAULT); //open dataset
+        dspace = H5Dget_space (dset_r0);
+        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+        size[0] = dims[0]+ dims_old[0];
+        status = H5Dset_extent (dset_r0, size);
+        fspace = H5Dget_space (dset_r0);
+        offset[0] = dims_old[0];
+        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                  dims, NULL); 
+        mspace = H5Screate_simple (rank, dims, NULL);
+        status = H5Dwrite (dset_r0, H5T_NATIVE_DOUBLE, mspace, fspace,
+                            H5P_DEFAULT, r0);
+        status = H5Sclose (dspace);
+        status = H5Sclose (mspace);
+        status = H5Sclose (fspace);
+        
+        dset_r1 = H5Dopen (group_id, "R1", H5P_DEFAULT); //open dataset
+        dspace = H5Dget_space (dset_r1);
+        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+        size[0] = dims[0]+ dims_old[0];
+        status = H5Dset_extent (dset_r1, size);
+        fspace = H5Dget_space (dset_r1);
+        offset[0] = dims_old[0];
+        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                  dims, NULL); 
+        mspace = H5Screate_simple (rank, dims, NULL);
+        status = H5Dwrite (dset_r1, H5T_NATIVE_DOUBLE, mspace, fspace,
+                            H5P_DEFAULT, r1);
+        status = H5Sclose (dspace);
+        status = H5Sclose (mspace);
+        status = H5Sclose (fspace);
+        
+        dset_r2 = H5Dopen (group_id, "R2", H5P_DEFAULT); //open dataset
+        dspace = H5Dget_space (dset_r2);
+        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+        size[0] = dims[0]+ dims_old[0];
+        status = H5Dset_extent (dset_r2, size);
+        fspace = H5Dget_space (dset_r2);
+        offset[0] = dims_old[0];
+        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                  dims, NULL); 
+        mspace = H5Screate_simple (rank, dims, NULL);
+        status = H5Dwrite (dset_r2, H5T_NATIVE_DOUBLE, mspace, fspace,
+                            H5P_DEFAULT, r2);
+        status = H5Sclose (dspace);
+        status = H5Sclose (mspace);
+        status = H5Sclose (fspace);
+        
+         dset_s0 = H5Dopen (group_id, "S0", H5P_DEFAULT); //open dataset
+        dspace = H5Dget_space (dset_s0);
+        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+        size[0] = dims[0]+ dims_old[0];
+        status = H5Dset_extent (dset_s0, size);
+        fspace = H5Dget_space (dset_s0);
+        offset[0] = dims_old[0];
+        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                  dims, NULL); 
+        mspace = H5Screate_simple (rank, dims, NULL);
+        status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, mspace, fspace,
+                            H5P_DEFAULT, s0);
+        status = H5Sclose (dspace);
+        status = H5Sclose (mspace);
+        status = H5Sclose (fspace);
+        
+        dset_s1 = H5Dopen (group_id, "S1", H5P_DEFAULT); //open dataset
+        dspace = H5Dget_space (dset_s1);
+        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+        size[0] = dims[0]+ dims_old[0];
+        status = H5Dset_extent (dset_s1, size);
+        fspace = H5Dget_space (dset_s1);
+        offset[0] = dims_old[0];
+        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                  dims, NULL); 
+        mspace = H5Screate_simple (rank, dims, NULL);
+        status = H5Dwrite (dset_s1, H5T_NATIVE_DOUBLE, mspace, fspace,
+                            H5P_DEFAULT, s1);
+        status = H5Sclose (dspace);
+        status = H5Sclose (mspace);
+        status = H5Sclose (fspace);
+        
+        dset_s2 = H5Dopen (group_id, "S2", H5P_DEFAULT); //open dataset
+        dspace = H5Dget_space (dset_s2);
+        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+        size[0] = dims[0]+ dims_old[0];
+        status = H5Dset_extent (dset_s2, size);
+        fspace = H5Dget_space (dset_s2);
+        offset[0] = dims_old[0];
+        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                  dims, NULL); 
+        mspace = H5Screate_simple (rank, dims, NULL);
+        status = H5Dwrite (dset_s2, H5T_NATIVE_DOUBLE, mspace, fspace,
+                            H5P_DEFAULT, s2);
+        status = H5Sclose (dspace);
+        status = H5Sclose (mspace);
+        status = H5Sclose (fspace);
+        
+        dset_s3 = H5Dopen (group_id, "S3", H5P_DEFAULT); //open dataset
+        dspace = H5Dget_space (dset_s3);
+        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+        size[0] = dims[0]+ dims_old[0];
+        status = H5Dset_extent (dset_s3, size);
+        fspace = H5Dget_space (dset_s3);
+        offset[0] = dims_old[0];
+        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                  dims, NULL); 
+        mspace = H5Screate_simple (rank, dims, NULL);
+        status = H5Dwrite (dset_s3, H5T_NATIVE_DOUBLE, mspace, fspace,
+                            H5P_DEFAULT, s3);
+        status = H5Sclose (dspace);
+        status = H5Sclose (mspace);
+        status = H5Sclose (fspace);
+        
+        dset_num_scatt = H5Dopen (group_id, "Num_Scatt", H5P_DEFAULT); //open dataset
+        dspace = H5Dget_space (dset_num_scatt);
+        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+        size[0] = dims[0]+ dims_old[0];
+        status = H5Dset_extent (dset_num_scatt, size);
+        fspace = H5Dget_space (dset_num_scatt);
+        offset[0] = dims_old[0];
+        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                  dims, NULL); 
+        mspace = H5Screate_simple (rank, dims, NULL);
+        status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, mspace, fspace,
+                            H5P_DEFAULT, num_scatt);
+        status = H5Sclose (dspace);
+        status = H5Sclose (mspace);
+        status = H5Sclose (fspace);
+        
+        if (frame==frame_inj)
+        {
+            dset_weight = H5Dopen (file, "Weight", H5P_DEFAULT); //open dataset
+    
+            //get dimensions of array and save it
+            dspace = H5Dget_space (dset_weight);
+    
+            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+        
+            //extend the dataset
+            size[0] = dims[0]+ dims_old[0];
+            status = H5Dset_extent (dset_weight, size);
+        
+            /* Select a hyperslab in extended portion of dataset  */
+            fspace = H5Dget_space (dset_weight);
+            offset[0] = dims_old[0];
+            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                  dims, NULL); 
+                                  
+            /* Define memory space */
+            mspace = H5Screate_simple (rank, dims, NULL);
+        
+            /* Write the data to the extended portion of dataset  */
+            status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, mspace, fspace,
+                            H5P_DEFAULT, weight);
+        }
+                        
+        
+        
+        status = H5Sclose (mspace);
+        status = H5Sclose (fspace);
+        
+    }
+    
+    
+    /* Close resources */
+    status = H5Sclose (dspace);
+    status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
+    status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
+    status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
+    status = H5Dclose (dset_num_scatt); 
+    if (frame==frame_inj)
+    {
+        status = H5Dclose (dset_weight);
+    }
+    status = H5Pclose (prop);
+    /* Close the group. */
+   status = H5Gclose(group_id);
+    
+    /* Terminate access to the file. */
+      status = H5Fclose(file); 
+
 }
 
 void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph, int last_frame, int angle_rank,int angle_size )
