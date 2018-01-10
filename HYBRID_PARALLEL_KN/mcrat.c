@@ -873,7 +873,7 @@ int main(int argc, char **argv)
 
                     saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id, old_num_angle_procs);
                     
-                    
+                    //exit(0);
                     
                      if (dim_switch==1)
                     {
@@ -902,7 +902,7 @@ int main(int argc, char **argv)
             fprintf(fPtr, "Process %d has completed the MC calculation.\n", angle_id);
             fflush(fPtr);
             
-            exit(0);
+            //exit(0);
         
         }//end omp parallel inner section
         
