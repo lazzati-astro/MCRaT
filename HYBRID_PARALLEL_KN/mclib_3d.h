@@ -1,4 +1,4 @@
-#include "mclib.h"
+//#include "mclib.h"
 
 void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, double **y, double **z, double **szx, double **szy, double **r,\
     double **theta, double **phi, double **velx, double **vely, double **velz, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number,  int ph_inj_switch, double min_r, double max_r, double fps, FILE *fPtr);

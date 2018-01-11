@@ -49,6 +49,7 @@
 #include <dirent.h>
 #include <math.h>
 #include <gsl/gsl_rng.h>
+#include "mclib.h"
 #include "mclib_3d.h"
 #include <omp.h>
 #include "mpi.h"

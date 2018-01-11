@@ -18,7 +18,8 @@
 #include <gsl/gsl_permutation.h>
 #include <gsl/gsl_sort.h>
 #include <gsl/gsl_sort_vector.h>
-#include "mclib_3d.h"
+//#include "mclib_3d.h"
+#include "mclib.h"
 #include <omp.h>
 #include "mpi.h"
 
