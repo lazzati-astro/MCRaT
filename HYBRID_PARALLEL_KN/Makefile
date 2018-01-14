@@ -17,6 +17,12 @@ MCRAT: $(OBJ)
 	$(CC) $(CFLAGS)  -c -o $@ $< $(INCLUDE) $(LIBSHDF) $(LIB)
 
 
+MERGE: merge.o mclib.o 
+	$(CC) $(CFLAGS)  -o $@ $^ $(INCLUDE) $(LIBSHDF) $(LIB)
+
+merge.o: merge.c mclib.c mclib.h
+	$(CC) $(CFLAGS)  -c -o $@ $< $(INCLUDE) $(LIBSHDF) $(LIB)
+
 
 clean: 
 	rm -f *.o 

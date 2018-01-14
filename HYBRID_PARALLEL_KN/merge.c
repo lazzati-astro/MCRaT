@@ -1,7 +1,7 @@
 /*
   *  This code is to merge all the files among different directories once the MCRaT simulation is complete
   *  The input should be the main CMC directory and the sub directories of each angle range with the number of MPI processes used to start the simulation in each directory
-  *  eg call: mpiexec -np X /.merge /dir/to/CMC_dir/  0.0-2.0/ 416 2.0-4.0/ 416 
+  *  eg call: mpiexec -np X /.merge /dir/to/CMC_dir/  
   *  where X shuould be a multiple of the number of sub directories
   *  
 */
@@ -13,32 +13,50 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
-//#include <gsl/gsl_rng.h>
-//#include "mclib.h"
-//#include "mpi.h"
+#include <errno.h>
+#include <gsl/gsl_rng.h>
+#include "hdf5.h"
+#include "mclib.h"
+#include "mpi.h"
 
+/*
 void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large,\
 int *last_frm, int *frm2_small,int *frm2_large, double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads,  int *dim_switch);
-
+*/
 
 #define MCPAR "mc.par"
 
 int main(int argc, char **argv)
 {
-    int num_angle_dirs=0, i=0;
-    int *num_procs_per_dir, frm0_small, frm0_large, last_frm, frm2_small, frm2_large, small_frm;
-    int *frm_array;
+    double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;
+    double *p0_p=NULL, *p1_p=NULL, *p2_p=NULL, *p3_p=NULL, *r0_p=NULL, *r1_p=NULL, *r2_p=NULL, *s0_p=NULL, *s1_p=NULL, *s2_p=NULL, *s3_p=NULL, *num_scatt_p=NULL, *weight_p=NULL;
+    int num_angle_dirs=0, i=0, j=0, k=0, num_types=12;
+    int *num_procs_per_dir=NULL, frm0_small, frm0_large, last_frm, frm2_small, frm2_large, small_frm, all_photons;
+    int *frm_array=NULL, *each_subdir_number=NULL, *displPtr=NULL;
+    int myid, numprocs, subdir_procs, subdir_id, frames_to_merge ;
+    int  count=0, index=0,  isNotCorrupted=0;
+    int file_count = 0, max_num_procs_per_dir=0;
     double garbage;
-    char mc_file[200]="" ;
-    
-    char dir[300]="";
+    char mc_file[500]="" ;
+    char dir[500]="";
+    char group[500]="";
+    char merged_filename[500]="";
+    char filename_k[2000]="", mcdata_type[20]="";
     char *str="mcdata_proc_";
-    int  count=0;
     struct dirent* dent;
-    int file_count = 0;
     DIR * dirp;
     struct dirent * entry;
     DIR* srcdir = opendir(argv[1]);
+    
+    MPI_Datatype stype;
+    hid_t       file, file_id, group_id, dspace, fspace, mspace;         /* file and dataset identifiers */
+    hid_t	plist_id_file, plist_id_data;        /* property list identifier( access template) */
+    hsize_t dims[1]={0},dims_old[1]={0};
+     hsize_t maxdims[1]={H5S_UNLIMITED};
+     hsize_t      size[1];
+    hsize_t      offset[1];
+    herr_t	status, status_group;
+    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight;
 
     while((dent = readdir(srcdir)) != NULL)
     {
@@ -56,8 +74,12 @@ int main(int argc, char **argv)
 
         if (S_ISDIR(st.st_mode)) 
         {
-            num_angle_dirs++;
-            printf("found directory %s\n", dent->d_name);
+            //snprintf(dir,sizeof(dir),"%s",dent->d_name );
+            if (strstr(dent->d_name, "ALL_DATA") == NULL)
+            {
+                num_angle_dirs++;
+                printf("found directory %s\n", dent->d_name);
+            }
         }
         
     }
@@ -65,6 +87,9 @@ int main(int argc, char **argv)
     closedir(srcdir);
     
     num_procs_per_dir=malloc(num_angle_dirs*sizeof(int));
+    each_subdir_number=malloc(num_angle_dirs*sizeof(int));
+    displPtr=malloc(num_angle_dirs*sizeof(int));
+    *(displPtr+0)=0;
      char *dirs[num_angle_dirs];
     
     count=0;
@@ -86,23 +111,30 @@ int main(int argc, char **argv)
         if (S_ISDIR(st.st_mode)) 
         {
             printf("found directory %s\n", dent->d_name);
-            
-            snprintf(dir,sizeof(dir),"%s%s/",argv[1],dent->d_name );
-            dirs[count] =  malloc((strlen(dir)+1));
-            strcpy(dirs[count],dir);
-            printf("SECOND: found directory %s\n", dirs[count]);
-            
-            dirp = opendir(dir); //do into the directory to get each file
-            while ((entry = readdir(dirp)) != NULL) 
+             if (strstr(dent->d_name, "ALL_DATA") == NULL)
             {
-                if ((entry->d_type == DT_REG) && (strstr(entry->d_name, str) != NULL))
-                { /* If the entry is a regular file  */
-                    file_count++;
-                    printf("%s\n", entry->d_name );
+                snprintf(dir,sizeof(dir),"%s%s/",argv[1],dent->d_name );
+                dirs[count] =  malloc((strlen(dir)+1));
+                strcpy(dirs[count],dir);
+                printf("SECOND: found directory %s\n", dirs[count]);
+            
+                dirp = opendir(dir); //do into the directory to get each file
+                while ((entry = readdir(dirp)) != NULL) 
+                {
+                    if ((entry->d_type == DT_REG) && (strstr(entry->d_name, str) != NULL))
+                    { /* If the entry is a regular file  */
+                        file_count++;
+                        printf("%s\n", entry->d_name );
+                    }
                 }
+                *(num_procs_per_dir +count)=file_count;
+                if (max_num_procs_per_dir<file_count)
+                {
+                    max_num_procs_per_dir=file_count; //find the max number of processes in each directory
+                }
+                
+                count++;
             }
-            *(num_procs_per_dir +count)=file_count;
-            count++;
         }
         
     }
@@ -125,8 +157,8 @@ int main(int argc, char **argv)
     printf("%s frm_0small: %d frm_0large: %d, last: %d\n", mc_file, frm0_small,frm0_large, last_frm);
     
     //with all the info make array of all the files that need to be created
-    frm_array=malloc(sizeof(int)*(last_frm-small_frm));
     small_frm= (frm0_small < frm0_large) ? frm0_small : frm0_large;
+    frm_array=malloc(sizeof(int)*(last_frm-small_frm));
     count=0;
     for (i=small_frm;i<last_frm+1;i++)
     {
@@ -135,11 +167,643 @@ int main(int argc, char **argv)
         count++;
     }
     
+    //set up the ALL_DATA directory name
+    snprintf(dir,sizeof(dir),"%sALL_DATA/",argv[1] );
+    
     //set up MPI and break up the processes into groups of the number of sub directories
+    MPI_Init(NULL,NULL);
+    MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+    
+    //break up into groups by subdir
+    index= myid/num_angle_dirs;
+    MPI_Comm frames_to_merge_comm;
+    MPI_Comm_split(MPI_COMM_WORLD, index , myid, &frames_to_merge_comm);
+    MPI_Comm_rank(frames_to_merge_comm, &subdir_id);
+    MPI_Comm_size(frames_to_merge_comm, &subdir_procs);
+    
+    frames_to_merge=(count-1)/(numprocs/num_angle_dirs); //count-1 b/c @ end of loop it added 1
+    printf("subdir_id %d, subdir_procs %d subdir %s, num of frames to merge %d, index %d\n", subdir_id, subdir_procs, dirs[subdir_id], frames_to_merge, index );
+    printf("Start file %d end file %d\n", *(frm_array+index), *(frm_array+index+frames_to_merge));
+    
+    if (myid==0)
+    {
+        //have 1st process see if the folder ALL_DATA exists and if not create it
+        dirp = opendir(dir);
+        if (ENOENT == errno)
+        {
+            //if it doesnt exist create it
+            mkdir(dir, 0777); //make the directory with full permissions
+        }
+        else
+        {
+            closedir(dirp);
+        }
+    }
+    
+    //directory exists now, can create files in it with appropriate datasets, all processes in communicator participate in this
+    //Set up file access property list with parallel I/O access
+    MPI_Info info  = MPI_INFO_NULL;
+    
+    //create files
+    for (i=225;i<227;i++)
+    {
+        //go through the mpi files to find the total number of photons needed for the final dataset  *(frm_array+index)    (*(frm_array+index+frames_to_merge))+1
+        printf("\n\n%d\n", i);
+        dims[0]=0;
+         j=0;
+        for (k=0;k<*(num_procs_per_dir+subdir_id);k++)
+        {
+            //for each process' file, find out how many elements and add up to find total number of elements needed in the data set for the frame number
+            snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dirs[subdir_id],"mcdata_proc_", k, ".h5" );
+            //printf("Dir: %s\n",filename_k );
+            
+            //open the file
+            file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
+            
+            
+            //see if the frame exists
+            snprintf(group,sizeof(group),"%d",i );
+            status = H5Eset_auto(NULL, NULL, NULL);
+            status_group = H5Gget_objinfo (file, group, 0, NULL);
+            status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+            
+            //if it does open it and read in the size
+            if (status_group == 0)
+            {
+                //open the datatset
+                group_id = H5Gopen2(file, group, H5P_DEFAULT);
+                dset_p0 = H5Dopen (group_id, "P0", H5P_DEFAULT); //open dataset
+                
+                //get the number of points
+                dspace = H5Dget_space (dset_p0);
+                status=H5Sget_simple_extent_dims(dspace, dims, NULL); //save dimesnions in dims
+                j+=dims[0];//calculate the total number of photons to save to new hdf5 file
+                
+                //printf("File %s num_ph %d\n", filename_k, j);
+                
+                status = H5Sclose (dspace);
+                status = H5Dclose (dset_p0);
+                status = H5Gclose(group_id);
+            }
+            status = H5Fclose(file);
+            
+            
+            
+            
+        }
+        
+        //find total number of photons
+        MPI_Allreduce(&j, &all_photons, 1, MPI_INT, MPI_SUM, frames_to_merge_comm);
+        
+        //get the number for each subdir for later use
+        //MPI_Allgather(&j, 1, MPI_INT, each_subdir_number, 1, MPI_INT, frames_to_merge_comm);
+        
+        //set up the displacement of data
+        //for (j=1;j<num_angle_dirs;j++)
+        //{
+        //    *(displPtr+j)=(*(displPtr+j-1))+(*(each_subdir_number+j-1));
+        //}
+        
+        if (subdir_id==0)
+        {
+            printf("Frame: %d Total photons %d\n", i, all_photons);
+        }
+        
+        
+        plist_id_file = H5Pcreate(H5P_FILE_ACCESS);
+        H5Pset_fapl_mpio(plist_id_file, frames_to_merge_comm, info);
+        
+        snprintf(merged_filename,sizeof(merged_filename),"%smcdata_%d.h5",dir, i );
+        status = H5Eset_auto(NULL, NULL, NULL); //turn off automatic error printing
+        file_id = H5Fcreate(merged_filename, H5F_ACC_EXCL, H5P_DEFAULT, plist_id_file);
+        status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr); //turn on auto error printing
+        
+        //if the file exists we have to check it to ensure its not corrupted
+        /*
+         if (file_id<0)
+        {
+            printf( "Checking File %s\n",merged_filename );
+            //the file exists, open it with read write 
+            file_id=H5Fopen(merged_filename, H5F_ACC_RDWR, plist_id_file);
+            
+            for (k=0;k<num_types;k++)
+            {
+                switch (k)
+                {
+                    case 0: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P0"); break;
+                    case 1: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P1");break;
+                    case 2: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P2"); break;
+                    case 3: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P3"); break;
+                    case 4: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R0"); break;
+                    case 5: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
+                    case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
+                    case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S0"); break;
+                    case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S1");break;
+                    case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S2"); break;
+                    case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
+                    case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                }
+            
+                //open the datatset
+                dset_p0 = H5Dopen (file_id, mcdata_type, H5P_DEFAULT); //open dataset
+                
+                //get the number of points
+                dspace = H5Dget_space (dset_p0);
+                status=H5Sget_simple_extent_dims(dspace, dims, NULL); //save dimesnions in dims
+                
+                //fprintf(fPtr, "j:%d, dim: %d\n",j, dims[0] );
+                //fflush(fPtr);
+                
+                isNotCorrupted += fmod(dims[0], all_photons); //if the dimension is the dame then the fmod ==0 (remainder of 0), if all datatsets are ==0 then you get a truth value of 0 meaning that it isnt corrupted
+                
+                status = H5Sclose (dspace);
+                status = H5Dclose (dset_p0);
+            }
+            
+            status = H5Fclose(file_id);
+            file_id=-1; //do this so if the file exists it doesnt go into the rewriting portion if the file does exist
+        }
+        */
+        
+        if ((file_id>=0) || (isNotCorrupted != 0 ))
+        {
+            if (isNotCorrupted != 0)
+            {
+                //if the data is corrupted overwrite the file
+                file_id = H5Fcreate(merged_filename, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id_file);
+            }
+            
+            //read the data in from each process in a given subdir, use max_num_procs_per_dir in case one directory used more processes than the others and deal with it in code
+            for (k=0;k<max_num_procs_per_dir;k++)
+            {
+                dims[0]=0;
+                 j=0;
+                
+            
+                //for each process' file, find out how many elements and add up to find total number of elements needed in the data set for the frame number
+                snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dirs[subdir_id],"mcdata_proc_", k, ".h5" );
+                printf("Dir: %s\n",filename_k );
+            
+                //open the file
+                status = H5Eset_auto(NULL, NULL, NULL); //turn of error printing if the file doesnt exist, if the process number doesnt exist
+                file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
+                status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                
+                if (file>=0)
+                {
+                //see if the frame exists
+                snprintf(group,sizeof(group),"%d",i );
+                status = H5Eset_auto(NULL, NULL, NULL);
+                status_group = H5Gget_objinfo (file, group, 0, NULL);
+                status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                }
+                
+            
+                //if it does open it and read in the size
+                if (status_group == 0 && file>=0)
+                {
+                        printf("Opening dataset\n");
+                        //open the datatset
+                        group_id = H5Gopen2(file, group, H5P_DEFAULT);
+                        dset_p0 = H5Dopen (group_id, "P0", H5P_DEFAULT); //open dataset
+                        dset_p1 = H5Dopen (group_id, "P1", H5P_DEFAULT);
+                        dset_p2 = H5Dopen (group_id, "P2", H5P_DEFAULT);
+                        dset_p3 = H5Dopen (group_id, "P3", H5P_DEFAULT);
+                        dset_r0 = H5Dopen (group_id, "R0", H5P_DEFAULT); 
+                        dset_r1 = H5Dopen (group_id, "R1", H5P_DEFAULT);
+                        dset_r2 = H5Dopen (group_id, "R2", H5P_DEFAULT);
+                        dset_s0 = H5Dopen (group_id, "S0", H5P_DEFAULT); 
+                        dset_s1 = H5Dopen (group_id, "S1", H5P_DEFAULT);
+                        dset_s2 = H5Dopen (group_id, "S2", H5P_DEFAULT);
+                        dset_s3 = H5Dopen (group_id, "S3", H5P_DEFAULT);
+                        dset_num_scatt = H5Dopen (group_id, "NS", H5P_DEFAULT);
+                        
+                        //get the number of points
+                        dspace = H5Dget_space (dset_p0);
+                        status=H5Sget_simple_extent_dims(dspace, dims, NULL); //save dimesnions in dims
+                        j=dims[0];//calculate the total number of photons to save to new hdf5 file
+                        
+                        //malloc memory
+                        p0_p=malloc(j*sizeof(double));  p1_p=malloc(j*sizeof(double));  p2_p=malloc(j*sizeof(double));  p3_p=malloc(j*sizeof(double));
+                        r0_p=malloc(j*sizeof(double));  r1_p=malloc(j*sizeof(double));  r2_p=malloc(j*sizeof(double));
+                        s0_p=malloc(j*sizeof(double));  s1_p=malloc(j*sizeof(double));  s2_p=malloc(j*sizeof(double));  s3_p=malloc(j*sizeof(double));
+                        num_scatt_p=malloc(j*sizeof(double)); 
+                
+                        //read the data in
+                        status = H5Dread(dset_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p0_p));
+                        status = H5Dread(dset_p1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p1_p));
+                        status = H5Dread(dset_p2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p2_p));
+                        status = H5Dread(dset_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p3_p));
+                        status = H5Dread(dset_r0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r0_p));
+                        status = H5Dread(dset_r1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r1_p));
+                        status = H5Dread(dset_r2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r2_p));
+                        status = H5Dread(dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s0_p));
+                        status = H5Dread(dset_s1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s1_p));
+                        status = H5Dread(dset_s2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s2_p));
+                        status = H5Dread(dset_s3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s3_p));
+                        status = H5Dread(dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (num_scatt_p));
+                
+                
+                        status = H5Sclose (dspace);
+                        status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
+                        status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
+                        status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
+                        status = H5Dclose (dset_num_scatt); 
+                        status = H5Gclose(group_id);
+                        
+                        
+                }
+                else
+                {
+                        //allocate memory so Allgather doesn't fail with NULL pointer
+                        j=1;
+                        p0_p=malloc(j*sizeof(double));  p1_p=malloc(j*sizeof(double));  p2_p=malloc(j*sizeof(double));  p3_p=malloc(j*sizeof(double));
+                        r0_p=malloc(j*sizeof(double));  r1_p=malloc(j*sizeof(double));  r2_p=malloc(j*sizeof(double));
+                        s0_p=malloc(j*sizeof(double));  s1_p=malloc(j*sizeof(double));  s2_p=malloc(j*sizeof(double));  s3_p=malloc(j*sizeof(double));
+                        num_scatt_p=malloc(j*sizeof(double)); 
+                }
+                    
+                    //find total number of photons
+                    MPI_Allreduce(&dims[0], &all_photons, 1, MPI_INT, MPI_SUM,  frames_to_merge_comm);
+                    //dims[0]=all_photons;
+                    
+                    printf("ID %d j: %d\n", subdir_id, dims[0]);
+                    
+                    //get the number for each subdir for later use
+                    MPI_Allgather(&dims[0], 1, MPI_INT, each_subdir_number, 1, MPI_INT,   frames_to_merge_comm);
+                    for (j=0;j<num_angle_dirs;j++)
+                    {
+                         printf("ID %d eachsubdir_num %d \n",  subdir_id, *(each_subdir_number+j));
+                    }
+                    
+        
+                    //set up the displacement of data
+                    for (j=1;j<num_angle_dirs;j++)
+                    {
+                        *(displPtr+j)=(*(displPtr+j-1))+(*(each_subdir_number+j-1));
+                         printf("Displ %d eachsubdir_num %d \n",  *(displPtr+j), *(each_subdir_number+j-1));
+                    }
+        
+                    if (subdir_id==0)
+                    {
+                        printf("Frame: %d Total photons %d\n", i, all_photons);
+                    }
+                    
+                    //now allocate enough ememory for all_photons in the mpi files from proc 0 initially 
+                    p0=malloc(all_photons*sizeof(double));  p1=malloc(all_photons*sizeof(double));  p2=malloc(all_photons*sizeof(double));  p3=malloc(all_photons*sizeof(double));
+                    r0=malloc(all_photons*sizeof(double));  r1=malloc(all_photons*sizeof(double));  r2=malloc(all_photons*sizeof(double));
+                    s0=malloc(all_photons*sizeof(double));  s1=malloc(all_photons*sizeof(double));  s2=malloc(all_photons*sizeof(double));  s3=malloc(all_photons*sizeof(double));
+                    num_scatt=malloc(all_photons*sizeof(double)); 
+                    
+                    
+                    //save data in correct order to p0, s0, r0, etc. in order of angle 
+                    
+                    //MPI_Type_commit( &stype ); 
+                    MPI_Allgatherv(p0_p, dims[0], MPI_DOUBLE, p0, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    
+                    if (subdir_id==0)
+                    {
+                        for (j=0;j<all_photons;j++)
+                        {
+                            printf("Read Data: %e Gathered data: %e\n", *(p0+j), *(p0_p+j));
+                        }
+                    }
+                    //exit(0);
+                    
+                    dims[0]=all_photons;
+                    if ((k==0)  && (all_photons>0))
+                    {
+                        //set up new dataset
+                        //create the datasets with the appropriate number of elements
+                        
+                        plist_id_data = H5Pcreate (H5P_DATASET_CREATE);
+                        status = H5Pset_chunk (plist_id_data, 1, dims);
+                        dspace = H5Screate_simple (1, dims, maxdims);
+                        
+                        
+                        
+                        dset_p0=H5Dcreate(file_id, "P0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        
+                        dset_p1=H5Dcreate2(file_id, "P1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        dset_p2=H5Dcreate2(file_id, "P2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        dset_p3=H5Dcreate2(file_id, "P3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        dset_r0=H5Dcreate2(file_id, "R0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        dset_r1=H5Dcreate2(file_id, "R1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        dset_r2=H5Dcreate2(file_id, "R2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        dset_s0=H5Dcreate2(file_id, "S0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        dset_s1=H5Dcreate2(file_id, "S1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        dset_s2=H5Dcreate2(file_id, "S2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        dset_s3=H5Dcreate2(file_id, "S3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        dset_num_scatt=H5Dcreate2(file_id, "NS", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                         
+                        
+                        
+                        H5Pclose(plist_id_data);
+                        H5Sclose(dspace);
+                        
+                        plist_id_data = H5Pcreate (H5P_DATASET_XFER);
+                        H5Pset_dxpl_mpio (plist_id_data, H5FD_MPIO_COLLECTIVE);
+                        
+                        //write data
+                        offset[0]=0;
+                        dspace = H5Dget_space(dset_p0);
+                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        status = H5Dwrite (dset_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, p0);
+                        H5Sclose(dspace);
+                        
+                        
+                         dspace = H5Dget_space(dset_p1);
+                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        status = H5Dwrite (dset_p1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, p1);
+                        H5Sclose(dspace);
+                        
+                        dspace = H5Dget_space(dset_p2);
+                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        status = H5Dwrite (dset_p2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, p2);
+                        H5Sclose(dspace);
+                        
+                        dspace = H5Dget_space(dset_p3);
+                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        status = H5Dwrite (dset_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, p3);
+                        H5Sclose(dspace);
+                        
+                        dspace = H5Dget_space(dset_r0);
+                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        status = H5Dwrite (dset_r0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, r0);
+                        H5Sclose(dspace);
+        
+                        dspace = H5Dget_space(dset_r1);
+                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        status = H5Dwrite (dset_r1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, r1);
+                        H5Sclose(dspace);
+                        
+                        dspace = H5Dget_space(dset_r2);
+                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        status = H5Dwrite (dset_r2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, r2);
+                        H5Sclose(dspace);
+                        
+                        dspace = H5Dget_space(dset_s0);
+                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, s0);
+                        H5Sclose(dspace);
+                        
+                        dspace = H5Dget_space(dset_s1);
+                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        status = H5Dwrite (dset_s1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, s1);
+                        H5Sclose(dspace);
+                        
+                        dspace = H5Dget_space(dset_s2);
+                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        status = H5Dwrite (dset_s2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, s2);
+                        H5Sclose(dspace);
+                        
+                        dspace = H5Dget_space(dset_s3);
+                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        status = H5Dwrite (dset_s3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,  plist_id_data, s3);
+                        H5Sclose(dspace);
+                        
+                        dspace = H5Dget_space(dset_num_scatt);
+                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, num_scatt);
+                        H5Sclose(dspace);
+                        
+                        status = H5Dclose (dset_p0); 
+                        status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
+                        status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
+                        status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
+                        status = H5Dclose (dset_num_scatt);
+                        
+                        H5Pclose(plist_id_data);
+                        
+                    }
+                    else if ((k>0) && (all_photons>0))
+                    {
+                        //printf("IN THE ELSE IF STATEMENT\n");
+                        plist_id_data = H5Pcreate (H5P_DATASET_XFER);
+                        H5Pset_dxpl_mpio (plist_id_data, H5FD_MPIO_COLLECTIVE);
+                        
+                        dset_p0 = H5Dopen (file_id, "P0", H5P_DEFAULT); //open dataset
+                        dspace = H5Dget_space (dset_p0);
+                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                        
+                        size[0] = dims[0]+ dims_old[0];
+                        status = H5Dset_extent (dset_p0, size);
+                        
+                        fspace = H5Dget_space (dset_p0);
+                        offset[0] = dims_old[0];
+                        
+                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        mspace = H5Screate_simple (1, dims, NULL);
+                        status = H5Dwrite (dset_p0, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, p0);
+                        status = H5Sclose (dspace);
+                        status = H5Sclose (mspace);
+                        status = H5Sclose (fspace);
+                        status = H5Dclose (dset_p0);
+                        
+                        dset_p1 = H5Dopen (file_id, "P1", H5P_DEFAULT); //open dataset
+                        dspace = H5Dget_space (dset_p1);
+                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                        size[0] = dims[0]+ dims_old[0];
+                        status = H5Dset_extent (dset_p1, size);
+                        fspace = H5Dget_space (dset_p1);
+                        offset[0] = dims_old[0];
+                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        mspace = H5Screate_simple (1, dims, NULL);
+                        status = H5Dwrite (dset_p1, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, p1);
+                        status = H5Sclose (dspace);
+                        status = H5Sclose (mspace);
+                        status = H5Sclose (fspace);
+                        status = H5Dclose (dset_p1);
+                        
+                        dset_p2 = H5Dopen (file_id, "P2", H5P_DEFAULT); //open dataset
+                        dspace = H5Dget_space (dset_p2);
+                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                        size[0] = dims[0]+ dims_old[0];
+                        status = H5Dset_extent (dset_p2, size);
+                        fspace = H5Dget_space (dset_p2);
+                        offset[0] = dims_old[0];
+                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        mspace = H5Screate_simple (1, dims, NULL);
+                        status = H5Dwrite (dset_p2, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, p2);
+                        status = H5Sclose (dspace);
+                        status = H5Sclose (mspace);
+                        status = H5Sclose (fspace);
+                        status = H5Dclose (dset_p2);
+                        
+                        dset_p3 = H5Dopen (file_id, "P3", H5P_DEFAULT); //open dataset
+                        dspace = H5Dget_space (dset_p3);
+                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                        size[0] = dims[0]+ dims_old[0];
+                        status = H5Dset_extent (dset_p3, size);
+                        fspace = H5Dget_space (dset_p3);
+                        offset[0] = dims_old[0];
+                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        mspace = H5Screate_simple (1, dims, NULL);
+                        status = H5Dwrite (dset_p3, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, p3);
+                        status = H5Sclose (dspace);
+                        status = H5Sclose (mspace);
+                        status = H5Sclose (fspace);
+                        status = H5Dclose (dset_p3);
+                        
+                        dset_r0 = H5Dopen (file_id, "R0", H5P_DEFAULT); //open dataset
+                        dspace = H5Dget_space (dset_r0);
+                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                        size[0] = dims[0]+ dims_old[0];
+                        status = H5Dset_extent (dset_r0, size);
+                        fspace = H5Dget_space (dset_r0);
+                        offset[0] = dims_old[0];
+                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        mspace = H5Screate_simple (1, dims, NULL);
+                        status = H5Dwrite (dset_r0, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, r0);
+                        status = H5Sclose (dspace);
+                        status = H5Sclose (mspace);
+                        status = H5Sclose (fspace);
+                        status = H5Dclose (dset_r0);
+                        
+                        dset_r1 = H5Dopen (file_id, "R1", H5P_DEFAULT); //open dataset
+                        dspace = H5Dget_space (dset_r1);
+                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                        size[0] = dims[0]+ dims_old[0];
+                        status = H5Dset_extent (dset_r1, size);
+                        fspace = H5Dget_space (dset_r1);
+                        offset[0] = dims_old[0];
+                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        mspace = H5Screate_simple (1, dims, NULL);
+                        status = H5Dwrite (dset_r1, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, r1);
+                        status = H5Sclose (dspace);
+                        status = H5Sclose (mspace);
+                        status = H5Sclose (fspace);
+                        status = H5Dclose (dset_r1);
+                        
+                        dset_r2 = H5Dopen (file_id, "R2", H5P_DEFAULT); //open dataset
+                        dspace = H5Dget_space (dset_r2);
+                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                        size[0] = dims[0]+ dims_old[0];
+                        status = H5Dset_extent (dset_r2, size);
+                        fspace = H5Dget_space (dset_r2);
+                        offset[0] = dims_old[0];
+                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        mspace = H5Screate_simple (1, dims, NULL);
+                        status = H5Dwrite (dset_r2, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, r2);
+                        status = H5Sclose (dspace);
+                        status = H5Sclose (mspace);
+                        status = H5Sclose (fspace);
+                        status = H5Dclose (dset_r2);
+                        
+                        dset_s0 = H5Dopen (file_id, "S0", H5P_DEFAULT); //open dataset
+                        dspace = H5Dget_space (dset_s0);
+                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                        size[0] = dims[0]+ dims_old[0];
+                        status = H5Dset_extent (dset_s0, size);
+                        fspace = H5Dget_space (dset_s0);
+                        offset[0] = dims_old[0];
+                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        mspace = H5Screate_simple (1, dims, NULL);
+                        status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, s0);
+                        status = H5Sclose (dspace);
+                        status = H5Sclose (mspace);
+                        status = H5Sclose (fspace);
+                        status = H5Dclose (dset_s0);
+                        
+                        dset_s1 = H5Dopen (file_id, "S1", H5P_DEFAULT); //open dataset
+                        dspace = H5Dget_space (dset_s1);
+                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                        size[0] = dims[0]+ dims_old[0];
+                        status = H5Dset_extent (dset_s1, size);
+                        fspace = H5Dget_space (dset_s1);
+                        offset[0] = dims_old[0];
+                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        mspace = H5Screate_simple (1, dims, NULL);
+                        status = H5Dwrite (dset_s1, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, s1);
+                        status = H5Sclose (dspace);
+                        status = H5Sclose (mspace);
+                        status = H5Sclose (fspace);
+                        status = H5Dclose (dset_s1);
+                        
+                        dset_s2 = H5Dopen (file_id, "S2", H5P_DEFAULT); //open dataset
+                        dspace = H5Dget_space (dset_s2);
+                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                        size[0] = dims[0]+ dims_old[0];
+                        status = H5Dset_extent (dset_s2, size);
+                        fspace = H5Dget_space (dset_s2);
+                        offset[0] = dims_old[0];
+                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        mspace = H5Screate_simple (1, dims, NULL);
+                        status = H5Dwrite (dset_s2, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, s2);
+                        status = H5Sclose (dspace);
+                        status = H5Sclose (mspace);
+                        status = H5Sclose (fspace);
+                        status = H5Dclose (dset_s2);
+                        
+                        dset_s3 = H5Dopen (file_id, "S3", H5P_DEFAULT); //open dataset
+                        dspace = H5Dget_space (dset_s3);
+                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                        size[0] = dims[0]+ dims_old[0];
+                        status = H5Dset_extent (dset_s3, size);
+                        fspace = H5Dget_space (dset_s3);
+                        offset[0] = dims_old[0];
+                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        mspace = H5Screate_simple (1, dims, NULL);
+                        status = H5Dwrite (dset_s3, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, s3);
+                        status = H5Sclose (dspace);
+                        status = H5Sclose (mspace);
+                        status = H5Sclose (fspace);
+                        status = H5Dclose (dset_s3);
+                        
+                        dset_num_scatt = H5Dopen (file_id, "NS", H5P_DEFAULT); //open dataset
+                        dspace = H5Dget_space (dset_num_scatt);
+                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                        size[0] = dims[0]+ dims_old[0];
+                        status = H5Dset_extent (dset_num_scatt, size);
+                        fspace = H5Dget_space (dset_num_scatt);
+                        offset[0] = dims_old[0];
+                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        mspace = H5Screate_simple (1, dims, NULL);
+                        status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, num_scatt);
+                        status = H5Sclose (dspace);
+                        status = H5Sclose (mspace);
+                        status = H5Sclose (fspace);
+                        status = H5Dclose (dset_num_scatt);
+                        
+                        
+                        H5Pclose(plist_id_data);
+                        
+                    }
+                    
+                    
+                    
+                    if (file>=0)
+                    {
+                        status = H5Fclose(file);
+                    }
+                    
+                    free(p0_p);free(p1_p); free(p2_p);free(p3_p);
+                    free(r0_p);free(r1_p); free(r2_p);
+                    free(s0_p);free(s1_p); free(s2_p);free(s3_p);
+                    free(num_scatt_p);
+                    
+                    free(p0);free(p1); free(p2);free(p3);
+                    free(r0);free(r1); free(r2);
+                    free(s0);free(s1); free(s2);free(s3);
+                    free(num_scatt);
+                }
+            
+            
+        }
+        
+        H5Fclose(file_id);
+        
+        H5Pclose(plist_id_file);
+        
+    }
     
     
+    
+    MPI_Finalize();
 }
 
+/*
 void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads,  int *dim_switch)
 {
     //function to read mc.par file
@@ -248,6 +912,6 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
 	//close file
 	fclose(fptr);
 }
-
+*/
 
 
