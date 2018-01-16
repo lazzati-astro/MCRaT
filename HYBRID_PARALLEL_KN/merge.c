@@ -19,10 +19,6 @@
 #include "mclib.h"
 #include "mpi.h"
 
-/*
-void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large,\
-int *last_frm, int *frm2_small,int *frm2_large, double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads,  int *dim_switch);
-*/
 
 #define MCPAR "mc.par"
 
@@ -33,7 +29,7 @@ int main(int argc, char **argv)
     int num_angle_dirs=0, i=0, j=0, k=0, num_types=12;
     int *num_procs_per_dir=NULL, frm0_small, frm0_large, last_frm, frm2_small, frm2_large, small_frm, all_photons;
     int *frm_array=NULL, *each_subdir_number=NULL, *displPtr=NULL;
-    int myid, numprocs, subdir_procs, subdir_id, frames_to_merge ;
+    int myid, numprocs, subdir_procs, subdir_id, frames_to_merge, start_count, end_count ;
     int  count=0, index=0,  isNotCorrupted=0;
     int file_count = 0, max_num_procs_per_dir=0;
     double garbage;
@@ -183,8 +179,22 @@ int main(int argc, char **argv)
     MPI_Comm_size(frames_to_merge_comm, &subdir_procs);
     
     frames_to_merge=(count-1)/(numprocs/num_angle_dirs); //count-1 b/c @ end of loop it added 1
+    start_count=*(frm_array+(index*frames_to_merge));
+    end_count=*(frm_array+((index+1)*frames_to_merge));
+    
+
+    if (index==(numprocs/num_angle_dirs)-1)
+    {
+        end_count=*(frm_array+(count-1))+1;
+    }
+    
+    
+    
+    
     printf("subdir_id %d, subdir_procs %d subdir %s, num of frames to merge %d, index %d\n", subdir_id, subdir_procs, dirs[subdir_id], frames_to_merge, index );
-    printf("Start file %d end file %d\n", *(frm_array+index), *(frm_array+index+frames_to_merge));
+    printf("Start file %d end file %d\n", start_count, end_count);
+    
+    //exit(0);
     
     if (myid==0)
     {
@@ -206,7 +216,7 @@ int main(int argc, char **argv)
     MPI_Info info  = MPI_INFO_NULL;
     
     //create files
-    for (i=225;i<227;i++)
+    for (i= start_count; i<end_count;i++)
     {
         //go through the mpi files to find the total number of photons needed for the final dataset  *(frm_array+index)    (*(frm_array+index+frames_to_merge))+1
         printf("\n\n%d\n", i);
@@ -461,12 +471,24 @@ int main(int argc, char **argv)
                     
                     //MPI_Type_commit( &stype ); 
                     MPI_Allgatherv(p0_p, dims[0], MPI_DOUBLE, p0, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    MPI_Allgatherv(p1_p, dims[0], MPI_DOUBLE, p1, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    MPI_Allgatherv(p2_p, dims[0], MPI_DOUBLE, p2, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    MPI_Allgatherv(p3_p, dims[0], MPI_DOUBLE, p3, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    MPI_Allgatherv(r0_p, dims[0], MPI_DOUBLE, r0, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    MPI_Allgatherv(r1_p, dims[0], MPI_DOUBLE, r1, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    MPI_Allgatherv(r2_p, dims[0], MPI_DOUBLE, r2, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    MPI_Allgatherv(s0_p, dims[0], MPI_DOUBLE, s0, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    MPI_Allgatherv(s1_p, dims[0], MPI_DOUBLE, s1, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    MPI_Allgatherv(s2_p, dims[0], MPI_DOUBLE, s2, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    MPI_Allgatherv(s3_p, dims[0], MPI_DOUBLE, s3, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    MPI_Allgatherv(num_scatt_p, dims[0], MPI_DOUBLE, num_scatt, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    
                     
                     if (subdir_id==0)
                     {
                         for (j=0;j<all_photons;j++)
                         {
-                            printf("Read Data: %e Gathered data: %e\n", *(p0+j), *(p0_p+j));
+                            printf("Read Data: %e Gathered data: %e\n", *(s0+j), *(s0_p+j));
                         }
                     }
                     //exit(0);
@@ -787,6 +809,8 @@ int main(int argc, char **argv)
                     free(r0);free(r1); free(r2);
                     free(s0);free(s1); free(s2);free(s3);
                     free(num_scatt);
+                    
+                    //exit(0);
                 }
             
             
@@ -801,117 +825,11 @@ int main(int argc, char **argv)
     
     
     MPI_Finalize();
+    
+    free(num_procs_per_dir);
+    free(each_subdir_number);
+    free(displPtr);
+    free(frm_array);
 }
-
-/*
-void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads,  int *dim_switch)
-{
-    //function to read mc.par file
-	FILE *fptr=NULL;
-	char buf[100]="";
-	double theta_deg;
-	
-	//open file
-	fptr=fopen(file,"r");
-	//read in frames per sec and other variables outlined in main()
-	fscanf(fptr, "%lf",fps);
-	//printf("%f\n", *fps );
-	
-	fgets(buf, 100,fptr);
-	
-	fscanf(fptr, "%d",frm0_small);
-	//printf("%d\n", *frm0_small );
-	
-	fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%d",frm0_large);
-	//printf("%d\n", *frm0_large );
-	
-	fgets(buf, 100,fptr);
-	
-	fscanf(fptr, "%d",last_frm);
-	//printf("%d\n", *last_frm );
-    
-	
-	fgets(buf, 100,fptr);
-	
-	fscanf(fptr, "%d",frm2_small);
-    *frm2_small+=*frm0_small; //frame to go to is what is given in the file plus the starting frame
-	//printf("%d\n", *frm2_small );
-	
-	fgets(buf, 100,fptr);
-	
-	//fscanf(fptr, "%d",photon_num); remove photon num because we dont need this
-	//printf("%d\n", *photon_num );
-    
-    fscanf(fptr, "%d",frm2_large);
-    *frm2_large+=*frm0_large; //frame to go to is what is given in the file plus the starting frame
-    //printf("%d\n", *frm2_large );
-	
-	fgets(buf, 100,fptr);
-	
-	//fgets(buf, 100,fptr);
-	
-	fscanf(fptr, "%lf",inj_radius_small);
-	//printf("%lf\n", *inj_radius_small );
-	
-	fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%lf",inj_radius_large);
-	//printf("%lf\n", *inj_radius_large );
-	
-	fgets(buf, 100,fptr);
-    
-	//theta jmin
-	fscanf(fptr, "%lf",&theta_deg);
-	*theta_jmin=theta_deg;//*M_PI/180; leave as degrees to manipulate processes 
-	//printf("%f\n", *theta_jmin );
-	
-	
-	fgets(buf, 100,fptr);
-	
-	fscanf(fptr, "%lf",&theta_deg);
-    *theta_j=theta_deg;//*M_PI/180;
-	//printf("%f\n", *theta_j );
-	
-	fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%lf",d_theta_j);
-    //*theta_j=theta_deg;//*M_PI/180;
-	//printf("%f\n", *theta_j );
-	
-	fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%lf",ph_weight_small);
-    //printf("%f\n", *ph_weight_small );
-    fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%lf",ph_weight_large);
-    fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%d",min_photons);
-    fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%d",max_photons);
-    fgets(buf, 100,fptr);
-    
-    *spect=getc(fptr);
-    fgets(buf, 100,fptr);
-    //printf("%c\n",*spect);
-    
-    *restart=getc(fptr);
-    fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%d",num_threads);
-    //printf("%d\n",*num_threads);
-    fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%d",dim_switch);
-    //printf("%d\n",*dim_switch);
-    
-	//close file
-	fclose(fptr);
-}
-*/
 
 

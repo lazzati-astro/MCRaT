@@ -3350,7 +3350,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
         free(weight);
     }
     
-    exit(0);
+    //exit(0);
     
 }
 
