@@ -155,7 +155,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     double p0[num_ph], p1[num_ph], p2[num_ph], p3[num_ph] , r0[num_ph], r1[num_ph], r2[num_ph], num_scatt[num_ph], weight[num_ph];
     double s0[num_ph], s1[num_ph], s2[num_ph], s3[num_ph];
     hid_t  file, file_init, dspace, fspace, mspace, prop, group_id;
-    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight; 
+    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_2; 
     herr_t status, status_group;
     hsize_t dims[1]={num_ph}, dims_old[1]={0}; //1 is the number of dimansions for the dataset, called rank
     hsize_t maxdims[1]={H5S_UNLIMITED};
@@ -186,7 +186,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     
     
     //make strings for file name and group
-    snprintf(mc_file,sizeof(mc_file),"%s%s%d%s",dir,"mcdata_proc_", angle_rank, ".h5" );
+    snprintf(mc_file,sizeof(mc_file),"%s%s%d%s",dir,"mc_proc_", angle_rank, ".h5" );
     snprintf(group,sizeof(mc_file),"%d",frame );
     
     //see if file exists, if not create it, if it does just open it
@@ -276,6 +276,8 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         {
             dset_weight = H5Dcreate2 (file, "Weight", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
+            dset_weight_2 = H5Dcreate2 (group_id, "Weight", H5T_NATIVE_DOUBLE, dspace,
+                            H5P_DEFAULT, prop, H5P_DEFAULT); //save the new injected photons' weights
         }
                          
         /* Write data to dataset */
@@ -318,6 +320,8 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         if (frame==frame_inj)
         {
             status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                            H5P_DEFAULT, weight);
+            status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, weight);
         }
         
@@ -561,10 +565,27 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
             /* Write the data to the extended portion of dataset  */
             status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, mspace, fspace,
                             H5P_DEFAULT, weight);
+                            
+            //will have to create the weight dataset for the new set of phtons that have been injected
+             /* Modify dataset creation properties, i.e. enable chunking  */
+            prop = H5Pcreate (H5P_DATASET_CREATE);
+            status = H5Pset_chunk (prop, rank, dims);
+    
+            /* Create the data space with unlimited dimensions. */
+            dspace = H5Screate_simple (rank, dims, maxdims);
+            
+            dset_weight_2 = H5Dcreate2 (group_id, "Weight", H5T_NATIVE_DOUBLE, dspace,
+                            H5P_DEFAULT, prop, H5P_DEFAULT); //save the new injected photons' weights
+                            
+            status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                            H5P_DEFAULT, weight);
+                            
+            status = H5Pclose (prop);
+            
         }
                         
         
-        
+        status = H5Sclose (dspace);
         status = H5Sclose (mspace);
         status = H5Sclose (fspace);
         
@@ -572,7 +593,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     
     
     /* Close resources */
-    status = H5Sclose (dspace);
+    //status = H5Sclose (dspace);
     status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
     status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
     status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
@@ -580,6 +601,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     if (frame==frame_inj)
     {
         status = H5Dclose (dset_weight);
+        status = H5Dclose (dset_weight_2);
     }
     
     /* Close the group. */
@@ -3051,7 +3073,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
         for (k=0;k<numprocs;k++)
         {
             //for each process' file, find out how many elements and add up to find total number of elements needed in the data set for the frame number
-            snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dir,"mcdata_proc_", k, ".h5" );
+            snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dir,"mc_proc_", k, ".h5" );
             
             //open the file
             file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -3161,7 +3183,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             for (k=0;k<numprocs;k++)
             {
                 //for each process open and read the contents of the dataset
-                snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dir,"mcdata_proc_", k, ".h5" );
+                snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dir,"mc_proc_", k, ".h5" );
                 file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
             
                 snprintf(group,sizeof(group),"%d",i );
@@ -3300,7 +3322,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
         for (k=0;k<numprocs;k++)
         {
             //for each process' file, find out how many elements and add up to find total number of elements needed in the data set for the frame number
-            snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dir,"mcdata_proc_", k, ".h5" );
+            snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dir,"mc_proc_", k, ".h5" );
             
             //open the file
             file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -3323,7 +3345,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
         //open each data set and save it
         for (k=0;k<numprocs;k++)
         {
-            snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dir,"mcdata_proc_", k, ".h5" );
+            snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dir,"mc_proc_", k, ".h5" );
             file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
             dset_weight = H5Dopen (file, "Weight", H5P_DEFAULT);
             status = H5Dread(dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (weight+j));
