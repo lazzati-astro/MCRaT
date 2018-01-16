@@ -290,7 +290,7 @@ int main(int argc, char **argv)
         status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr); //turn on auto error printing
         
         //if the file exists we have to check it to ensure its not corrupted
-        /*
+        
          if (file_id<0)
         {
             printf( "Checking File %s\n",merged_filename );
@@ -332,9 +332,11 @@ int main(int argc, char **argv)
             }
             
             status = H5Fclose(file_id);
-            file_id=-1; //do this so if the file exists it doesnt go into the rewriting portion if the file does exist
+            file_id=-1; //do this so if the file exists it doesnt go into the rewriting portion just based on that
         }
-        */
+        
+        printf("file %s has isNotCorrupted=%d\n", merged_filename, isNotCorrupted );
+        
         
         if ((file_id>=0) || (isNotCorrupted != 0 ))
         {
@@ -813,10 +815,11 @@ int main(int argc, char **argv)
                     //exit(0);
                 }
             
-            
+            H5Fclose(file_id);
         }
         
-        H5Fclose(file_id);
+        
+        
         
         H5Pclose(plist_id_file);
         
