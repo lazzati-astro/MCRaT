@@ -676,7 +676,7 @@ int main(int argc, char **argv)
                     }
                     else if (strcmp(sph, this_run)==0)
                     {
-                        printf("In Spherical\n");
+                        //printf("In Spherical\n");
                         sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
                     }
                         
@@ -814,9 +814,12 @@ int main(int argc, char **argv)
                             time_step=photonScatter( phPtr, num_ph, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, rng, dim_switch, fPtr );
                             time_now+=time_step;
                             
+                            
+                            
                             if (frame_scatt_cnt%1000 == 0)
                             {
                                 fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
+                                //fprintf(fPtr,"Scattering Photon Number: %d\n", ph_scatt_index);
                                 fprintf(fPtr,"The local temp is: %e\n", *(tempPtr + (phPtr+ph_scatt_index)->nearest_block_index) );
                                 fprintf(fPtr,"Average photon energy is: %e\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 and then do (*3e10/1.6e-9)
                                 fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
