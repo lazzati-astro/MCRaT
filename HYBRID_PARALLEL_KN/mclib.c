@@ -207,6 +207,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         status_group = H5Gget_objinfo (file, group, 0, NULL);
         status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
         
+        /*
         fprintf(fPtr, group);
         if (status_group == 0)
         {   
@@ -216,7 +217,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         {
             fprintf (fPtr, "The group either does NOT exist\n or some other error occurred.\n"); 
         }
-        
+        */
     }
     
     
@@ -3114,8 +3115,8 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
     
         if (file_new<0)
         {
-            fprintf(fPtr, "Checking File %s\n",file_no_thread_num );
-            fflush(fPtr);
+            //fprintf(fPtr, "Checking File %s\n",file_no_thread_num );
+            //fflush(fPtr);
             //the file exists, open it with read write 
             file_new=H5Fopen(file_no_thread_num, H5F_ACC_RDWR, H5P_DEFAULT);
             
@@ -3157,15 +3158,15 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             file_new=-1; //do this so if the file exists it doesnt go into the rewriting portion if the file does exist
         }
         
-        fprintf(fPtr, "file %s has isNotCorrupted=%d\n", file_no_thread_num, isNotCorrupted );
-        fflush(fPtr);
+        //fprintf(fPtr, "file %s has isNotCorrupted=%d\n", file_no_thread_num, isNotCorrupted );
+        //fflush(fPtr);
         
         //if the new file doesnt have the dimensions that it should, open it and write over the file, or if the file doesnt exist
         if ((file_new>=0) || (isNotCorrupted != 0 ))
         {
             
-            fprintf(fPtr, "In IF\n" );
-            fflush(fPtr);
+            //fprintf(fPtr, "In IF\n" );
+            //fflush(fPtr);
             
             if (isNotCorrupted != 0)
             {

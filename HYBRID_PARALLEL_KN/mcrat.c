@@ -55,10 +55,10 @@
 #include "mpi.h"
 
 /*
-#define THISRUN "Science"
-#define FILEPATH "/home/physics/parsotat/16OI/"
-#define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
-#define MC_PATH "MPI_CMC_16OI_SPHERICAL/"
+#define THISRUN "Spherical"
+#define FILEPATH "/home/physics/parsotat/16TI/"
+#define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
+#define MC_PATH "CMC_16TI_SPHERICAL/"
  
 #define THISRUN "Science"
 #define FILEPATH "/Users/Tylerparsotan/Documents/Box Sync/1spike/"
@@ -76,6 +76,7 @@
 #define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16OI/"
 #define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
 #define MC_PATH "TEST/"
+//TEST FOR SCATTERING AND SAVING STOKES PARAMETERS AND POST PROCESSING MERGING ONCE AGAIN
 
 #define MCPAR "mc.par"
 #define RIKEN_SWITCH 0
@@ -547,7 +548,6 @@ int main(int argc, char **argv)
             }
             else 
             {
-                //THIS PART HAS TO BE CHANGED FOR NEW HDF5 FILES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 if (angle_id==0)
                 {
                     printf(">> proc %d with angles %0.1lf-%0.1lf:  Cleaning directory \n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
@@ -562,27 +562,9 @@ int main(int argc, char **argv)
                     
                     if (file_count>0)
                     {
-                        for (i=0;i<=last_frm;i++)
-                        {
-                            
-                            snprintf(mc_filename,sizeof(mc_filename),"%s%s%d%s", mc_dir,"mcdata_",i,"_P0.dat");
-                            //snprintf(mc_filename_2,sizeof(mc_filename),"%s%s%d%s", mc_dir,"mcdata_",i,"_P0_0.dat");
-                            for  (j=0;j<angle_procs;j++)
-                            {
-                                snprintf(mc_filename_2,sizeof(mc_filename),"%s%s%d%s%d%s", mc_dir,"mcdata_",i,"_P0_",j, ".dat");
-                                
-                                if(( access( mc_filename, F_OK ) != -1 )  || ( access( mc_filename_2, F_OK ) != -1 ) )
-                                {
-                                    snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s%d%s","exec rm ", mc_dir,"mcdata_",i,"_*.dat"); //prepares string to remove *.dat in mc_dir
-                                    //printf("%s\n",mc_operation);
-                                    system(mc_operation);
-                                    
-                                    snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s%d%s","exec rm ", mc_dir,"mcdata_",i,"_*");
-                                    system(mc_operation);
-                                }
-                            
-                            }
-                        }
+                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mc_proc_*.dat"); //prepares string to remove *.dat in mc_dir
+                        system(mc_operation);
+                        
                         snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mcdata_PW_*.dat"); //prepares string to remove *.dat in mc_dir
                         system(mc_operation);
                         
@@ -800,7 +782,7 @@ int main(int argc, char **argv)
                     
                     frame_scatt_cnt=0;
                     find_nearest_grid_switch=1; // set to true so the function findNearestPropertiesAndMinMFP by default finds the index of the grid block closest to each photon since we just read in a file and the prior index is invalid
-                    /*
+                    
                     while (time_now<((scatt_frame+increment_scatt)/fps))
                     {
                         //if simulation time is less than the simulation time of the next frame, keep scattering in this frame
@@ -840,7 +822,7 @@ int main(int argc, char **argv)
                                 fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                                 fflush(fPtr);
                             }
-                            exit(0);
+                            //exit(0);
                         }
                         else
                         {
@@ -854,7 +836,7 @@ int main(int argc, char **argv)
                         //printf("In main 2: %e, %d, %e, %e\n", ((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
 
                     }
-                    */
+                    
                     //get scattering statistics
                     phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt);
                         
