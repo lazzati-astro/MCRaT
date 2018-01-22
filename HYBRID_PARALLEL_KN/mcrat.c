@@ -562,13 +562,13 @@ int main(int argc, char **argv)
                     
                     if (file_count>0)
                     {
-                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mc_proc_*.dat"); //prepares string to remove *.dat in mc_dir
+                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mc_proc_*"); //prepares string to remove *.dat in mc_dir
                         system(mc_operation);
                         
-                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mcdata_PW_*.dat"); //prepares string to remove *.dat in mc_dir
+                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mcdata_PW_*"); //prepares string to remove *.dat in mc_dir
                         system(mc_operation);
                         
-                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mcdata_PW.dat"); //prepares string to remove *.dat in mc_dir
+                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mcdata_PW*"); //prepares string to remove *.dat in mc_dir
                         system(mc_operation);
                         
                         snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mc_chkpt_*.dat"); //prepares string to remove *.dat in mc_dir
