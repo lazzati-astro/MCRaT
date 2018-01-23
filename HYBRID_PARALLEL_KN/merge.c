@@ -154,11 +154,11 @@ int main(int argc, char **argv)
     
     //with all the info make array of all the files that need to be created
     small_frm= (frm0_small < frm0_large) ? frm0_small : frm0_large;
-    frm_array=malloc(sizeof(int)*(last_frm-small_frm));
+    frm_array=malloc(sizeof(int)*(last_frm-small_frm+1));
     count=0;
     for (i=small_frm;i<last_frm+1;i++)
     {
-        printf("Count: %d\n",i);
+        printf("Count: %d\n",count);
         *(frm_array+count)=i;
         count++;
     }
@@ -185,6 +185,7 @@ int main(int argc, char **argv)
 
     if (index==(numprocs/num_angle_dirs)-1)
     {
+        //printf("in If\n");
         end_count=*(frm_array+(count-1))+1;
     }
     

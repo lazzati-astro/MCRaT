@@ -34,6 +34,9 @@
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27;
 const double K_B=1.380658e-16, M_P=1.6726231e-24, THOM_X_SECT=6.65246e-25, M_EL=9.1093879e-28 ;
 
+//define array to be used globally for qsort
+//double *arr;
+
 int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200], int angle_rank,  int angle_procs, int last_frame, int dim_switch, int riken_switch)
 {
     int i=0, j=0, val=0, original_num_procs=-1, rand_num=0;
@@ -1688,6 +1691,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
 {
     
     int i=0, min_index=0, ph_block_index=0;
+    int sorted_indexes_2[5];
     double ph_x=0, ph_y=0, ph_phi=0, ph_z=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
 
@@ -1837,12 +1841,50 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         *(sorted_indexes+i)= (int) perm->data[i]; //save sorted indexes to array to use outside of function
     }
     
+    //SHOULD USE QSORT TO SORT THE TIMES
+    /*
+    printf("HERE\n");
+    for (i=0;i<5;i++)
+    {
+        sorted_indexes_2[i]= i; //save  indexes to array to use in qsort
+    }
+    //arr = all_time_steps;
+    printf("before QSORT\n");
+    qsort_r(sorted_indexes_2, sizeof(sorted_indexes_2)/sizeof(int), sizeof (int), compare, all_time_steps);
+    
+    for (i=0;i<5;i++)
+    {
+        fprintf("Qsort: %d GSL: %d\n", *(sorted_indexes_2+i), *(sorted_indexes+i));
+    }
+    exit(0);
+    */
     
     (*time_step)=*(all_time_steps+(*(sorted_indexes+0)));
     index= *(sorted_indexes+0);//first element of sorted array
     
     gsl_permutation_free(perm);
     return index;
+    
+}
+
+int compare (const void *a, const void *b,  void *ar)
+{
+    //from https://phoxis.org/2012/07/12/get-sorted-index-orderting-of-an-array/
+  int aa = *(int *) a;
+  int bb = *(int *) b;
+  double *arr=NULL;
+  arr=ar;
+  
+  printf("%d, %d\n", aa, bb);
+  printf("%e, %e\n", arr[aa] , arr[bb]);
+  //return (aa - bb);
+  
+ if (arr[aa] < arr[bb])
+    return -1; 
+  if (arr[aa] == arr[bb])
+    return 0;
+  if (arr[aa] > arr[bb])
+    return 1;
     
 }
 
