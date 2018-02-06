@@ -357,15 +357,15 @@ int main(int argc, char **argv)
             
             frm=(i <  large_frm) ? i  : large_frm;
             
+            for (k=0;k<*(num_procs_per_dir+subdir_id);k++)
+            {
+                *(photon_injection_count+k)=0; //reset the count to 0
+            }
+            
             //order data based on which processes injected photons 1st
             for (l=small_frm;l<frm+1;l++)
             {
                 printf("\n\n %d\n\n",l);
-                
-                for (k=0;k<*(num_procs_per_dir+subdir_id);k++)
-                {
-                    *(photon_injection_count+k)=0; //reset the count to 0
-                }
                 //read the data in from each process in a given subdir, use max_num_procs_per_dir in case one directory used more processes than the others and deal with it in code
                 for (k=0;k<max_num_procs_per_dir;k++)
                 {                
