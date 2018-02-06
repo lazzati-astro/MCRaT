@@ -76,7 +76,7 @@ int main(int argc, char **argv)
             if (strstr(dent->d_name, "ALL_DATA") == NULL)
             {
                 num_angle_dirs++;
-                printf("found directory %s\n", dent->d_name);
+                //printf("found directory %s\n", dent->d_name);
             }
         }
         
@@ -108,13 +108,13 @@ int main(int argc, char **argv)
 
         if (S_ISDIR(st.st_mode)) 
         {
-            printf("found directory %s\n", dent->d_name);
+            //printf("found directory %s\n", dent->d_name);
              if (strstr(dent->d_name, "ALL_DATA") == NULL)
             {
                 snprintf(dir,sizeof(dir),"%s%s/",argv[1],dent->d_name );
                 dirs[count] =  malloc((strlen(dir)+1));
                 strcpy(dirs[count],dir);
-                printf("SECOND: found directory %s\n", dirs[count]);
+                //printf("SECOND: found directory %s\n", dirs[count]);
             
                 dirp = opendir(dir); //do into the directory to get each file
                 while ((entry = readdir(dirp)) != NULL) 
@@ -142,11 +142,11 @@ int main(int argc, char **argv)
     //find number of directories for each angle range
     printf("%s: %d\n", argv[1], num_angle_dirs);
     
-    for (i=0;i<num_angle_dirs;i++)
-    {
-        printf("%d\n", *(num_procs_per_dir+i));
-        printf(" %s\n",  dirs[i]);
-    }
+    //for (i=0;i<num_angle_dirs;i++)
+    //{
+     //   printf("%d\n", *(num_procs_per_dir+i));
+     //   printf(" %s\n",  dirs[i]);
+    //}
     
     //get the last and initial hydro file in sim
     snprintf(mc_file,sizeof(mc_file),"%s%s",argv[1],MCPAR);
@@ -161,7 +161,7 @@ int main(int argc, char **argv)
     count=0;
     for (i=small_frm;i<last_frm+1;i++)
     {
-        printf("Count: %d\n",count);
+        //printf("Count: %d\n",count);
         *(frm_array+count)=i;
         count++;
     }
@@ -227,7 +227,7 @@ int main(int argc, char **argv)
     
     //create files
     //start_count=2474;
-    //end_count=103;
+    end_count=143;
     for (i= start_count; i<end_count;i++)
     {
         //go through the mpi files to find the total number of photons needed for the final dataset  
@@ -437,10 +437,14 @@ int main(int argc, char **argv)
                         s0_p=malloc(j*sizeof(double));  s1_p=malloc(j*sizeof(double));  s2_p=malloc(j*sizeof(double));  s3_p=malloc(j*sizeof(double));
                         num_scatt_p=malloc(j*sizeof(double)); 
                         
+                        printf("start: %d, j: %d\n", *(photon_injection_count+k), dims[0]);
+                        
+                        offset[0]=*(photon_injection_count+k);
+                        
                         //have to read in the data from *(photon_injection_count+k) to *(photon_injection_count+k)+j
                         mspace = H5Screate_simple (1, dims, NULL);
                         dspace = H5Dget_space(dset_p0);
-                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         
                 
                         //read the data in
@@ -448,57 +452,57 @@ int main(int argc, char **argv)
                         status = H5Sclose (dspace);  status = H5Dclose (dset_p0);
                         
                         dspace = H5Dget_space(dset_p1);
-                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         status = H5Dread(dset_p1, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (p1_p));
                         status = H5Sclose (dspace);  status = H5Dclose (dset_p1);
                         
                         dspace = H5Dget_space(dset_p2);
-                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         status = H5Dread(dset_p2, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (p2_p));
                         status = H5Sclose (dspace); status = H5Dclose (dset_p2); 
                         
                         dspace = H5Dget_space(dset_p3);
-                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         status = H5Dread(dset_p3, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (p3_p));
                         status = H5Sclose (dspace); status = H5Dclose (dset_p3);
                         
                         dspace = H5Dget_space(dset_r0);
-                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         status = H5Dread(dset_r0, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (r0_p));
                         status = H5Sclose (dspace); status = H5Dclose (dset_r0); 
                         
                         dspace = H5Dget_space(dset_r1);
-                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         status = H5Dread(dset_r1, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (r1_p));
                         status = H5Sclose (dspace); status = H5Dclose (dset_r1); 
                         
                         dspace = H5Dget_space(dset_r2);
-                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         status = H5Dread(dset_r2, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (r2_p));
                         status = H5Sclose (dspace); status = H5Dclose (dset_r2);
                         
                         dspace = H5Dget_space(dset_s0);
-                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         status = H5Dread(dset_s0, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (s0_p));
                         status = H5Sclose (dspace); status = H5Dclose (dset_s0); 
                         
                         dspace = H5Dget_space(dset_s1);
-                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         status = H5Dread(dset_s1, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (s1_p));
                         status = H5Sclose (dspace); status = H5Dclose (dset_s1); 
                         
                         dspace = H5Dget_space(dset_s2);
-                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         status = H5Dread(dset_s2, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (s2_p));
                         status = H5Sclose (dspace); status = H5Dclose (dset_s2); 
                         
                         dspace = H5Dget_space(dset_s3);
-                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         status = H5Dread(dset_s3, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (s3_p));
                         status = H5Sclose (dspace); status = H5Dclose (dset_s3);
                         
                         dspace = H5Dget_space(dset_num_scatt);
-                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         status = H5Dread(dset_num_scatt, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (num_scatt_p));
                         status = H5Sclose (dspace); status = H5Dclose (dset_num_scatt); 
                         
@@ -525,17 +529,17 @@ int main(int argc, char **argv)
                     
                     //get the number for each subdir for later use
                     MPI_Allgather(&dims[0], 1, MPI_INT, each_subdir_number, 1, MPI_INT,   frames_to_merge_comm);
-                    for (j=0;j<num_angle_dirs;j++)
-                    {
-                         printf("ID %d eachsubdir_num %d \n",  subdir_id, *(each_subdir_number+j));
-                    }
+                    //for (j=0;j<num_angle_dirs;j++)
+                    //{
+                     //    printf("ID %d eachsubdir_num %d \n",  subdir_id, *(each_subdir_number+j));
+                    //}
                     
         
                     //set up the displacement of data
                     for (j=1;j<num_angle_dirs;j++)
                     {
                         *(displPtr+j)=(*(displPtr+j-1))+(*(each_subdir_number+j-1));
-                         printf("Displ %d eachsubdir_num %d \n",  *(displPtr+j), *(each_subdir_number+j-1));
+                         //printf("Displ %d eachsubdir_num %d \n",  *(displPtr+j), *(each_subdir_number+j-1));
                     }
         
                     if (subdir_id==0)
