@@ -922,7 +922,7 @@ int main(int argc, char **argv)
         
         file_id = H5Fcreate(merged_filename, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id_file);
         
-         for (i= small_frm; i<last_frm;i++)
+         for (i= small_frm; i<large_frm;i++)
          {
         //last_frm
             for (k=0;k<max_num_procs_per_dir;k++)
