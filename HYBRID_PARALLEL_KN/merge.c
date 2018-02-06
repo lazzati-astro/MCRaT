@@ -4,7 +4,7 @@
   *  eg call: mpiexec -np X /.merge /dir/to/CMC_dir/  
   *  where X shuould be a multiple of the number of sub directories
   *  
-*/
+*/ //TEST WITH PROCESSES INJECTING IN MULTIPLE FRAMES
 
 #include <stdio.h>
 #include <string.h>
@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
+#include <math.h>
 #include <gsl/gsl_rng.h>
 #include "hdf5.h"
 #include "mclib.h"
@@ -26,12 +27,13 @@ int main(int argc, char **argv)
 {
     double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;
     double *p0_p=NULL, *p1_p=NULL, *p2_p=NULL, *p3_p=NULL, *r0_p=NULL, *r1_p=NULL, *r2_p=NULL, *s0_p=NULL, *s1_p=NULL, *s2_p=NULL, *s3_p=NULL, *num_scatt_p=NULL, *weight_p=NULL;
-    int num_angle_dirs=0, i=0, j=0, k=0, num_types=12;
-    int *num_procs_per_dir=NULL, frm0_small, frm0_large, last_frm, frm2_small, frm2_large, small_frm, all_photons;
+    int num_angle_dirs=0, i=0, j=0, k=0, l=0, num_types=12;
+    int *num_procs_per_dir=NULL, frm0_small, frm0_large, last_frm, frm2_small, frm2_large, small_frm, large_frm, frm=0, all_photons;
     int *frm_array=NULL, *each_subdir_number=NULL, *displPtr=NULL;
     int myid, numprocs, subdir_procs, subdir_id, frames_to_merge, start_count, end_count ;
     int  count=0, index=0,  isNotCorrupted=0;
     int file_count = 0, max_num_procs_per_dir=0;
+    int *photon_injection_count=NULL;
     double garbage;
     char mc_file[500]="" ;
     char dir[500]="";
@@ -154,6 +156,7 @@ int main(int argc, char **argv)
     
     //with all the info make array of all the files that need to be created
     small_frm= (frm0_small < frm0_large) ? frm0_small : frm0_large;
+    large_frm= (frm2_small > frm2_large) ? frm2_small : frm2_large;
     frm_array=malloc(sizeof(int)*(last_frm-small_frm+1));
     count=0;
     for (i=small_frm;i<last_frm+1;i++)
@@ -216,10 +219,18 @@ int main(int argc, char **argv)
     //Set up file access property list with parallel I/O access
     MPI_Info info  = MPI_INFO_NULL;
     
+    photon_injection_count=malloc((*(num_procs_per_dir+subdir_id))*sizeof(int)); //to incrememnt the number of photons already injected by a process
+    for (k=0;k<*(num_procs_per_dir+subdir_id);k++)
+    {
+        *(photon_injection_count+k)=0;
+    }
+    
     //create files
+    //start_count=2474;
+    //end_count=103;
     for (i= start_count; i<end_count;i++)
     {
-        //go through the mpi files to find the total number of photons needed for the final dataset  *(frm_array+index)    (*(frm_array+index+frames_to_merge))+1
+        //go through the mpi files to find the total number of photons needed for the final dataset  
         printf("\n\n%d\n", i);
         dims[0]=0;
          j=0;
@@ -258,9 +269,6 @@ int main(int argc, char **argv)
                 status = H5Gclose(group_id);
             }
             status = H5Fclose(file);
-            
-            
-            
             
         }
         
@@ -347,37 +355,68 @@ int main(int argc, char **argv)
                 file_id = H5Fcreate(merged_filename, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id_file);
             }
             
-            //read the data in from each process in a given subdir, use max_num_procs_per_dir in case one directory used more processes than the others and deal with it in code
-            for (k=0;k<max_num_procs_per_dir;k++)
+            frm=(i <  large_frm) ? i  : large_frm;
+            
+            //order data based on which processes injected photons 1st
+            for (l=small_frm;l<frm+1;l++)
             {
-                dims[0]=0;
-                 j=0;
+                printf("\n\n %d\n\n",l);
                 
-            
-                //for each process' file, find out how many elements and add up to find total number of elements needed in the data set for the frame number
-                snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dirs[subdir_id],"mc_proc_", k, ".h5" );
-                printf("Dir: %s\n",filename_k );
-            
-                //open the file
-                status = H5Eset_auto(NULL, NULL, NULL); //turn of error printing if the file doesnt exist, if the process number doesnt exist
-                file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
-                status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
-                
-                if (file>=0)
+                for (k=0;k<*(num_procs_per_dir+subdir_id);k++)
                 {
-                //see if the frame exists
-                snprintf(group,sizeof(group),"%d",i );
-                status = H5Eset_auto(NULL, NULL, NULL);
-                status_group = H5Gget_objinfo (file, group, 0, NULL);
-                status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                    *(photon_injection_count+k)=0; //reset the count to 0
                 }
+                //read the data in from each process in a given subdir, use max_num_procs_per_dir in case one directory used more processes than the others and deal with it in code
+                for (k=0;k<max_num_procs_per_dir;k++)
+                {                
+                
+                    dims[0]=0;
+                    j=0;
+                    //for each process' file, find out how many elements and add up to find total number of elements needed in the data set for the frame number
+                    snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dirs[subdir_id],"mc_proc_", k, ".h5" );
+                    printf("Dir: %s\n",filename_k );
+            
+                    //open the file
+                    status = H5Eset_auto(NULL, NULL, NULL); //turn of error printing if the file doesnt exist, if the process number doesnt exist
+                    file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
+                    status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                
+                    if (file>=0)
+                    {
+                        //see if the frame exists
+                        /*
+                        snprintf(group,sizeof(group),"%d",i );
+                        status = H5Eset_auto(NULL, NULL, NULL);
+                        status_group = H5Gget_objinfo (file, group, 0, NULL);
+                        status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                        */
+                        snprintf(group,sizeof(group),"%d/Weight",l );  
+                        status = H5Eset_auto(NULL, NULL, NULL);
+                        status_group = H5Gget_objinfo (file, group, 0, NULL);
+                        status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                    }
                 
             
-                //if it does open it and read in the size
-                if (status_group == 0 && file>=0)
-                {
+                    //if it does open it and read in the size
+                    if (status_group >= 0 && file>=0)
+                    {
+                        //read in the number of injected photons first
+                        snprintf(group,sizeof(group),"%d",l );
+                        group_id = H5Gopen2(file, group, H5P_DEFAULT);
+                        dset_weight = H5Dopen (group_id, "Weight", H5P_DEFAULT); 
+                        dspace = H5Dget_space (dset_weight);
+                        status=H5Sget_simple_extent_dims(dspace, dims, NULL); //save dimesnions in dims
+                        j=dims[0];//calculate the total number of photons to save to new hdf5 file
+                        status = H5Sclose (dspace);
+                        status = H5Dclose (dset_weight);
+                        status = H5Gclose(group_id);
+                        printf("Num of ph: %d\n", j);
+                        
+                        
+                        snprintf(group,sizeof(group),"%d",i ); 
+                    
                         printf("Opening dataset\n");
-                        //open the datatset
+                            //open the datatset
                         group_id = H5Gopen2(file, group, H5P_DEFAULT);
                         dset_p0 = H5Dopen (group_id, "P0", H5P_DEFAULT); //open dataset
                         dset_p1 = H5Dopen (group_id, "P1", H5P_DEFAULT);
@@ -392,50 +431,91 @@ int main(int argc, char **argv)
                         dset_s3 = H5Dopen (group_id, "S3", H5P_DEFAULT);
                         dset_num_scatt = H5Dopen (group_id, "NS", H5P_DEFAULT);
                         
-                        //get the number of points
-                        dspace = H5Dget_space (dset_p0);
-                        status=H5Sget_simple_extent_dims(dspace, dims, NULL); //save dimesnions in dims
-                        j=dims[0];//calculate the total number of photons to save to new hdf5 file
-                        
                         //malloc memory
                         p0_p=malloc(j*sizeof(double));  p1_p=malloc(j*sizeof(double));  p2_p=malloc(j*sizeof(double));  p3_p=malloc(j*sizeof(double));
                         r0_p=malloc(j*sizeof(double));  r1_p=malloc(j*sizeof(double));  r2_p=malloc(j*sizeof(double));
                         s0_p=malloc(j*sizeof(double));  s1_p=malloc(j*sizeof(double));  s2_p=malloc(j*sizeof(double));  s3_p=malloc(j*sizeof(double));
                         num_scatt_p=malloc(j*sizeof(double)); 
+                        
+                        //have to read in the data from *(photon_injection_count+k) to *(photon_injection_count+k)+j
+                        mspace = H5Screate_simple (1, dims, NULL);
+                        dspace = H5Dget_space(dset_p0);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        
                 
                         //read the data in
-                        status = H5Dread(dset_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p0_p));
-                        status = H5Dread(dset_p1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p1_p));
-                        status = H5Dread(dset_p2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p2_p));
-                        status = H5Dread(dset_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p3_p));
-                        status = H5Dread(dset_r0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r0_p));
-                        status = H5Dread(dset_r1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r1_p));
-                        status = H5Dread(dset_r2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r2_p));
-                        status = H5Dread(dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s0_p));
-                        status = H5Dread(dset_s1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s1_p));
-                        status = H5Dread(dset_s2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s2_p));
-                        status = H5Dread(dset_s3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s3_p));
-                        status = H5Dread(dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (num_scatt_p));
-                
-                
-                        status = H5Sclose (dspace);
-                        status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
-                        status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
-                        status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
-                        status = H5Dclose (dset_num_scatt); 
+                        status = H5Dread(dset_p0, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (p0_p));
+                        status = H5Sclose (dspace);  status = H5Dclose (dset_p0);
+                        
+                        dspace = H5Dget_space(dset_p1);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Dread(dset_p1, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (p1_p));
+                        status = H5Sclose (dspace);  status = H5Dclose (dset_p1);
+                        
+                        dspace = H5Dget_space(dset_p2);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Dread(dset_p2, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (p2_p));
+                        status = H5Sclose (dspace); status = H5Dclose (dset_p2); 
+                        
+                        dspace = H5Dget_space(dset_p3);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Dread(dset_p3, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (p3_p));
+                        status = H5Sclose (dspace); status = H5Dclose (dset_p3);
+                        
+                        dspace = H5Dget_space(dset_r0);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Dread(dset_r0, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (r0_p));
+                        status = H5Sclose (dspace); status = H5Dclose (dset_r0); 
+                        
+                        dspace = H5Dget_space(dset_r1);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Dread(dset_r1, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (r1_p));
+                        status = H5Sclose (dspace); status = H5Dclose (dset_r1); 
+                        
+                        dspace = H5Dget_space(dset_r2);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Dread(dset_r2, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (r2_p));
+                        status = H5Sclose (dspace); status = H5Dclose (dset_r2);
+                        
+                        dspace = H5Dget_space(dset_s0);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Dread(dset_s0, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (s0_p));
+                        status = H5Sclose (dspace); status = H5Dclose (dset_s0); 
+                        
+                        dspace = H5Dget_space(dset_s1);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Dread(dset_s1, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (s1_p));
+                        status = H5Sclose (dspace); status = H5Dclose (dset_s1); 
+                        
+                        dspace = H5Dget_space(dset_s2);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Dread(dset_s2, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (s2_p));
+                        status = H5Sclose (dspace); status = H5Dclose (dset_s2); 
+                        
+                        dspace = H5Dget_space(dset_s3);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Dread(dset_s3, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (s3_p));
+                        status = H5Sclose (dspace); status = H5Dclose (dset_s3);
+                        
+                        dspace = H5Dget_space(dset_num_scatt);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, (photon_injection_count+k), NULL, dims, NULL);
+                        status = H5Dread(dset_num_scatt, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (num_scatt_p));
+                        status = H5Sclose (dspace); status = H5Dclose (dset_num_scatt); 
+                        
+                        status = H5Sclose (mspace);
                         status = H5Gclose(group_id);
                         
-                        
-                }
-                else
-                {
+                        *(photon_injection_count+k)+=j;
+                    }
+                    else
+                    {
                         //allocate memory so Allgather doesn't fail with NULL pointer
                         j=1;
                         p0_p=malloc(j*sizeof(double));  p1_p=malloc(j*sizeof(double));  p2_p=malloc(j*sizeof(double));  p3_p=malloc(j*sizeof(double));
                         r0_p=malloc(j*sizeof(double));  r1_p=malloc(j*sizeof(double));  r2_p=malloc(j*sizeof(double));
                         s0_p=malloc(j*sizeof(double));  s1_p=malloc(j*sizeof(double));  s2_p=malloc(j*sizeof(double));  s3_p=malloc(j*sizeof(double));
                         num_scatt_p=malloc(j*sizeof(double)); 
-                }
+                    }
                     
                     //find total number of photons
                     MPI_Allreduce(&dims[0], &all_photons, 1, MPI_INT, MPI_SUM,  frames_to_merge_comm);
@@ -498,8 +578,10 @@ int main(int argc, char **argv)
                     //exit(0);
                     
                     dims[0]=all_photons;
-                    if ((k==0)  && (all_photons>0))
+                    //if ((k==0)  && (all_photons>0))
+                    if ((l==small_frm)  && (all_photons>0))
                     {
+                        printf("IN THE IF STATEMENT\n");
                         //set up new dataset
                         //create the datasets with the appropriate number of elements
                         
@@ -509,7 +591,7 @@ int main(int argc, char **argv)
                         
                         
                         
-                        dset_p0=H5Dcreate(file_id, "P0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        dset_p0=H5Dcreate2(file_id, "P0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
                         
                         dset_p1=H5Dcreate2(file_id, "P1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
                         dset_p2=H5Dcreate2(file_id, "P2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
@@ -603,9 +685,9 @@ int main(int argc, char **argv)
                         H5Pclose(plist_id_data);
                         
                     }
-                    else if ((k>0) && (all_photons>0))
+                    else if ((l>small_frm) && (all_photons>0))
                     {
-                        //printf("IN THE ELSE IF STATEMENT\n");
+                        printf("IN THE ELSE IF STATEMENT\n");
                         plist_id_data = H5Pcreate (H5P_DATASET_XFER);
                         H5Pset_dxpl_mpio (plist_id_data, H5FD_MPIO_COLLECTIVE);
                         
@@ -817,6 +899,9 @@ int main(int argc, char **argv)
                     //exit(0);
                 }
             
+            
+            
+            }
             H5Fclose(file_id);
         }
         

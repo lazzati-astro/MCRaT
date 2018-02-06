@@ -2894,7 +2894,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y
     return scattering_occured;
 }
 
-int comptonScattering(double *theta, double *phi, gsl_rng * rand, FILE *fPtr)
+int comptonScatter(double *theta, double *phi, gsl_rng * rand, FILE *fPtr)
 {
     
         double y_dum, f_x_dum, x_dum;

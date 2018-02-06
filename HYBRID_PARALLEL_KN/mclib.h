@@ -66,7 +66,7 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
 
 int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y_tilde, double *s, gsl_rng * rand, FILE *fPtr);
 
-int comptonScattering(double *theta, double *phi, gsl_rng * rand, FILE *fPtr);
+int comptonScatter(double *theta, double *phi, gsl_rng * rand, FILE *fPtr);
 
 int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double u, gsl_rng * rand, FILE *fPtr);
 

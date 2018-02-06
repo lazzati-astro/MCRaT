@@ -74,9 +74,9 @@
 */
  #define THISRUN "Science"
 #define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16OI/"
+//#define FILEPATH "/Users/Tylerparsotan//Documents/16OI_TEST/"
 #define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
 #define MC_PATH "TEST/"
-//TEST FOR SCATTERING AND SAVING STOKES PARAMETERS AND POST PROCESSING MERGING ONCE AGAIN
 
 #define MCPAR "mc.par"
 #define RIKEN_SWITCH 0
