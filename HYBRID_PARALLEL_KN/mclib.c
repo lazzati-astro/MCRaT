@@ -1835,7 +1835,13 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     }
     
     //printf("before QSORT\n");
-    qsort_r(sorted_indexes, num_ph, sizeof (int), all_time_steps, compare);
+    #if (defined _GNU_SOURCE || defined __GNU__ || defined __linux__)
+        qsort_r(sorted_indexes, num_ph, sizeof (int),  compare2, all_time_steps);
+    #elif (defined __APPLE__ || defined __MACH__ || defined __DARWIN__ || defined __FREEBSD__ || defined __BSD__ || defined OpenBSD3_1 || defined OpenBSD3_9)
+        qsort_r(sorted_indexes, num_ph, sizeof (int), all_time_steps, compare);
+    #else
+        #error Cannot detect operating system
+    #endif
     
     //for (i=0;i<num_ph;i++)
     //{
@@ -1853,6 +1859,28 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
 
 int compare (void *ar, const void *a, const void *b)
 {
+    //from https://phoxis.org/2012/07/12/get-sorted-index-orderting-of-an-array/
+  int aa = *(int *) a;
+  int bb = *(int *) b;
+  double *arr=NULL;
+  arr=ar;
+  
+  //printf("%d, %d\n", aa, bb);
+  //printf("%e, %e\n", arr[aa] , arr[bb]);
+  //return (aa - bb);
+  
+ if (arr[aa] < arr[bb])
+    return -1; 
+  if (arr[aa] == arr[bb])
+    return 0;
+  if (arr[aa] > arr[bb])
+    return 1;
+    
+}
+
+int compare2 ( const void *a, const void *b, void *ar)
+{
+    //have 2 compare funcions b/c of changes in qsort_r between BSD and GNU
     //from https://phoxis.org/2012/07/12/get-sorted-index-orderting-of-an-array/
   int aa = *(int *) a;
   int bb = *(int *) b;
