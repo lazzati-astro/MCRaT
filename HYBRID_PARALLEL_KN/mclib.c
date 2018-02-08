@@ -1262,7 +1262,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
             if ((*(r+i) >= (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) ) 
             {
                 block_cnt++;
-                            }
+            }
     }
     //printf("Blocks: %d\n", block_cnt);
     
@@ -1827,9 +1827,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         gsl_rng_free(rng[i]);
     }
     free(rng);
-    
-    //SHOULD USE QSORT TO SORT THE TIMES
-    
+        
     //printf("HERE\n");
     for (i=0;i<num_ph;i++)
     {
@@ -1849,7 +1847,6 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     (*time_step)=*(all_time_steps+(*(sorted_indexes+0)));
     index= *(sorted_indexes+0);//first element of sorted array
     
-    //gsl_permutation_free(perm);
     return index;
     
 }

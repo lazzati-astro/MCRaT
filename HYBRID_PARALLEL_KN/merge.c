@@ -122,7 +122,7 @@ int main(int argc, char **argv)
                     if ((entry->d_type == DT_REG) && (strstr(entry->d_name, str) != NULL))
                     { /* If the entry is a regular file  */
                         file_count++;
-                        printf("%s\n", entry->d_name );
+                        //printf("%s\n", entry->d_name );
                     }
                 }
                 *(num_procs_per_dir +count)=file_count;
@@ -140,7 +140,7 @@ int main(int argc, char **argv)
     closedir(srcdir);
     
     //find number of directories for each angle range
-    printf("%s: %d\n", argv[1], num_angle_dirs);
+    //printf("%s: %d\n", argv[1], num_angle_dirs);
     
     //for (i=0;i<num_angle_dirs;i++)
     //{
@@ -152,7 +152,7 @@ int main(int argc, char **argv)
     snprintf(mc_file,sizeof(mc_file),"%s%s",argv[1],MCPAR);
     readMcPar(mc_file, &garbage,&garbage, &garbage, &garbage, &garbage,&garbage, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &garbage, &garbage, &i, &i, &i, &i, &i,&i); //thetas that comes out is in degrees
     
-    printf("%s frm_0small: %d frm_0large: %d, last: %d\n", mc_file, frm0_small,frm0_large, last_frm);
+    //printf("%s frm_0small: %d frm_0large: %d, last: %d\n", mc_file, frm0_small,frm0_large, last_frm);
     
     //with all the info make array of all the files that need to be created
     small_frm= (frm0_small < frm0_large) ? frm0_small : frm0_large;
@@ -227,11 +227,11 @@ int main(int argc, char **argv)
     
     //create files
     //start_count=2474;
-    end_count=143;
+    //end_count=143;
     for (i= start_count; i<end_count;i++)
     {
         //go through the mpi files to find the total number of photons needed for the final dataset  
-        printf("\n\n%d\n", i);
+        //printf("\n\n%d\n", i);
         dims[0]=0;
          j=0;
         for (k=0;k<*(num_procs_per_dir+subdir_id);k++)
@@ -284,10 +284,10 @@ int main(int argc, char **argv)
         //    *(displPtr+j)=(*(displPtr+j-1))+(*(each_subdir_number+j-1));
         //}
         
-        if (subdir_id==0)
-        {
-            printf("Frame: %d Total photons %d\n", i, all_photons);
-        }
+        //if (subdir_id==0)
+        //{
+        //    printf("Frame: %d Total photons %d\n", i, all_photons);
+        //}
         
         
         plist_id_file = H5Pcreate(H5P_FILE_ACCESS);
@@ -302,7 +302,7 @@ int main(int argc, char **argv)
         
          if (file_id<0)
         {
-            printf( "Checking File %s\n",merged_filename );
+            //printf( "Checking File %s\n",merged_filename );
             //the file exists, open it with read write 
             file_id=H5Fopen(merged_filename, H5F_ACC_RDWR, plist_id_file);
             
@@ -344,7 +344,7 @@ int main(int argc, char **argv)
             file_id=-1; //do this so if the file exists it doesnt go into the rewriting portion just based on that
         }
         
-        printf("file %s has isNotCorrupted=%d\n", merged_filename, isNotCorrupted );
+        //printf("file %s has isNotCorrupted=%d\n", merged_filename, isNotCorrupted );
         
         
         if ((file_id>=0) || (isNotCorrupted != 0 ))
@@ -365,7 +365,7 @@ int main(int argc, char **argv)
             //order data based on which processes injected photons 1st
             for (l=small_frm;l<frm+1;l++)
             {
-                printf("\n\n %d\n\n",l);
+                //printf("\n\n %d\n\n",l);
                 //read the data in from each process in a given subdir, use max_num_procs_per_dir in case one directory used more processes than the others and deal with it in code
                 for (k=0;k<max_num_procs_per_dir;k++)
                 {                
@@ -374,7 +374,7 @@ int main(int argc, char **argv)
                     j=0;
                     //for each process' file, find out how many elements and add up to find total number of elements needed in the data set for the frame number
                     snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dirs[subdir_id],"mc_proc_", k, ".h5" );
-                    printf("Dir: %s\n",filename_k );
+                    //printf("Dir: %s\n",filename_k );
             
                     //open the file
                     status = H5Eset_auto(NULL, NULL, NULL); //turn of error printing if the file doesnt exist, if the process number doesnt exist
@@ -410,12 +410,12 @@ int main(int argc, char **argv)
                         status = H5Sclose (dspace);
                         status = H5Dclose (dset_weight);
                         status = H5Gclose(group_id);
-                        printf("Num of ph: %d\n", j);
+                        //printf("Num of ph: %d\n", j);
                         
                         
                         snprintf(group,sizeof(group),"%d",i ); 
                     
-                        printf("Opening dataset\n");
+                        //printf("Opening dataset\n");
                             //open the datatset
                         group_id = H5Gopen2(file, group, H5P_DEFAULT);
                         dset_p0 = H5Dopen (group_id, "P0", H5P_DEFAULT); //open dataset
@@ -437,7 +437,7 @@ int main(int argc, char **argv)
                         s0_p=malloc(j*sizeof(double));  s1_p=malloc(j*sizeof(double));  s2_p=malloc(j*sizeof(double));  s3_p=malloc(j*sizeof(double));
                         num_scatt_p=malloc(j*sizeof(double)); 
                         
-                        printf("start: %d, j: %d\n", *(photon_injection_count+k), dims[0]);
+                        //printf("start: %d, j: %d\n", *(photon_injection_count+k), dims[0]);
                         
                         offset[0]=*(photon_injection_count+k);
                         
@@ -525,7 +525,7 @@ int main(int argc, char **argv)
                     MPI_Allreduce(&dims[0], &all_photons, 1, MPI_INT, MPI_SUM,  frames_to_merge_comm);
                     //dims[0]=all_photons;
                     
-                    printf("ID %d j: %d\n", subdir_id, dims[0]);
+                    //printf("ID %d j: %d\n", subdir_id, dims[0]);
                     
                     //get the number for each subdir for later use
                     MPI_Allgather(&dims[0], 1, MPI_INT, each_subdir_number, 1, MPI_INT,   frames_to_merge_comm);
@@ -542,10 +542,10 @@ int main(int argc, char **argv)
                          //printf("Displ %d eachsubdir_num %d \n",  *(displPtr+j), *(each_subdir_number+j-1));
                     }
         
-                    if (subdir_id==0)
-                    {
-                        printf("Frame: %d Total photons %d\n", i, all_photons);
-                    }
+                    //if (subdir_id==0)
+                    //{
+                     //   printf("Frame: %d Total photons %d\n", i, all_photons);
+                    //}
                     
                     //now allocate enough ememory for all_photons in the mpi files from proc 0 initially 
                     p0=malloc(all_photons*sizeof(double));  p1=malloc(all_photons*sizeof(double));  p2=malloc(all_photons*sizeof(double));  p3=malloc(all_photons*sizeof(double));
@@ -585,7 +585,7 @@ int main(int argc, char **argv)
                     //if ((k==0)  && (all_photons>0))
                     if ((l==small_frm)  && (all_photons>0))
                     {
-                        printf("IN THE IF STATEMENT\n");
+                        //printf("IN THE IF STATEMENT\n");
                         //set up new dataset
                         //create the datasets with the appropriate number of elements
                         
@@ -691,7 +691,7 @@ int main(int argc, char **argv)
                     }
                     else if ((l>small_frm) && (all_photons>0))
                     {
-                        printf("IN THE ELSE IF STATEMENT\n");
+                        //printf("IN THE ELSE IF STATEMENT\n");
                         plist_id_data = H5Pcreate (H5P_DATASET_XFER);
                         H5Pset_dxpl_mpio (plist_id_data, H5FD_MPIO_COLLECTIVE);
                         
@@ -935,7 +935,7 @@ int main(int argc, char **argv)
                  j=0;
                 
                 snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dirs[subdir_id],"mc_proc_", k, ".h5" );
-                printf("Dir: %s\n",filename_k );
+                //printf("Dir: %s\n",filename_k );
             
                 //open the file and see if t exists
                 status = H5Eset_auto(NULL, NULL, NULL); //turn of error printing if the file doesnt exist, if the process number doesnt exist
@@ -951,7 +951,7 @@ int main(int argc, char **argv)
                     status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
                 }
                 
-                printf("Proc %d has status_group %d\n", subdir_id, status_group);
+                //printf("Proc %d has status_group %d\n", subdir_id, status_group);
                 
                 if ((status_group == 0) && (file>=0))
                 {
@@ -984,21 +984,21 @@ int main(int argc, char **argv)
                 //find total number of photons
                 MPI_Allreduce(&dims[0], &all_photons, 1, MPI_INT, MPI_SUM,  frames_to_merge_comm);
                     
-                printf("ID %d j: %d\n", subdir_id, dims[0]);
+                //printf("ID %d j: %d\n", subdir_id, dims[0]);
                     
                 //get the number for each subdir for later use
                 MPI_Allgather(&dims[0], 1, MPI_INT, each_subdir_number, 1, MPI_INT,   frames_to_merge_comm);
-                for (j=0;j<num_angle_dirs;j++)
-                {
-                        printf("ID %d eachsubdir_num %d \n",  subdir_id, *(each_subdir_number+j));
-                }
+                //for (j=0;j<num_angle_dirs;j++)
+                //{
+                 //       printf("ID %d eachsubdir_num %d \n",  subdir_id, *(each_subdir_number+j));
+                //}
                     
         
                 //set up the displacement of data
                 for (j=1;j<num_angle_dirs;j++)
                 {
                     *(displPtr+j)=(*(displPtr+j-1))+(*(each_subdir_number+j-1));
-                        printf("Displ %d eachsubdir_num %d \n",  *(displPtr+j), *(each_subdir_number+j-1));
+                       // printf("Displ %d eachsubdir_num %d \n",  *(displPtr+j), *(each_subdir_number+j-1));
                 }
                 
                 weight=malloc(all_photons*sizeof(double)); 
