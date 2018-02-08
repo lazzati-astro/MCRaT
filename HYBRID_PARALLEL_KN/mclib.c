@@ -34,9 +34,6 @@
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27;
 const double K_B=1.380658e-16, M_P=1.6726231e-24, THOM_X_SECT=6.65246e-25, M_EL=9.1093879e-28 ;
 
-//define array to be used globally for qsort
-//double *arr;
-
 int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200], int angle_rank,  int angle_procs, int last_frame, int dim_switch, int riken_switch)
 {
     int i=0, j=0, val=0, original_num_procs=-1, rand_num=0;
@@ -1608,6 +1605,7 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
     int i=0, within_block_index=0;
     bool is_in_block=0; //boolean to determine if the photon is outside of a grid
     
+    //can parallelize here to save time?
     for (i=0;i<array_num;i++)
     {
         is_in_block=checkInBlock(i,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
@@ -1691,7 +1689,6 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
 {
     
     int i=0, min_index=0, ph_block_index=0;
-    int sorted_indexes_2[5];
     double ph_x=0, ph_y=0, ph_phi=0, ph_z=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
 
@@ -1703,9 +1700,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     
     int index=0;
     double mfp=0,min_mfp=0, beta=0;
-    gsl_permutation *perm = gsl_permutation_alloc(num_ph); //to hold sorted indexes of smallest to largest time_steps
-    gsl_vector_view all_time_steps_vector;
-        
+    
     //initialize gsl random number generator fo each thread
     
         const gsl_rng_type *rng_t;
@@ -1833,41 +1828,33 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     }
     free(rng);
     
-    //save variables I need
-    all_time_steps_vector=gsl_vector_view_array(all_time_steps, num_ph); //makes a vector to use the time steps in another gsl function
-    gsl_sort_vector_index (perm, &all_time_steps_vector.vector); //sorts timesteps from smallest to largest and saves the indexes fo the smallest to largest elements in perm, the all_time_steps vector stays in the same order as before (ordered by photons)
+    //SHOULD USE QSORT TO SORT THE TIMES
+    
+    //printf("HERE\n");
     for (i=0;i<num_ph;i++)
     {
-        *(sorted_indexes+i)= (int) perm->data[i]; //save sorted indexes to array to use outside of function
+        *(sorted_indexes+i)= i; //save  indexes to array to use in qsort
     }
     
-    //SHOULD USE QSORT TO SORT THE TIMES
-    /*
-    printf("HERE\n");
-    for (i=0;i<5;i++)
-    {
-        sorted_indexes_2[i]= i; //save  indexes to array to use in qsort
-    }
-    //arr = all_time_steps;
-    printf("before QSORT\n");
-    qsort_r(sorted_indexes_2, sizeof(sorted_indexes_2)/sizeof(int), sizeof (int), compare, all_time_steps);
+    //printf("before QSORT\n");
+    qsort_r(sorted_indexes, num_ph, sizeof (int), all_time_steps, compare);
     
-    for (i=0;i<5;i++)
-    {
-        fprintf("Qsort: %d GSL: %d\n", *(sorted_indexes_2+i), *(sorted_indexes+i));
-    }
-    exit(0);
-    */
+    //for (i=0;i<num_ph;i++)
+    //{
+    //    fprintf(fPtr, "Qsort: %d GSL: %d\n", *(sorted_indexes_2+i), *(sorted_indexes+i));
+    //}
+    //exit(0);
+    
     
     (*time_step)=*(all_time_steps+(*(sorted_indexes+0)));
     index= *(sorted_indexes+0);//first element of sorted array
     
-    gsl_permutation_free(perm);
+    //gsl_permutation_free(perm);
     return index;
     
 }
 
-int compare (const void *a, const void *b,  void *ar)
+int compare (void *ar, const void *a, const void *b)
 {
     //from https://phoxis.org/2012/07/12/get-sorted-index-orderting-of-an-array/
   int aa = *(int *) a;
@@ -1875,8 +1862,8 @@ int compare (const void *a, const void *b,  void *ar)
   double *arr=NULL;
   arr=ar;
   
-  printf("%d, %d\n", aa, bb);
-  printf("%e, %e\n", arr[aa] , arr[bb]);
+  //printf("%d, %d\n", aa, bb);
+  //printf("%e, %e\n", arr[aa] , arr[bb]);
   //return (aa - bb);
   
  if (arr[aa] < arr[bb])
