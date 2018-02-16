@@ -1600,21 +1600,42 @@ int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, doubl
             return min_index;
 }
 
-int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int dim_switch_3d, int riken_switch)
+int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, int dim_switch_3d, int riken_switch)
 {
     int i=0, within_block_index=0;
     bool is_in_block=0; //boolean to determine if the photon is outside of a grid
+    double old_grid_x=*(x+old_block_index), old_grid_y= *(y+old_block_index), old_grid_z=0; //old grid values
+    double delta_x_old=old_grid_x-ph_x, delta_x=0, delta_y_old=old_grid_y-ph_y, delta_y=0, delta_z=0, r_squared=0;
+    double R_old_squared=(delta_x_old*delta_x_old+delta_y_old*delta_y_old); //distance from photon to the old 
     
     //can parallelize here to save time?
     for (i=0;i<array_num;i++)
     {
-        is_in_block=checkInBlock(i,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
-        
-        if (is_in_block)
+        delta_x=(*(x+i))-ph_x; //to calculate distance from photon to grid pt i
+        delta_y=(*(y+i))-ph_y;
+        if (dim_switch_3d==0)
         {
-            within_block_index=i;
-            //change for loop index once the block is found so the code doesnt search the rest of the grids to see if the photon is within those grids
-            i=array_num;
+            r_squared=(delta_x*delta_x+delta_y*delta_y);
+        }
+        else
+        {
+            old_grid_z=*(z+old_block_index);
+            delta_z=(*(z+i))-ph_z;
+            r_squared=(delta_x*delta_x+delta_y*delta_y+delta_z*delta_z);
+        }
+        
+        //see if the block at index i is near the old block, aka if its closer to the photon than the old block currently is, or if need to find the new block index execute if block
+        if ((find_block_switch==1) || (((delta_x*delta_x+delta_y*delta_y)-R_old_squared)<0) )
+        {
+            is_in_block=checkInBlock(i,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
+        
+            if (is_in_block)
+            {
+                within_block_index=i;
+                //change for loop index once the block is found so the code doesnt search the rest of the grids to see if the photon is within those grids
+                i=array_num;
+            }
+        
         }
         
     }
@@ -1634,7 +1655,17 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
         if (dim_switch_3d==0)
         {
             
-            if (riken_switch==1)
+            if (riken_switch==0)
+            {
+                x0=(*(x+block_index));
+                x1=(*(y+block_index));
+                
+                sz_x0=(*(szx+block_index));
+                sz_x1=(*(szy+block_index));
+                
+                is_in_block= (2*fabs(ph_x-x0)-sz_x0 <= 0) && (2*fabs(ph_y-x1)-sz_x1 <= 0);
+            }
+            else
             {
                 x0=pow(pow((*(x+block_index)),2.0)+pow((*(y+block_index)),2.0), 0.5);
                 x1=atan2((*(x+block_index)), (*(y+block_index)));
@@ -1643,18 +1674,9 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
                 sz_x1=(*(szy+block_index));
                 
                 //pow(pow( ph_x, 2.0) + pow(ph_y, 2.0),0.5)      atan2(ph_x, ph_y)
-                is_in_block= (fabs(pow(pow( ph_x, 2.0) + pow(ph_y, 2.0),0.5) - x0) <= sz_x0/2.0) && (fabs(atan2(ph_x, ph_y) - x1 ) <= sz_x1/2.0);
+                is_in_block= (2*fabs(pow(pow( ph_x, 2.0) + pow(ph_y, 2.0),0.5) - x0)- sz_x0 <= 0) && (2*fabs(atan2(ph_x, ph_y) - x1 ) - sz_x1 <= 0);
             }
-            else
-            {
-                x0=(*(x+block_index));
-                x1=(*(y+block_index));
-                
-                sz_x0=(*(szx+block_index));
-                sz_x1=(*(szy+block_index));
-                
-                is_in_block= (fabs(ph_x-x0) <= sz_x0/2.0) && (fabs(ph_y-x1) <= sz_x1/2.0);
-            }
+            
         }
         else
         {
@@ -1765,7 +1787,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z,   dim_switch_3d); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
             
             //find the new index of the block that the photon is actually in
-            min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
+            min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch,  dim_switch_3d,  riken_switch);
             
             (ph+i)->nearest_block_index=min_index; //save the index
             
@@ -1986,7 +2008,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z,   dim_switch_3d); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
             
             //find the new index of the block that the photon is actually in
-            min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
+            min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, dim_switch_3d,  riken_switch);
             
             (ph+i)->nearest_block_index=min_index; //save the index
             

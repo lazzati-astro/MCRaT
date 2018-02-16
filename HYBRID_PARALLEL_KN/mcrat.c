@@ -658,6 +658,7 @@ int main(int argc, char **argv)
                                         &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
                             //fprintf(fPtr, "%d\n\n", array_num);
                         }
+                        fprintf(fPtr, "%d\n\n", array_num);
                     }
                     else
                     {
