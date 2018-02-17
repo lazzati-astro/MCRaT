@@ -1179,7 +1179,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     (*temp)=malloc (r_count * sizeof (double ));
     
     //assign values based on r> 0.95*r_inj
-    j=0;
+    //j=0;
     for (i=0;i<count;i++)
     {
         if (ph_inj_switch==0)
@@ -1200,7 +1200,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
                 (*gamma)[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
                 (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
                 (*temp)[j]=pow(3*(*(pres_unprc+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
-                j++;
+                //j++;
             }
         }
         else
@@ -1220,12 +1220,12 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
                 (*gamma)[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
                 (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
                 (*temp)[j]=pow(3*(*(pres_unprc+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
-                j++;
+                //j++;
             }
         }
     }
-    *number=j;
-    //fprintf(fPtr, "number: %d\n", j);
+    *number=r_count;
+    //fprintf(fPtr, "number: %d\n", r_count);
     
     free(pres_unprc); free(velx_unprc);free(vely_unprc);free(dens_unprc);free(x_unprc); free(y_unprc);free(r_unprc);free(szx_unprc);free(szy_unprc);
     
@@ -1604,29 +1604,11 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
 {
     int i=0, within_block_index=0;
     bool is_in_block=0; //boolean to determine if the photon is outside of a grid
-    double old_grid_x=*(x+old_block_index), old_grid_y= *(y+old_block_index), old_grid_z=0; //old grid values
-    double delta_x_old=old_grid_x-ph_x, delta_x=0, delta_y_old=old_grid_y-ph_y, delta_y=0, delta_z=0, r_squared=0;
-    double R_old_squared=(delta_x_old*delta_x_old+delta_y_old*delta_y_old); //distance from photon to the old 
     
     //can parallelize here to save time?
     for (i=0;i<array_num;i++)
     {
-        delta_x=(*(x+i))-ph_x; //to calculate distance from photon to grid pt i
-        delta_y=(*(y+i))-ph_y;
-        if (dim_switch_3d==0)
-        {
-            r_squared=(delta_x*delta_x+delta_y*delta_y);
-        }
-        else
-        {
-            old_grid_z=*(z+old_block_index);
-            delta_z=(*(z+i))-ph_z;
-            r_squared=(delta_x*delta_x+delta_y*delta_y+delta_z*delta_z);
-        }
         
-        //see if the block at index i is near the old block, aka if its closer to the photon than the old block currently is, or if need to find the new block index execute if block
-        if ((find_block_switch==1) || (((delta_x*delta_x+delta_y*delta_y)-R_old_squared)<0) )
-        {
             is_in_block=checkInBlock(i,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
         
             if (is_in_block)
@@ -1636,9 +1618,10 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
                 i=array_num;
             }
         
-        }
+        
         
     }
+    //printf("Within Block Index:  %d\n",within_block_index);
     
     return within_block_index;
 }
@@ -1793,7 +1776,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             
         }
 
-         //fprintf(fPtr,"Outside\n");
+         //fprintf(fPtr,"Min Index: %d\n", min_index);
         
         //save values
         (n_dens_lab_tmp)= (*(dens_lab+min_index));
@@ -2188,26 +2171,28 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t)
     //move photons by speed of light
  
     int i=0;
-    double old_position=0, new_position=0;
+    double old_position=0, new_position=0, divide_p0=0;
     
     
-    
+    #pragma omp parallel for  firstprivate(old_position, new_position, divide_p0)
     for (i=0;i<num_ph;i++)
     {
-            old_position= pow(  pow(ph->r0,2)+pow(ph->r1,2)+pow(ph->r2,2), 0.5 );
+            //old_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 ); uncommented checks since they were not necessary anymore
             
-            ((ph+i)->r0)+=(((ph+i)->p1)/((ph+i)->p0))*C_LIGHT*t; //update x position
+            divide_p0=1.0/((ph+i)->p0);
             
-            ((ph+i)->r1)+=(((ph+i)->p2)/((ph+i)->p0))*C_LIGHT*t;//update y
+            ((ph+i)->r0)+=((ph+i)->p1)*divide_p0*C_LIGHT*t; //update x position
             
-            ((ph+i)->r2)+=(((ph+i)->p3)/((ph+i)->p0))*C_LIGHT*t;//update z
+            ((ph+i)->r1)+=((ph+i)->p2)*divide_p0*C_LIGHT*t;//update y
             
-            new_position= pow(  pow(ph->r0,2)+pow(ph->r1,2)+pow(ph->r2,2), 0.5 );
+            ((ph+i)->r2)+=((ph+i)->p3)*divide_p0*C_LIGHT*t;//update z
             
-            if ((new_position-old_position)/t > C_LIGHT)
-            {
-                printf("PHOTON NUMBER %d IS SUPERLUMINAL. ITS SPEED IS %e c.\n", i, ((new_position-old_position)/t)/C_LIGHT);
-            }
+            //new_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 );
+            
+            //if ((new_position-old_position)/t > C_LIGHT)
+            //{
+            //    printf("PHOTON NUMBER %d IS SUPERLUMINAL. ITS SPEED IS %e c.\n", i, ((new_position-old_position)/t)/C_LIGHT);
+            //}
             //printf("In update  function: %e, %e, %e, %e, %e, %e, %e\n",((ph+i)->r0), ((ph+i)->r1), ((ph+i)->r2), t, ((ph+i)->p1)/((ph+i)->p0), ((ph+i)->p2)/((ph+i)->p0), ((ph+i)->p3)/((ph+i)->p0) );  
     }
         

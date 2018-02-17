@@ -72,7 +72,7 @@
 #define FILEROOT "rhd_jet_big_16OM_hdf5_plt_cnt_"
 #define MC_PATH "DIR_TEST/"
 */
- #define THISRUN "Science"
+ #define THISRUN "Spherical"
 #define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16OI/"
 //#define FILEPATH "/Users/Tylerparsotan//Documents/16OI_TEST/"
 #define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
@@ -764,6 +764,7 @@ int main(int argc, char **argv)
                         read_hydro(FILEPATH, scatt_frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
                                    &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fps_modified, fPtr);
                     }
+                    fprintf(fPtr, "Number of Flash Elements %d\n", array_num);
                     
                     
                     //check for run type
