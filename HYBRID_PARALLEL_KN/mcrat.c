@@ -659,6 +659,7 @@ int main(int argc, char **argv)
                             //fprintf(fPtr, "%d\n\n", array_num);
                         }
                         fprintf(fPtr, "%d\n\n", array_num);
+        exit(0);
                     }
                     else
                     {

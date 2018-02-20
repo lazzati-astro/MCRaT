@@ -943,6 +943,9 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     int  i,j,count,x1_count, y1_count, r_count, **node_buffer=NULL, num_nodes=0, elem_factor=0;
     double x1[8]={-7.0/16,-5.0/16,-3.0/16,-1.0/16,1.0/16,3.0/16,5.0/16,7.0/16};
     double ph_rmin=0, ph_rmax=0;
+    int num_thread=omp_get_num_threads();
+    
+    
     
 
     if (ph_inj_switch==0)
@@ -965,8 +968,12 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     
     H5Sget_simple_extent_dims(space, dims, NULL); //save dimesnions in dims
     
+    status = H5Sclose (space);
+    status = H5Dclose (dset);
+    //status = H5Fclose (file);
+    
     /*
-     * Allocate array of pointers to rows. OPTIMIZE HERE: INITALIZE ALL THE BUFFERS AT ONCE IN 1 FOR LOOP
+     * Allocate array of pointers to rows. 
      */
     coord_buffer = (double **) malloc (dims[0] * sizeof (double *));
     
@@ -1007,15 +1014,16 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
      
 
     //read data such that first column is x and second column is y
-    //printf("Reading Dataset\n");
+    //fprintf(fPtr, "Reading Dataset\n");
+    //fflush(fPtr);
+    dset = H5Dopen (file, "coordinates", H5P_DEFAULT);
     status = H5Dread (dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,coord_buffer[0]);
     
     //close dataset
-    status = H5Sclose (space);
+    //status = H5Sclose (space);
     status = H5Dclose (dset);
     
     //printf("Reading block size\n");
-
     dset = H5Dopen (file, "block size", H5P_DEFAULT);
 
 
@@ -1023,22 +1031,19 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     status = H5Dread (dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,block_sz_buffer[0]);
     
     // first column of buffer is x and second column is y
-    status = H5Dclose (dset);    
+    status = H5Dclose (dset);    //status = H5Fclose (file);
 
-    //printf("Reading node type\n");
     dset = H5Dopen (file, "node type", H5P_DEFAULT);
 
-
-    //printf("Reading Dataset\n");
     status = H5Dread (dset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT,node_buffer[0]);
     status = H5Dclose (dset);
-
-    //printf("Reading velx\n");
+    
+    
     dset = H5Dopen (file, "velx", H5P_DEFAULT);
 
    //printf("Reading Dataset\n");
     status = H5Dread (dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,vel_x_buffer[0]);
-    status = H5Dclose (dset);
+    status = H5Dclose (dset); //status = H5Fclose (file);
 
     //printf("Reading vely\n");
     dset = H5Dopen (file, "vely", H5P_DEFAULT);
@@ -1046,7 +1051,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
 
     //printf("Reading Dataset\n");
     status = H5Dread (dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,vel_y_buffer[0]);
-    status = H5Dclose (dset);
+    status = H5Dclose (dset); //status = H5Fclose (file);
     
     //printf("Reading dens\n");
     dset = H5Dopen (file, "dens", H5P_DEFAULT);
@@ -1057,7 +1062,6 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     status = H5Dclose (dset);    
     
     //printf("Reading pres\n");
-
     dset = H5Dopen (file, "pres", H5P_DEFAULT);
 
 
@@ -1066,16 +1070,19 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     status = H5Dclose (dset);
     //H5Pclose(xfer_plist);
     status = H5Fclose (file);
+
     
     fprintf(fPtr,">> Selecting good node types (=1)\n");
     //find out how many good nodes there are
+
     for (i=0;i<dims[0];i++)
     {
         if (node_buffer[i][0]==1 ){
             num_nodes++;
         }
     }
-    
+
+
     //allocate memory for arrays to hold unprocessed data
     pres_unprc=malloc (num_nodes* PROP_DIM1  *PROP_DIM2*PROP_DIM3 * sizeof (double ));
         
@@ -1094,12 +1101,15 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     szx_unprc=malloc (num_nodes* PROP_DIM1  *PROP_DIM2*PROP_DIM3 * sizeof (double ));
     
     szy_unprc=malloc (num_nodes* PROP_DIM1  *PROP_DIM2*PROP_DIM3 * sizeof (double ));
+
     
     //find where the good values corresponding to the good gones (=1) and save them to the previously allocated pointers which are 1D arrays
     //also create proper x and y arrays and block size arrays
     //and then free up the buffer memory space
     fprintf(fPtr,">> Creating and reshaping arrays\n");
     count=0;
+    
+
     for (i=0;i<dims[0];i++)
     {
         if (node_buffer[i][0]==1 )
@@ -1131,10 +1141,13 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
             }
         }
     }
+
     free (pres_buffer[0]); free (dens_buffer[0]);free (vel_x_buffer[0]);free (vel_y_buffer[0]); free(coord_buffer[0]);free(block_sz_buffer[0]);free(node_buffer[0]);
     free (pres_buffer);free(dens_buffer);free(vel_x_buffer);free(vel_y_buffer);free(coord_buffer);free(block_sz_buffer);free(node_buffer);
-    
+ 
+
     //fill in radius array and find in how many places r > injection radius
+//have single thread execute this while loop and then have inner loop be parallel
     elem_factor=1;
     r_count=0;
     while (r_count==0)
@@ -1162,7 +1175,8 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
         }
         //fprintf(fPtr, "r_count: %d count: %d\n", r_count, count);
     }
-       
+
+
     //allocate memory to hold processed data
     (*pres)=malloc (r_count * sizeof (double ));
     (*velx)=malloc (r_count * sizeof (double ));
@@ -1177,6 +1191,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     (*szx)=malloc (r_count * sizeof (double ));
     (*szy)=malloc (r_count * sizeof (double ));
     (*temp)=malloc (r_count * sizeof (double ));
+
     
     //assign values based on r> 0.95*r_inj
     //j=0;
@@ -1224,11 +1239,14 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
             }
         }
     }
-    *number=r_count;
+    
     //fprintf(fPtr, "number: %d\n", r_count);
     
+
+    *number=r_count;
+
     free(pres_unprc); free(velx_unprc);free(vely_unprc);free(dens_unprc);free(x_unprc); free(y_unprc);free(r_unprc);free(szx_unprc);free(szy_unprc);
-    
+    //exit(0);
 }
 
 
@@ -2170,11 +2188,11 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t)
 {
     //move photons by speed of light
  
-    int i=0;
+    int i=0, num_thread=omp_get_num_threads();
     double old_position=0, new_position=0, divide_p0=0;
     
     
-    #pragma omp parallel for  firstprivate(old_position, new_position, divide_p0)
+    #pragma omp parallel for num_threads(num_thread) firstprivate(old_position, new_position, divide_p0)
     for (i=0;i<num_ph;i++)
     {
             //old_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 ); uncommented checks since they were not necessary anymore
