@@ -822,7 +822,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
     }
 }
 
-void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads,  int *dim_switch)
+void readMcPar(char file[200], double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads,  int *dim_switch)
 {
     //function to read mc.par file
 	FILE *fptr=NULL;
@@ -832,6 +832,11 @@ void readMcPar(char file[200], double *fps, double *theta_jmin, double *theta_j,
 	//open file
 	fptr=fopen(file,"r");
 	//read in frames per sec and other variables outlined in main()
+    fscanf(fptr, "%lf",fluid_domain_y);
+	printf("%lf\n", *fluid_domain_y );
+	
+	fgets(buf, 100,fptr);
+    
 	fscanf(fptr, "%lf",fps);
 	//printf("%f\n", *fps );
 	
@@ -1707,12 +1712,12 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
     return return_val;
 }
 
-int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
+int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_y, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
                                    double *temp, double *all_time_steps, int *sorted_indexes, gsl_rng * rand, int dim_switch_3d, int find_nearest_block_switch, int riken_switch, FILE *fPtr)
 {
     
     int i=0, min_index=0, ph_block_index=0;
-    double ph_x=0, ph_y=0, ph_phi=0, ph_z=0;
+    double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, ph_r=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
 
     double ph_v_norm=0, fl_v_norm=0;
@@ -1746,7 +1751,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     //or just parallelize this part here
     
     min_mfp=1e12;
-    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
+    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
     for (i=0;i<num_ph; i++)
     {
         //printf("%d, %e,%e\n", i, ((ph+i)->r0), ((ph+i)->r1));
@@ -1764,82 +1769,92 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to FLASH x coordinate
             ph_y=((ph+i)->r2);
             ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
-            
+            ph_r=pow(ph_x*ph_x + ph_y*ph_y, 0.5);
         }
         else
         {
             ph_x=((ph+i)->r0);
             ph_y=((ph+i)->r1);
             ph_z=((ph+i)->r2);
-            
+            ph_r=pow(ph_x*ph_x + ph_y*ph_y+ph_z*ph_z, 0.5);
         }
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         
-        is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
+        //if the location of the photon is less than the domain of the hydro simulation then do all of this, otherwise assing huge mfp value so no scattering occurs and the next frame is loaded
+        if (ph_r<hydro_domain_y)
+        {
         
-        if (find_nearest_block_switch==0 && is_in_block)
-        {
-            //keep the saved grid index
-            min_index=ph_block_index;
-        }
-        else
-        {
-            //find the new index of the block closest to the photon
-            //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z,   dim_switch_3d); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
+            is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
+        
+            if (find_nearest_block_switch==0 && is_in_block)
+            {
+                //keep the saved grid index
+                min_index=ph_block_index;
+            }
+            else
+            {
+                //find the new index of the block closest to the photon
+                //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z,   dim_switch_3d); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
             
-            //find the new index of the block that the photon is actually in
-            min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch,  dim_switch_3d,  riken_switch);
+                //find the new index of the block that the photon is actually in
+                min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch,  dim_switch_3d,  riken_switch);
             
-            (ph+i)->nearest_block_index=min_index; //save the index
+                (ph+i)->nearest_block_index=min_index; //save the index
             
-        }
+            }
 
-         //fprintf(fPtr,"Min Index: %d\n", min_index);
+            //fprintf(fPtr,"Min Index: %d\n", min_index);
         
-        //save values
-        (n_dens_lab_tmp)= (*(dens_lab+min_index));
-        (n_vx_tmp)= (*(velx+min_index));
-        (n_vy_tmp)= (*(vely+min_index));
-        (n_temp_tmp)= (*(temp+min_index));
-        if (dim_switch_3d==1)
-        {
-            (n_vz_tmp)= (*(velz+min_index));
-        }
+            //save values
+            (n_dens_lab_tmp)= (*(dens_lab+min_index));
+            (n_vx_tmp)= (*(velx+min_index));
+            (n_vy_tmp)= (*(vely+min_index));
+            (n_temp_tmp)= (*(temp+min_index));
+            if (dim_switch_3d==1)
+            {
+                (n_vz_tmp)= (*(velz+min_index));
+            }
         
-        if (dim_switch_3d==0)
-        {
-            fl_v_x=(*(velx+min_index))*cos(ph_phi);
-            fl_v_y=(*(velx+min_index))*sin(ph_phi);
-            fl_v_z=(*(vely+min_index));
-        }
-        else
-        {
-            fl_v_x=(*(velx+min_index));
-            fl_v_y=(*(vely+min_index));
-            fl_v_z=(*(velz+min_index));
-        }
+            if (dim_switch_3d==0)
+            {
+                fl_v_x=(*(velx+min_index))*cos(ph_phi);
+                fl_v_y=(*(velx+min_index))*sin(ph_phi);
+                fl_v_z=(*(vely+min_index));
+            }
+            else
+            {
+                fl_v_x=(*(velx+min_index));
+                fl_v_y=(*(vely+min_index));
+                fl_v_z=(*(velz+min_index));
+            }
         
-        fl_v_norm=pow(pow(fl_v_x, 2.0)+pow(fl_v_y, 2.0)+pow(fl_v_z, 2.0), 0.5);
-        ph_v_norm=pow(pow(((ph+i)->p1), 2.0)+pow(((ph+i)->p2), 2.0)+pow(((ph+i)->p3), 2.0), 0.5);
+            fl_v_norm=pow(pow(fl_v_x, 2.0)+pow(fl_v_y, 2.0)+pow(fl_v_z, 2.0), 0.5);
+            ph_v_norm=pow(pow(((ph+i)->p1), 2.0)+pow(((ph+i)->p2), 2.0)+pow(((ph+i)->p3), 2.0), 0.5);
         
-        //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
-        (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
+            //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
+            (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
         
-        if (dim_switch_3d==0)
-        {
-            beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
-        }
-        else
-        {
-            beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)+pow((n_vz_tmp),2)),0.5);
-        }
-        //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
-        rnd_tracker=0;
+            if (dim_switch_3d==0)
+            {
+                beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
+            }
+            else
+            {
+                beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)+pow((n_vz_tmp),2)),0.5);
+            }
+            //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
+            rnd_tracker=0;
         
             rnd_tracker=gsl_rng_uniform_pos(rng[omp_get_thread_num()]);
             //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
         
-        mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths 
+            mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths 
+        }
+         else
+        {
+            mfp=min_mfp;
+            //printf("In ELSE\n");
+        }
         
         *(all_time_steps+i)=mfp/C_LIGHT;
     }

@@ -93,7 +93,7 @@ int main(int argc, char **argv)
     char *sph="Spherical";
     char spect;//type of spectrum
     char restrt;//restart or not
-    double fps, fps_modified, theta_jmin, theta_jmax ;//frames per second of sim, min opening angle of jet, max opening angle of jet in radians
+    double fps, fps_modified, theta_jmin, theta_jmax,hydro_domain_y ;//frames per second of sim, min opening angle of jet, max opening angle of jet in radians, max y value in hydro domain
     double inj_radius_small, inj_radius_large,  ph_weight_suggest, ph_weight_small, ph_weight_large ;//radius at chich photons are injected into sim
     int frm0,last_frm, frm2_small, frm2_large, j=0, min_photons, max_photons, frm0_small, frm0_large ;//frame starting from, last frame of sim, frame of last injection
     int dim_switch=0;
@@ -160,7 +160,7 @@ int main(int argc, char **argv)
     
     printf(">> mc.py:  Reading mc.par: %s\n", mc_file);
     
-    readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &ph_weight_small, &ph_weight_large, &min_photons, &max_photons, &spect, &restrt, &num_thread,&dim_switch); //thetas that comes out is in degrees
+    readMcPar(mc_file, &hydro_domain_y, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &ph_weight_small, &ph_weight_large, &min_photons, &max_photons, &spect, &restrt, &num_thread,&dim_switch); //thetas that comes out is in degrees
     //printf("%c\n", restrt);
     
     //divide up angles and frame injections among threads DONT WANT NUMBER OF THREADS TO BE ODD
@@ -795,7 +795,7 @@ int main(int argc, char **argv)
                         //and choose the photon with the smallest mfp and calculate the timestep
                         
 
-                        ph_scatt_index=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, &time_step, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
+                        ph_scatt_index=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_y, &time_step, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
                                                                       all_time_steps, sorted_indexes, rng, dim_switch, find_nearest_grid_switch, RIKEN_SWITCH, fPtr);
                         
                         find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
