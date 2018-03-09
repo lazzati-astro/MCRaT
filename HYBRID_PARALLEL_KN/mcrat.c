@@ -120,7 +120,7 @@ int main(int argc, char **argv)
     double *phiPtr=NULL, *velzPtr=NULL, *zPtr=NULL, *all_time_steps=NULL;
     int num_ph=0, array_num=0, ph_scatt_index=0, max_scatt=0, min_scatt=0,i=0; //number of photons produced in injection algorithm, number of array elleemnts from reading FLASH file, index of photon whch does scattering, generic counter
     double dt_max=0, thescatt=0, accum_time=0; 
-    double  gamma_infinity=0, time_now=0, time_step=0, avg_scatt=0; //gamma_infinity not used?
+    double  gamma_infinity=0, time_now=0, time_step=0, avg_scatt=0,avg_r=0; //gamma_infinity not used?
     double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0, ph_vzPtr=0;// *ph_cosanglePtr=NULL ;
     double min_r=0, max_r=0;
     int frame=0, scatt_frame=0, frame_scatt_cnt=0, scatt_framestart=0, framestart=0;
@@ -844,12 +844,12 @@ int main(int argc, char **argv)
                     }
                     
                     //get scattering statistics
-                    phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt);
+                    phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
                         
                     fprintf(fPtr,"The number of scatterings in this frame is: %d\n", frame_scatt_cnt);
                     fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                     fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scattering for a photon is: %d\n", max_scatt, min_scatt);
-                    fprintf(fPtr,"The average number of scatterings thus far is: %lf\n", avg_scatt);
+                    fprintf(fPtr,"The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
                     fflush(fPtr);
                 
                     printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, angle_id, fPtr);

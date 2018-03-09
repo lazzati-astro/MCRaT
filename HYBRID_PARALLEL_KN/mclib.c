@@ -3061,14 +3061,15 @@ double averagePhotonEnergy(struct photon *ph, int num_ph)
     return (e_sum*C_LIGHT)/w_sum;
 }
 
-void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg )
+void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg, double *r_avg  )
 {
     int temp_max=0, temp_min=-1,  i=0;
-    double sum=0;
+    double sum=0, avg_r_sum=0;
     
     for (i=0;i<ph_num;i++)
     {
         sum+=((ph+i)->num_scatt);
+        avg_r_sum+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
         
         if (((ph+i)->num_scatt) > temp_max )
         {
@@ -3084,6 +3085,7 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
     }
     
     *avg=sum/ph_num;
+    *r_avg=avg_r_sum/ph_num;
     *max=temp_max;
     *min=temp_min;
     
