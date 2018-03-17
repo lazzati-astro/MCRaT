@@ -70,11 +70,18 @@
 #define FILEPATH "/home/physics/parsotat/16OM/"
 #define FILEROOT "rhd_jet_big_16OM_hdf5_plt_cnt_"
 #define MC_PATH "DIR_TEST/"
-*/
+
  #define THISRUN "Science"
 #define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/VARY/40spikes/"
 #define FILEROOT "m0_rhop0.1big_hdf5_plt_cnt_"
 #define MC_PATH "CMC_40spikes_TEST/"
+ * */
+ 
+ #define THISRUN "Spherical"
+#define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16OI/"
+//#define FILEPATH "/Users/Tylerparsotan//Documents/16OI_TEST/"
+#define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
+#define MC_PATH "TEST/"
 
 #define MCPAR "mc.par"
 #define RIKEN_SWITCH 0

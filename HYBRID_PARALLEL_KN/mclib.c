@@ -973,8 +973,8 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     
     H5Sget_simple_extent_dims(space, dims, NULL); //save dimesnions in dims
     
-    status = H5Sclose (space);
-    status = H5Dclose (dset);
+    //status = H5Sclose (space);
+    //status = H5Dclose (dset);
     //status = H5Fclose (file);
     
     /*
@@ -1021,11 +1021,11 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     //read data such that first column is x and second column is y
     //fprintf(fPtr, "Reading Dataset\n");
     //fflush(fPtr);
-    dset = H5Dopen (file, "coordinates", H5P_DEFAULT);
+    //dset = H5Dopen (file, "coordinates", H5P_DEFAULT);
     status = H5Dread (dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,coord_buffer[0]);
     
     //close dataset
-    //status = H5Sclose (space);
+    status = H5Sclose (space);
     status = H5Dclose (dset);
     
     //printf("Reading block size\n");
@@ -1199,7 +1199,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
 
     
     //assign values based on r> 0.95*r_inj
-    //j=0;
+    j=0;
     for (i=0;i<count;i++)
     {
         if (ph_inj_switch==0)
@@ -1220,7 +1220,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
                 (*gamma)[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
                 (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
                 (*temp)[j]=pow(3*(*(pres_unprc+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
-                //j++;
+                j++;
             }
         }
         else
@@ -1240,7 +1240,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
                 (*gamma)[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
                 (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
                 (*temp)[j]=pow(3*(*(pres_unprc+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
-                //j++;
+                j++;
             }
         }
     }
@@ -2210,7 +2210,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t)
     #pragma omp parallel for num_threads(num_thread) firstprivate(old_position, new_position, divide_p0)
     for (i=0;i<num_ph;i++)
     {
-            //old_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 ); uncommented checks since they were not necessary anymore
+            old_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 ); //uncommented checks since they were not necessary anymore
             
             divide_p0=1.0/((ph+i)->p0);
             

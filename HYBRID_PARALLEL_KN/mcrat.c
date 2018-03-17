@@ -658,7 +658,7 @@ int main(int argc, char **argv)
                                         &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
                             //fprintf(fPtr, "%d\n\n", array_num);
                         }
-                        fprintf(fPtr, "%d\n\n", array_num);
+                        fprintf(fPtr, "Number of Flash Elements %d\n", array_num);
         //exit(0);
                     }
                     else
@@ -678,7 +678,7 @@ int main(int argc, char **argv)
                     }
                     else if (strcmp(sph, this_run)==0)
                     {
-                        //printf("In Spherical\n");
+                        printf("In Spherical\n");
                         sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
                     }
                         
