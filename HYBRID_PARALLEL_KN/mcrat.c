@@ -678,7 +678,7 @@ int main(int argc, char **argv)
                     }
                     else if (strcmp(sph, this_run)==0)
                     {
-                        printf("In Spherical\n");
+                        //printf("In Spherical\n");
                         sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
                     }
                         
@@ -836,7 +836,7 @@ int main(int argc, char **argv)
                             
                             //for each photon update its position based on its momentum
                             
-                            updatePhotonPosition(phPtr, num_ph, dt_max);
+                            updatePhotonPosition(phPtr, num_ph, dt_max, fPtr);
                         }
                         
                         //printf("In main 2: %e, %d, %e, %e\n", ((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);

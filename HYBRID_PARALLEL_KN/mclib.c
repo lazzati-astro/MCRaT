@@ -1623,7 +1623,7 @@ int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, doubl
             return min_index;
 }
 
-int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, int dim_switch_3d, int riken_switch)
+int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, int dim_switch_3d, int riken_switch, FILE *fPtr)
 {
     int i=0, within_block_index=0;
     bool is_in_block=0; //boolean to determine if the photon is outside of a grid
@@ -1645,6 +1645,10 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
         
     }
     //printf("Within Block Index:  %d\n",within_block_index);
+    if (is_in_block==0)
+    {
+        fprintf(fPtr, "Couldn't find a block that the photon is in\n");
+    }
     
     return within_block_index;
 }
@@ -1797,7 +1801,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z,   dim_switch_3d); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
             
                 //find the new index of the block that the photon is actually in
-                min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch,  dim_switch_3d,  riken_switch);
+                min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch,  dim_switch_3d,  riken_switch, fPtr);
             
                 (ph+i)->nearest_block_index=min_index; //save the index
             
@@ -2024,7 +2028,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z,   dim_switch_3d); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
             
             //find the new index of the block that the photon is actually in
-            min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, dim_switch_3d,  riken_switch);
+            min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, dim_switch_3d,  riken_switch, fPtr);
             
             (ph+i)->nearest_block_index=min_index; //save the index
             
@@ -2199,7 +2203,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
 }
 
 
-void updatePhotonPosition(struct photon *ph, int num_ph, double t)
+void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
 {
     //move photons by speed of light
  
@@ -2220,12 +2224,12 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t)
             
             ((ph+i)->r2)+=((ph+i)->p3)*divide_p0*C_LIGHT*t;//update z
             
-            //new_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 );
+            new_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 );
             
-            //if ((new_position-old_position)/t > C_LIGHT)
-            //{
-            //    printf("PHOTON NUMBER %d IS SUPERLUMINAL. ITS SPEED IS %e c.\n", i, ((new_position-old_position)/t)/C_LIGHT);
-            //}
+            if ((new_position-old_position)/t > C_LIGHT)
+            {
+                fprintf(fPtr, "PHOTON NUMBER %d IS SUPERLUMINAL. ITS SPEED IS %e c.\n", i, ((new_position-old_position)/t)/C_LIGHT);
+            }
             //printf("In update  function: %e, %e, %e, %e, %e, %e, %e\n",((ph+i)->r0), ((ph+i)->r1), ((ph+i)->r2), t, ((ph+i)->p1)/((ph+i)->p0), ((ph+i)->p2)/((ph+i)->p0), ((ph+i)->p3)/((ph+i)->p0) );  
     }
         
@@ -2388,7 +2392,7 @@ double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int 
         ph_index=(*(sorted_indexes+i));
         
         scatt_time= *(all_time_steps+ph_index); //get the time until the photon scatters
-        updatePhotonPosition(ph, num_ph, scatt_time-old_scatt_time);
+        updatePhotonPosition(ph, num_ph, scatt_time-old_scatt_time, fPtr);
         
         //fprintf(fPtr,"i: %d, Photon: %d, Delta t=%e\n", i, ph_index, scatt_time-old_scatt_time);
         //fflush(fPtr);

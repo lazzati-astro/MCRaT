@@ -1231,7 +1231,7 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
     
     if (is_in_block==0)
     {
-        printf(fPtr, "Couldn't find a block that the photon is in\n");
+        fprintf(fPtr, "Couldn't find a block that the photon is in\n");
     }
     
     return within_block_index;
@@ -1746,7 +1746,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
 }
 
 
-void updatePhotonPosition(struct photon *ph, int num_ph, double t)
+void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
 {
     //move photons by speed of light
  
@@ -1771,7 +1771,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t)
             
             if ((new_position-old_position)/t > C_LIGHT)
             {
-                printf("PHOTON NUMBER %d IS SUPERLUMINAL. ITS SPEED IS %e c.\n", i, ((new_position-old_position)/t)/C_LIGHT);
+                fprintf(fPtr, "PHOTON NUMBER %d IS SUPERLUMINAL. ITS SPEED IS %e c.\n", i, ((new_position-old_position)/t)/C_LIGHT);
             }
             //printf("In update  function: %e, %e, %e, %e, %e, %e, %e\n",((ph+i)->r0), ((ph+i)->r1), ((ph+i)->r2), t, ((ph+i)->p1)/((ph+i)->p0), ((ph+i)->p2)/((ph+i)->p0), ((ph+i)->p3)/((ph+i)->p0) );  
     }

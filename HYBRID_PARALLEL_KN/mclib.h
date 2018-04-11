@@ -40,7 +40,7 @@ double *zeroNorm(double *p_ph);
 
 int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z,  int dim_switch_3d);
 
-int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, int dim_switch_3d, int riken_switch);
+int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, int dim_switch_3d, int riken_switch, FILE *fPtr);
 
 int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int dim_switch_3d, int riken_switch);
 
@@ -54,7 +54,7 @@ int compare2 ( const void *a, const void *b, void *ar);
 int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
                                    double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int dim_switch_3d, int find_nearest_block_switch, int riken_switch, FILE *fPtr);
     
-void updatePhotonPosition(struct photon *ph, int num_ph, double t);
+void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr);
 
 void mullerMatrixRotation(double theta, double *s, FILE *fPtr);
 

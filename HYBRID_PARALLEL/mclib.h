@@ -46,7 +46,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
 int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
                                    double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int dim_switch_3d, int find_nearest_block_switch, int riken_switch, FILE *fPtr);
     
-void updatePhotonPosition(struct photon *ph, int num_ph, double t);
+void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr);
 
 void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double flash_vz, double fluid_temp, gsl_rng * rand,int dim_switch_3d, FILE *fPtr);
 

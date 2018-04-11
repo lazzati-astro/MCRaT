@@ -830,7 +830,7 @@ int main(int argc, char **argv)
                             frame_scatt_cnt+=1;
                             time_now+=time_step;
                             
-                            updatePhotonPosition(phPtr, num_ph, time_step);
+                            updatePhotonPosition(phPtr, num_ph, time_step, fPtr);
                             
                             //scatter the photon
                             //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
@@ -854,7 +854,7 @@ int main(int argc, char **argv)
                             
                             //for each photon update its position based on its momentum
                             
-                            updatePhotonPosition(phPtr, num_ph, dt_max);
+                            updatePhotonPosition(phPtr, num_ph, dt_max, fPtr);
                         }
                         
                         //printf("In main 2: %e, %d, %e, %e\n", ((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
