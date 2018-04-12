@@ -822,7 +822,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
     }
 }
 
-void readMcPar(char file[200], double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads,  int *dim_switch)
+void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads,  int *dim_switch)
 {
     //function to read mc.par file
 	FILE *fptr=NULL;
@@ -832,8 +832,13 @@ void readMcPar(char file[200], double *fluid_domain_y, double *fps, double *thet
 	//open file
 	fptr=fopen(file,"r");
 	//read in frames per sec and other variables outlined in main()
+    fscanf(fptr, "%lf",fluid_domain_x);
+	//printf("%lf\n", *fluid_domain_x );
+	
+	fgets(buf, 100,fptr);
+    
     fscanf(fptr, "%lf",fluid_domain_y);
-	printf("%lf\n", *fluid_domain_y );
+	//printf("%lf\n", *fluid_domain_y );
 	
 	fgets(buf, 100,fptr);
     
@@ -1716,7 +1721,7 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
     return return_val;
 }
 
-int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_y, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
+int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
                                    double *temp, double *all_time_steps, int *sorted_indexes, gsl_rng * rand, int dim_switch_3d, int find_nearest_block_switch, int riken_switch, FILE *fPtr)
 {
     
@@ -1785,7 +1790,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         
         //if the location of the photon is less than the domain of the hydro simulation then do all of this, otherwise assing huge mfp value so no scattering occurs and the next frame is loaded
-        if (ph_r<hydro_domain_y)
+        if ((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x))
         {
         
             is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
