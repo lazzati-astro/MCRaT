@@ -1652,7 +1652,7 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
     //printf("Within Block Index:  %d\n",within_block_index);
     if (is_in_block==0)
     {
-        fprintf(fPtr, "Couldn't find a block that the photon is in\n");
+        fprintf(fPtr, "Couldn't find a block that the photon is in\nx: %e y:%e\n", ph_x, ph_y);
     }
     
     return within_block_index;
@@ -2369,10 +2369,10 @@ void stokesRotation(double *v, double *p_ph, double *p_ph_boosted, double *x_til
 }
 
 
-double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand,int dim_switch_3d, FILE *fPtr)
+double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand,int dim_switch_3d, FILE *fPtr)
 {
     //function to perform single photon scattering
-    int  i=0, index=0, ph_index=0, scatter_did_occur=0; //variable scatter_did_occur is to keep track of wether a scattering actually occured or not
+    int  i=0, index=0, ph_index=0, scatter_did_occur=0; //variable scatter_did_occur is to keep track of wether a scattering actually occured or not, 
     double scatt_time=0, old_scatt_time=0; //keep track of new time to scatter vs old time to scatter to know how much to incrementally propagate the photons if necessary
     double phi=0, theta=0; //phi and theta for the 4 momentum 
     double ph_phi=0, flash_vx=0, flash_vy=0, flash_vz=0, fluid_temp=0;    
@@ -2392,169 +2392,185 @@ double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int 
     //fprintf(fPtr,"In this function Num_ph %d\n", num_ph);
     //fflush(fPtr);
     
-    while (i<num_ph && scatter_did_occur==0)
+    while (i<num_ph && scatter_did_occur==0 )
     {
         ph_index=(*(sorted_indexes+i));
         
         scatt_time= *(all_time_steps+ph_index); //get the time until the photon scatters
-        updatePhotonPosition(ph, num_ph, scatt_time-old_scatt_time, fPtr);
         
-        //fprintf(fPtr,"i: %d, Photon: %d, Delta t=%e\n", i, ph_index, scatt_time-old_scatt_time);
-        //fflush(fPtr);
-        
-        index=(ph+ph_index)->nearest_block_index; //the sorted_indexes gives index of photon with smallest time to potentially scatter then extract the index of the block closest to that photon
-    
-        flash_vx=*(all_flash_vx+  index);
-        flash_vy=*(all_flash_vy+  index);
-        fluid_temp=*(all_fluid_temp+  index);
-        if (dim_switch_3d==1)
+        //IF THE TIME IS GREATER THAN dt_max dont let the photons positions be updated
+        if (scatt_time<dt_max)
         {
-            flash_vz=*(all_flash_vz+  index);
-        }
+            updatePhotonPosition(ph, num_ph, scatt_time-old_scatt_time, fPtr);
+        
+            //fprintf(fPtr,"i: %d, Photon: %d, Delta t=%e\n", i, ph_index, scatt_time-old_scatt_time);
+            //fflush(fPtr);
+            
+            index=(ph+ph_index)->nearest_block_index; //the sorted_indexes gives index of photon with smallest time to potentially scatter then extract the index of the block closest to that photon
+    
+            flash_vx=*(all_flash_vx+  index);
+            flash_vy=*(all_flash_vy+  index);
+            fluid_temp=*(all_fluid_temp+  index);
+            if (dim_switch_3d==1)
+            {
+                flash_vz=*(all_flash_vz+  index);
+            }
     
     
-        ph_phi=atan2(((ph+ph_index)->r1), (((ph+ph_index)->r0)));
-        /*
-        fprintf(fPtr,"ph_phi=%e\n", ph_phi);
-        fflush(fPtr);
-        */
+            ph_phi=atan2(((ph+ph_index)->r1), (((ph+ph_index)->r0)));
+            /*
+            fprintf(fPtr,"ph_phi=%e\n", ph_phi);
+            fflush(fPtr);
+            */
 
-        //convert flash coordinated into MCRaT coordinates
-        //printf("Getting fluid_beta\n");
+            //convert flash coordinated into MCRaT coordinates
+            //printf("Getting fluid_beta\n");
     
-        if (dim_switch_3d==0)
-        {
-            (*(fluid_beta+0))=flash_vx*cos(ph_phi);
-            (*(fluid_beta+1))=flash_vx*sin(ph_phi);
-            (*(fluid_beta+2))=flash_vy;
+            if (dim_switch_3d==0)
+            {
+                (*(fluid_beta+0))=flash_vx*cos(ph_phi);
+                (*(fluid_beta+1))=flash_vx*sin(ph_phi);
+                (*(fluid_beta+2))=flash_vy;
+            }
+            else
+            {
+                (*(fluid_beta+0))=flash_vx;
+                (*(fluid_beta+1))=flash_vy;
+                (*(fluid_beta+2))=flash_vz;
+            }
+    
+            /*
+            fprintf(fPtr,"FLASH v: %e, %e\n", flash_vx,flash_vy);
+            fflush(fPtr);
+            */
+    
+            //fill in photon 4 momentum 
+            //printf("filling in 4 momentum in photonScatter\n");
+            *(ph_p+0)=((ph+ph_index)->p0);
+            *(ph_p+1)=((ph+ph_index)->p1);
+            *(ph_p+2)=((ph+ph_index)->p2);
+            *(ph_p+3)=((ph+ph_index)->p3);
+        
+            //fill in stokes parameters
+            *(s+0)=((ph+ph_index)->s0); //I ==1
+            *(s+1)=((ph+ph_index)->s1); //Q/I
+            *(s+2)=((ph+ph_index)->s2); //U/I
+            *(s+3)=((ph+ph_index)->s3); //V/I 
+    
+            /*
+            fprintf(fPtr,"Unscattered Photon in Lab frame: %e, %e, %e,%e, %e, %e, %e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3), (ph->r0), (ph->r1), (ph->r2));
+            fflush(fPtr);
+            fprintf(fPtr,"Fluid Beta: %e, %e, %e\n", *(fluid_beta+0),*(fluid_beta+1), *(fluid_beta+2));
+            fflush(fPtr);
+            */
+    
+            //first we bring the photon to the fluid's comoving frame
+            lorentzBoost(fluid_beta, ph_p, ph_p_comov, 'p', fPtr);
+            /*
+            fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
+            fflush(fPtr);
+     
+            fprintf(fPtr, "Before Scattering, In Comov_frame:\n");
+            fflush(fPtr);
+            fprintf(fPtr, "ph_comov: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+            fflush(fPtr);
+            */
+        
+            //also need to rotate the stokes parameters in order to boost them into the comoving frame from the lab frame
+            //define axis of 'stokes plane' in the lab frame as y_tilde=-theta_hat and x_tilde = phi_hat directions
+            phi=atan2((*(ph_p+2)),(*(ph_p+1)));
+            theta=acos((*(ph_p+3))/(*(ph_p+0)));
+            *(x_tilde+0)=-sin(phi); 
+            *(x_tilde+1)=cos(phi);
+            *(x_tilde+2)=0.0;
+            *(y_tilde+0)=-1*cos(theta)*cos(phi);
+            *(y_tilde+1)=-1*cos(theta)*sin(phi);
+            *(y_tilde+2)=sin(theta);
+        
+            //fprintf(fPtr, "Theta: %e Phi %e Lab: x_tilde: %e, %e, %e, y_tilde: %e %e %e\n", theta, phi, *(x_tilde+0), *(x_tilde+1), *(x_tilde+2), *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
+        
+            //then rotate the stokes plane by some angle such that the rotated y_tilde is perpendicular to the velocity which the photon will be poosted to.  
+            // here its the fluid velocity. also perform the same rotation for the stokes parameters
+            stokesRotation(fluid_beta, ph_p, ph_p_comov, x_tilde, y_tilde, s, fPtr);
+            //exit(0);
+            //second we generate a thermal electron at the correct temperature
+            singleElectron(el_p_comov, fluid_temp, ph_p_comov, rand, fPtr);
+    
+            //fprintf(fPtr,"el_comov: %e, %e, %e,%e\n", *(el_p_comov+0), *(el_p_comov+1), *(el_p_comov+2), *(el_p_comov+3));
+            //fflush(fPtr);
+     
+    
+            //third we perform the scattering and save scattered photon 4 monetum in ph_p_comov @ end of function
+            scatter_did_occur=singleScatter(el_p_comov, ph_p_comov, x_tilde, y_tilde, s, rand, fPtr);
+        
+        
+    
+            //fprintf(fPtr,"After Scattering, After Lorentz Boost to Comov frame: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+            //fflush(fPtr);
+            //scatter_did_occur=0;
+            if (scatter_did_occur==1)
+            {
+                //fprintf(fPtr,"Within the if!\n");
+                //fflush(fPtr);
+            
+                //if the scattering occured have to uodate the phtoon 4 momentum. if photon didnt scatter nothing changes
+                //fourth we bring the photon back to the lab frame
+                *(negative_fluid_beta+0)=-1*( *(fluid_beta+0));
+                *(negative_fluid_beta+1)=-1*( *(fluid_beta+1));
+                *(negative_fluid_beta+2)=-1*( *(fluid_beta+2));
+                lorentzBoost(negative_fluid_beta, ph_p_comov, ph_p, 'p',  fPtr);
+                //fprintf(fPtr,"Scattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
+                //fflush(fPtr);
+            
+                stokesRotation(negative_fluid_beta, ph_p_comov, ph_p, x_tilde, y_tilde, s, fPtr);
+            
+                if (((*(ph_p+0))*C_LIGHT/1.6e-9) > 1e4)
+                {
+                    fprintf(fPtr,"Extremely High Photon Energy!!!!!!!!\n");
+                    fflush(fPtr);
+                }
+                //fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
+                //fprintf(fPtr, "Old: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+    
+                //assign the photon its new lab 4 momentum
+                ((ph+ph_index)->p0)=(*(ph_p+0));
+                ((ph+ph_index)->p1)=(*(ph_p+1));
+                ((ph+ph_index)->p2)=(*(ph_p+2));
+                ((ph+ph_index)->p3)=(*(ph_p+3));
+                //printf("Done assigning values to original struct\n");
+            
+                //find the last rotation of the stokes plane to put it in the y_tilde=-theta_hat and x_tilde = phi_hat directions
+                theta=acos((*(ph_p+3))/(*(ph_p+0)));
+                phi=atan2((*(ph_p+2)),(*(ph_p+1)));
+                //find x_tilde after scattering x_tilde b/c I can pass it to the function to get how much y_tilde will need to be rotated by and thus how much s needs to be rotated
+                *(x_tilde_2+0)=-sin(phi); 
+                *(x_tilde_2+1)=cos(phi);
+                *(x_tilde_2+2)=0.0;
+            
+                stokesRotation(x_tilde_2, ph_p, ph_p, x_tilde, y_tilde, s, fPtr);
+                //fprintf(fPtr, "Theta: %e Phi %e Lab: x_tilde: %e, %e, %e, y_tilde: %e %e %e\n\n\n", theta, phi, *(x_tilde+0), *(x_tilde+1), *(x_tilde+2), *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
+
+                //save stokes parameters
+                ((ph+ph_index)->s0)=*(s+0); //I ==1
+                ((ph+ph_index)->s1)=*(s+1);
+                ((ph+ph_index)->s2)=*(s+2);
+                ((ph+ph_index)->s3)=*(s+3);
+    
+                //incremement that photons number of scatterings
+                ((ph+ph_index)->num_scatt)+=1;
+                *frame_scatt_cnt+=1; //incrememnt total number of scatterings
+            
+                //exit(0);
+            }
+        
         }
         else
         {
-            (*(fluid_beta+0))=flash_vx;
-            (*(fluid_beta+1))=flash_vy;
-            (*(fluid_beta+2))=flash_vz;
-        }
-    
-        /*
-        fprintf(fPtr,"FLASH v: %e, %e\n", flash_vx,flash_vy);
-        fflush(fPtr);
-        */
-    
-        //fill in photon 4 momentum 
-        //printf("filling in 4 momentum in photonScatter\n");
-        *(ph_p+0)=((ph+ph_index)->p0);
-        *(ph_p+1)=((ph+ph_index)->p1);
-        *(ph_p+2)=((ph+ph_index)->p2);
-        *(ph_p+3)=((ph+ph_index)->p3);
-        
-        //fill in stokes parameters
-        *(s+0)=((ph+ph_index)->s0); //I ==1
-        *(s+1)=((ph+ph_index)->s1); //Q/I
-        *(s+2)=((ph+ph_index)->s2); //U/I
-        *(s+3)=((ph+ph_index)->s3); //V/I 
-    
-        /*
-        fprintf(fPtr,"Unscattered Photon in Lab frame: %e, %e, %e,%e, %e, %e, %e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3), (ph->r0), (ph->r1), (ph->r2));
-        fflush(fPtr);
-        fprintf(fPtr,"Fluid Beta: %e, %e, %e\n", *(fluid_beta+0),*(fluid_beta+1), *(fluid_beta+2));
-        fflush(fPtr);
-        */
-    
-        //first we bring the photon to the fluid's comoving frame
-        lorentzBoost(fluid_beta, ph_p, ph_p_comov, 'p', fPtr);
-        /*
-        fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
-        fflush(fPtr);
-     
-        fprintf(fPtr, "Before Scattering, In Comov_frame:\n");
-        fflush(fPtr);
-        fprintf(fPtr, "ph_comov: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
-        fflush(fPtr);
-        */
-        
-        //also need to rotate the stokes parameters in order to boost them into the comoving frame from the lab frame
-        //define axis of 'stokes plane' in the lab frame as y_tilde=-theta_hat and x_tilde = phi_hat directions
-        phi=atan2((*(ph_p+2)),(*(ph_p+1)));
-        theta=acos((*(ph_p+3))/(*(ph_p+0)));
-        *(x_tilde+0)=-sin(phi); 
-        *(x_tilde+1)=cos(phi);
-        *(x_tilde+2)=0.0;
-        *(y_tilde+0)=-1*cos(theta)*cos(phi);
-        *(y_tilde+1)=-1*cos(theta)*sin(phi);
-        *(y_tilde+2)=sin(theta);
-        
-        //fprintf(fPtr, "Theta: %e Phi %e Lab: x_tilde: %e, %e, %e, y_tilde: %e %e %e\n", theta, phi, *(x_tilde+0), *(x_tilde+1), *(x_tilde+2), *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
-        
-        //then rotate the stokes plane by some angle such that the rotated y_tilde is perpendicular to the velocity which the photon will be poosted to.  
-        // here its the fluid velocity. also perform the same rotation for the stokes parameters
-        stokesRotation(fluid_beta, ph_p, ph_p_comov, x_tilde, y_tilde, s, fPtr);
-        //exit(0);
-        //second we generate a thermal electron at the correct temperature
-        singleElectron(el_p_comov, fluid_temp, ph_p_comov, rand, fPtr);
-    
-        //fprintf(fPtr,"el_comov: %e, %e, %e,%e\n", *(el_p_comov+0), *(el_p_comov+1), *(el_p_comov+2), *(el_p_comov+3));
-        //fflush(fPtr);
-     
-    
-        //third we perform the scattering and save scattered photon 4 monetum in ph_p_comov @ end of function
-        scatter_did_occur=singleScatter(el_p_comov, ph_p_comov, x_tilde, y_tilde, s, rand, fPtr);
-    
-        //fprintf(fPtr,"After Scattering, After Lorentz Boost to Comov frame: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
-        //fflush(fPtr);
-        //scatter_did_occur=0;
-        if (scatter_did_occur==1)
-        {
-            //fprintf(fPtr,"Within the if!\n");
-            //fflush(fPtr);
-            
-            //if the scattering occured have to uodate the phtoon 4 momentum. if photon didnt scatter nothing changes
-            //fourth we bring the photon back to the lab frame
-            *(negative_fluid_beta+0)=-1*( *(fluid_beta+0));
-            *(negative_fluid_beta+1)=-1*( *(fluid_beta+1));
-            *(negative_fluid_beta+2)=-1*( *(fluid_beta+2));
-            lorentzBoost(negative_fluid_beta, ph_p_comov, ph_p, 'p',  fPtr);
-            //fprintf(fPtr,"Scattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
-            //fflush(fPtr);
-            
-            stokesRotation(negative_fluid_beta, ph_p_comov, ph_p, x_tilde, y_tilde, s, fPtr);
-            
-            if (((*(ph_p+0))*C_LIGHT/1.6e-9) > 1e4)
-            {
-                fprintf(fPtr,"Extremely High Photon Energy!!!!!!!!\n");
-                fflush(fPtr);
-            }
-            //fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
-            //fprintf(fPtr, "Old: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
-    
-            //assign the photon its new lab 4 momentum
-            ((ph+ph_index)->p0)=(*(ph_p+0));
-            ((ph+ph_index)->p1)=(*(ph_p+1));
-            ((ph+ph_index)->p2)=(*(ph_p+2));
-            ((ph+ph_index)->p3)=(*(ph_p+3));
-            //printf("Done assigning values to original struct\n");
-            
-            //find the last rotation of the stokes plane to put it in the y_tilde=-theta_hat and x_tilde = phi_hat directions
-            theta=acos((*(ph_p+3))/(*(ph_p+0)));
-            phi=atan2((*(ph_p+2)),(*(ph_p+1)));
-            //find x_tilde after scattering x_tilde b/c I can pass it to the function to get how much y_tilde will need to be rotated by and thus how much s needs to be rotated
-            *(x_tilde_2+0)=-sin(phi); 
-            *(x_tilde_2+1)=cos(phi);
-            *(x_tilde_2+2)=0.0;
-            
-            stokesRotation(x_tilde_2, ph_p, ph_p, x_tilde, y_tilde, s, fPtr);
-            //fprintf(fPtr, "Theta: %e Phi %e Lab: x_tilde: %e, %e, %e, y_tilde: %e %e %e\n\n\n", theta, phi, *(x_tilde+0), *(x_tilde+1), *(x_tilde+2), *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
-
-            //save stokes parameters
-            ((ph+ph_index)->s0)=*(s+0); //I ==1
-            ((ph+ph_index)->s1)=*(s+1);
-            ((ph+ph_index)->s2)=*(s+2);
-            ((ph+ph_index)->s3)=*(s+3);
-    
-            //incremement that photons number of scatterings
-            ((ph+ph_index)->num_scatt)+=1;
-            *frame_scatt_cnt+=1; //incrememnt total number of scatterings
-            
-            //exit(0);
+            // if the photon scatt_time > dt_max
+            //have to adjust the time properly so that the time si now appropriate for the next frame
+            scatt_time=dt_max;
+            updatePhotonPosition(ph, num_ph, scatt_time-old_scatt_time, fPtr);
+            scatter_did_occur=1; //set equal to 1 to get out of the loop b/c other subsequent photons will have scatt_time > dt_max
         }
     
         old_scatt_time=scatt_time;

@@ -62,7 +62,7 @@ void rotateStokesAxis(double theta, double *y_axis, double *x_axis, double *rota
 
 void stokesRotation(double *v, double *p_ph, double *p_ph_boosted, double *x_tilde, double *y_tilde, double *s, FILE *fPtr);
 
-double photonScatter(struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand, int dim_switch_3d, FILE *fPtr);
+double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand, int dim_switch_3d, FILE *fPtr);
 
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr);
 
