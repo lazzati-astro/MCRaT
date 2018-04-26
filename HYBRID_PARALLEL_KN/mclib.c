@@ -1185,7 +1185,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
         }
         //fprintf(fPtr, "r_count: %d count: %d\n", r_count, count);
     }
-
+    fprintf(fPtr, "Chosen FLASH min_r: %e max_r: %d\n", ph_rmin - elem_factor*C_LIGHT/fps, ph_rmax + elem_factor*C_LIGHT/fps);
 
     //allocate memory to hold processed data
     (*pres)=malloc (r_count * sizeof (double ));
@@ -1653,6 +1653,7 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
     if (is_in_block==0)
     {
         fprintf(fPtr, "Couldn't find a block that the photon is in\nx: %e y:%e\n", ph_x, ph_y);
+        within_block_index=-1;
     }
     
     return within_block_index;
@@ -1807,57 +1808,67 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             
                 //find the new index of the block that the photon is actually in
                 min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch,  dim_switch_3d,  riken_switch, fPtr);
-            
-                (ph+i)->nearest_block_index=min_index; //save the index
+                if (min_index != -1)
+                {
+                    (ph+i)->nearest_block_index=min_index; //save the index if min_index != -1
+                }
             
             }
-
-            //fprintf(fPtr,"Min Index: %d\n", min_index);
-        
-            //save values
-            (n_dens_lab_tmp)= (*(dens_lab+min_index));
-            (n_vx_tmp)= (*(velx+min_index));
-            (n_vy_tmp)= (*(vely+min_index));
-            (n_temp_tmp)= (*(temp+min_index));
-            if (dim_switch_3d==1)
+            
+            //if min_index!= -1 do all this stuff, otherwise make sure photon doesnt scatter
+            if (min_index != -1)
             {
-                (n_vz_tmp)= (*(velz+min_index));
-            }
+                //fprintf(fPtr,"Min Index: %d\n", min_index);
         
-            if (dim_switch_3d==0)
-            {
-                fl_v_x=(*(velx+min_index))*cos(ph_phi);
-                fl_v_y=(*(velx+min_index))*sin(ph_phi);
-                fl_v_z=(*(vely+min_index));
+                //save values
+                (n_dens_lab_tmp)= (*(dens_lab+min_index));
+                (n_vx_tmp)= (*(velx+min_index));
+                (n_vy_tmp)= (*(vely+min_index));
+                (n_temp_tmp)= (*(temp+min_index));
+                if (dim_switch_3d==1)
+                {
+                    (n_vz_tmp)= (*(velz+min_index));
+                }
+        
+                if (dim_switch_3d==0)
+                {
+                    fl_v_x=(*(velx+min_index))*cos(ph_phi);
+                    fl_v_y=(*(velx+min_index))*sin(ph_phi);
+                    fl_v_z=(*(vely+min_index));
+                }
+                else
+                {
+                    fl_v_x=(*(velx+min_index));
+                    fl_v_y=(*(vely+min_index));
+                    fl_v_z=(*(velz+min_index));
+                }
+        
+                fl_v_norm=pow(pow(fl_v_x, 2.0)+pow(fl_v_y, 2.0)+pow(fl_v_z, 2.0), 0.5);
+                ph_v_norm=pow(pow(((ph+i)->p1), 2.0)+pow(((ph+i)->p2), 2.0)+pow(((ph+i)->p3), 2.0), 0.5);
+        
+                //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
+                (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
+        
+                if (dim_switch_3d==0)
+                {
+                    beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
+                }
+                else
+                {
+                    beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)+pow((n_vz_tmp),2)),0.5);
+                }
+                //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
+                rnd_tracker=0;
+        
+                rnd_tracker=gsl_rng_uniform_pos(rng[omp_get_thread_num()]);
+                //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
+        
+                mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths 
             }
             else
             {
-                fl_v_x=(*(velx+min_index));
-                fl_v_y=(*(vely+min_index));
-                fl_v_z=(*(velz+min_index));
+                mfp=min_mfp;
             }
-        
-            fl_v_norm=pow(pow(fl_v_x, 2.0)+pow(fl_v_y, 2.0)+pow(fl_v_z, 2.0), 0.5);
-            ph_v_norm=pow(pow(((ph+i)->p1), 2.0)+pow(((ph+i)->p2), 2.0)+pow(((ph+i)->p3), 2.0), 0.5);
-        
-            //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
-            (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
-        
-            if (dim_switch_3d==0)
-            {
-                beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
-            }
-            else
-            {
-                beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)+pow((n_vz_tmp),2)),0.5);
-            }
-            //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
-            rnd_tracker=0;
-        
-            rnd_tracker=gsl_rng_uniform_pos(rng[omp_get_thread_num()]);
-            //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
-        
-            mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths 
         }
          else
         {
