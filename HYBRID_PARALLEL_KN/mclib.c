@@ -1166,7 +1166,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
         elem_factor++;
         for (i=0;i<count;i++)
         {
-            *(r_unprc+i)=pow((pow(*(x_unprc+i),2)+pow(*(y_unprc+i),2)),0.5);
+            *(r_unprc+i)=pow((*(x_unprc+i))*(*(x_unprc+i))+(*(y_unprc+i))*(*(y_unprc+i)),0.5);
             if (ph_inj_switch==0)
             {
                 if (((ph_rmin - elem_factor*C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + elem_factor*C_LIGHT/fps) ))
@@ -1185,7 +1185,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
         }
         //fprintf(fPtr, "r_count: %d count: %d\n", r_count, count);
     }
-    fprintf(fPtr, "Chosen FLASH min_r: %e max_r: %d\n", ph_rmin - elem_factor*C_LIGHT/fps, ph_rmax + elem_factor*C_LIGHT/fps);
+    fprintf(fPtr, "Elem factor: %d Ph_rmin: %e rmax: %e Chosen FLASH min_r: %e max_r: %e\n", elem_factor, ph_rmin, ph_rmax, ph_rmin - (elem_factor*C_LIGHT/fps), ph_rmax + (elem_factor*C_LIGHT/fps));
 
     //allocate memory to hold processed data
     (*pres)=malloc (r_count * sizeof (double ));
@@ -1646,10 +1646,14 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
                 i=array_num;
             }
         
-        
-        
     }
     //printf("Within Block Index:  %d\n",within_block_index);
+    if ((dim_switch_3d!=0) || (riken_switch==1))
+    {
+        fprintf(fPtr, "3D switch is: %d and RIKEN switch is: %d\n", dim_switch_3d, riken_switch);
+    }
+    
+    
     if (is_in_block==0)
     {
         fprintf(fPtr, "Couldn't find a block that the photon is in\nx: %e y:%e\n", ph_x, ph_y);
@@ -1694,10 +1698,12 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
             }
             
         }
+        /*
         else
         {
             if (riken_switch==1)
             {
+                
                 x0=pow(pow((*(x+block_index)), 2.0) + pow((*(y+block_index)),2.0 ) + pow((*(z+block_index)) , 2.0),0.5);
                 x1=acos((*(z+block_index))/pow(pow((*(x+block_index)), 2.0) + pow((*(y+block_index)),2.0 ) + pow((*(z+block_index)) , 2.0),0.5));
                 x2=atan2((*(y+block_index)), (*(x+block_index)));
@@ -1707,8 +1713,11 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
                 sz_x2=(*(szx+block_index));
                 
                 is_in_block= (fabs(pow(pow( ph_x, 2.0) + pow(ph_y, 2.0)+pow(ph_z, 2.0),0.5) - x0) <= sz_x0/2.0) &&  (fabs(acos(ph_z/pow(pow(ph_x, 2.0) + pow(ph_y,2.0 ) + pow(ph_z , 2.0),0.5)) - x1 ) <= sz_x1/2.0)  && (fabs(atan2(ph_y, ph_x) - x2 ) <= sz_x2/2.0);
-            }
+                //not sure why the code was going to this line above here for spherical test
+                 
+             }
         }
+        */
         
         if (is_in_block)
         {
@@ -1948,14 +1957,15 @@ int compare2 ( const void *a, const void *b, void *ar)
   //printf("%d, %d\n", aa, bb);
   //printf("%e, %e\n", arr[aa] , arr[bb]);
   //return (aa - bb);
-  
+  /*
  if (arr[aa] < arr[bb])
     return -1; 
   if (arr[aa] == arr[bb])
     return 0;
   if (arr[aa] > arr[bb])
     return 1;
-    
+    */
+    return ((arr[aa] > arr[bb]) - (arr[aa] < arr[bb]));
 }
 
 int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
