@@ -1935,14 +1935,15 @@ int compare (void *ar, const void *a, const void *b)
   //printf("%d, %d\n", aa, bb);
   //printf("%e, %e\n", arr[aa] , arr[bb]);
   //return (aa - bb);
-  
+  /*
  if (arr[aa] < arr[bb])
     return -1; 
   if (arr[aa] == arr[bb])
     return 0;
   if (arr[aa] > arr[bb])
     return 1;
-    
+    */
+    return ((arr[aa] > arr[bb]) - (arr[aa] < arr[bb]));
 }
 
 int compare2 ( const void *a, const void *b, void *ar)
