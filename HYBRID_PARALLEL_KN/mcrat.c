@@ -71,12 +71,19 @@
 #define FILEPATH "/home/physics/parsotat/16OM/"
 #define FILEROOT "rhd_jet_big_16OM_hdf5_plt_cnt_"
 #define MC_PATH "DIR_TEST/"
-*/
+
  #define THISRUN "Spherical"
 #define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16OI/"
 //#define FILEPATH "/Users/Tylerparsotan//Documents/16OI_TEST/"
 #define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
 #define MC_PATH "TEST/"
+*/
+ #define THISRUN "Spherical"
+#define FILEPATH "/home/physics/parsotat/16TI/"
+//#define FILEPATH "/Users/Tylerparsotan//Documents/16OI_TEST/"
+#define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
+#define MC_PATH "KN_16TI_SPHERICAL_2/"
+
 
 #define MCPAR "mc.par"
 #define RIKEN_SWITCH 0
@@ -697,15 +704,15 @@ int main(int argc, char **argv)
 
                     }
                     
-                    all_time_steps=malloc(num_ph*sizeof(double));
-                    sorted_indexes=malloc(num_ph*sizeof(int));
-                    
                     //printf("This many Photons: %d\n",num_ph); //num_ph is one more photon than i actually have
                     
                     //for (i=0;i<num_ph;i++)
                     //    printf("%e,%e,%e \n",(phPtr+i)->r0, (phPtr+i)->r1, (phPtr+i)->r2 );
                     
                 }
+                
+                all_time_steps=malloc(num_ph*sizeof(double));
+                sorted_indexes=malloc(num_ph*sizeof(int));
                 
                 //scatter photons all the way thoughout the jet
                 //for a checkpoint implmentation, start from the last saved "scatt_frame" value eh start_frame=frame or start_frame=cont_frame
