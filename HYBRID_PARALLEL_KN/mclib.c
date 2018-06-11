@@ -822,7 +822,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
     }
 }
 
-void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart, int *num_threads,  int *dim_switch)
+void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart,  int *dim_switch)
 {
     //function to read mc.par file
 	FILE *fptr=NULL;
@@ -930,9 +930,10 @@ void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, d
     *restart=getc(fptr);
     fgets(buf, 100,fptr);
     
-    fscanf(fptr, "%d",num_threads);
+    //dont need this line fo code for MPI 
+    //fscanf(fptr, "%d",num_threads);
     //printf("%d\n",*num_threads);
-    fgets(buf, 100,fptr);
+    //fgets(buf, 100,fptr);
     
     fscanf(fptr, "%d",dim_switch);
     //printf("%d\n",*dim_switch);
@@ -1742,7 +1743,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     double ph_v_norm=0, fl_v_norm=0;
     double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
     double rnd_tracker=0, n_dens_lab_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
-    int num_thread=1;//omp_get_num_threads();
+    int num_thread=omp_get_num_threads();
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
     
     int index=0;
