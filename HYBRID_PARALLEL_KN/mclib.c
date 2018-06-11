@@ -932,7 +932,7 @@ void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, d
     
     //dont need this line fo code for MPI 
     //fscanf(fptr, "%d",num_threads);
-    //printf("%d\n",*num_threads);
+    printf("MAKE SURE THERE IS NO NUM_THREADS LINE IN THE MC.PAR FILE.\n");
     //fgets(buf, 100,fptr);
     
     fscanf(fptr, "%d",dim_switch);
