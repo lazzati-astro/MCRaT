@@ -1,4 +1,4 @@
-#Welcome to the Github page for the Monte Carlo Radiation Transfer Code 
+# Welcome to the Github page for the Monte Carlo Radiation Transfer Code 
 
 The Monte Carlo Radiation Transfer (MCRaT; pronounced \textit{Em-Cee-Rat}) code is a next generation radiation transfer code that can be used to analyze the radiation signature expected from astrophysical outflows. The code is written in C and uses the Message Passing Interface (MPI) library for inter-process communication, the Open Multi-Processor (OpenMP) library for intra-node communication, the GNU Scientific Library, and the HDF5 library for parallel I/O.
 
