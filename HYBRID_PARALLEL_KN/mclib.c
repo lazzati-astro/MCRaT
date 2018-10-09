@@ -790,6 +790,10 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
                 (*ph)[i].r0= phHolder->r0; 
                 (*ph)[i].r1=phHolder->r1 ;
                 (*ph)[i].r2=phHolder->r2; 
+                (*ph)[i].s0=phHolder->s0;  
+                (*ph)[i].s1=phHolder->s1;
+                (*ph)[i].s2=phHolder->s2;
+                (*ph)[i].s3=phHolder->s3;
                 (*ph)[i].num_scatt=phHolder->num_scatt;
                 (*ph)[i].weight=phHolder->weight;
                 (*ph)[i].nearest_block_index= phHolder->nearest_block_index;
@@ -2258,6 +2262,12 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
             {
                 fprintf(fPtr, "PHOTON NUMBER %d IS SUPERLUMINAL. ITS SPEED IS %e c.\n", i, ((new_position-old_position)/t)/C_LIGHT);
             }
+            
+            if ( (ph+i)->s0 != 1)
+            {
+            	fprintf(fPtr, "PHOTON NUMBER %d DOES NOT HAVE I=1.\n", i);
+            }
+            
             //printf("In update  function: %e, %e, %e, %e, %e, %e, %e\n",((ph+i)->r0), ((ph+i)->r1), ((ph+i)->r2), t, ((ph+i)->p1)/((ph+i)->p0), ((ph+i)->p2)/((ph+i)->p0), ((ph+i)->p3)/((ph+i)->p0) );  
     }
         
@@ -2574,10 +2584,10 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
                 //fprintf(fPtr, "Theta: %e Phi %e Lab: x_tilde: %e, %e, %e, y_tilde: %e %e %e\n\n\n", theta, phi, *(x_tilde+0), *(x_tilde+1), *(x_tilde+2), *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
 
                 //save stokes parameters
-                ((ph+ph_index)->s0)=*(s+0); //I ==1
-                ((ph+ph_index)->s1)=*(s+1);
-                ((ph+ph_index)->s2)=*(s+2);
-                ((ph+ph_index)->s3)=*(s+3);
+                ((ph+ph_index)->s0)= *(s+0); //I ==1
+                ((ph+ph_index)->s1)= *(s+1);
+                ((ph+ph_index)->s2)= *(s+2);
+                ((ph+ph_index)->s3)= *(s+3);
     
                 //incremement that photons number of scatterings
                 ((ph+ph_index)->num_scatt)+=1;
@@ -2907,7 +2917,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y
         //gsl_vector_fprintf(fPtr,&x_tilde_rot.vector, "%e" );
         
         //exit(0);
-        //calculate electron 4 momentum OPTIMIZE HERE: DONT USE A FOR LOOP HERE!!!! Done
+        //calculate electron 4 momentum 
         //prescattered photon 4 momentum
         gsl_vector_set(whole_ph_p, 0, (*(ph_p_prime+0)));
         gsl_vector_set(whole_ph_p, 1, (*(ph_p_prime+1)));
