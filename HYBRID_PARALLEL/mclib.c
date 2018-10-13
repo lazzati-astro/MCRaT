@@ -855,7 +855,7 @@ void photonInjection( struct photon **ph, int *ph_num, double r_inj, double ph_w
 double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temps, double *vx, double *vy, gsl_rng * rand,  int riken_switch, FILE *fPtr)
 {
     int i=0, block_cnt=0, *ph_dens=NULL, ph_tot=0, j=0,k=0;
-    double ph_dens_calc=0.0, fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, fr_max=0, bb_norm=0, position_phi, ph_weight_adjusted;
+    double ph_dens_calc=0.0, fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, fr_max=0, bb_norm=0, position_phi, ph_weight_adjusted, rmin, rmax;
     double com_v_phi, com_v_theta, *p_comv=NULL, *boost=NULL; //comoving phi, theta, comoving 4 momentum for a photon, and boost for photon(to go to lab frame)
     double *l_boost=NULL; //pointer to hold array of lorentz boost, to lab frame, values
     float num_dens_coeff;
@@ -874,14 +874,17 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     //find how many blocks are near the injection radius within the angles defined in mc.par, get temperatures and calculate number of photons to allocate memory for 
     //and then rcord which blocks have to have "x" amount of photons injected there
     
+    rmin=r_inj - 0.5*C_LIGHT/fps;
+    rmax=r_inj + 0.5*C_LIGHT/fps;
+    
     for(i=0;i<array_length;i++)
     {
         
         //look at all boxes in width delta r=c/fps and within angles we are interested in NEED TO IMPLEMENT
-            if ((*(r+i) >= (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) ) 
+            if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) ) 
             {
                 block_cnt++;
-                            }
+            }
     }
     //printf("Blocks: %d\n", block_cnt);
     
@@ -903,7 +906,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
         {
             //printf("%d\n",i);
             //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
-                if ((*(r+i) >= (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) ) 
+                if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) ) 
                 {
                     if (riken_switch==0)
                     {
@@ -957,7 +960,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     k=0;
     for (i=0;i<array_length;i++)
     {
-       if ((*(r+i) >= (r_inj - C_LIGHT/fps))  &&   (*(r+i)  < (r_inj + C_LIGHT/fps)  ) && (*(theta+i)< theta_max) && (*(theta+i) >= theta_min) )
+       if ((*(r+i) >= rmin)  &&   (*(r+i)  <  rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >= theta_min) )
         {
 
             //*(temps+i)=0.76*(*(temps+i));
