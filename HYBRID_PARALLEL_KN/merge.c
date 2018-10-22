@@ -150,7 +150,7 @@ int main(int argc, char **argv)
     
     //get the last and initial hydro file in sim
     snprintf(mc_file,sizeof(mc_file),"%s%s",argv[1],MCPAR);
-    readMcPar(mc_file, &garbage, &garbage, &garbage,&garbage, &garbage, &garbage, &garbage,&garbage, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &garbage, &garbage, &i, &i, &i, &i, &i,&i); //thetas that comes out is in degrees
+    readMcPar(mc_file, &garbage, &garbage, &garbage,&garbage, &garbage, &garbage, &garbage,&garbage, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &garbage, &garbage, &i, &i, &i, &i,&i); //thetas that comes out is in degrees
         //printf("%s frm_0small: %d frm_0large: %d, last: %d\n", mc_file, frm0_small,frm0_large, last_frm);
     
     //with all the info make array of all the files that need to be created
