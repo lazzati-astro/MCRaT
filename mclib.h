@@ -22,6 +22,13 @@ extern const double C_LIGHT;
 extern const double A_RAD;
 extern const double PL_CONST;
 extern const double K_B;
+extern const double M_P
+extern const double THOM_X_SECT
+extern const double M_EL
+extern const double FINE_STRUCT
+extern const double CHARGE_EL
+extern const double R_EL
+
 
 #define STR_BUFFER 2000
 

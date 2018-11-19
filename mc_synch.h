@@ -1,0 +1,3 @@
+/*
+This header file is for the different functions for emitting and absorbing synchrotron photons
+*/
