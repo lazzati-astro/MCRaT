@@ -753,13 +753,13 @@ int main(int argc, char **argv)
                         {
                             //put proper number at the end of the flash file
                             modifyFlashName(flash_file, flash_prefix, scatt_frame, dim_switch);
-                            phMinMax(phPtr, num_ph, &min_r, &max_r);
+                            phMinMax(phPtr, num_ph, &min_r, &max_r, fPtr);
                             readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                     &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
                         }
                         else
                         {
-                            phMinMax(phPtr, num_ph, &min_r, &max_r);
+                            phMinMax(phPtr, num_ph, &min_r, &max_r, fPtr);
                             //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
                             readHydro2D(FILEPATH, scatt_frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                         &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
@@ -768,7 +768,7 @@ int main(int argc, char **argv)
                     }
                     else
                     {
-                        phMinMax(phPtr, num_ph, &min_r, &max_r);
+                        phMinMax(phPtr, num_ph, &min_r, &max_r, fPtr);
                         read_hydro(FILEPATH, scatt_frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
                                    &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fps_modified, fPtr);
                     }
@@ -830,8 +830,8 @@ int main(int argc, char **argv)
                             {
                                 fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
                                 //fprintf(fPtr,"Scattering Photon Number: %d\n", ph_scatt_index);
-                                fprintf(fPtr,"The local temp is: %e\n", *(tempPtr + (phPtr+ph_scatt_index)->nearest_block_index) );
-                                fprintf(fPtr,"Average photon energy is: %e\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 and then do (*3e10/1.6e-9)
+                                fprintf(fPtr,"The local temp is: %e K\n", *(tempPtr + (phPtr+ph_scatt_index)->nearest_block_index) );
+                                fprintf(fPtr,"Average photon energy is: %e ergs\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 can then do (1.6e-9) to get keV
                                 fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                                 fflush(fPtr);
                             }

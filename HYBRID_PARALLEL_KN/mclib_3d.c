@@ -726,7 +726,7 @@ void photonInjection3D( struct photon **ph, int *ph_num, double r_inj, double ph
     
 }
 
- void phMinMax(struct photon *ph, int ph_num, double *min, double *max)
+ void phMinMax(struct photon *ph, int ph_num, double *min, double *max, FILE *fPtr)
  {
       double temp_r_max=0, temp_r_min=-1;
         int i=0;
@@ -738,13 +738,13 @@ void photonInjection3D( struct photon **ph, int *ph_num, double r_inj, double ph
         if (ph_r > temp_r_max )
         {
             temp_r_max=ph_r;
-            //printf("The new max is: %e\n", temp_r_max);
+            //fprintf(fPtr, "The new max is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_max, i, ((ph+i)->r0), (ph+i)->r1, (ph+i)->r2);
         }
         
         if ((i==0) || (ph_r<temp_r_min))
         {
             temp_r_min=ph_r;
-            //printf("The new min is: %e\n", temp_r_min);
+            //fprintf(fPtr, "The new min is: %e\n", temp_r_min);
         }
     }
     

@@ -1163,7 +1163,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
 
     //fill in radius array and find in how many places r > injection radius
 //have single thread execute this while loop and then have inner loop be parallel
-    elem_factor=1;
+    elem_factor=2;
     r_count=0;
     while (r_count==0)
     {
@@ -1399,7 +1399,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                             bb_norm=(PL_CONST*fr_max * pow((fr_max/C_LIGHT),2.0))/(exp(PL_CONST*fr_max/(K_B*(*(temps+i))))-1); //find value of bb at fr_max
                             yfr_dum=((1.0/bb_norm)*PL_CONST*fr_dum * pow((fr_dum/C_LIGHT),2.0))/(exp(PL_CONST*fr_dum/(K_B*(*(temps+i))))-1); //curve is normalized to vaue of bb @ max frequency
                         	
-			}
+                        }
                         //printf("%lf, %lf,%lf,%e \n",(*(temps+i)),fr_dum, y_dum, yfr_dum);
                         
                     }
@@ -1828,6 +1828,10 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 if (min_index != -1)
                 {
                     (ph+i)->nearest_block_index=min_index; //save the index if min_index != -1
+                }
+                else
+                {
+                	fprintf(fPtr, "Photon number %d FLASH index not found, making sure it doesnt scatter.\n", i);
                 }
             
             }
@@ -2669,7 +2673,7 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
         //printf("In else\n");
         factor=pow(K_B*temp/M_EL,0.5);
         //calculate a random gamma from 3 random velocities drawn from a gaussian distribution with std deviation of "factor"
-        gamma=pow( 1- (pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)+ pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)+pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)  ) ,-0.5);
+        gamma=pow( 1- (pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)+ pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)+pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)  ) ,-0.5); //each vel direction is normal distribution -> maxwellian when multiplied
     }
     
     //fprintf(fPtr,"Chosen Gamma: %e\n",gamma);
@@ -3110,7 +3114,7 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
 
 double averagePhotonEnergy(struct photon *ph, int num_ph)
 {
-    //to calculate weighted photon energy
+    //to calculate weighted photon energy in ergs
     int i=0;
     double e_sum=0, w_sum=0;
     for (i=0;i<num_ph;i++)

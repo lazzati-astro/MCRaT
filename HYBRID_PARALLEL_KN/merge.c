@@ -3,7 +3,7 @@
   *  The input should be the main CMC directory and the sub directories of each angle range with the number of MPI processes used to start the simulation in each directory
   *  eg call: mpiexec -np X /.merge /dir/to/CMC_dir/  
   *  where X shuould be a multiple of the number of sub directories
-  *  
+  *  SHOULD BE COMPILED WITH -O2 OPTIMIZATION
 */ //TEST WITH PROCESSES INJECTING IN MULTIPLE FRAMES
 
 #include <stdio.h>
