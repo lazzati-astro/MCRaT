@@ -1324,11 +1324,11 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                     if (riken_switch==0)
                     {
                         //using FLASH
-                        ph_dens_calc=(num_dens_coeff*2.0*M_PI*(*(x+i))*pow(*(temps+i),3.0)*pow(*(szx+i),2.0) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1) ; //a*T^3/(weight) dV, dV=2*PI*x*dx^2,
+                        ph_dens_calc=(4.0/3.0)*(num_dens_coeff*2.0*M_PI*(*(x+i))*pow(*(temps+i),3.0)*pow(*(szx+i),2.0) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1) ; //a*T^3/(weight) dV, dV=2*PI*x*dx^2,
                     }
                     else
                     {
-                        ph_dens_calc=(num_dens_coeff*2.0*M_PI*pow(*(r+i),2)*sin(*(theta+i))*pow(*(temps+i),3.0)*(*(szx+i))*(*(szy+i)) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1); //dV=2 *pi* r^2 Sin(theta) dr dtheta
+                        ph_dens_calc=(4.0/3.0)*(num_dens_coeff*2.0*M_PI*pow(*(r+i),2)*sin(*(theta+i))*pow(*(temps+i),3.0)*(*(szx+i))*(*(szy+i)) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1); //dV=2 *pi* r^2 Sin(theta) dr dtheta
                     }
                     
                      (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
