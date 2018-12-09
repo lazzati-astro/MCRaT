@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <limits.h>
 #include "hdf5.h"
 #include <math.h>
 #include <time.h>
@@ -726,14 +727,15 @@ void photonInjection3D( struct photon **ph, int *ph_num, double r_inj, double ph
     
 }
 
- void phMinMax(struct photon *ph, int ph_num, double *min, double *max, FILE *fPtr)
- {
-      double temp_r_max=0, temp_r_min=-1;
-        int i=0;
-      double ph_r=0;
-      
-      for (i=0;i<ph_num;i++)
-    {        
+void phMinMax(struct photon *ph, int ph_num, double *min, double *max, FILE *fPtr)
+{
+    double temp_r_max=0, temp_r_min=DBL_MAX;
+    int i=0, num_thread=omp_get_num_threads();
+    double ph_r=0;
+    
+    #pragma omp parallel for num_threads(num_thread) firstprivate(ph_r) reduction(min:temp_r_min) reduction(max:temp_r_max)
+    for (i=0;i<ph_num;i++)
+    {
         ph_r=pow(pow( ((ph+i)->r0), 2.0) + pow(((ph+i)->r1),2.0 ) + pow(((ph+i)->r2) , 2.0),0.5);
         if (ph_r > temp_r_max )
         {
@@ -741,17 +743,19 @@ void photonInjection3D( struct photon **ph, int *ph_num, double r_inj, double ph
             //fprintf(fPtr, "The new max is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_max, i, ((ph+i)->r0), (ph+i)->r1, (ph+i)->r2);
         }
         
-        if ((i==0) || (ph_r<temp_r_min))
+        //if ((i==0) || (ph_r<temp_r_min))
+        if (ph_r<temp_r_min)
         {
             temp_r_min=ph_r;
-            //fprintf(fPtr, "The new min is: %e\n", temp_r_min);
+            //fprintf(fPtr, "The new min is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_min, i, ((ph+i)->r0), (ph+i)->r1, (ph+i)->r2);
         }
+        
     }
     
     *max=temp_r_max;
     *min=temp_r_min;
-      
- }
+    
+}
 
 int *getIndexesForRadialRemapping(char hydro_prefix[200])
 {

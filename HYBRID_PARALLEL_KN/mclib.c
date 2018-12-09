@@ -5,6 +5,7 @@
 #include <glob.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <limits.h>
 #include "hdf5.h"
 #include <math.h>
 #include <time.h>
@@ -151,6 +152,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
      
      
      int i=0, rank=1;
+    int num_thread=omp_get_num_threads();
     char mc_file[200]="", group[200]="";
     double p0[num_ph], p1[num_ph], p2[num_ph], p3[num_ph] , r0[num_ph], r1[num_ph], r2[num_ph], num_scatt[num_ph], weight[num_ph];
     double s0[num_ph], s1[num_ph], s2[num_ph], s3[num_ph];
@@ -163,6 +165,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     hsize_t      offset[1];
     
     //save photon data into large arrays
+    #pragma omp parallel for num_threads(num_thread)
     for (i=0;i<num_ph;i++)
     {
         p0[i]= ((ph+i)->p0);
@@ -1328,7 +1331,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                     }
                     else
                     {
-                        ph_dens_calc=(4.0/3.0)*(num_dens_coeff*2.0*M_PI*pow(*(r+i),2)*sin(*(theta+i))*pow(*(temps+i),3.0)*(*(szx+i))*(*(szy+i)) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1); //dV=2 *pi* r^2 Sin(theta) dr dtheta
+                        ph_dens_calc=(num_dens_coeff*2.0*M_PI*pow(*(r+i),2)*sin(*(theta+i))*pow(*(temps+i),3.0)*(*(szx+i))*(*(szy+i)) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1); //dV=2 *pi* r^2 Sin(theta) dr dtheta
                     }
                     
                      (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
@@ -3115,8 +3118,10 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
 double averagePhotonEnergy(struct photon *ph, int num_ph)
 {
     //to calculate weighted photon energy in ergs
-    int i=0;
+    int i=0, num_thread=omp_get_num_threads();
     double e_sum=0, w_sum=0;
+    
+    #pragma omp parallel for reduction(+:e_sum) reduction(+:w_sum)
     for (i=0;i<num_ph;i++)
     {
         e_sum+=(((ph+i)->p0)*((ph+i)->weight));
@@ -3128,9 +3133,11 @@ double averagePhotonEnergy(struct photon *ph, int num_ph)
 
 void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg, double *r_avg  )
 {
-    int temp_max=0, temp_min=-1,  i=0;
+    int temp_max=0, temp_min=INT_MAX,  i=0, num_thread=omp_get_num_threads();
     double sum=0, avg_r_sum=0;
     
+    //printf("Num threads: %d", num_thread);
+    #pragma omp parallel for num_threads(num_thread) reduction(min:temp_min) reduction(max:temp_max) reduction(+:sum) reduction(+:avg_r_sum)
     for (i=0;i<ph_num;i++)
     {
         sum+=((ph+i)->num_scatt);
@@ -3142,12 +3149,16 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
             //printf("The new max is: %d\n", temp_max);
         }
         
-        if ((i==0) || (((ph+i)->num_scatt)<temp_min))
+        //if ((i==0) || (((ph+i)->num_scatt)<temp_min))
+        if (((ph+i)->num_scatt)<temp_min)
         {
             temp_min=((ph+i)->num_scatt);
             //printf("The new min is: %d\n", temp_min);
         }
+        
     }
+    //printf("The  min outside the loop is: %d\n", temp_min);
+    //exit(0);
     
     *avg=sum/ph_num;
     *r_avg=avg_r_sum/ph_num;
