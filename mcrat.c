@@ -853,7 +853,7 @@ int main(int argc, char **argv)
                         fprintf(fPtr, "Emitting Synchrotron Photons in frame %d\n", scatt_frame);
                         num_ph_emit=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, 1, rng, RIKEN_SWITCH, 0, 0, fPtr);
                         
-                        if (scatt_frame==212)
+                        if (scatt_frame==202)
                         {
                             //exit(0);
                         }

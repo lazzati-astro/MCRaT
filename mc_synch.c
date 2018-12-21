@@ -229,20 +229,20 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         rmin=calcSynchRLimits( frame_scatt, frame_inj, fps,  r_inj, "min");
         rmax=calcSynchRLimits( frame_scatt, frame_inj, fps,  r_inj, "max");
         
-        //printf("rmin %e rmax %e, theta min/max: %e %e\n", rmin, rmax, theta_min, theta_max);
+        fprintf(fPtr, "rmin %e rmax %e, theta min/max: %e %e\n", rmin, rmax, theta_min, theta_max);
         #pragma omp parallel for num_threads(num_thread) reduction(+:block_cnt)
         for(i=0;i<array_length;i++)
         {
             
             //look at all boxes in width delta r=c/fps and within angles we are interested in NEED TO IMPLEMENT
-            if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
+            if ((*(r+i)+(*(szx+i))/2.0 >= rmin)  &&   (*(r+i)-(*(szx+i))/2.0  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
             {
                 block_cnt+=1;
             }
         }
         
-        //fprintf(fPtr, "Block cnt %d\n", block_cnt);
-        
+        fprintf(fPtr, "Block cnt %d\n", block_cnt);
+        fflush(fPtr);
         //allocate memory to record density of photons for each block
         ph_dens=malloc(block_cnt * sizeof(int));
         
@@ -260,7 +260,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
             {
                 //printf("%d\n",i);
                 //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
-                if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
+                if ((*(r+i)+(*(szx+i))/2.0 >= rmin)  &&   (*(r+i)-(*(szx+i))/2.0  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
                 {
                     if (riken_switch==0)
                     {
@@ -495,7 +495,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         ph_tot=0;
         for (i=0;i<array_length;i++)
         {
-            if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >= theta_min) )
+            if ((*(r+i)+(*(szx+i))/2.0 >= rmin)  &&   (*(r+i)-(*(szx+i))/2.0  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
             {
                 
                 el_dens= (*(dens+i))/M_P;
