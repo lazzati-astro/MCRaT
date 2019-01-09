@@ -127,7 +127,7 @@ int main(int argc, char **argv)
     double dt_max=0, thescatt=0, accum_time=0; 
     double  gamma_infinity=0, time_now=0, time_step=0, avg_scatt=0, avg_r=0; //gamma_infinity not used?
     double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0, ph_vzPtr=0;;// *ph_cosanglePtr=NULL ;
-    double min_r=0, max_r=0;
+    double min_r=0, max_r=0, min_theta=0, max_theta=0;
     int frame=0, scatt_frame=0, frame_scatt_cnt=0, scatt_framestart=0, framestart=0;
     struct photon *phPtr=NULL; //pointer to array of photons 
     
@@ -669,7 +669,7 @@ int main(int argc, char **argv)
                         fflush(fPtr);
                         
                         readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
+                                &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
                         }
                         else
                         {
@@ -763,13 +763,13 @@ int main(int argc, char **argv)
                         {
                             //put proper number at the end of the flash file
                             modifyFlashName(flash_file, flash_prefix, scatt_frame, dim_switch);
-                            phMinMax(phPtr, num_ph, &min_r, &max_r);
+                            phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                             readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
+                                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr);
                         }
                         else
                         {
-                            phMinMax(phPtr, num_ph, &min_r, &max_r);
+                            phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                             //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
                             readHydro2D(FILEPATH, scatt_frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                         &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
@@ -778,7 +778,7 @@ int main(int argc, char **argv)
                     }
                     else
                     {
-                        phMinMax(phPtr, num_ph, &min_r, &max_r);
+                        phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                         read_hydro(FILEPATH, scatt_frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
                                    &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fps_modified, fPtr);
                     }

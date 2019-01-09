@@ -551,7 +551,7 @@ void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, d
 }
 
 void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
- double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, FILE *fPtr)
+ double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr)
 {
     //function to read in data from FLASH file
     hid_t  file,dset, space;
@@ -561,13 +561,15 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     double *velx_unprc=NULL, *vely_unprc=NULL, *dens_unprc=NULL, *pres_unprc=NULL, *x_unprc=NULL, *y_unprc=NULL, *r_unprc=NULL, *szx_unprc=NULL, *szy_unprc=NULL;
     int  i,j,count,x1_count, y1_count, r_count, **node_buffer=NULL, num_nodes=0, elem_factor=0;
     double x1[8]={-7.0/16,-5.0/16,-3.0/16,-1.0/16,1.0/16,3.0/16,5.0/16,7.0/16};
-    double ph_rmin=0, ph_rmax=0;
-    
+    double ph_rmin=0, ph_rmax=0, ph_thetamin=0, ph_thetamax=0, r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
+
 
     if (ph_inj_switch==0)
     {
         ph_rmin=min_r;
         ph_rmax=max_r;
+        ph_thetamin=min_theta-2*0.017453292519943295; //min_theta - 2*Pi/180 (2 degrees)
+        ph_thetamax=max_theta+2*0.017453292519943295; //max_theta + 2*Pi/180 (2 degrees)
     }
     
     file = H5Fopen (flash_file, H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -765,7 +767,13 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
             *(r_unprc+i)=pow((pow(*(x_unprc+i),2)+pow(*(y_unprc+i),2)),0.5);
             if (ph_inj_switch==0)
             {
-                if (((ph_rmin - elem_factor*C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + elem_factor*C_LIGHT/fps) ))
+                r_grid_innercorner = pow((*(x_unprc+i) - *(szx_unprc+i)/2.0) * ((*(x_unprc+i) - *(szx_unprc+i)/2.0))+(*(y_unprc+i) - *(szx_unprc+i)/2.0) * (*(y_unprc+i) - *(szx_unprc+i)/2.0),0.5);
+                r_grid_outercorner = pow((*(x_unprc+i) + *(szx_unprc+i)/2.0) * ((*(x_unprc+i) + *(szx_unprc+i)/2.0))+(*(y_unprc+i) + *(szx_unprc+i)/2.0) * (*(y_unprc+i) + *(szx_unprc+i)/2.0),0.5);
+                
+                theta_grid_innercorner = acos( (*(y_unprc+i) - *(szx_unprc+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
+                theta_grid_outercorner = acos( (*(y_unprc+i) + *(szx_unprc+i)/2.0) /r_grid_outercorner);
+
+                if (((ph_rmin - elem_factor*C_LIGHT/fps) <= r_grid_outercorner) && (r_grid_innercorner  <= (ph_rmax + elem_factor*C_LIGHT/fps) ) && (theta_grid_outercorner >= ph_thetamin) && (theta_grid_innercorner <= ph_thetamax) )
                 {
                     r_count++;
                 }
@@ -781,6 +789,9 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
         }
         //fprintf(fPtr, "r_count: %d count: %d\n", r_count, count);
     }
+    fprintf(fPtr, "Elem factor: %d Ph_rmin: %e rmax: %e Chosen FLASH min_r: %e max_r: %e min_theta: %e degrees max_theta: %e degrees\n", elem_factor, ph_rmin, ph_rmax, ph_rmin - (elem_factor*C_LIGHT/fps), ph_rmax + (elem_factor*C_LIGHT/fps), ph_thetamin*180/M_PI, ph_thetamax*180/M_PI);
+    fflush(fPtr);
+
        
     //allocate memory to hold processed data
     (*pres)=malloc (r_count * sizeof (double ));
@@ -803,7 +814,13 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     {
         if (ph_inj_switch==0)
         {
-            if (((ph_rmin - elem_factor*C_LIGHT/fps)<(*(r_unprc+i))) && (*(r_unprc+i)  < (ph_rmax + elem_factor*C_LIGHT/fps) ))
+            r_grid_innercorner = pow((*(x_unprc+i) - *(szx_unprc+i)/2.0) * ((*(x_unprc+i) - *(szx_unprc+i)/2.0))+(*(y_unprc+i) - *(szx_unprc+i)/2.0) * (*(y_unprc+i) - *(szx_unprc+i)/2.0),0.5);
+            r_grid_outercorner = pow((*(x_unprc+i) + *(szx_unprc+i)/2.0) * ((*(x_unprc+i) + *(szx_unprc+i)/2.0))+(*(y_unprc+i) + *(szx_unprc+i)/2.0) * (*(y_unprc+i) + *(szx_unprc+i)/2.0),0.5);
+            
+            theta_grid_innercorner = acos( (*(y_unprc+i) - *(szx_unprc+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
+            theta_grid_outercorner = acos( (*(y_unprc+i) + *(szx_unprc+i)/2.0) /r_grid_outercorner);
+
+            if (((ph_rmin - elem_factor*C_LIGHT/fps) <= r_grid_outercorner) && (r_grid_innercorner  <= (ph_rmax + elem_factor*C_LIGHT/fps) ) && (theta_grid_outercorner >= ph_thetamin) && (theta_grid_innercorner <= ph_thetamax))
             {
                 (*pres)[j]=*(pres_unprc+i);
                 (*velx)[j]=*(velx_unprc+i);
