@@ -191,10 +191,11 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             s2[count]= ((ph+i)->s2);
             s3[count]= ((ph+i)->s3);
             num_scatt[count]= ((ph+i)->num_scatt);
-            if ((frame==frame_inj) || ((num_ph_emit-num_ph_abs > 0) && ((ph+i)->type == 's'))) //if the frame is the same one that the photons were injected in, save the photon weights OR if there are synchrotron photons that havent been absorbed
+            if ((frame==frame_inj) || ((num_ph_emit-num_ph_abs > 0) && ((ph+i)->type == 'c'))) //if the frame is the same one that the photons were injected in, save the photon weights OR if there are synchrotron photons that havent been absorbed
             {
                 weight[weight_net_num_ph]= ((ph+i)->weight);
                 weight_net_num_ph++;
+                (ph+i)->type = 'i'; //set this to be an injected type now
             }
             count++;
         }
@@ -1460,6 +1461,9 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
         for (i=0;i<count;i++)
         {
             *(r_unprc+i)=pow((*(x_unprc+i))*(*(x_unprc+i))+(*(y_unprc+i))*(*(y_unprc+i)),0.5);
+            r_grid_inneredge = pow((*(x_unprc+i) - *(szx_unprc+i)/2.0) * ((*(x_unprc+i) - *(szx_unprc+i)/2.0))+(*(y_unprc+i) - *(szx_unprc+i)/2.0) * (*(y_unprc+i) - *(szx_unprc+i)/2.0),0.5);
+            r_grid_outeredge = pow((*(x_unprc+i) + *(szx_unprc+i)/2.0) * ((*(x_unprc+i) + *(szx_unprc+i)/2.0))+(*(y_unprc+i) + *(szx_unprc+i)/2.0) * (*(y_unprc+i) + *(szx_unprc+i)/2.0),0.5);
+            
             if (ph_inj_switch==0)
             {
                 r_grid_innercorner = pow((*(x_unprc+i) - *(szx_unprc+i)/2.0) * ((*(x_unprc+i) - *(szx_unprc+i)/2.0))+(*(y_unprc+i) - *(szx_unprc+i)/2.0) * (*(y_unprc+i) - *(szx_unprc+i)/2.0),0.5);
@@ -2037,6 +2041,7 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
     if (is_in_block==0)
     {
         fprintf(fPtr, "Couldn't find a block that the photon is in\nx: %e y:%e\n", ph_x, ph_y);
+        fflush(fPtr);
         within_block_index=-1;
     }
     
@@ -2158,7 +2163,8 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p, ph_p, fluid_beta) private(i) shared(min_mfp ) reduction(+:num_photons_find_new_element)
     for (i=0;i<num_ph; i++)
     {
-        //printf("%d, %d,%e\n", i, ((ph+i)->nearest_block_index), ((ph+i)->weight));
+        fprintf(fPtr, "%d, %d,%e\n", i, ((ph+i)->nearest_block_index), ((ph+i)->weight));
+        fflush(fPtr);
         
         if (find_nearest_block_switch==0)
         {

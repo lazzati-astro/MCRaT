@@ -243,6 +243,9 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         
         fprintf(fPtr, "Block cnt %d\n", block_cnt);
         fflush(fPtr);
+        
+        //min_photons=block_cnt;//do this so we have at least one synch photon in each block that meets the radius requiements
+        
         //allocate memory to record density of photons for each block
         ph_dens=malloc(block_cnt * sizeof(int));
         
@@ -736,10 +739,10 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, double eps
             else
             {
                 //if the phootn isnt going to be absorbed, see if its a 'c' photon thats survived and change it to an injected type
-                if (((*ph_orig)[i].type == 'c') )
-                {
-                    (*ph_orig)[i].type = 'i';
-                }
+                //if (((*ph_orig)[i].type == 'c') )
+                //{
+                //    (*ph_orig)[i].type = 'i';
+                //} DONT DO THIS YET SO WE KNOW WHICH ONES NEED TO BE SAVED IN printPhotons function
                 
                 //replace the potantial null photon with this photon's data
                 (*ph_orig)[count].p0=(*ph_orig)[i].p0;
