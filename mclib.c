@@ -2163,8 +2163,8 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p, ph_p, fluid_beta) private(i) shared(min_mfp ) reduction(+:num_photons_find_new_element)
     for (i=0;i<num_ph; i++)
     {
-        fprintf(fPtr, "%d, %d,%e\n", i, ((ph+i)->nearest_block_index), ((ph+i)->weight));
-        fflush(fPtr);
+        //fprintf(fPtr, "%d, %d,%e\n", i, ((ph+i)->nearest_block_index), ((ph+i)->weight));
+        //fflush(fPtr);
         
         if (find_nearest_block_switch==0)
         {
@@ -2376,11 +2376,11 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 //mfp=(-1)*log(rnd_tracker)*(M_P/((n_dens_tmp))/(THOM_X_SECT)); ///(1.0-beta*((n_cosangle)))) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths DO EVERYTHING IN COMOV FRAME NOW
                 mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ;
                 
-                if (mfp/C_LIGHT < 1e-100)
-                {
-                    fprintf("Photon %d has a mfp of %d\n", i, mfp);
-                    exit(0);
-                }
+                //if (mfp/C_LIGHT < 1e-100)
+                //{
+                //    fprintf("Photon %d has a mfp of %d\n", i, mfp);
+                //    exit(0);
+                //}
                 
             }
             else
