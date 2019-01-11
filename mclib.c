@@ -231,6 +231,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
         if (status_group == 0)
         {   
             fprintf (fPtr, "The group exists.\n");
+            //now try to see if there's a weight data set for this group
         }
         else 
         {
@@ -730,90 +731,118 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
         status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, mspace, fspace,
                             H5P_DEFAULT, num_scatt);
         
+        //see if the weights group exists, if it does then we can extend it, otherwise we need to create it and write the new values to it
+        snprintf(group_weight,sizeof(group_weight),"Weight",i );
+        status = H5Eset_auto(NULL, NULL, NULL);
+        status_weight = H5Gget_objinfo (group_id, "Weight", 0, NULL);
+        status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
         
-        if ((frame==frame_inj) || (num_ph_emit-num_ph_abs > 0))
+        fprintf(fPtr,"Status of /frame/Weight %d\n", status_weight);
+        
+        if (((frame==frame_inj) || (num_ph_emit-num_ph_abs > 0)) )
         {
-            status = H5Sclose (dspace);
-            status = H5Sclose (mspace);
-            status = H5Sclose (fspace);
-        
-            dset_weight = H5Dopen (file, "Weight", H5P_DEFAULT); //open dataset
-    
-            //get dimensions of array and save it
-            dspace = H5Dget_space (dset_weight);
-    
-            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
-        
-            //extend the dataset
-            size[0] = dims_weight[0]+ dims_old[0];
-            status = H5Dset_extent (dset_weight, size);
-        
-            /* Select a hyperslab in extended portion of dataset  */
-            fspace = H5Dget_space (dset_weight);
-            offset[0] = dims_old[0];
-            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
-                                  dims_weight, NULL);
-                                  
-            /* Define memory space */
-            mspace = H5Screate_simple (rank, dims_weight, NULL);
-        
-            /* Write the data to the extended portion of dataset  */
-            status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, mspace, fspace,
-                            H5P_DEFAULT, weight);
-                            
-            //will have to create the weight dataset for the new set of phtons that have been injected, although it may already be created since emitting photons now
-            //see if the group exists
-            status = H5Eset_auto(NULL, NULL, NULL);
-            status_weight_2 = H5Gget_objinfo (group_id, "/Weight", 0, NULL);
-            status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
             
-            if (status_weight_2 < 0)
-            {
-                //the dataset doesnt exist
-                 /* Modify dataset creation properties, i.e. enable chunking  */
-                prop = H5Pcreate (H5P_DATASET_CREATE);
-                status = H5Pset_chunk (prop, rank, dims);
+                status = H5Sclose (dspace);
+                status = H5Sclose (mspace);
+                status = H5Sclose (fspace);
+            
+                dset_weight = H5Dopen (file, "Weight", H5P_DEFAULT); //open dataset
         
-                /* Create the data space with unlimited dimensions. */
-                dspace = H5Screate_simple (rank, dims, maxdims);
-                
-                dset_weight_2 = H5Dcreate2 (group_id, "Weight", H5T_NATIVE_DOUBLE, dspace,
-                                H5P_DEFAULT, prop, H5P_DEFAULT); //save the new injected photons' weights
-                
-                status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-                                H5P_DEFAULT, weight);
-                
-                status = H5Pclose (prop);
-            }
-            else
-            {
-                //it exists and need to modify it
-                dset_weight_2 = H5Dopen (group_id, "Weight", H5P_DEFAULT); //open dataset
-                
                 //get dimensions of array and save it
-                dspace = H5Dget_space (dset_weight_2);
-                
+                dspace = H5Dget_space (dset_weight);
+        
                 status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
-                
+            
                 //extend the dataset
                 size[0] = dims_weight[0]+ dims_old[0];
-                status = H5Dset_extent (dset_weight_2, size);
-                
+                status = H5Dset_extent (dset_weight, size);
+            
                 /* Select a hyperslab in extended portion of dataset  */
-                fspace = H5Dget_space (dset_weight_2);
+                fspace = H5Dget_space (dset_weight);
                 offset[0] = dims_old[0];
                 status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
-                                              dims_weight, NULL);
+                                      dims_weight, NULL);
                 
                 /* Define memory space */
                 mspace = H5Screate_simple (rank, dims_weight, NULL);
-                
-                /* Write the data to the extended portion of dataset  */
-                status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, mspace, fspace,
-                                   H5P_DEFAULT, weight);
-            }
             
+                /* Write the data to the extended portion of dataset  */
+                status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, mspace, fspace,
+                                H5P_DEFAULT, weight);
+            if (status_weight >= 0)
+            {
+                //will have to create the weight dataset for the new set of phtons that have been injected, although it may already be created since emitting photons now
+                //see if the group exists
+                status = H5Eset_auto(NULL, NULL, NULL);
+                status_weight_2 = H5Gget_objinfo (group_id, "/Weight", 0, NULL);
+                status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                
+                if (status_weight_2 < 0)
+                {
+                    //the dataset doesnt exist
+                     /* Modify dataset creation properties, i.e. enable chunking  */
+                    prop = H5Pcreate (H5P_DATASET_CREATE);
+                    status = H5Pset_chunk (prop, rank, dims);
+            
+                    /* Create the data space with unlimited dimensions. */
+                    dspace = H5Screate_simple (rank, dims, maxdims);
+                    
+                    dset_weight_2 = H5Dcreate2 (group_id, "Weight", H5T_NATIVE_DOUBLE, dspace,
+                                    H5P_DEFAULT, prop, H5P_DEFAULT); //save the new injected photons' weights
+                    
+                    status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                                    H5P_DEFAULT, weight);
+                    
+                    status = H5Pclose (prop);
+                }
+                else
+                {
+                    //it exists and need to modify it
+                    dset_weight_2 = H5Dopen (group_id, "Weight", H5P_DEFAULT); //open dataset
+                    
+                    //get dimensions of array and save it
+                    dspace = H5Dget_space (dset_weight_2);
+                    
+                    status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+                    
+                    //extend the dataset
+                    size[0] = dims_weight[0]+ dims_old[0];
+                    status = H5Dset_extent (dset_weight_2, size);
+                    
+                    /* Select a hyperslab in extended portion of dataset  */
+                    fspace = H5Dget_space (dset_weight_2);
+                    offset[0] = dims_old[0];
+                    status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                                  dims_weight, NULL);
+                    
+                    /* Define memory space */
+                    mspace = H5Screate_simple (rank, dims_weight, NULL);
+                    
+                    /* Write the data to the extended portion of dataset  */
+                    status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, mspace, fspace,
+                                       H5P_DEFAULT, weight);
+                }
+            }
+            else
+            {
+                fprintf(fPtr, "The frame exists in the hdf5 file but the weight dataset for the frame doesnt exist, therefore creating it.\n");
+                fflush(fPtr);
+                
+                prop_weight= H5Pcreate (H5P_DATASET_CREATE);
+                status = H5Pset_chunk (prop_weight, rank, dims_weight);
+                
+                dspace_weight=H5Screate_simple (rank, dims_weight, maxdims);
+                
+                dset_weight_2 = H5Dcreate2 (group_id, "Weight", H5T_NATIVE_DOUBLE, dspace_weight,
+                                            H5P_DEFAULT, prop_weight, H5P_DEFAULT);
+                
+                status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                                   H5P_DEFAULT, weight);
+                
+                status = H5Pclose (prop_weight);
+            }
         }
+        
                         
         
         status = H5Sclose (dspace);
@@ -1243,7 +1272,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     double *velx_unprc=NULL, *vely_unprc=NULL, *dens_unprc=NULL, *pres_unprc=NULL, *x_unprc=NULL, *y_unprc=NULL, *r_unprc=NULL, *szx_unprc=NULL, *szy_unprc=NULL;
     int  i,j,count,x1_count, y1_count, r_count, **node_buffer=NULL, num_nodes=0, elem_factor=0;
     double x1[8]={-7.0/16,-5.0/16,-3.0/16,-1.0/16,1.0/16,3.0/16,5.0/16,7.0/16};
-    double ph_rmin=0, ph_rmax=0, ph_thetamin=0, ph_thetamax=0, r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
+    double ph_rmin=0, ph_rmax=0, ph_thetamin=0, ph_thetamax=0, r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0, track_min_r=DBL_MAX, track_max_r=0;
     int num_thread=omp_get_num_threads();
     
     
@@ -1452,7 +1481,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
 
     //fill in radius array and find in how many places r > injection radius
 //have single thread execute this while loop and then have inner loop be parallel
-    elem_factor=1;
+    elem_factor=0;
     r_count=0;
     while (r_count==0)
     {
@@ -1536,6 +1565,16 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
                 (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
                 (*temp)[j]=pow(3*(*(pres_unprc+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
                 j++;
+                
+                if (*(r_unprc+i)<track_min_r)
+                {
+                    track_min_r=*(r_unprc+i);
+                }
+                
+                if (*(r_unprc+i)>track_max_r)
+                {
+                    track_max_r=*(r_unprc+i);
+                }
             }
         }
         else
@@ -1560,8 +1599,8 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
         }
     }
     
-    //fprintf(fPtr, "number: %d\n", r_count);
-    
+    fprintf(fPtr, "Actual Min and Max Flash grid radii are: %e %e\n", track_min_r, track_max_r);
+    fflush(fPtr);
 
     *number=r_count;
 

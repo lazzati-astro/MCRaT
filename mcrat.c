@@ -853,7 +853,7 @@ int main(int argc, char **argv)
                         fprintf(fPtr, "Emitting Synchrotron Photons in frame %d\n", scatt_frame);
                         num_ph_emit=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, 1, rng, RIKEN_SWITCH, 0, 0, fPtr);
                         
-                        if (scatt_frame==202)
+                        if (scatt_frame==203)
                         {
                             //exit(0);
                         }
@@ -949,6 +949,11 @@ int main(int argc, char **argv)
 
                             time_step=photonEvent( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );
                             time_now+=time_step;
+                            
+                            //if ((scatt_frame==203) && (frame==201))
+                            //{
+                            //    ph_scatt_index=90;
+                            //}
                             
                             //see if the scattered phton was a seed photon, if so replenish the seed photon
                             if ((phPtr+ph_scatt_index)->type == 's')
