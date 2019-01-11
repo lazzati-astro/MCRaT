@@ -1565,7 +1565,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
                 (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
                 (*temp)[j]=pow(3*(*(pres_unprc+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
                 j++;
-                
+                /*
                 if (*(r_unprc+i)<track_min_r)
                 {
                     track_min_r=*(r_unprc+i);
@@ -1575,6 +1575,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
                 {
                     track_max_r=*(r_unprc+i);
                 }
+                 */
             }
         }
         else
@@ -1599,8 +1600,8 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
         }
     }
     
-    fprintf(fPtr, "Actual Min and Max Flash grid radii are: %e %e\n", track_min_r, track_max_r);
-    fflush(fPtr);
+    //fprintf(fPtr, "Actual Min and Max Flash grid radii are: %e %e\n", track_min_r, track_max_r);
+    //fflush(fPtr);
 
     *number=r_count;
 
