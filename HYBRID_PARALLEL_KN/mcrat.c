@@ -108,7 +108,7 @@ int main(int argc, char **argv)
     int increment_inj=1, increment_scatt=1; //increments for injection loop and scattering loop, outer and inner loops respectively, the increment can change for RIKEN 3D hydro files
     
     double inj_radius;
-    int frm2;
+    int frm2,save_chkpt_success=0;
     char mc_filename[200]="";
     char mc_filename_2[200]="";
     char mc_operation[200]="";
@@ -858,8 +858,6 @@ int main(int argc, char **argv)
                     fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scattering for a photon is: %d\n", max_scatt, min_scatt);
                     fprintf(fPtr,"The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
                     fflush(fPtr);
-                
-                    printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, angle_id, fPtr);
                     
                     fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Making checkpoint file\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     fflush(fPtr);
@@ -867,8 +865,20 @@ int main(int argc, char **argv)
                     fprintf(fPtr, " mc_dir: %s\nframe %d\nfrm2: %d\nscatt_frame: %d\n num_photon: %d\ntime_now: %e\nlast_frame: %d\n", mc_dir, frame, frm2, scatt_frame, num_ph, time_now, last_frm  );
                     fflush(fPtr);
 
-                    saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id, old_num_angle_procs);
+                    save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id, old_num_angle_procs);
                     
+                    if (save_chkpt_success==0)
+                    {
+                        //if we saved the checkpoint successfully also save the photons to the hdf5 file, else there may be something wrong with the file system
+                        printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, angle_id, fPtr);
+                    }
+                    else
+                    {
+                        fprintf(fPtr, "There is an issue with opening and saving the chkpt file therefore MCRaT is not saving data to the checkpoint or mc_proc files to prevent corruption of those data.\n");
+                        printf("There is an issue with opening and saving the chkpt file therefore MCRaT is not saving data to the checkpoint or mc_proc files to prevent corruption of those data.\n");
+                        fflush(fPtr);
+                        exit(1);
+                    }
                     //exit(0);
                     
                      if (dim_switch==1)
@@ -894,7 +904,7 @@ int main(int argc, char **argv)
                 free(sorted_indexes);
                 sorted_indexes=NULL;
             } 
-            saveCheckpoint(mc_dir, frame, frm2, scatt_frame, 0, time_now, phPtr, last_frm, angle_id, old_num_angle_procs); //this is for processes using the old code that didnt restart efficiently
+            save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, 0, time_now, phPtr, last_frm, angle_id, old_num_angle_procs); //this is for processes using the old code that didnt restart efficiently
             fprintf(fPtr, "Process %d has completed the MC calculation.\n", angle_id);
             fflush(fPtr);
             

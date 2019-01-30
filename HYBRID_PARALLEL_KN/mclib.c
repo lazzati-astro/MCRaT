@@ -616,55 +616,62 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
 
 }
 
-void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph, int last_frame, int angle_rank,int angle_size )
+int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph, int last_frame, int angle_rank,int angle_size )
 {
     //function to save data necessary to restart simulation if it ends
-    //need to save all photon data 
+    //need to save all photon data
     FILE *fPtr=NULL;
     char checkptfile[200]="";
     char command[200]="";
     char restart;
-    int i=0;
+    int i=0, success=0;;
     
-    //for openMPI have some type of problem with saving the checkpoint file for the  frame in which photons have been injected and scattered in, can try to delete old mc_checkpoint file 
-    //and creating a new one in that case?
     
     snprintf(checkptfile,sizeof(checkptfile),"%s%s%d%s",dir,"mc_chkpt_", angle_rank,".dat" );
- 
+    
     if ((scatt_frame!=last_frame) && (scatt_frame != frame))
     {
+        //quick way to preserve old chkpt file if the new one overwrites the old one and corrupts it for some reason
+        snprintf(command, sizeof(command), "%s%s %s_old","exec cp ",checkptfile, checkptfile);
+        system(command);
         
         fPtr=fopen(checkptfile, "wb");
         //printf("%s\n", checkptfile);
-    
+        
         if (fPtr==NULL)
         {
             printf("Cannot open %s to save checkpoint\n", checkptfile);
+            success=1;
         }
-        fwrite(&angle_size, sizeof(int), 1, fPtr);
-        restart='c';
-        fwrite(&restart, sizeof(char), 1, fPtr);
-        //printf("Rank: %d wrote restart %c\n", angle_rank, restart);
-        fflush(stdout);
-        fwrite(&frame, sizeof(int), 1, fPtr);
-        //printf("Rank: %d wrote frame\n",  angle_rank);
-        fflush(stdout);
-        fwrite(&frame2, sizeof(int), 1, fPtr);
-        //printf("Rank: %d wrote frame2\n",  angle_rank);
-        fflush(stdout);
-        fwrite(&scatt_frame, sizeof(int), 1, fPtr);
-        //printf("Rank: %d wrote scatt_frame\n",  angle_rank);
-        fflush(stdout);
-        fwrite(&time_now, sizeof(double), 1, fPtr);
-        //printf("Rank: %d wrote time_now\n",  angle_rank);
-        fflush(stdout);
-        fwrite(&ph_num, sizeof(int), 1, fPtr);
-        //printf("Rank: %d wrote ph_num\n",  angle_rank);
-        fflush(stdout);
-        for(i=0;i<ph_num;i++)
+        else
         {
-            fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
-		//fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
+            //can call printPhotons here or return an int signifying if the checkpoint save worked
+            fwrite(&angle_size, sizeof(int), 1, fPtr);
+            restart='c';
+            fwrite(&restart, sizeof(char), 1, fPtr);
+            //printf("Rank: %d wrote restart %c\n", angle_rank, restart);
+            fflush(stdout);
+            fwrite(&frame, sizeof(int), 1, fPtr);
+            //printf("Rank: %d wrote frame\n",  angle_rank);
+            fflush(stdout);
+            fwrite(&frame2, sizeof(int), 1, fPtr);
+            //printf("Rank: %d wrote frame2\n",  angle_rank);
+            fflush(stdout);
+            fwrite(&scatt_frame, sizeof(int), 1, fPtr);
+            //printf("Rank: %d wrote scatt_frame\n",  angle_rank);
+            fflush(stdout);
+            fwrite(&time_now, sizeof(double), 1, fPtr);
+            //printf("Rank: %d wrote time_now\n",  angle_rank);
+            fflush(stdout);
+            fwrite(&ph_num, sizeof(int), 1, fPtr);
+            //printf("Rank: %d wrote ph_num\n",  angle_rank);
+            fflush(stdout);
+            for(i=0;i<ph_num;i++)
+            {
+                fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
+                //fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
+            }
+            success=0;
         }
         //printf("Rank: %d wrote photons\n",  angle_rank);
         fflush(stdout);
@@ -677,59 +684,73 @@ void saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int p
         fPtr=fopen(checkptfile, "wb");
         //printf("%s\n", checkptfile);
         fflush(stdout);
-    
+        
         if (fPtr==NULL)
         {
             printf("Cannot open %s to save checkpoint\n", checkptfile);
+            success=1;
         }
-        fwrite(&angle_size, sizeof(int), 1, fPtr);
-        restart='c';
-        fwrite(&restart, sizeof(char), 1, fPtr);
-        //printf("Rank: %d wrote restart %c\n", angle_rank, restart);
-        fflush(stdout);
-        fwrite(&frame, sizeof(int), 1, fPtr);
-        //printf("Rank: %d wrote frame\n",  angle_rank);
-        fflush(stdout);
-        fwrite(&frame2, sizeof(int), 1, fPtr);
-        //printf("Rank: %d wrote frame2\n",  angle_rank);
-        fflush(stdout);
-        fwrite(&scatt_frame, sizeof(int), 1, fPtr);
-        //printf("Rank: %d wrote scatt_frame\n",  angle_rank);
-        fflush(stdout);
-        fwrite(&time_now, sizeof(double), 1, fPtr);
-        //printf("Rank: %d wrote time_now\n",  angle_rank);
-        fflush(stdout);
-        fwrite(&ph_num, sizeof(int), 1, fPtr);
-        //printf("Rank: %d wrote ph_num\n",  angle_rank);
-        fflush(stdout);
-        for(i=0;i<ph_num;i++)
+        else
         {
-            //fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
-            fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
+            fwrite(&angle_size, sizeof(int), 1, fPtr);
+            restart='c';
+            fwrite(&restart, sizeof(char), 1, fPtr);
+            //printf("Rank: %d wrote restart %c\n", angle_rank, restart);
+            fflush(stdout);
+            fwrite(&frame, sizeof(int), 1, fPtr);
+            //printf("Rank: %d wrote frame\n",  angle_rank);
+            fflush(stdout);
+            fwrite(&frame2, sizeof(int), 1, fPtr);
+            //printf("Rank: %d wrote frame2\n",  angle_rank);
+            fflush(stdout);
+            fwrite(&scatt_frame, sizeof(int), 1, fPtr);
+            //printf("Rank: %d wrote scatt_frame\n",  angle_rank);
+            fflush(stdout);
+            fwrite(&time_now, sizeof(double), 1, fPtr);
+            //printf("Rank: %d wrote time_now\n",  angle_rank);
+            fflush(stdout);
+            fwrite(&ph_num, sizeof(int), 1, fPtr);
+            //printf("Rank: %d wrote ph_num\n",  angle_rank);
+            fflush(stdout);
+            for(i=0;i<ph_num;i++)
+            {
+                //fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
+                fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
+            }
+            //printf("Rank: %d wrote photons\n",  angle_rank);
+            success=0;
         }
-        //printf("Rank: %d wrote photons\n",  angle_rank);
         fflush(stdout);
         
     }
     else
     {
+        //quick way to preserve old chkpt file if the new one overwrites the old one and corrupts it for some reason
+        snprintf(command, sizeof(command), "%s%s %s_old","exec cp ",checkptfile, checkptfile);
+        system(command);
+        
         fPtr=fopen(checkptfile, "wb");
         //printf("%s\n", checkptfile);
-    
+        
         if (fPtr==NULL)
         {
             printf("Cannot open %s to save checkpoint\n", checkptfile);
+            success=1;
         }
-        
-        //just finished last iteration of scatt_frame
-        fwrite(&angle_size, sizeof(int), 1, fPtr);
-        restart='r';
-        fwrite(&restart, sizeof(char), 1, fPtr);
-        fwrite(&frame, sizeof(int), 1, fPtr);
-        fwrite(&frame2, sizeof(int), 1, fPtr);
+        else
+        {
+            //just finished last iteration of scatt_frame
+            fwrite(&angle_size, sizeof(int), 1, fPtr);
+            restart='r';
+            fwrite(&restart, sizeof(char), 1, fPtr);
+            fwrite(&frame, sizeof(int), 1, fPtr);
+            fwrite(&frame2, sizeof(int), 1, fPtr);
+            success=0;
+        }
     }
     fclose(fPtr);
     
+    return success;
 }
 
 void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size , int dim_switch, int riken_switch )
