@@ -819,3 +819,11 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, double eps
     
     return 0;
 }
+/*
+int rebinSynchCompPhotons()
+{
+    
+    
+    return 0;
+}
+*/
