@@ -846,7 +846,7 @@ int main(int argc, char **argv)
                     //emit synchrotron photons here
                     num_ph_emit=0;
 
-                    if (scatt_frame != scatt_framestart)
+                    if (scatt_frame != scatt_framestart) //remember to revert back to !=
                     {
                         //printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0);
                         
@@ -935,7 +935,7 @@ int main(int argc, char **argv)
                                 fflush(fPtr);
                                 
                                 scatt_synch_num_ph++;//keep track of the number of synch photons that have scattered for later in checking of we need to rebin them
-                                
+                                fprintf(fPtr,"scatt_synch_num_ph Number: %d\n", scatt_synch_num_ph);
                                 //exit(0);
                             }
                             
@@ -951,7 +951,8 @@ int main(int argc, char **argv)
                                 if (scatt_synch_num_ph>max_photons*0.1/2)
                                 {
                                     //if the number of synch photons that have been scattered is too high rebin them
-                                    //rebinSynchCompPhotons();
+                                    rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &scatt_synch_num_ph, max_photons, rng, fPtr);
+                                    exit(0);
                                 }
                                 
                             }

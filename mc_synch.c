@@ -25,6 +25,9 @@ This file is for the different functions for emitting and absorbing synchrotron 
 #include "mclib.h"
 #include <omp.h>
 #include "mpi.h"
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_histogram.h>
+#include <gsl/gsl_histogram2d.h>
 
 //#DEFINE CRITICAL_B FINE_STRUCT*sqrt(M_EL*C_LIGHT*C_LIGHT/pow(R_EL, 3))
 
@@ -819,11 +822,104 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, double eps
     
     return 0;
 }
-/*
-int rebinSynchCompPhotons()
+
+int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph, int *scatt_synch_num_ph, int max_photons, gsl_rng * rand, FILE *fPtr)
 {
+    int i=0, count=0, num_thread=omp_get_num_threads();
+    int synch_comp_photon_count=0, num_bins=(0.1/2)*max_photons; //some factor of the max number of photons that is specified in the mc.par file
+    double p0_min=DBL_MAX, p0_max=0, log_p0_min=0, log_p0_max=0;//look at p0 of photons not by frequency since its just nu=p0*C_LIGHT/PL_CONST
+    double rand1=0, rand2=0, phi=0, theta=0;
+    double min_range=0, max_range=0;
+    int *synch_comp_photon_idx=NULL;
+    struct photon *rebin_ph=malloc(num_bins* sizeof (struct photon ));
+    gsl_histogram * h = gsl_histogram_alloc (num_bins);
+    gsl_histogram2d * h_phi_theta = gsl_histogram2d_alloc (360, 180); //x is for phi goes from 0 to 2pi and y is for theta, goes from 0 to pi
+    gsl_histogram2d_set_ranges_uniform (h_phi_theta, 0.0, 360.0,0.0, 180.0); //set the ranges to be 1 degree wide
+    gsl_histogram2d_pdf * pdf_phi_theta = gsl_histogram2d_pdf_alloc (h_phi_theta->nx, h_phi_theta->ny);
+    
+    //calc min and max p0 and set the bins to be even within this interval
+    //save the frequencies of photons to a
+    //#pragma omp parallel for num_threads(num_thread) reduction(min:nu_min) reduction(max:nu_max)
+    synch_comp_photon_idx=malloc((*scatt_synch_num_ph)*sizeof(int));
+    
+    count=0;
+    for (i=0;i<*num_ph;i++)
+    {
+        if (((*ph_orig)[i].weight != 0) && ((*ph_orig)[i].type == 'c'))
+        {
+            //see if the photon's nu is larger than nu_max or smaller than nu_min
+            if ((*ph_orig)[i].p0< p0_min)
+            {
+                p0_min= (*ph_orig)[i].p0;
+            }
+            
+            if ((*ph_orig)[i].p0> p0_max)
+            {
+                p0_max= (*ph_orig)[i].p0;
+            }
+            
+            // also save the index of these photons because they wil become null later on
+            *(synch_comp_photon_idx+count)=i;
+            count++;
+        }
+    }
+    
+    gsl_histogram_set_ranges_uniform (h, log10(p0_min), log10(p0_max));
+    
+    //populate histogram for photons with nu that falss within the proper histogram bin
+    for (i=0;i<*num_ph;i++)
+    {
+        if (((*ph_orig)[i].weight != 0) && ((*ph_orig)[i].type == 'c'))
+        {
+            //gsl_histogram_accumulate (h, log10((*ph_orig)[i].p0), (*ph_orig)[i].weight);
+            gsl_histogram_increment (h, log10((*ph_orig)[i].p0));
+        }
+    }
+    
+    //for the photons that fall within a given nu bin, histogram thier theta and phi and choose a random number to sample from the distribution to get the new photons' 4 momentum
+    for (count=0;count<num_bins;count++)
+    {
+        //loop over the number of photon bins that we have
+        for (i=0;i<*num_ph;i++)
+        {
+            gsl_histogram_get_range(h, count, &min_range, &max_range);
+            //if the photon nu falls in the count bin of the nu histogram then add it to the phi_theta 2d hist
+            if ((log10((*ph_orig)[i].p0)< max_range  ) && (log10((*ph_orig)[i].p0)>min_range))
+            {
+                gsl_histogram2d_increment(h_phi_theta, fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0), (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0)) );
+            }
+            
+        }
+        
+        //initiate pdf as the histogram of phi and theta
+        gsl_histogram2d_pdf_init (pdf_phi_theta, h_phi_theta);
+        
+        //get two random values
+        rand1=gsl_rng_uniform(rand);
+        rand2=gsl_rng_uniform(rand);
+        
+        //choose random phi and theta value
+        gsl_histogram2d_pdf_sample (pdf_phi_theta, rand1, rand2, &phi, &theta);//phi and theta are in degrees
+        
+        gsl_histogram2d_fprintf (stdout, h_phi_theta, "%g", "%g");
+        fprintf(fPtr, "Chosen phi: %e chosen theta: %e\n\n", phi, theta );
+        //reset the histogram and the pdf
+        gsl_histogram2d_reset(pdf_phi_theta);
+        gsl_histogram_reset(h_phi_theta);
+        
+        
+    }
+    
+    //find indexes of old photons that will not become null photons
+    
+    //replace the first num_bins indexes with the new rebinned photons and replace the rest of the indexes with null values
     
     
+    gsl_histogram_fprintf (stdout, h, "%g", "%g");
+    gsl_histogram_free (h);
+    gsl_histogram2d_pdf_free (pdf_phi_theta);
+    gsl_histogram2d_free (h_phi_theta);
+ 
     return 0;
 }
-*/
+

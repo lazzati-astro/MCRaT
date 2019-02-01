@@ -37,3 +37,5 @@ double calcSynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_in
 int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,  double epsilon_b, gsl_rng *rand, int riken_switch, int inject_single_switch, int scatt_ph_index, FILE *fPtr);
 
 int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, double epsilon_b, double *temp, double *dens, FILE *fPtr);
+
+int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph, int *scatt_synch_num_ph, int max_photons, gsl_rng * rand, FILE *fPtr);
