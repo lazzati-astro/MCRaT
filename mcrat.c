@@ -846,7 +846,7 @@ int main(int argc, char **argv)
                     //emit synchrotron photons here
                     num_ph_emit=0;
 
-                    if (scatt_frame != scatt_framestart) //remember to revert back to !=
+                    if (scatt_frame == scatt_framestart) //remember to revert back to !=
                     {
                         //printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0);
                         

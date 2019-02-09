@@ -702,7 +702,7 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, double eps
                 
                 //if this is a synchrotron photons or photons that have been scattered that were once synch photons in this frame
                 printf("photon %d being absorbed\n", i);
-                if (((*ph_orig)[i].type != 'i') )
+                if (((*ph_orig)[i].type != 'i') && ((*ph_orig)[i].type != 'o') )
                 {
                     (*ph_orig)[i].weight=0;
                     (*ph_orig)[i].nearest_block_index=-1;
@@ -710,7 +710,7 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, double eps
                 }
                 else
                 {
-                    //have an injected photon or previous 'c' photon that has a nu that can be absorbed
+                    //have an injected photon or 'o' (previous 'c' photon) that has a nu that can be absorbed
                     (*ph_orig)[i].p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been absorbed, this makes it still get saves in the hdf5 files
                     (*ph_orig)[i].nearest_block_index=-1;
                     
@@ -867,6 +867,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
     gsl_histogram_set_ranges_uniform (h, log10(p0_min), log10(p0_max));
     
     //populate histogram for photons with nu that falss within the proper histogram bin
+    //may not need this loop, can just check if the photon nu falls within the bin edges and do averages etc within next loop
     for (i=0;i<*num_ph;i++)
     {
         if (((*ph_orig)[i].weight != 0) && ((*ph_orig)[i].type == 'c'))
@@ -882,13 +883,15 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
         //loop over the number of photon bins that we have
         for (i=0;i<*num_ph;i++)
         {
-            gsl_histogram_get_range(h, count, &min_range, &max_range);
-            //if the photon nu falls in the count bin of the nu histogram then add it to the phi_theta 2d hist
-            if ((log10((*ph_orig)[i].p0)< max_range  ) && (log10((*ph_orig)[i].p0)>min_range))
+            if (((*ph_orig)[i].weight != 0) && ((*ph_orig)[i].type == 'c'))
             {
-                gsl_histogram2d_increment(h_phi_theta, fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0), (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0)) );
+                gsl_histogram_get_range(h, count, &min_range, &max_range);
+                //if the photon nu falls in the count bin of the nu histogram then add it to the phi_theta 2d hist
+                if ((log10((*ph_orig)[i].p0)< max_range  ) && (log10((*ph_orig)[i].p0)>min_range))
+                {
+                    gsl_histogram2d_increment(h_phi_theta, fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0), (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0)) );
+                }
             }
-            
         }
         
         //initiate pdf as the histogram of phi and theta
@@ -899,7 +902,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
         rand2=gsl_rng_uniform(rand);
         
         //choose random phi and theta value
-        gsl_histogram2d_pdf_sample (pdf_phi_theta, rand1, rand2, &phi, &theta);//phi and theta are in degrees
+        gsl_histogram2d_pdf_sample (pdf_phi_theta, rand1, rand2, &phi, &theta);//phi and theta are in degreesneed to convert into radians later
         
         gsl_histogram2d_fprintf (stdout, h_phi_theta, "%g", "%g");
         fprintf(fPtr, "Chosen phi: %e chosen theta: %e\n\n", phi, theta );

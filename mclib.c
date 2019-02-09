@@ -195,7 +195,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             {
                 weight[weight_net_num_ph]= ((ph+i)->weight);
                 weight_net_num_ph++;
-                (ph+i)->type = 'i'; //set this to be an injected type now
+                (ph+i)->type = 'o'; //set this to be an old synchrotron scattered photon
             }
             count++;
         }
