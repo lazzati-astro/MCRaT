@@ -676,7 +676,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     
 }
 
-int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, double epsilon_b, double *temp, double *dens, FILE *fPtr)
+int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_synch_num_ph, double epsilon_b, double *temp, double *dens, FILE *fPtr)
 {
     //still need to deal with below issue
     //frame 213 where the absorption doesnt occur for all emitted photons and have some absorbed before/after unabsorbed photons, how to deal with this?
@@ -771,6 +771,12 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, double eps
                 //increment count
                 count+=1;
                 
+                if (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o') )
+                {
+                    //if the photon is a 'c' phton (scattered synch photon from the current frame) or a 'o' photon (scattered synch photon) from an old frame
+                    //count how many of these there are
+                    *scatt_synch_num_ph+=1;
+                }
                 
             }
         }

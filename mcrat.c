@@ -880,7 +880,6 @@ int main(int argc, char **argv)
                     frame_abs_cnt=0;
                     find_nearest_grid_switch=1; // set to true so the function findNearestPropertiesAndMinMFP by default finds the index of the grid block closest to each photon since we just read in a file and the prior index is invalid
                     num_photons_find_new_element=0;
-                    scatt_synch_num_ph=0;
                     while (time_now<((scatt_frame+increment_scatt)/fps))
                     {
                         //if simulation time is less than the simulation time of the next frame, keep scattering in this frame
@@ -948,7 +947,7 @@ int main(int argc, char **argv)
                                 fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                                 fflush(fPtr);
                                 
-                                if (scatt_synch_num_ph>max_photons*0.1/2)
+                                if (scatt_synch_num_ph>max_photons)
                                 {
                                     //if the number of synch photons that have been scattered is too high rebin them
                                     rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &scatt_synch_num_ph, max_photons, rng, fPtr);
@@ -974,7 +973,10 @@ int main(int argc, char **argv)
                     if (scatt_frame != scatt_framestart)
                     {
                         //make sure the photons that shou;d be absorbed should be absorbed
-                        phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, 1, tempPtr, densPtr, fPtr);
+                        phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph, 1, tempPtr, densPtr, fPtr);
+                        
+                        //also make sure that i set scatt_synch_num_ph as the number of 'c' and 'o' photons, I do this in the above function
+                        
                         //exit(0);
                     }
                     
