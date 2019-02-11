@@ -950,7 +950,7 @@ int main(int argc, char **argv)
                                 if (scatt_synch_num_ph>max_photons)
                                 {
                                     //if the number of synch photons that have been scattered is too high rebin them
-                                    rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &scatt_synch_num_ph, max_photons, rng, fPtr);
+                                    rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, rng, fPtr);
                                     exit(0);
                                 }
                                 
@@ -972,6 +972,9 @@ int main(int argc, char **argv)
                     
                     if (scatt_frame != scatt_framestart)
                     {
+                        //rebin the photons to ensure that we have a constant amount here?
+                        rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, rng, fPtr);
+                        
                         //make sure the photons that shou;d be absorbed should be absorbed
                         phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph, 1, tempPtr, densPtr, fPtr);
                         
