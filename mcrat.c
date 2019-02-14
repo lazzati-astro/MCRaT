@@ -846,7 +846,7 @@ int main(int argc, char **argv)
                     //emit synchrotron photons here
                     num_ph_emit=0;
 
-                    if (scatt_frame == scatt_framestart) //remember to revert back to !=
+                    if (scatt_frame != scatt_framestart) //remember to revert back to !=
                     {
                         //printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0);
                         
@@ -950,8 +950,9 @@ int main(int argc, char **argv)
                                 if (scatt_synch_num_ph>max_photons)
                                 {
                                     //if the number of synch photons that have been scattered is too high rebin them
-                                    rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, rng, fPtr);
-                                    exit(0);
+                                    //rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_ph_emit, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, rng, fPtr);
+                                    
+                                    //exit(0);
                                 }
                                 
                             }
@@ -970,17 +971,25 @@ int main(int argc, char **argv)
 
                     }
                     
-                    if (scatt_frame != scatt_framestart)
+                    if (scatt_frame != scatt_framestart) //rememebr to change to != also at the other place in the code
                     {
-                        //rebin the photons to ensure that we have a constant amount here?
-                        rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, rng, fPtr);
+                        if (scatt_synch_num_ph>max_photons)
+                        {
+                            //rebin the photons to ensure that we have a constant amount here
+                            fprintf(fPtr, "Num_ph: %d\n", num_ph);
+                            rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_ph_emit, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, rng, fPtr);
+                            fflush(fPtr);
+                            //exit(0);
+                        }
                         
                         //make sure the photons that shou;d be absorbed should be absorbed
                         phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph, 1, tempPtr, densPtr, fPtr);
                         
                         //also make sure that i set scatt_synch_num_ph as the number of 'c' and 'o' photons, I do this in the above function
-                        
-                        //exit(0);
+                        if (scatt_frame > scatt_framestart+1)
+                        {
+                            exit(0);
+                        }
                     }
                     
                     //get scattering statistics

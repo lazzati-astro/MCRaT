@@ -681,7 +681,7 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
     //still need to deal with below issue
     //frame 213 where the absorption doesnt occur for all emitted photons and have some absorbed before/after unabsorbed photons, how to deal with this?
     //ph 97, neg lab nu in frame 210, from -1 * c/h
-    int i=0, count=0, abs_ph_count=0, num_thread=omp_get_num_threads();
+    int i=0, count=0, abs_ph_count=0, synch_ph_count=0, num_thread=omp_get_num_threads();
     double el_dens=0, nu_c=0;
     //struct photon tmp_ph;//hold temporay photon to move its data
     
@@ -703,12 +703,17 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
                 //preset values for the the newly created spots to hold the emitted phtoons in;
                 
                 //if this is a synchrotron photons or photons that have been scattered that were once synch photons in this frame
-                printf("photon %d being absorbed\n", i);
+                fprintf(fPtr,"photon %d being absorbed\n", i);
                 if (((*ph_orig)[i].type != 'i') && ((*ph_orig)[i].type != 'o') )
                 {
                     (*ph_orig)[i].weight=0;
                     (*ph_orig)[i].nearest_block_index=-1;
-                    abs_ph_count+=1;
+                    abs_ph_count++;
+                    
+                    if ((*ph_orig)[i].type == 's')
+                    {
+                        synch_ph_count++;
+                    }
                 }
                 else
                 {
@@ -815,7 +820,8 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
         
         //fprintf(fPtr, "photon %d has lab frequency %e and weight %e with FLASH grid number %d\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST, (*ph_orig)[i].weight, (*ph_orig)[i].nearest_block_index);
     }
-    *num_abs_ph=abs_ph_count;
+    fprintf(fPtr, "In phAbsSynch func: abs_ph_count: %d synch_ph_count: %d\n", abs_ph_count, synch_ph_count);
+    *num_abs_ph=abs_ph_count; //+synch_ph_count; dont need this
     
     while (count<*num_ph)
     {
@@ -831,10 +837,10 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
     return 0;
 }
 
-int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph, int *scatt_synch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, gsl_rng * rand, FILE *fPtr)
+int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph, int *num_ph_emit, int *scatt_synch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, gsl_rng * rand, FILE *fPtr)
 {
     int i=0, j=0, count=0, count_c_ph=0, end_count=0, idx=0, num_thread=omp_get_num_threads();
-    int synch_comp_photon_count=0, num_avg=9, num_bins=(0.1)*max_photons; //some factor of the max number of photons that is specified in the mc.par file
+    int synch_comp_photon_count=0, synch_photon_count=0, num_avg=9, num_bins=(0.1)*max_photons; //some factor of the max number of photons that is specified in the mc.par file
     double avg_values[9]= { 0 }; //number of averages that'll be taken is given by num_avg in above line
     double p0_min=DBL_MAX, p0_max=0, log_p0_min=0, log_p0_max=0;//look at p0 of photons not by frequency since its just nu=p0*C_LIGHT/PL_CONST
     double rand1=0, rand2=0, phi=0, theta=0;
@@ -854,9 +860,13 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
     //#pragma omp parallel for num_threads(num_thread) reduction(min:nu_min) reduction(max:nu_max)
     synch_comp_photon_idx=malloc((*scatt_synch_num_ph)*sizeof(int));
     
+    fprintf(fPtr, "In the rebin func\n");
+    fflush(fPtr);
+    
     for (i=0;i<*num_ph;i++)
     {
-        fprintf(fPtr, "%c %e %e\n", (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0 );
+        fprintf(fPtr, "%d %c %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0 );
+        //fflush(fPtr);
     }
     
     
@@ -887,6 +897,10 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
                 //keep track of the number of 'c' photons so we can know if the array needs to be increased in size, also take num_null_ph into account in doing this
                 count_c_ph+=1;
             }
+        }
+        else if ((*ph_orig)[i].type == 's')
+        {
+            synch_photon_count++;
         }
     }
     
@@ -1194,13 +1208,14 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
             null_ph_count_1++;
         }
         
-        fprintf(fPtr, "%c %e %e %e\n", (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0 );
+        fprintf(fPtr, "%d %c %e %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0 );
         
     }
     
     
     
     *scatt_synch_num_ph=num_bins;
+    *num_ph_emit=num_bins+synch_photon_count; //include the emitted synch photons
     *num_null_ph=j;
     
     gsl_histogram_fprintf (stdout, h, "%g", "%g");

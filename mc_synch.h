@@ -38,4 +38,4 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
 
 int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_synch_num_ph, double epsilon_b, double *temp, double *dens, FILE *fPtr);
 
-int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph, int *scatt_synch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, gsl_rng * rand, FILE *fPtr);
+int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph, int *num_ph_emit, int *scatt_synch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, gsl_rng * rand, FILE *fPtr);

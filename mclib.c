@@ -195,7 +195,10 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             {
                 weight[weight_net_num_ph]= ((ph+i)->weight);
                 weight_net_num_ph++;
-                (ph+i)->type = 'o'; //set this to be an old synchrotron scattered photon
+                if ((ph+i)->type == 'c')
+                {
+                    (ph+i)->type = 'o'; //set this to be an old synchrotron scattered photon
+                }
             }
             count++;
         }
@@ -2431,7 +2434,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
          else
         {
             mfp=min_mfp;
-            fprintf(fPtr,"Photon %d In ELSE\n", i);
+            //fprintf(fPtr,"Photon %d In ELSE\n", i);
             //exit(0);
         }
         
@@ -2820,7 +2823,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
     #pragma omp parallel for num_threads(num_thread) firstprivate(old_position, new_position, divide_p0)
     for (i=0;i<num_ph;i++)
     {
-        if ((ph+i)->type != 's')
+        if (((ph+i)->type != 's') && ((ph+i)->weight != 0))
         {
             old_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 ); //uncommented checks since they were not necessary anymore
             
