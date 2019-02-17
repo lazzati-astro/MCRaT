@@ -375,10 +375,19 @@ int main(int argc, char **argv)
                     snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dirs[subdir_id],"mc_proc_", k, ".h5" );
                     //printf("Dir: %s\n",filename_k );
             
-                    //open the file
-                    status = H5Eset_auto(NULL, NULL, NULL); //turn of error printing if the file doesnt exist, if the process number doesnt exist
-                    file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
-                    status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                    if (k<*(num_procs_per_dir+subdir_id))
+                    {
+                        //we know that the process exists and the file should exist
+                        //open the file
+                        status = H5Eset_auto(NULL, NULL, NULL); //turn of error printing if the file doesnt exist, if the process number doesnt exist
+                        file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
+                        status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                    }
+                    else
+                    {
+                        //know that the process doesnt exist within that subdirectory so dont rry to open a non-existant file
+                        file=-1;
+                    }
                 
                     if (file>=0)
                     {
