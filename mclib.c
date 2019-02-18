@@ -142,7 +142,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
 }
 
 
-void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit, int num_null_ph, int frame,int frame_inj, char dir[200], int angle_rank, FILE *fPtr )
+void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit, int num_null_ph, int scatt_synch_num_ph, int frame,int frame_inj, char dir[200], int angle_rank, FILE *fPtr )
 {
     //function to save the photons' positions and 4 momentum
     
@@ -154,7 +154,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
      //if the frame does exist then read information from the prewritten data and then add new data to it as extended chunk
      
      
-    int i=0, count=0, rank=1, net_num_ph=num_ph-num_ph_abs-num_null_ph, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : num_ph_emit-num_ph_abs ; //can have more photons absorbed than emitted
+    int i=0, count=0, rank=1, net_num_ph=num_ph-num_ph_abs-num_null_ph, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : scatt_synch_num_ph ;//weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : num_ph_emit-num_ph_abs ; //can have more photons absorbed than emitted
     int num_thread=omp_get_num_threads();
     char mc_file[200]="", group[200]="", group_weight[200]="";
     double p0[net_num_ph], p1[net_num_ph], p2[net_num_ph], p3[net_num_ph] , r0[net_num_ph], r1[net_num_ph], r2[net_num_ph], num_scatt[net_num_ph], weight[weight_net_num_ph];

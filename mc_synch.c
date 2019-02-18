@@ -426,8 +426,8 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                 (*ph_orig)[i].weight=0;
                 (*ph_orig)[i].nearest_block_index=-1;
                 *(null_ph_indexes+j)=i; //save this information so we can use the same syntax for both cases in saving the emitted photon data
-                fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
-                fflush(fPtr);
+                //fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
+                //fflush(fPtr);
                 j++;
             }
             /*
@@ -478,8 +478,8 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                 // if the weight is 0, this is a photons that has been absorbed and is now null
                 *(null_ph_indexes+j)=i;
                 j++;
-                fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
-                fflush(fPtr);
+                //fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
+                //fflush(fPtr);
                 
                 if (j == null_ph_count)
                 {
@@ -685,6 +685,8 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
     double el_dens=0, nu_c=0;
     //struct photon tmp_ph;//hold temporay photon to move its data
     
+    fprintf(fPtr, "In phAbsSynch func begin: abs_ph_count: %d synch_ph_count: %d scatt_synch_num_ph: %d\n", abs_ph_count, synch_ph_count, *scatt_synch_num_ph);
+    
     *scatt_synch_num_ph=0;//set thsi equal to 0, to recount in this function and get prepared for the next frame
     
     #pragma omp parallel for num_threads(num_thread) firstprivate(el_dens, nu_c) reduction(+:abs_ph_count)
@@ -820,7 +822,7 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
         
         //fprintf(fPtr, "photon %d has lab frequency %e and weight %e with FLASH grid number %d\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST, (*ph_orig)[i].weight, (*ph_orig)[i].nearest_block_index);
     }
-    fprintf(fPtr, "In phAbsSynch func: abs_ph_count: %d synch_ph_count: %d\n", abs_ph_count, synch_ph_count);
+    fprintf(fPtr, "In phAbsSynch func: abs_ph_count: %d synch_ph_count: %d scatt_synch_num_ph: %d\n", abs_ph_count, synch_ph_count, *scatt_synch_num_ph);
     *num_abs_ph=abs_ph_count; //+synch_ph_count; dont need this
     
     while (count<*num_ph)
@@ -847,6 +849,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
     double min_range=0, max_range=0;
     int *synch_comp_photon_idx=NULL;
     struct photon *rebin_ph=malloc(num_bins* sizeof (struct photon ));
+    int num_null_rebin_ph=0;
     struct photon *tmp=NULL;
     double *tmp_double=NULL;
     int *tmp_int=NULL;
@@ -873,11 +876,12 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
     count=0;
     for (i=0;i<*num_ph;i++)
     {
-        if (((*ph_orig)[i].weight != 0) && ((*ph_orig)[i].type == 'c'))
+        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0))
         {
             //see if the photon's nu is larger than nu_max or smaller than nu_min
-            if ((*ph_orig)[i].p0< p0_min)
+            if (((*ph_orig)[i].p0< p0_min))
             {
+                //dont include any absorbed 'o' photons that have negative P0 values
                 p0_min= (*ph_orig)[i].p0;
                 fprintf(fPtr, "new p0 min %e\n", (p0_min) );
             }
@@ -890,6 +894,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
             
             // also save the index of these photons because they wil become null later on
             *(synch_comp_photon_idx+count)=i;
+            fprintf(fPtr, "Save index %d\n", i );
             count++;
             
             if ((*ph_orig)[i].type == 'c')
@@ -912,7 +917,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
     //may not need this loop, can just check if the photon nu falls within the bin edges and do averages etc within next loop
     for (i=0;i<*num_ph;i++)
     {
-        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')))
+        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0))
         {
             //gsl_histogram_accumulate (h, log10((*ph_orig)[i].p0), (*ph_orig)[i].weight);
             gsl_histogram_increment (h, log10((*ph_orig)[i].p0));
@@ -933,7 +938,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
             //loop over the number of photons
             for (i=0;i<*num_ph;i++)
             {
-                if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')))
+                if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0))
                 {
                     gsl_histogram_get_range(h, count, &min_range, &max_range);
                     //if the photon nu falls in the count bin of the nu histogram then add it to the phi_theta 2d hist
@@ -999,7 +1004,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
             //for thr case of just 1 hoton being in the bin just set the rebinned photon to the one photons parameters
             for (i=0;i<*num_ph;i++)
             {
-                if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')))
+                if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o'))&& ((*ph_orig)[i].p0 > 0))
                 {
                     (rebin_ph+count)->p0=(*ph_orig)[i].p0;
                     (rebin_ph+count)->p1=(*ph_orig)[i].p1;
@@ -1176,7 +1181,8 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
                 if ((rebin_ph+count)->weight==0)
                 {
                     //if the bin had no photons in it, the rebinned photon is effectively null
-                    j++;
+                    //j++;
+                    num_null_rebin_ph++;
                 }
                 
             }
@@ -1185,22 +1191,47 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
                 //all rebinned photns have been saved so just treat the rest of the phootn array as null photons
                 (*ph_orig)[idx].weight=0;
                 (*ph_orig)[idx].nearest_block_index=-1;
-                j++;
+                //j++;
             }
+            
+            
         }
         
+        //if ((*ph_orig)[idx].weight==0)
+        //{
+            //if the bin had no photons in it, the rebinned photon is effectively null
+        //    j++;
+        //}
+        
     }
-    
+    //fprintf(fPtr, "i count after first loop %d\n", idx+1);
+    //make sure we look at whole array of photons to see hwo many null photons we have
+    /*
+    for (i=idx+1;i < *num_ph; i++)
+    {
+        if ((*ph_orig)[i].weight==0)
+        {
+            //if the bin had no photons in it, the rebinned photon is effectively null
+            j++;
+            fprintf(fPtr, "i count in the if %d\n", i);
+        }
+        
+        //i++;
+    }
+     */
+    //fprintf(fPtr, "i count after second loop %d\n", i);
     
     int null_ph_count=0;
     int null_ph_count_1=0;
     int null_ph_count_2=0;
-#pragma omp parallel for num_threads(num_thread) reduction(+:null_ph_count)
+//#pragma omp parallel for num_threads(num_thread) reduction(+:null_ph_count)
     for (i=0;i<*num_ph;i++)
     {
         if ((*ph_orig)[i].weight == 0)
         {
             null_ph_count++;
+            fprintf(fPtr, "%d \n", null_ph_count);
+            
         }
         
         if ((*ph_orig)[i].type == 'i')
@@ -1214,16 +1245,18 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
     
     
     
-    *scatt_synch_num_ph=num_bins;
-    *num_ph_emit=num_bins+synch_photon_count; //include the emitted synch photons
-    *num_null_ph=j;
+    *scatt_synch_num_ph=num_bins-num_null_rebin_ph;
+    *num_ph_emit=num_bins+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
+    *num_null_ph=null_ph_count; //was using j before but i have no idea why its not counting correctly
     
     gsl_histogram_fprintf (stdout, h, "%g", "%g");
     gsl_histogram_free (h);
     gsl_histogram2d_pdf_free (pdf_phi_theta);
     gsl_histogram2d_free (h_phi_theta);
+    free(rebin_ph);
+    free( synch_comp_photon_idx);
     
-    fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d\n\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1 );
+    fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d num_null_rebin_ph: %d\n\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1, num_null_rebin_ph  );
  
     return 0;
 }

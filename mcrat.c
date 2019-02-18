@@ -950,7 +950,7 @@ int main(int argc, char **argv)
                                 if (scatt_synch_num_ph>max_photons)
                                 {
                                     //if the number of synch photons that have been scattered is too high rebin them
-                                    //rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_ph_emit, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, rng, fPtr);
+                                    rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_ph_emit, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, rng, fPtr);
                                     
                                     //exit(0);
                                 }
@@ -981,12 +981,34 @@ int main(int argc, char **argv)
                             fflush(fPtr);
                             //exit(0);
                         }
+                        else
+                        {
+                            fprintf(fPtr, "In Else:\n");
+                            //have to properly account for the number of null photns etc there are since we usually do that in the rebinSynchCompPhotons function
+                            for (i=0;i<num_ph;i++)
+                            {
+                                if ((phPtr+i)->weight == 0)
+                                {
+                                    //null_ph_count++;
+                                }
+                                
+                                if ((phPtr+i)->type == 'i')
+                                {
+                                    //null_ph_count_1++;
+                                }
+                                
+                                fprintf(fPtr, "%d %c %e %e %e\n", i, (phPtr+i)->type, (phPtr+i)->weight, (phPtr+i)->p0, (phPtr+i)->s0 );
+                                fflush(fPtr);
+                                
+                            }
+                            //exit(0);
+                        }
                         
                         //make sure the photons that shou;d be absorbed should be absorbed
                         phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph, 1, tempPtr, densPtr, fPtr);
                         
                         //also make sure that i set scatt_synch_num_ph as the number of 'c' and 'o' photons, I do this in the above function
-                        if (scatt_frame > scatt_framestart+1)
+                        if (scatt_frame > scatt_framestart+3)
                         {
                             exit(0);
                         }
@@ -1015,7 +1037,7 @@ int main(int argc, char **argv)
                     if (save_chkpt_success==0)
                     {
                         //if we saved the checkpoint successfully also save the photons to the hdf5 file, else there may be something wrong with the file system
-                        printPhotons(phPtr, num_ph, frame_abs_cnt, num_ph_emit, num_null_ph, scatt_frame , frame, mc_dir, angle_id, fPtr);
+                        printPhotons(phPtr, num_ph, frame_abs_cnt, num_ph_emit, num_null_ph, scatt_synch_num_ph, scatt_frame , frame, mc_dir, angle_id, fPtr);
                     }
                     else
                     {
