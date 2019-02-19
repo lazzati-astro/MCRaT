@@ -1243,18 +1243,17 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
         
     }
     
-    
-    
-    *scatt_synch_num_ph=num_bins-num_null_rebin_ph;
-    *num_ph_emit=num_bins+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
-    *num_null_ph=null_ph_count; //was using j before but i have no idea why its not counting correctly
-    
     gsl_histogram_fprintf (stdout, h, "%g", "%g");
     gsl_histogram_free (h);
     gsl_histogram2d_pdf_free (pdf_phi_theta);
     gsl_histogram2d_free (h_phi_theta);
     free(rebin_ph);
     free( synch_comp_photon_idx);
+    
+    *scatt_synch_num_ph=num_bins-num_null_rebin_ph;
+    *num_ph_emit=num_bins+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
+    *num_null_ph=null_ph_count; //was using j before but i have no idea why its not counting correctly
+    
     
     fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d num_null_rebin_ph: %d\n\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1, num_null_rebin_ph  );
  

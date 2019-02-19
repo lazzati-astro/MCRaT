@@ -1008,7 +1008,7 @@ int main(int argc, char **argv)
                         phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph, 1, tempPtr, densPtr, fPtr);
                         
                         //also make sure that i set scatt_synch_num_ph as the number of 'c' and 'o' photons, I do this in the above function
-                        if (scatt_frame > scatt_framestart+3)
+                        if (scatt_frame > scatt_framestart+5)
                         {
                             exit(0);
                         }
