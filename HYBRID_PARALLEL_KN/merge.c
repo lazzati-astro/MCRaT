@@ -227,7 +227,7 @@ int main(int argc, char **argv)
     //create files
     //start_count=2474;
     //end_count=143;
-    for (i= start_count; i<end_count;i++)
+    for (i= end_count-1; i>=start_count;i--)
     {
         //go through the mpi files to find the total number of photons needed for the final dataset  
         //printf("\n\n%d\n", i);
