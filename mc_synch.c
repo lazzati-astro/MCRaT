@@ -722,8 +722,11 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
                     //have an injected photon or 'o' (previous 'c' photon) that has a nu that can be absorbed
                     (*ph_orig)[i].p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been absorbed, this makes it still get saves in the hdf5 files
                     (*ph_orig)[i].nearest_block_index=-1;
+                    //also set the weight equal to 0 since we no longer care about saving it
+                    (*ph_orig)[i].weight=0;
                     
                     //replace the potantial null photon with this photon's data
+                    /*
                     (*ph_orig)[count].p0=(*ph_orig)[i].p0;
                     (*ph_orig)[count].p1=(*ph_orig)[i].p1;
                     (*ph_orig)[count].p2=(*ph_orig)[i].p2;
@@ -744,8 +747,9 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
                     (*ph_orig)[count].nearest_block_index=(*ph_orig)[i].nearest_block_index;
                     (*ph_orig)[count].type=(*ph_orig)[i].type;
                     
-                    count+=1; //increment count (counts non-null photons in array)
-                    
+                    //count+=1; //increment count (counts non-null photons in array)
+                    */
+                    //dont care about saving the absorbed 'o' photons data
                 }
             }
             else
@@ -983,7 +987,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
             (rebin_ph+count)->comv_p3=0;
             (rebin_ph+count)->r0=avg_values[0]/avg_values[8];
             (rebin_ph+count)->r1= avg_values[1]/avg_values[8] ;
-            (rebin_ph+count)->r2=avg_values[2]/avg_values[8]; //y coordinate in flash becomes z coordinate in MCRaT
+            (rebin_ph+count)->r2=avg_values[2]/avg_values[8]; 
             (rebin_ph+count)->s0=avg_values[3]/avg_values[8]; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
             (rebin_ph+count)->s1=avg_values[4]/avg_values[8];
             (rebin_ph+count)->s2=avg_values[5]/avg_values[8];
@@ -1151,6 +1155,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
             //if the photon is a compton scatered synch photon from a past frame treat it as though it has been absorbed
             (*ph_orig)[idx].p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been "absorbed", this makes it still get saves in the hdf5 files
             (*ph_orig)[idx].nearest_block_index=-1;
+            (*ph_orig)[idx].weight=0; //now making the absorbed 'o' photons become null photons
         }
         else if ((*ph_orig)[idx].type == 'c')
         {
