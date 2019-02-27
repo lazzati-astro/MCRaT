@@ -1037,7 +1037,7 @@ int main(int argc, char **argv)
                     if (save_chkpt_success==0)
                     {
                         //if we saved the checkpoint successfully also save the photons to the hdf5 file, else there may be something wrong with the file system
-                        printPhotons(phPtr, num_ph, frame_abs_cnt, num_ph_emit, num_null_ph, scatt_synch_num_ph, scatt_frame , frame, mc_dir, angle_id, fPtr);
+                        printPhotons(phPtr, num_ph, frame_abs_cnt, num_ph_emit, num_null_ph, scatt_synch_num_ph, scatt_frame , frame, last_frm, mc_dir, angle_id, fPtr);
                     }
                     else
                     {
@@ -1046,12 +1046,11 @@ int main(int argc, char **argv)
                         fflush(fPtr);
                         exit(1);
                     }
-                    //exit(0);
 
-                    if (scatt_frame != scatt_framestart)
-                    {
-                        //exit(0);
-                    }
+                    //if (frame==last_frm)
+                    //{
+                    //    exit(0);
+                    //}
                     
                      //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
                     #if SIM_SWITCH == RIKEN && DIMENSIONS ==3

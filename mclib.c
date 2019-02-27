@@ -142,7 +142,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
 }
 
 
-void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit, int num_null_ph, int scatt_synch_num_ph, int frame,int frame_inj, char dir[200], int angle_rank, FILE *fPtr )
+void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit, int num_null_ph, int scatt_synch_num_ph, int frame,int frame_inj, int frame_last, char dir[200], int angle_rank, FILE *fPtr )
 {
     //function to save the photons' positions and 4 momentum
     
@@ -154,12 +154,12 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
      //if the frame does exist then read information from the prewritten data and then add new data to it as extended chunk
      
      
-    int i=0, count=0, rank=1, net_num_ph=num_ph-num_ph_abs-num_null_ph, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : scatt_synch_num_ph ;//weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : num_ph_emit-num_ph_abs ; //can have more photons absorbed than emitted
+    int i=0, count=0, rank=1, net_num_ph=num_ph-num_ph_abs-num_null_ph, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : scatt_synch_num_ph, global_weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : num_ph_emit-num_ph_abs ; //can have more photons absorbed than emitted
     int num_thread=omp_get_num_threads();
     char mc_file[200]="", group[200]="", group_weight[200]="";
-    double p0[net_num_ph], p1[net_num_ph], p2[net_num_ph], p3[net_num_ph] , r0[net_num_ph], r1[net_num_ph], r2[net_num_ph], num_scatt[net_num_ph], weight[weight_net_num_ph];
+    double p0[net_num_ph], p1[net_num_ph], p2[net_num_ph], p3[net_num_ph] , r0[net_num_ph], r1[net_num_ph], r2[net_num_ph], num_scatt[net_num_ph], weight[weight_net_num_ph], global_weight[net_num_ph];
     double s0[net_num_ph], s1[net_num_ph], s2[net_num_ph], s3[net_num_ph], comv_p0[net_num_ph], comv_p1[net_num_ph], comv_p2[net_num_ph], comv_p3[net_num_ph];
-    hid_t  file, file_init, dspace, dspace_weight, fspace, mspace, prop, prop_weight, group_id;
+    hid_t  file, file_init, dspace, dspace_weight, dspace_global_weight, fspace, mspace, prop, prop_weight, prop_global_weight, group_id;
     hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_2, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3;
     herr_t status, status_group, status_weight, status_weight_2;
     hsize_t dims[1]={net_num_ph}, dims_weight[1]={weight_net_num_ph}, dims_old[1]={0}; //1 is the number of dimansions for the dataset, called rank
@@ -200,6 +200,12 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                     (ph+i)->type = 'o'; //set this to be an old synchrotron scattered photon
                 }
             }
+            
+            if ((frame==frame_inj) || (frame==frame_last))
+            {
+                global_weight[count]=((ph+i)->weight);
+            }
+            
             count++;
         }
     }
@@ -268,12 +274,17 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             prop_weight= H5Pcreate (H5P_DATASET_CREATE);
             status = H5Pset_chunk (prop_weight, rank, dims_weight);
         }
+        
+        if ((frame==frame_inj) || (frame==frame_last))
+        {
+            status = H5Pset_chunk (prop, rank, dims);
+        }
     
         /* Create the data space with unlimited dimensions. */
         dspace = H5Screate_simple (rank, dims, maxdims);
         
         dspace_weight=H5Screate_simple (rank, dims_weight, maxdims);
-    
+        
         /* Create a new dataset within the file using chunk creation properties.  */
         dset_p0 = H5Dcreate2 (group_id, "P0", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
@@ -335,14 +346,15 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                             
         if ((frame==frame_inj) || (scatt_synch_num_ph > 0)) //if the frame is the same one that the photons were injected in, save the photon weights or if there are emitted photons that havent been absorbed
         {
-            if (frame==frame_inj)
-            {
-                //if saving the injected photons weight dont have to worry about the major ph_weight thats not in a group
-                dset_weight = H5Dcreate2 (file, "Weight", H5T_NATIVE_DOUBLE, dspace_weight,
-                            H5P_DEFAULT, prop_weight, H5P_DEFAULT);
-            }
             dset_weight_2 = H5Dcreate2 (group_id, "Weight", H5T_NATIVE_DOUBLE, dspace_weight,
                             H5P_DEFAULT, prop_weight, H5P_DEFAULT); //save the new injected photons' weights
+        }
+        
+        if ((frame==frame_inj) || (frame==frame_last))
+        {
+            //if saving the injected photons weight dont have to worry about the major ph_weight thats not in a group
+            dset_weight = H5Dcreate2 (file, "Weight", H5T_NATIVE_DOUBLE, dspace,
+                                      H5P_DEFAULT, prop, H5P_DEFAULT);
         }
                          
         /* Write data to dataset */
@@ -406,20 +418,21 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
         
         if ((frame==frame_inj) || (scatt_synch_num_ph > 0))
         {
-            if (frame==frame_inj)
-            {
-                status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-                            H5P_DEFAULT, weight);
-            }
             status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, weight);
             
             status = H5Pclose (prop_weight);
         }
         
+        if ((frame==frame_inj) || (frame==frame_last))
+        {
+            status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                               H5P_DEFAULT, global_weight);
+        }
+        
         status = H5Pclose (prop);
         
-        if ((status_weight>=0) && (scatt_synch_num_ph > 0))
+        if ((status_weight>=0) && (scatt_synch_num_ph > 0) && (frame==frame_last))
         {
             //the /Weight dataset exists (b/c already created it in frame photons were injected in) and we need to do something different to save the emitted synch photons to the dataset
             dset_weight = H5Dopen (file, "Weight", H5P_DEFAULT); //open dataset
@@ -433,16 +446,16 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             size[0] = dims_weight[0]+ dims_old[0];
             status = H5Dset_extent (dset_weight, size);
             
-            /* Select a hyperslab in extended portion of dataset  */
+           //  Select a hyperslab in extended portion of dataset
             fspace = H5Dget_space (dset_weight);
             offset[0] = dims_old[0];
             status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
                                           dims_weight, NULL);
             
-            /* Define memory space */
+            // Define memory space
             mspace = H5Screate_simple (rank, dims_weight, NULL);
             
-            /* Write the data to the extended portion of dataset  */
+            // Write the data to the extended portion of dataset
             status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, mspace, fspace,
                                H5P_DEFAULT, weight);
             
@@ -450,7 +463,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             status = H5Sclose (mspace);
             status = H5Sclose (fspace);
         }
-    
+        
     }
     else
     {
@@ -875,11 +888,12 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
     status = H5Dclose (dset_num_scatt); 
     if ((frame==frame_inj) || (scatt_synch_num_ph > 0))
     {
-        if ((frame==frame_inj) || (status_weight>=0))
-        {
-            status = H5Dclose (dset_weight);
-        }
         status = H5Dclose (dset_weight_2);
+    }
+    
+    if ((frame==frame_inj) || ((frame==frame_last) && (status_weight>=0)))
+    {
+        status = H5Dclose (dset_weight);
     }
     
     /* Close the group. */
