@@ -1135,7 +1135,7 @@ int main(int argc, char **argv)
 
                 *(frame_array+file_count)=i ;
                 file_count++;
-                //printf("file_count: %d frame: %d\n",  file_count-1, *(frame_array+file_count-1));
+                printf("file_count: %d frame: %d\n",  file_count-1, *(frame_array+file_count-1));
              }
              //pass  first frame number that each rpocess should start to merge, can calulate the file it should merge until
              MPI_Scatterv(frame_array, element_num, proc_frame_array, MPI_INT, &frm0, 1, MPI_INT, 0, angle_comm);

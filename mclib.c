@@ -154,7 +154,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
      //if the frame does exist then read information from the prewritten data and then add new data to it as extended chunk
      
      
-    int i=0, count=0, rank=1, net_num_ph=num_ph-num_ph_abs-num_null_ph, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : scatt_synch_num_ph, global_weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : num_ph_emit-num_ph_abs ; //can have more photons absorbed than emitted
+    int i=0, count=0, rank=1, net_num_ph=num_ph-num_ph_abs-num_null_ph, weight_net_num_ph= num_ph-num_ph_abs-num_null_ph, global_weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : num_ph_emit-num_ph_abs ; //can have more photons absorbed than emitted, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : scatt_synch_num_ph
     int num_thread=omp_get_num_threads();
     char mc_file[200]="", group[200]="", group_weight[200]="";
     double p0[net_num_ph], p1[net_num_ph], p2[net_num_ph], p3[net_num_ph] , r0[net_num_ph], r1[net_num_ph], r2[net_num_ph], num_scatt[net_num_ph], weight[weight_net_num_ph], global_weight[net_num_ph];
@@ -191,7 +191,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             s2[count]= ((ph+i)->s2);
             s3[count]= ((ph+i)->s3);
             num_scatt[count]= ((ph+i)->num_scatt);
-            if ((frame==frame_inj) || ((scatt_synch_num_ph > 0) && ((ph+i)->type == 'c'))) //if the frame is the same one that the photons were injected in, save the photon weights OR if there are synchrotron photons that havent been absorbed
+            //if ((frame==frame_inj) || ((scatt_synch_num_ph > 0) && ((ph+i)->type == 'c'))) //if the frame is the same one that the photons were injected in, save the photon weights OR if there are synchrotron photons that havent been absorbed
             {
                 weight[weight_net_num_ph]= ((ph+i)->weight);
                 weight_net_num_ph++;
@@ -201,7 +201,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                 }
             }
             
-            if ((frame==frame_inj) || (frame==frame_last))
+            if ((frame==frame_last))
             {
                 global_weight[count]=((ph+i)->weight);
             }
@@ -275,7 +275,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             status = H5Pset_chunk (prop_weight, rank, dims_weight);
         }
         
-        if ((frame==frame_inj) || (frame==frame_last))
+        if ((frame==frame_last))
         {
             status = H5Pset_chunk (prop, rank, dims);
         }
@@ -350,7 +350,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                             H5P_DEFAULT, prop_weight, H5P_DEFAULT); //save the new injected photons' weights
         }
         
-        if ((frame==frame_inj) || (frame==frame_last))
+        if ((frame==frame_last))
         {
             //if saving the injected photons weight dont have to worry about the major ph_weight thats not in a group
             dset_weight = H5Dcreate2 (file, "Weight", H5T_NATIVE_DOUBLE, dspace,
@@ -424,14 +424,16 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             status = H5Pclose (prop_weight);
         }
         
-        if ((frame==frame_inj) || (frame==frame_last))
+        if ((frame==frame_last))
         {
+            printf("Before write\n");
             status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                                H5P_DEFAULT, global_weight);
+            printf("After write\n");
         }
         
         status = H5Pclose (prop);
-        
+        /*
         if ((status_weight>=0) && (scatt_synch_num_ph > 0) && (frame==frame_last))
         {
             //the /Weight dataset exists (b/c already created it in frame photons were injected in) and we need to do something different to save the emitted synch photons to the dataset
@@ -463,7 +465,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             status = H5Sclose (mspace);
             status = H5Sclose (fspace);
         }
-        
+        */
     }
     else
     {
@@ -761,7 +763,11 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                 status = H5Sclose (dspace);
                 status = H5Sclose (mspace);
                 status = H5Sclose (fspace);
-            
+        
+                if (((frame==frame_last) || (frame==frame_inj)))
+                {
+                    //make sure to append the newly injected photons or, for the latter condition, the injected photns and whichever 'c' photons
+                }
                 dset_weight = H5Dopen (file, "Weight", H5P_DEFAULT); //open dataset
         
                 //get dimensions of array and save it
