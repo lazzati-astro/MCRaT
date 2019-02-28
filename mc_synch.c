@@ -530,7 +530,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                     }
                      */
                     fr_dum=nu_c; //set the frequency directly to the cyclotron frequency
-                    fprintf(fPtr, "%lf\n ",fr_dum);
+                    //fprintf(fPtr, "%lf\n ",fr_dum);
                     //exit(0);
                     position_phi=gsl_rng_uniform(rand)*2*M_PI;
                     com_v_phi=gsl_rng_uniform(rand)*2*M_PI;
@@ -603,7 +603,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+i) , epsilon_b));
         
         fr_dum=nu_c; //_scatt; //set the frequency directly to the cyclotron frequency
-        fprintf(fPtr, "%lf %d\n ",fr_dum, (*ph_orig)[scatt_ph_index].nearest_block_index);
+        //fprintf(fPtr, "%lf %d\n ",fr_dum, (*ph_orig)[scatt_ph_index].nearest_block_index);
         //exit(0);
         position_phi=gsl_rng_uniform(rand)*2*M_PI;
         com_v_phi=gsl_rng_uniform(rand)*2*M_PI;
@@ -834,7 +834,7 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
         //overwrite the last few photons to make sure that they are null photons
         (*ph_orig)[count].weight=0;
         (*ph_orig)[count].nearest_block_index=-1;
-        fprintf(fPtr, "photon %d has frequency %e and weight %e with FLASH grid number %d\n", count, (*ph_orig)[count].comv_p0*C_LIGHT/PL_CONST, (*ph_orig)[count].weight, (*ph_orig)[count].nearest_block_index);
+        //fprintf(fPtr, "photon %d has frequency %e and weight %e with FLASH grid number %d\n", count, (*ph_orig)[count].comv_p0*C_LIGHT/PL_CONST, (*ph_orig)[count].weight, (*ph_orig)[count].nearest_block_index);
         fflush(fPtr);
         
         count+=1;
@@ -877,11 +877,11 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
     fprintf(fPtr, "In the rebin func\n");
     fflush(fPtr);
     
-    for (i=0;i<*num_ph;i++)
-    {
-        fprintf(fPtr, "%d %c %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0 );
+    //for (i=0;i<*num_ph;i++)
+    //{
+    //    fprintf(fPtr, "%d %c %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0 );
         //fflush(fPtr);
-    }
+    //}
     
     
     count=0;
@@ -894,19 +894,19 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
             {
                 //dont include any absorbed 'o' photons that have negative P0 values
                 p0_min= (*ph_orig)[i].p0;
-                fprintf(fPtr, "new p0 min %e\n", (p0_min) );
+                //fprintf(fPtr, "new p0 min %e\n", (p0_min) );
             }
             
             if ((*ph_orig)[i].p0> p0_max)
             {
                 p0_max= (*ph_orig)[i].p0;
-                fprintf(fPtr, "new p0 max %e\n", (p0_max) );
+                //fprintf(fPtr, "new p0 max %e\n", (p0_max) );
             }
             
             // also save the index of these photons because they wil become null later on
             //*(synch_comp_photon_idx+count)=i;
             synch_comp_photon_idx[count]=i;
-            fprintf(fPtr, "Save index %d\n", i );
+            //fprintf(fPtr, "Save index %d\n", i );
             count++;
             
             if ((*ph_orig)[i].type == 'c')
@@ -1005,8 +1005,8 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
             (rebin_ph+count)->nearest_block_index=0; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
             
             
-            gsl_histogram2d_fprintf (stdout, h_phi_theta, "%g", "%g");
-            fprintf(fPtr, "Chosen phi: %e chosen theta: %e weight: %e\n\n", phi, theta, avg_values[8] );
+            //gsl_histogram2d_fprintf (stdout, h_phi_theta, "%g", "%g");
+            //fprintf(fPtr, "Chosen phi: %e chosen theta: %e weight: %e\n\n", phi, theta, avg_values[8] );
             //reset the histogram and the pdf
             gsl_histogram2d_reset(pdf_phi_theta);
             gsl_histogram_reset(h_phi_theta);
@@ -1049,7 +1049,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
     //find indexes of old photons that will not become null photons
     //if the photons are 'o' photons make them have p0=-1
     //for the 'c' photons replace the first num_bins indexes with the new rebinned photons and replace the rest of the indexes with null values
-    //may need to expand the array of photons
+    //may need to expand the array of photons, shouldnt need to do this though
     if ((count_c_ph+(*num_null_ph))<num_bins)
     {
         //need to expand the array
@@ -1244,7 +1244,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
         if ((*ph_orig)[i].weight == 0)
         {
             null_ph_count++;
-            fprintf(fPtr, "%d \n", null_ph_count);
+            //fprintf(fPtr, "%d \n", null_ph_count);
             
         }
         
@@ -1264,7 +1264,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
     
     fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d num_null_rebin_ph: %d\n\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1, num_null_rebin_ph  );
     
-    gsl_histogram_fprintf (stdout, h, "%g", "%g");
+    //gsl_histogram_fprintf (stdout, h, "%g", "%g");
     gsl_histogram_free (h);
     gsl_histogram2d_pdf_free (pdf_phi_theta);
     gsl_histogram2d_free (h_phi_theta);

@@ -927,11 +927,11 @@ int main(int argc, char **argv)
                             {
                                 (phPtr+ph_scatt_index)->type = 'c'; //c for compton scattered synchrotron photon
                                 
-                                fprintf(fPtr, "\nIndex %d\n", ph_scatt_index);
-                                printf("The previous scattered photon was a seed photon %c.\n", (phPtr+ph_scatt_index)->type);
+                                //fprintf(fPtr, "\nIndex %d\n", ph_scatt_index);
+                                //printf("The previous scattered photon was a seed photon %c.\n", (phPtr+ph_scatt_index)->type);
                                 num_ph_emit+=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, 1, rng, RIKEN_SWITCH, 1, ph_scatt_index, fPtr);
-                                fprintf(fPtr, " num_photon: %d\n",num_ph  );
-                                fflush(fPtr);
+                                //fprintf(fPtr, " num_photon: %d\n",num_ph  );
+                                //fflush(fPtr);
                                 
                                 scatt_synch_num_ph++;//keep track of the number of synch photons that have scattered for later in checking of we need to rebin them
                                 fprintf(fPtr,"scatt_synch_num_ph Number: %d\n", scatt_synch_num_ph);
@@ -985,6 +985,7 @@ int main(int argc, char **argv)
                         {
                             fprintf(fPtr, "In Else:\n");
                             //have to properly account for the number of null photns etc there are since we usually do that in the rebinSynchCompPhotons function
+                            /*
                             for (i=0;i<num_ph;i++)
                             {
                                 if ((phPtr+i)->weight == 0)
@@ -999,19 +1000,20 @@ int main(int argc, char **argv)
                                 
                                 fprintf(fPtr, "%d %c %e %e %e\n", i, (phPtr+i)->type, (phPtr+i)->weight, (phPtr+i)->p0, (phPtr+i)->s0 );
                                 fflush(fPtr);
-                                
+                             
                             }
                             //exit(0);
+                             */
                         }
                         
                         //make sure the photons that shou;d be absorbed should be absorbed
                         phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph, 1, tempPtr, densPtr, fPtr);
                         
                         //also make sure that i set scatt_synch_num_ph as the number of 'c' and 'o' photons, I do this in the above function
-                        if (scatt_frame > scatt_framestart+5)
-                        {
-                            exit(0);
-                        }
+                        //if (scatt_frame > scatt_framestart+5)
+                        //{
+                        //    exit(0);
+                        //}
                     }
                     
                     //get scattering statistics
