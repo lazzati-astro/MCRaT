@@ -927,7 +927,7 @@ int main(int argc, char **argv)
                             {
                                 (phPtr+ph_scatt_index)->type = 'c'; //c for compton scattered synchrotron photon
                                 
-                                printf("Index %d\n", ph_scatt_index);
+                                fprintf(fPtr, "\nIndex %d\n", ph_scatt_index);
                                 printf("The previous scattered photon was a seed photon %c.\n", (phPtr+ph_scatt_index)->type);
                                 num_ph_emit+=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, 1, rng, RIKEN_SWITCH, 1, ph_scatt_index, fPtr);
                                 fprintf(fPtr, " num_photon: %d\n",num_ph  );

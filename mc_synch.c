@@ -850,8 +850,9 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
     double avg_values[9]= { 0 }; //number of averages that'll be taken is given by num_avg in above line
     double p0_min=DBL_MAX, p0_max=0, log_p0_min=0, log_p0_max=0;//look at p0 of photons not by frequency since its just nu=p0*C_LIGHT/PL_CONST
     double rand1=0, rand2=0, phi=0, theta=0;
-    double min_range=0, max_range=0;
-    int *synch_comp_photon_idx=NULL;
+    double min_range=0, max_range=0, energy=0;
+    //int *synch_comp_photon_idx=NULL; make this an array b/c had issue with deallocating this memory for some reason
+    int synch_comp_photon_idx[*scatt_synch_num_ph];
     struct photon *rebin_ph=malloc(num_bins* sizeof (struct photon ));
     int num_null_rebin_ph=0;
     struct photon *tmp=NULL;
@@ -865,12 +866,12 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
     //calc min and max p0 and set the bins to be even within this interval
     //save the frequencies of photons to a
     //#pragma omp parallel for num_threads(num_thread) reduction(min:nu_min) reduction(max:nu_max)
-    synch_comp_photon_idx=malloc((*scatt_synch_num_ph)*sizeof(int));
-    if (synch_comp_photon_idx==NULL)
-    {
-        printf("Error with allocating space to hold data for synch_comp_photon_idx\n");
-        exit(1);
-    }
+    //synch_comp_photon_idx=malloc((*scatt_synch_num_ph)*sizeof(int));
+    //if (synch_comp_photon_idx==NULL)
+    //{
+    //    printf("Error with allocating space to hold data for synch_comp_photon_idx\n");
+    //    exit(1);
+    //}
     
     
     fprintf(fPtr, "In the rebin func\n");
@@ -903,7 +904,8 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
             }
             
             // also save the index of these photons because they wil become null later on
-            *(synch_comp_photon_idx+count)=i;
+            //*(synch_comp_photon_idx+count)=i;
+            synch_comp_photon_idx[count]=i;
             fprintf(fPtr, "Save index %d\n", i );
             count++;
             
@@ -921,7 +923,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
     
     fprintf(fPtr, "log p0 min, max: %e %e\n", log10(p0_min), log10(p0_max) );
     
-    gsl_histogram_set_ranges_uniform (h, log10(p0_min), log10(p0_max*(1+0.001)));
+    gsl_histogram_set_ranges_uniform (h, log10(p0_min), log10(p0_max*(1+1e-6)));
     
     //populate histogram for photons with nu that falss within the proper histogram bin
     //may not need this loop, can just check if the photon nu falls within the bin edges and do averages etc within next loop
@@ -1149,7 +1151,8 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
         if (i<(*scatt_synch_num_ph))
         {
             //the photon idx can be found from the original array
-            idx=(*(synch_comp_photon_idx+i));
+            //idx=(*(synch_comp_photon_idx+i));
+            idx=synch_comp_photon_idx[i];
         }
         else
         {
@@ -1266,7 +1269,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
     gsl_histogram2d_pdf_free (pdf_phi_theta);
     gsl_histogram2d_free (h_phi_theta);
     free(rebin_ph);
-    free( synch_comp_photon_idx);
+    //free( synch_comp_photon_idx);
  
     return 0;
 }
