@@ -422,6 +422,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                             H5P_DEFAULT, weight);
             
             status = H5Pclose (prop_weight);
+            status = H5Dclose (dset_weight_2);
         }
         
         if ((frame==frame_last))
@@ -757,17 +758,17 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
         
         fprintf(fPtr,"Status of /frame/Weight %d\n", status_weight);
         
-        if (((frame==frame_inj) || (scatt_synch_num_ph > 0)) )
+        //if (((frame==frame_inj) || (scatt_synch_num_ph > 0)) )
         {
             
-                status = H5Sclose (dspace);
-                status = H5Sclose (mspace);
-                status = H5Sclose (fspace);
-        
-                if (((frame==frame_last) || (frame==frame_inj)))
-                {
-                    //make sure to append the newly injected photons or, for the latter condition, the injected photns and whichever 'c' photons
-                }
+            status = H5Sclose (dspace);
+            status = H5Sclose (mspace);
+            status = H5Sclose (fspace);
+    
+            if (((frame==frame_last)))
+            {
+                //make sure to append the newly injected/emitted photons from the most recent set of injected photons to the global weights
+            
                 dset_weight = H5Dopen (file, "Weight", H5P_DEFAULT); //open dataset
         
                 //get dimensions of array and save it
@@ -791,6 +792,8 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                 /* Write the data to the extended portion of dataset  */
                 status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, mspace, fspace,
                                 H5P_DEFAULT, weight);
+            }
+            
             if (status_weight >= 0)
             {
                 //will have to create the weight dataset for the new set of phtons that have been injected, although it may already be created since emitting photons now
@@ -863,6 +866,8 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                 
                 status = H5Pclose (prop_weight);
             }
+            
+            status = H5Dclose (dset_weight_2);
         }
         
                         
@@ -892,10 +897,10 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
     #endif
     
     status = H5Dclose (dset_num_scatt); 
-    if ((frame==frame_inj) || (scatt_synch_num_ph > 0))
-    {
-        status = H5Dclose (dset_weight_2);
-    }
+    //if ((frame==frame_inj) || (scatt_synch_num_ph > 0))
+    //{
+        //status = H5Dclose (dset_weight_2);
+    //} put this right after portion of code that actually uses it
     
     //if ((frame==frame_inj) || ((frame==frame_last) && (status_weight>=0)))
     if ((frame==frame_last))
@@ -921,8 +926,8 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
     //function to save data necessary to restart simulation if it ends
     //need to save all photon data
     FILE *fPtr=NULL;
-    char checkptfile[200]="";
-    char command[200]="";
+    char checkptfile[2000]="";
+    char command[2000]="";
     char restart;
     int i=0, success=0;;
     

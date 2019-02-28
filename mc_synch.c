@@ -866,6 +866,12 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
     //save the frequencies of photons to a
     //#pragma omp parallel for num_threads(num_thread) reduction(min:nu_min) reduction(max:nu_max)
     synch_comp_photon_idx=malloc((*scatt_synch_num_ph)*sizeof(int));
+    if (synch_comp_photon_idx==NULL)
+    {
+        printf("Error with allocating space to hold data for synch_comp_photon_idx\n");
+        exit(1);
+    }
+    
     
     fprintf(fPtr, "In the rebin func\n");
     fflush(fPtr);
@@ -987,7 +993,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
             (rebin_ph+count)->comv_p3=0;
             (rebin_ph+count)->r0=avg_values[0]/avg_values[8];
             (rebin_ph+count)->r1= avg_values[1]/avg_values[8] ;
-            (rebin_ph+count)->r2=avg_values[2]/avg_values[8]; 
+            (rebin_ph+count)->r2=avg_values[2]/avg_values[8];
             (rebin_ph+count)->s0=avg_values[3]/avg_values[8]; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
             (rebin_ph+count)->s1=avg_values[4]/avg_values[8];
             (rebin_ph+count)->s2=avg_values[5]/avg_values[8];
@@ -1248,19 +1254,19 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
         
     }
     
-    gsl_histogram_fprintf (stdout, h, "%g", "%g");
-    gsl_histogram_free (h);
-    gsl_histogram2d_pdf_free (pdf_phi_theta);
-    gsl_histogram2d_free (h_phi_theta);
-    free(rebin_ph);
-    free( synch_comp_photon_idx);
-    
     *scatt_synch_num_ph=num_bins-num_null_rebin_ph;
     *num_ph_emit=num_bins+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
     *num_null_ph=null_ph_count; //was using j before but i have no idea why its not counting correctly
     
     
     fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d num_null_rebin_ph: %d\n\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1, num_null_rebin_ph  );
+    
+    gsl_histogram_fprintf (stdout, h, "%g", "%g");
+    gsl_histogram_free (h);
+    gsl_histogram2d_pdf_free (pdf_phi_theta);
+    gsl_histogram2d_free (h_phi_theta);
+    free(rebin_ph);
+    free( synch_comp_photon_idx);
  
     return 0;
 }

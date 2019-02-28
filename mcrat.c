@@ -1070,6 +1070,8 @@ int main(int argc, char **argv)
                 }
                 
                 restrt='r';//set this to make sure that the next iteration of propogating photons doesnt use the values from the last reading of the checkpoint file
+                scatt_synch_num_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
+                num_null_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
                 free(phPtr); 
                 phPtr=NULL;
                 free(all_time_steps);
