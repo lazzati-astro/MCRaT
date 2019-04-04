@@ -217,7 +217,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     double *tmp_double=NULL;
     int *tmp_int=NULL;
     
-    printf("IN EMIT SYNCH FUNCTION\n");
+    fprintf(fPtr, "IN EMIT SYNCH FUNCTION; num_threads %d\n", num_thread);
     fprintf(fPtr, "BEFORE Original number of photons: %d Null photons %d\n", (*num_ph), null_ph_count, ph_tot);
     fflush(fPtr);
     
@@ -685,7 +685,7 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
     double el_dens=0, nu_c=0;
     //struct photon tmp_ph;//hold temporay photon to move its data
     
-    fprintf(fPtr, "In phAbsSynch func begin: abs_ph_count: %d synch_ph_count: %d scatt_synch_num_ph: %d\n", abs_ph_count, synch_ph_count, *scatt_synch_num_ph);
+    fprintf(fPtr, "In phAbsSynch func begin: abs_ph_count: %d synch_ph_count: %d scatt_synch_num_ph: %d num_threads: %d\n", abs_ph_count, synch_ph_count, *scatt_synch_num_ph, num_thread);
     
     *scatt_synch_num_ph=0;//set thsi equal to 0, to recount in this function and get prepared for the next frame
     
@@ -874,7 +874,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph
     //}
     
     
-    fprintf(fPtr, "In the rebin func\n");
+    fprintf(fPtr, "In the rebin func; num_threads %d\n", num_thread);
     fflush(fPtr);
     
     //for (i=0;i<*num_ph;i++)

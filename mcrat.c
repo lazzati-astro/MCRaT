@@ -769,19 +769,19 @@ int main(int argc, char **argv)
                             fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
                             fflush(fPtr);
                             
-                            if (scatt_frame != scatt_framestart)
-                            {
-                                //NEED TO DETERMINE IF min_r or max_r is smaller/larger than the rmin/rmax in photonEmitSynch to properly emit photons in the range that the process is interested in
-                                printf("OLD: min_r %e max_r %e\n", min_r, max_r);
-                                double test=0;
-                                test=calcSynchRLimits( scatt_frame, frame, fps_modified,  inj_radius, "min");
-                                //printf("TEST MIN: %e\n", test);
-                                min_r=(min_r < test) ? min_r : test ;
-                                test=calcSynchRLimits( scatt_frame, frame, fps_modified,  inj_radius, "max");
-                                //printf("TEST MAX: %e\n", test);
-                                max_r=(max_r > test ) ? max_r : test ;
-                                //printf("NEW: min_r %e max_r %e\n", min_r, max_r);
-                            }
+                                if ((scatt_frame != scatt_framestart) || (restrt=='c'))
+                                {
+                                    //NEED TO DETERMINE IF min_r or max_r is smaller/larger than the rmin/rmax in photonEmitSynch to properly emit photons in the range that the process is interested in
+                                    //printf("OLD: min_r %e max_r %e\n", min_r, max_r);
+                                    double test=0;
+                                    test=calcSynchRLimits( scatt_frame, frame, fps_modified,  inj_radius, "min");
+                                    //printf("TEST MIN: %e\n", test);
+                                    min_r=(min_r < test) ? min_r : test ;
+                                    test=calcSynchRLimits( scatt_frame, frame, fps_modified,  inj_radius, "max");
+                                    //printf("TEST MAX: %e\n", test);
+                                    max_r=(max_r > test ) ? max_r : test ;
+                                    //printf("NEW: min_r %e max_r %e\n", min_r, max_r);
+                                }
                             
                             readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                     &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
@@ -846,7 +846,7 @@ int main(int argc, char **argv)
                     //emit synchrotron photons here
                     num_ph_emit=0;
 
-                    if (scatt_frame != scatt_framestart) //remember to revert back to !=
+                    if ((scatt_frame != scatt_framestart) || (restrt=='c')) //remember to revert back to !=
                     {
                         //printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0);
                         
@@ -971,7 +971,7 @@ int main(int argc, char **argv)
 
                     }
                     
-                    if (scatt_frame != scatt_framestart) //rememebr to change to != also at the other place in the code
+                    if ((scatt_frame != scatt_framestart) || (restrt=='c')) //rememebr to change to != also at the other place in the code
                     {
                         if (scatt_synch_num_ph>max_photons)
                         {
