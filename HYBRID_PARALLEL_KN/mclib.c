@@ -3292,7 +3292,7 @@ void structuredFireballPrep(double *r, double *theta,  double *x, double *y, dou
         vel=pow(1-(pow(*(gamma+i), -2.0)) ,0.5);
         *(vx+i)=(vel*(*(x+i)))/pow(pow(*(x+i), 2)+ pow(*(y+i), 2) ,0.5);
         *(vy+i)=(vel*(*(y+i)))/pow(pow(*(x+i), 2)+ pow(*(y+i), 2) ,0.5);
-        *(dens+i)=lumi/(4*M_PI*M_P*C_LIGHT*C_LIGHT*C_LIGHT*C_LIGHT*eta*vel*(*(gamma+i))*(*(r+i))*(*(r+i))); //multiply by M_P
+        *(dens+i)=M_P*lumi/(4*M_PI*M_P*C_LIGHT*C_LIGHT*C_LIGHT*eta*vel*(*(gamma+i))*(*(r+i))*(*(r+i))); //equation paper has extra c, but then units dont work out
         *(dens_lab+i)=(*(dens+i))*(*(gamma+i));
         *(pres+i)=(A_RAD*pow(*(temp+i), 4.0))/(3*pow(C_LIGHT, 2.0));
         //fprintf(fPtr,"eta: %lf\nr_sat: %lf\nGamma: %lf\nR: %lf\nTheta: %lf\nPres: %e\nvel %lf\nX: %lf\nY %lf\nVx: %lf\nVy: %lf\nDens: %e\nLab_Dens: %e\nTemp: %lf\n\n", eta, r_sat, *(gamma+i), *(r+i), (*(theta+i)), *(pres+i), vel, *(x+i), *(y+i), *(vx+i), *(vy+i), *(dens+i), *(dens_lab+i), *(temp+i));
