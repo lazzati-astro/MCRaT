@@ -86,6 +86,8 @@ void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double
 
 void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array, FILE *fPtr);
 
+void structuredFireballPrep(double *r, double *theta,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array, FILE *fPtr);
+
 void modifyFlashName(char flash_file[200], char prefix[200], int frame, int dim_switch);
 
 

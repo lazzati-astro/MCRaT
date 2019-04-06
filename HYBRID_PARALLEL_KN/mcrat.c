@@ -78,7 +78,8 @@
 #define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
 #define MC_PATH "TEST/"
 */
- #define THISRUN "Spherical"
+//#define THISRUN "Spherical"
+#define THISRUN "Structured Spherical"
 #define FILEPATH "/home/physics/parsotat/16TI/"
 //#define FILEPATH "/Users/Tylerparsotan//Documents/16OI_TEST/"
 #define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
@@ -98,6 +99,7 @@ int main(int argc, char **argv)
     char this_run[200]=THISRUN;
     char *cyl="Cylindrical";
     char *sph="Spherical";
+    char *struct_sph="Structured Spherical";
     char spect;//type of spectrum
     char restrt;//restart or not
     double fps, fps_modified, theta_jmin, theta_jmax,hydro_domain_y, hydro_domain_x ;//frames per second of sim, min opening angle of jet, max opening angle of jet in radians, max y value in hydro domain
@@ -688,6 +690,11 @@ int main(int argc, char **argv)
                         //printf("In Spherical\n");
                         sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
                     }
+                    else if (strcmp(struct_sph, this_run)==0)
+                    {
+                        //printf("In Structural Spherical\n");
+                        structuredFireballPrep(rPtr, thetaPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
+                    }
                         
                     //determine where to place photons and how many should go in a given place
                     //for a checkpoint implmentation, dont need to inject photons, need to load photons' last saved data 
@@ -784,6 +791,11 @@ int main(int argc, char **argv)
                     else if (strcmp(sph, this_run)==0)
                     {
                         sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num, fPtr );
+                    }
+                    else if (strcmp(struct_sph, this_run)==0)
+                    {
+                        //printf("In Structural Spherical\n");
+                        structuredFireballPrep(rPtr, thetaPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
                     }
                         //printf("The result of read and decimate are arrays with %d elements\n", array_num);
                         

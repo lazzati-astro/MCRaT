@@ -3254,6 +3254,53 @@ void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, 
     
 }
 
+void structuredFireballPrep(double *r, double *theta,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array, FILE *fPtr)
+{
+    //This model is provided by Lundman, Peer, Ryde 2014, use this to compare our MCRaT polarization to their polarizations
+    double  gamma_0=100, lumi=1e52, r00=1e8, theta_j=1e-2, p=4; //theta_j in paper is 1e-2, 3e-2, 1e-1 and p is 1,2,4
+    double T_0=pow(lumi/(4*M_PI*r00*r00*A_RAD*C_LIGHT), 1.0/4.0);
+    double eta=0, r_sat=0;
+    double vel=0, theta_ratio=0;
+    int i=0;
+    
+    for (i=0;i<num_array;i++)
+    {
+        
+        
+        theta_ratio=(*(theta+i))/theta_j;
+        eta=pow(1+pow(theta_ratio, 2*p) , -0.5);
+        
+        if (*(theta+i) >= theta_j*pow(gamma_0/2, 1.0/p))
+        {
+            //*(gamma+i)=2; //outside with of shear layer have gamma be 2 like in paper
+            eta=2.0/gamma_0;
+        }
+        
+        r_sat=eta*r00;
+        
+        if ((*(r+i)) >= r_sat)
+        {
+            *(gamma+i)=eta*gamma_0;
+            *(temp+i)=T_0*pow(r_sat/(*(r+i)), 2.0/3.0)/eta;
+        }
+        else
+        {
+            *(gamma+i)=(*(r+i))/r_sat; //not sure if this is right but it shouldn't matter since we're injecting our photons far from r00
+            *(temp+i)=T_0;
+        }
+        
+        vel=pow(1-(pow(*(gamma+i), -2.0)) ,0.5);
+        *(vx+i)=(vel*(*(x+i)))/pow(pow(*(x+i), 2)+ pow(*(y+i), 2) ,0.5);
+        *(vy+i)=(vel*(*(y+i)))/pow(pow(*(x+i), 2)+ pow(*(y+i), 2) ,0.5);
+        *(dens+i)=lumi/(4*M_PI*M_P*C_LIGHT*C_LIGHT*C_LIGHT*C_LIGHT*eta*vel*(*(gamma+i))*(*(r+i))*(*(r+i))); //multiply by M_P
+        *(dens_lab+i)=(*(dens+i))*(*(gamma+i));
+        *(pres+i)=(A_RAD*pow(*(temp+i), 4.0))/(3*pow(C_LIGHT, 2.0));
+        //fprintf(fPtr,"eta: %lf\nr_sat: %lf\nGamma: %lf\nR: %lf\nTheta: %lf\nPres: %e\nvel %lf\nX: %lf\nY %lf\nVx: %lf\nVy: %lf\nDens: %e\nLab_Dens: %e\nTemp: %lf\n\n", eta, r_sat, *(gamma+i), *(r+i), (*(theta+i)), *(pres+i), vel, *(x+i), *(y+i), *(vx+i), *(vy+i), *(dens+i), *(dens_lab+i), *(temp+i));
+        
+    }
+    
+}
+
 
 void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, int angle_id, int dim_switch, int riken_switch, FILE *fPtr )
 {
