@@ -1313,6 +1313,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     double com_v_phi, com_v_theta, *p_comv=NULL, *boost=NULL; //comoving phi, theta, comoving 4 momentum for a photon, and boost for photon(to go to lab frame)
     double *l_boost=NULL; //pointer to hold array of lorentz boost, to lab frame, values
     float num_dens_coeff;
+    double r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
     
     if (spect=='w') //from MCRAT paper, w for wien spectrum 
     {
@@ -1334,8 +1335,15 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     for(i=0;i<array_length;i++)
     {
         
+        r_grid_innercorner = pow((*(x+i) - *(szx+i)/2.0) * ((*(x+i) - *(szx+i)/2.0))+(*(y+i) - *(szx+i)/2.0) * (*(y+i) - *(szx+i)/2.0),0.5);
+        r_grid_outercorner = pow((*(x+i) + *(szx+i)/2.0) * ((*(x+i) + *(szx+i)/2.0))+(*(y+i) + *(szx+i)/2.0) * (*(y+i) + *(szx+i)/2.0),0.5);
+        
+        theta_grid_innercorner = acos( (*(y+i) - *(szx+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
+        theta_grid_outercorner = acos( (*(y+i) + *(szx+i)/2.0) /r_grid_outercorner);
+        
         //look at all boxes in width delta r=c/fps and within angles we are interested in NEED TO IMPLEMENT
-            if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) ) 
+        //if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
+        if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
             {
                 block_cnt++;
             }
@@ -1359,7 +1367,14 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
         {
             //printf("%d\n",i);
             //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
-                if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) ) 
+            r_grid_innercorner = pow((*(x+i) - *(szx+i)/2.0) * ((*(x+i) - *(szx+i)/2.0))+(*(y+i) - *(szx+i)/2.0) * (*(y+i) - *(szx+i)/2.0),0.5);
+            r_grid_outercorner = pow((*(x+i) + *(szx+i)/2.0) * ((*(x+i) + *(szx+i)/2.0))+(*(y+i) + *(szx+i)/2.0) * (*(y+i) + *(szx+i)/2.0),0.5);
+            
+            theta_grid_innercorner = acos( (*(y+i) - *(szx+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
+            theta_grid_outercorner = acos( (*(y+i) + *(szx+i)/2.0) /r_grid_outercorner);
+            
+            //if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
+            if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
                 {
                     if (riken_switch==0)
                     {
@@ -1413,7 +1428,14 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     k=0;
     for (i=0;i<array_length;i++)
     {
-       if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >= theta_min) )
+        r_grid_innercorner = pow((*(x+i) - *(szx+i)/2.0) * ((*(x+i) - *(szx+i)/2.0))+(*(y+i) - *(szx+i)/2.0) * (*(y+i) - *(szx+i)/2.0),0.5);
+        r_grid_outercorner = pow((*(x+i) + *(szx+i)/2.0) * ((*(x+i) + *(szx+i)/2.0))+(*(y+i) + *(szx+i)/2.0) * (*(y+i) + *(szx+i)/2.0),0.5);
+        
+        theta_grid_innercorner = acos( (*(y+i) - *(szx+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
+        theta_grid_outercorner = acos( (*(y+i) + *(szx+i)/2.0) /r_grid_outercorner);
+        
+        //if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
+        if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
         {
 
             //*(temps+i)=0.76*(*(temps+i));
