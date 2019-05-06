@@ -2956,6 +2956,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y
         gsl_matrix_set(scatt, 1,1,1.0+pow(cos(theta), 2.0));
         gsl_matrix_set(scatt, 2,2, 2.0*cos(theta));
         gsl_matrix_set(scatt, 3,3, 2.0*cos(theta)+ ((cos(theta))*(1-cos(theta))*((*(ph_p_prime+0)) - gsl_vector_get(result,0))/(M_EL*C_LIGHT )) );
+        gsl_matrix_scale(scatt, (gsl_vector_get(result,0)/(*(ph_p_prime+0)))*((gsl_vector_get(result,0)/(*(ph_p_prime+0))))*0.5*3*THOM_X_SECT/(8*M_PI) ); //scale the matrix by 0.5*r_0^2 (\epsilon/\epsilon_0)^2
         gsl_blas_dgemv(CblasNoTrans, 1, scatt, &stokes.vector, 0, scatt_result);
         /*
         fprintf(fPtr,"before s: %e, %e, %e,%e\n", gsl_vector_get(&stokes.vector,0), gsl_vector_get(&stokes.vector,1), gsl_vector_get(&stokes.vector,2), gsl_vector_get(&stokes.vector,3));
