@@ -1314,6 +1314,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     double *l_boost=NULL; //pointer to hold array of lorentz boost, to lab frame, values
     float num_dens_coeff;
     double r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
+    double position_rand=0;
     
     if (spect=='w') //from MCRAT paper, w for wien spectrum 
     {
@@ -1491,9 +1492,14 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                 (*ph)[ph_tot].p1=(*(l_boost+1));
                 (*ph)[ph_tot].p2=(*(l_boost+2));
                 (*ph)[ph_tot].p3=(*(l_boost+3));
-                (*ph)[ph_tot].r0= (*(x+i))*cos(position_phi); //put photons @ center of box that they are supposed to be in with random phi 
-                (*ph)[ph_tot].r1=(*(x+i))*sin(position_phi) ;
-                (*ph)[ph_tot].r2=(*(y+i)); //y coordinate in flash becomes z coordinate in MCRaT
+                
+                //place photons in rand positions within fluid element
+                position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
+                (*ph)[ph_tot].r0= (*(x+i)+position_rand)*cos(position_phi); //put photons @ center of box that they are supposed to be in with random phi
+                (*ph)[ph_tot].r1=(*(x+i)+position_rand)*sin(position_phi) ;
+                position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0;
+                (*ph)[ph_tot].r2=(*(y+i)+position_rand); //y coordinate in flash becomes z coordinate in MCRaT
+                
                 (*ph)[ph_tot].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1 
                 (*ph)[ph_tot].s1=0;
                 (*ph)[ph_tot].s2=0;
