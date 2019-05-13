@@ -3297,19 +3297,19 @@ void structuredFireballPrep(double *r, double *theta,  double *x, double *y, dou
         
         
         theta_ratio=(*(theta+i))/theta_j;
-        eta=pow(1+pow(theta_ratio, 2*p) , -0.5);
+        eta=gamma_0*pow(1+pow(theta_ratio, 2*p) , -0.5);
         
         if (*(theta+i) >= theta_j*pow(gamma_0/2, 1.0/p))
         {
             //*(gamma+i)=2; //outside with of shear layer have gamma be 2 like in paper
-            eta=2.0/gamma_0;
+            eta=2.0;
         }
         
         r_sat=eta*r00;
         
         if ((*(r+i)) >= r_sat)
         {
-            *(gamma+i)=eta*gamma_0;
+            *(gamma+i)=eta;
             *(temp+i)=T_0*pow(r_sat/(*(r+i)), 2.0/3.0)/eta;
         }
         else
