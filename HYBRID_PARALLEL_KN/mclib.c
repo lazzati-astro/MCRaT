@@ -141,11 +141,13 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
 }
 
 
-void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200], int angle_rank, FILE *fPtr )
+void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200], int angle_rank, int stokes_switch, FILE *fPtr )
 {
     //function to save the photons' positions and 4 momentum
     
      //now using hdf5 file for each process w/ group structure /(weights or Hydro File #)/(p0,p1,p2,p3, r0, r1, r2, s0, s1, s2, or num_scatt)
+    
+    //if (stokes_switch==0), not going to save the polarization info
      
      //open the file if it exists and see if the group exists for the given frame, if frame doesnt exist then write datasets for all photons as extendable
      //if the frame does exist then read information from the prewritten data and then add new data to it as extended chunk
@@ -260,19 +262,22 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         
         dset_r2 = H5Dcreate2 (group_id, "R2", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
-                            
-        dset_s0 = H5Dcreate2 (group_id, "S0", H5T_NATIVE_DOUBLE, dspace,
-                            H5P_DEFAULT, prop, H5P_DEFAULT);
         
-        dset_s1 = H5Dcreate2 (group_id, "S1", H5T_NATIVE_DOUBLE, dspace,
-                            H5P_DEFAULT, prop, H5P_DEFAULT);
+        if (stokes_switch!=0)
+        {
+            dset_s0 = H5Dcreate2 (group_id, "S0", H5T_NATIVE_DOUBLE, dspace,
+                                H5P_DEFAULT, prop, H5P_DEFAULT);
+            
+            dset_s1 = H5Dcreate2 (group_id, "S1", H5T_NATIVE_DOUBLE, dspace,
+                                H5P_DEFAULT, prop, H5P_DEFAULT);
+            
+            dset_s2 = H5Dcreate2 (group_id, "S2", H5T_NATIVE_DOUBLE, dspace,
+                                H5P_DEFAULT, prop, H5P_DEFAULT);
+            
+            dset_s3 = H5Dcreate2 (group_id, "S3", H5T_NATIVE_DOUBLE, dspace,
+                                H5P_DEFAULT, prop, H5P_DEFAULT);
+        }
         
-        dset_s2 = H5Dcreate2 (group_id, "S2", H5T_NATIVE_DOUBLE, dspace,
-                            H5P_DEFAULT, prop, H5P_DEFAULT);
-        
-        dset_s3 = H5Dcreate2 (group_id, "S3", H5T_NATIVE_DOUBLE, dspace,
-                            H5P_DEFAULT, prop, H5P_DEFAULT);
-                            
         dset_num_scatt = H5Dcreate2 (group_id, "NS", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
                             
@@ -305,19 +310,20 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
                         
         status = H5Dwrite (dset_r2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                         H5P_DEFAULT, r2);
-                        
-        status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-                        H5P_DEFAULT, s0);
-        
-        status = H5Dwrite (dset_s1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-                        H5P_DEFAULT, s1);
-                        
-        status = H5Dwrite (dset_s2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-                        H5P_DEFAULT, s2);
-                        
-        status = H5Dwrite (dset_s3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-                        H5P_DEFAULT, s3);
-                        
+        if (stokes_switch!=0)
+        {
+            status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                            H5P_DEFAULT, s0);
+            
+            status = H5Dwrite (dset_s1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                            H5P_DEFAULT, s1);
+            
+            status = H5Dwrite (dset_s2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                            H5P_DEFAULT, s2);
+            
+            status = H5Dwrite (dset_s3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                            H5P_DEFAULT, s3);
+        }
         status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                         H5P_DEFAULT, num_scatt);
         
@@ -462,69 +468,72 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         status = H5Sclose (mspace);
         status = H5Sclose (fspace);
         
-         dset_s0 = H5Dopen (group_id, "S0", H5P_DEFAULT); //open dataset
-        dspace = H5Dget_space (dset_s0);
-        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
-        size[0] = dims[0]+ dims_old[0];
-        status = H5Dset_extent (dset_s0, size);
-        fspace = H5Dget_space (dset_s0);
-        offset[0] = dims_old[0];
-        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
-                                  dims, NULL); 
-        mspace = H5Screate_simple (rank, dims, NULL);
-        status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, mspace, fspace,
-                            H5P_DEFAULT, s0);
-        status = H5Sclose (dspace);
-        status = H5Sclose (mspace);
-        status = H5Sclose (fspace);
-        
-        dset_s1 = H5Dopen (group_id, "S1", H5P_DEFAULT); //open dataset
-        dspace = H5Dget_space (dset_s1);
-        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
-        size[0] = dims[0]+ dims_old[0];
-        status = H5Dset_extent (dset_s1, size);
-        fspace = H5Dget_space (dset_s1);
-        offset[0] = dims_old[0];
-        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
-                                  dims, NULL); 
-        mspace = H5Screate_simple (rank, dims, NULL);
-        status = H5Dwrite (dset_s1, H5T_NATIVE_DOUBLE, mspace, fspace,
-                            H5P_DEFAULT, s1);
-        status = H5Sclose (dspace);
-        status = H5Sclose (mspace);
-        status = H5Sclose (fspace);
-        
-        dset_s2 = H5Dopen (group_id, "S2", H5P_DEFAULT); //open dataset
-        dspace = H5Dget_space (dset_s2);
-        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
-        size[0] = dims[0]+ dims_old[0];
-        status = H5Dset_extent (dset_s2, size);
-        fspace = H5Dget_space (dset_s2);
-        offset[0] = dims_old[0];
-        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
-                                  dims, NULL); 
-        mspace = H5Screate_simple (rank, dims, NULL);
-        status = H5Dwrite (dset_s2, H5T_NATIVE_DOUBLE, mspace, fspace,
-                            H5P_DEFAULT, s2);
-        status = H5Sclose (dspace);
-        status = H5Sclose (mspace);
-        status = H5Sclose (fspace);
-        
-        dset_s3 = H5Dopen (group_id, "S3", H5P_DEFAULT); //open dataset
-        dspace = H5Dget_space (dset_s3);
-        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
-        size[0] = dims[0]+ dims_old[0];
-        status = H5Dset_extent (dset_s3, size);
-        fspace = H5Dget_space (dset_s3);
-        offset[0] = dims_old[0];
-        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
-                                  dims, NULL); 
-        mspace = H5Screate_simple (rank, dims, NULL);
-        status = H5Dwrite (dset_s3, H5T_NATIVE_DOUBLE, mspace, fspace,
-                            H5P_DEFAULT, s3);
-        status = H5Sclose (dspace);
-        status = H5Sclose (mspace);
-        status = H5Sclose (fspace);
+        if (stokes_switch!=0)
+        {
+             dset_s0 = H5Dopen (group_id, "S0", H5P_DEFAULT); //open dataset
+            dspace = H5Dget_space (dset_s0);
+            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+            size[0] = dims[0]+ dims_old[0];
+            status = H5Dset_extent (dset_s0, size);
+            fspace = H5Dget_space (dset_s0);
+            offset[0] = dims_old[0];
+            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                      dims, NULL);
+            mspace = H5Screate_simple (rank, dims, NULL);
+            status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, mspace, fspace,
+                                H5P_DEFAULT, s0);
+            status = H5Sclose (dspace);
+            status = H5Sclose (mspace);
+            status = H5Sclose (fspace);
+            
+            dset_s1 = H5Dopen (group_id, "S1", H5P_DEFAULT); //open dataset
+            dspace = H5Dget_space (dset_s1);
+            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+            size[0] = dims[0]+ dims_old[0];
+            status = H5Dset_extent (dset_s1, size);
+            fspace = H5Dget_space (dset_s1);
+            offset[0] = dims_old[0];
+            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                      dims, NULL);
+            mspace = H5Screate_simple (rank, dims, NULL);
+            status = H5Dwrite (dset_s1, H5T_NATIVE_DOUBLE, mspace, fspace,
+                                H5P_DEFAULT, s1);
+            status = H5Sclose (dspace);
+            status = H5Sclose (mspace);
+            status = H5Sclose (fspace);
+            
+            dset_s2 = H5Dopen (group_id, "S2", H5P_DEFAULT); //open dataset
+            dspace = H5Dget_space (dset_s2);
+            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+            size[0] = dims[0]+ dims_old[0];
+            status = H5Dset_extent (dset_s2, size);
+            fspace = H5Dget_space (dset_s2);
+            offset[0] = dims_old[0];
+            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                      dims, NULL);
+            mspace = H5Screate_simple (rank, dims, NULL);
+            status = H5Dwrite (dset_s2, H5T_NATIVE_DOUBLE, mspace, fspace,
+                                H5P_DEFAULT, s2);
+            status = H5Sclose (dspace);
+            status = H5Sclose (mspace);
+            status = H5Sclose (fspace);
+            
+            dset_s3 = H5Dopen (group_id, "S3", H5P_DEFAULT); //open dataset
+            dspace = H5Dget_space (dset_s3);
+            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+            size[0] = dims[0]+ dims_old[0];
+            status = H5Dset_extent (dset_s3, size);
+            fspace = H5Dget_space (dset_s3);
+            offset[0] = dims_old[0];
+            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                      dims, NULL);
+            mspace = H5Screate_simple (rank, dims, NULL);
+            status = H5Dwrite (dset_s3, H5T_NATIVE_DOUBLE, mspace, fspace,
+                                H5P_DEFAULT, s3);
+            status = H5Sclose (dspace);
+            status = H5Sclose (mspace);
+            status = H5Sclose (fspace);
+        }
         
         dset_num_scatt = H5Dopen (group_id, "NS", H5P_DEFAULT); //open dataset
         dspace = H5Dget_space (dset_num_scatt);
@@ -600,7 +609,11 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     //status = H5Sclose (dspace);
     status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
     status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
-    status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
+    status = H5Dclose (dset_s0);
+    if (stokes_switch!=0)
+    {
+        status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
+    }
     status = H5Dclose (dset_num_scatt); 
     if (frame==frame_inj)
     {
@@ -2477,9 +2490,10 @@ void stokesRotation(double *v, double *p_ph, double *p_ph_boosted, double *x_til
 }
 
 
-double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand,int dim_switch_3d, FILE *fPtr)
+double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand,int dim_switch_3d, int stokes_switch, FILE *fPtr)
 {
     //function to perform single photon scattering
+    //stokes switch of 0 means that we don't consider the stokes parameters (aka no polarization)
     int  i=0, index=0, ph_index=0, scatter_did_occur=0; //variable scatter_did_occur is to keep track of wether a scattering actually occured or not, 
     double scatt_time=0, old_scatt_time=0; //keep track of new time to scatter vs old time to scatter to know how much to incrementally propagate the photons if necessary
     double phi=0, theta=0; //phi and theta for the 4 momentum 
@@ -3105,7 +3119,8 @@ int comptonScatter(double *theta, double *phi, gsl_rng * rand, FILE *fPtr)
 
 int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double u, gsl_rng * rand, FILE *fPtr)
 {
-    double phi_dum=0, theta_dum=0, f_phi_dum=0, f_theta_dum=0, phi_y_dum=0, theta_y_dum=0, KN_x_section_over_thomson_x_section=0, rand_num=0;
+    //sample theta using:  https://doi.org/10.13182/NSE11-57
+    double phi_dum=0, cos_theta_dum=0, f_phi_dum=0, f_cos_theta_dum=0, f_theta_dum=0, phi_y_dum=0, cos_theta_y_dum=0, KN_x_section_over_thomson_x_section=0, rand_num=0;
     double mu=0, phi_norm=0, phi_max=0, norm=0;
     int will_scatter=0;
     double energy_ratio=  p0/(M_EL*C_LIGHT ); //h*nu / mc^2 , units of p0 is erg/c 
@@ -3124,22 +3139,23 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
     
         //sample a theta and phi from the differential cross sections
         phi_y_dum=1; //initalize loop to get a random phi and theta
-        theta_y_dum=1;
-        f_theta_dum=0;
+        cos_theta_y_dum=1;
+        f_cos_theta_dum=0;
         f_phi_dum=0;
         
-        while ((theta_y_dum>f_theta_dum))
+        while ((cos_theta_y_dum>f_cos_theta_dum))
         {
-            //do phi and theta seperately
-            theta_y_dum=gsl_rng_uniform(rand)*1.09; 
-            theta_dum=gsl_rng_uniform(rand)*M_PI;
-            mu=1+energy_ratio*(1-cos(theta_dum));
-            f_theta_dum=(pow(mu, -1.0) + pow(mu, -3.0) - pow(mu, -2.0)*pow(sin(theta_dum), 2.0))*sin(theta_dum);
-            
+            //do phi and theta seperately, sample theta using:  https://doi.org/10.13182/NSE11-57
+            cos_theta_y_dum=gsl_rng_uniform(rand)*2;
+            cos_theta_dum=gsl_rng_uniform(rand)*2-1;
+            f_cos_theta_dum=pow((1+energy_ratio*(1-cos_theta_dum)),-2)*(energy_ratio*(1-cos_theta_dum)+(1/(1+energy_ratio*(1-cos_theta_dum))) + cos_theta_dum*cos_theta_dum);
+
             //fprintf(fPtr,"theta_y_dum: %e, theta_dum: %e, mu: %e, f_theta_dum: %e\n", theta_y_dum, theta_dum, mu, f_theta_dum);
             //fflush(fPtr);
         }
-        *theta=theta_dum;
+        *theta=acos(cos_theta_dum);
+        mu=1+energy_ratio*(1-cos(*theta));
+        f_theta_dum=(pow(mu, -1.0) + pow(mu, -3.0) - pow(mu, -2.0)*pow(sin(*theta), 2.0))*sin(*theta);
         
         while ((phi_y_dum>f_phi_dum) )
         {
@@ -3147,13 +3163,13 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
             {
                 //if we are considering polarization calulate the norm for the distributiion to be between 1 and 0
                 phi_max=atan(fabs(u)/fabs(q))/2.0;
-                norm=(f_theta_dum + pow(mu, -2.0)*pow(sin(theta_dum), 3.0) * (q*cos(2*phi_max)-u*sin(2*phi_max)));
+                norm=(f_theta_dum + pow(mu, -2.0)*pow(sin(*theta), 3.0) * (q*cos(2*phi_max)-u*sin(2*phi_max)));
                 //fprintf(fPtr,"norm: %e\n", norm);
                 //fflush(fPtr);
                 
                 phi_y_dum=gsl_rng_uniform(rand);
                 phi_dum=gsl_rng_uniform(rand)*2*M_PI;
-                f_phi_dum=(f_theta_dum + pow(mu, -2.0)*pow(sin(theta_dum), 3.0) * (q*cos(2*phi_dum)-u*sin(2*phi_dum)))/norm; //signs on q and u based on Lundman/ McMaster
+                f_phi_dum=(f_theta_dum + pow(mu, -2.0)*pow(sin(*theta), 3.0) * (q*cos(2*phi_dum)-u*sin(2*phi_dum)))/norm; //signs on q and u based on Lundman/ McMaster
                 
                 //fprintf(fPtr,"phi_y_dum: %e, theta_dum: %e, mu: %e, f_theta_dum: %e, phi_dum: %e, f_phi_dum: %e, u: %e, q: %e\n", phi_y_dum, theta_dum, mu, f_theta_dum, phi_dum, f_phi_dum, u, q);
                 //fflush(fPtr);

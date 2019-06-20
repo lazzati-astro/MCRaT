@@ -88,6 +88,7 @@
 
 #define MCPAR "mc.par"
 #define RIKEN_SWITCH 0
+#define STOKES_SWITCH 0
 
 int main(int argc, char **argv)
 {
@@ -833,7 +834,7 @@ int main(int argc, char **argv)
                             //scatter the photon
                             //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
-                            time_step=photonScatter( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, rng, dim_switch, fPtr );
+                            time_step=photonScatter( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, rng, dim_switch, STOKES_SWITCH, fPtr );
                             time_now+=time_step;
                             
                             
@@ -882,7 +883,7 @@ int main(int argc, char **argv)
                     if (save_chkpt_success==0)
                     {
                         //if we saved the checkpoint successfully also save the photons to the hdf5 file, else there may be something wrong with the file system
-                        printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, angle_id, fPtr);
+                        printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, angle_id, STOKES_SWITCH, fPtr);
                     }
                     else
                     {

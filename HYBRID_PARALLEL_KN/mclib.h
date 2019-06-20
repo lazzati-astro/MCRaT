@@ -23,7 +23,7 @@ struct photon
 } ; //structure to hold photon information
 
 
-void printPhotons(struct photon *ph, int num_ph, int frame, int  frame_inj,char dir[200], int angle_rank,FILE *fPtr );
+void printPhotons(struct photon *ph, int num_ph, int frame, int  frame_inj,char dir[200], int angle_rank, int stokes_switch, FILE *fPtr );
 
 void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large,\
 int *last_frm, int *frm2_small,int *frm2_large, double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart,  int *dim_switch);
@@ -62,7 +62,7 @@ void rotateStokesAxis(double theta, double *y_axis, double *x_axis, double *rota
 
 void stokesRotation(double *v, double *p_ph, double *p_ph_boosted, double *x_tilde, double *y_tilde, double *s, FILE *fPtr);
 
-double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand, int dim_switch_3d, FILE *fPtr);
+double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand, int dim_switch_3d, int stokes_switch, FILE *fPtr);
 
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr);
 
