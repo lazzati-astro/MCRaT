@@ -2365,8 +2365,8 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
 
 void mullerMatrixRotation(double theta, double *s, FILE *fPtr)
 {
-    //makes a CW rotation od the stokes parameters when the photon velocity vector is pointed towards the observer
-    gsl_matrix *M= gsl_matrix_calloc (4, 4); //create matrix thats 4x4 to do rotation as defined in McMaster 1961
+    //makes a CCW rotation od the stokes parameters when the photon velocity vector is pointed towards the observer, follows Lundman
+    gsl_matrix *M= gsl_matrix_calloc (4, 4); //create matrix thats 4x4 to do rotation as defined in McMaster 1961 (has it to rotate CW in that paper)
     gsl_vector *result= gsl_vector_alloc(4);
     gsl_vector_view stokes;
     
@@ -2377,8 +2377,8 @@ void mullerMatrixRotation(double theta, double *s, FILE *fPtr)
     gsl_matrix_set(M, 3,3,1);
     gsl_matrix_set(M, 1,1,cos(2*theta));
     gsl_matrix_set(M, 2,2,cos(2*theta));
-    gsl_matrix_set(M, 1,2,sin(2*theta));
-    gsl_matrix_set(M, 2,1,-1*sin(2*theta));
+    gsl_matrix_set(M, 1,2,-1*sin(2*theta));
+    gsl_matrix_set(M, 2,1,sin(2*theta));
     gsl_blas_dgemv(CblasNoTrans, 1, M, &stokes.vector, 0, result); //Ms=s
     
     //fprintf(fPtr, "stokes parameter after= %e %e %e %e\n\n", gsl_vector_get(result, 0), gsl_vector_get(result, 1), gsl_vector_get(result, 2), gsl_vector_get(result, 3));
@@ -2392,6 +2392,57 @@ void mullerMatrixRotation(double theta, double *s, FILE *fPtr)
     gsl_vector_free(result);
     gsl_matrix_free (M);
     
+}
+
+void findXY(double *v_ph, double *vector, double *x, double *y)
+{
+    //finds the stokes plane coordinate x,y axis for the photon velocity with respect to some reference vector
+    double norm=0;
+    
+    *(y+0)= (*(v_ph+1))*(*(vector+2))-(*(v_ph+2))*(*(vector+2));
+    *(y+1)= -1*((*(v_ph+0))*(*(vector+2))-(*(v_ph+2))*(*(vector+0)));
+    *(y+2)= (*(v_ph+0))*(*(vector+1))-(*(v_ph+1))*(*(vector+0));
+    
+    norm=1.0/sqrt( (*(y+0))*(*(y+0)) + (*(y+1))*(*(y+1)) + (*(y+2))*(*(y+2)));
+    *(y+0) *= norm;
+    *(y+1) *= norm;
+    *(y+2) *= norm;
+    
+    *(x+0)= (*(y+1))*(*(v_ph+2))-(*(y+2))*(*(v_ph+2));
+    *(x+1)= -1*((*(y+0))*(*(v_ph+2))-(*(y+2))*(*(v_ph+0)));
+    *(x+2)= (*(y+0))*(*(v_ph+1))-(*(y+1))*(*(v_ph+0));
+    
+    norm=1.0/sqrt( (*(x+0))*(*(x+0)) + (*(x+1))*(*(x+1)) + (*(x+2))*(*(x+2)));
+    *(x+0) *= norm;
+    *(x+1) *= norm;
+    *(x+2) *= norm;
+    
+}
+
+double findPhi(double *x_old, double *y_old, double *x_new, double *y_new)
+{
+    //find the angle to rotate the stokes vector to transform from one set of stokes coordinates to another
+    //this is given by Lundman
+    gsl_vector_view y=gsl_vector_view_array(y_old, 3);
+    gsl_vector_view x=gsl_vector_view_array(x_old, 3);
+    gsl_vector_view y_prime=gsl_vector_view_array(y_new, 3);
+    gsl_vector_view x_prime=gsl_vector_view_array(x_new, 3);
+    double factor=0, dot_prod_result=0;
+    
+    gsl_blas_ddot(&x.vector, &x_prime.vector, &dot_prod_result);
+    
+    if (dot_prod_result>=0)
+    {
+        factor=1;
+    }
+    else
+    {
+        factor=-1;
+    }
+    
+    gsl_blas_ddot(&y.vector, &y_prime.vector, &dot_prod_result);
+    
+    return -1*factor*acos(dot_prod_result);
 }
 
 void rotateStokesAxis(double theta, double *y_axis, double *x_axis, double *rotated_axis )

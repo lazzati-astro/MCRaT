@@ -58,6 +58,8 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr);
 
 void mullerMatrixRotation(double theta, double *s, FILE *fPtr);
 
+void findXY(double *v_ph, double *vector, double *x, double *y);
+
 void rotateStokesAxis(double theta, double *y_axis, double *x_axis, double *rotated_axis );
 
 void stokesRotation(double *v, double *p_ph, double *p_ph_boosted, double *x_tilde, double *y_tilde, double *s, FILE *fPtr);
