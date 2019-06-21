@@ -609,10 +609,9 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     //status = H5Sclose (dspace);
     status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
     status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
-    status = H5Dclose (dset_s0);
     if (stokes_switch!=0)
     {
-        status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
+        status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
     }
     status = H5Dclose (dset_num_scatt); 
     if (frame==frame_inj)
