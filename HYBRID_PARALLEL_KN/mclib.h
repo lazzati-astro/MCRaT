@@ -60,19 +60,17 @@ void mullerMatrixRotation(double theta, double *s, FILE *fPtr);
 
 void findXY(double *v_ph, double *vector, double *x, double *y);
 
-void rotateStokesAxis(double theta, double *y_axis, double *x_axis, double *rotated_axis );
-
-void stokesRotation(double *v, double *p_ph, double *p_ph_boosted, double *x_tilde, double *y_tilde, double *s, FILE *fPtr);
+void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FILE *fPtr);
 
 double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand, int dim_switch_3d, int stokes_switch, FILE *fPtr);
 
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr);
 
-int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y_tilde, double *s, gsl_rng * rand, FILE *fPtr);
+int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y_tilde, double *s, gsl_rng * rand, int stokes_switch, FILE *fPtr);
 
 int comptonScatter(double *theta, double *phi, gsl_rng * rand, FILE *fPtr);
 
-int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double u, gsl_rng * rand, FILE *fPtr);
+int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double u, gsl_rng * rand, int stokes_switch, FILE *fPtr);
 
 double averagePhotonEnergy(struct photon *ph, int num_ph);
 
