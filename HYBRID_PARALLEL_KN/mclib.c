@@ -3314,11 +3314,11 @@ void structuredFireballPrep(double *r, double *theta,  double *x, double *y, dou
 }
 
 
-void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, int angle_id, int dim_switch, int riken_switch, FILE *fPtr )
+void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, int angle_id, int dim_switch, int riken_switch, int stokes_switch, FILE *fPtr )
 {
     //function to merge files in mcdir produced by various threads
     double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;
-    int i=0, j=0, k=0, num_types=12, isNotCorrupted=0; 
+    int i=0, j=0, k=0, isNotCorrupted=0, num_types= (stokes_switch!=0) ? 12 : 8;
     int increment=1;
     char filename_k[2000]="", file_no_thread_num[2000]="", cmd[2000]="", mcdata_type[20]="";
     char group[200]="";
@@ -3393,20 +3393,37 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             
             for (k=0;k<num_types;k++)
             {
-                switch (k)
+                if (stokes_switch!=0)
                 {
-                    case 0: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P0"); break;
-                    case 1: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P1");break;
-                    case 2: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P2"); break;
-                    case 3: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P3"); break;
-                    case 4: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R0"); break;
-                    case 5: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
-                    case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
-                    case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S0"); break;
-                    case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S1");break;
-                    case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S2"); break;
-                    case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
-                    case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                    switch (k)
+                    {
+                        case 0: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P0"); break;
+                        case 1: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P1");break;
+                        case 2: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P2"); break;
+                        case 3: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P3"); break;
+                        case 4: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R0"); break;
+                        case 5: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
+                        case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
+                        case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S0"); break;
+                        case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S1");break;
+                        case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S2"); break;
+                        case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
+                        case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                    }
+                }
+                else
+                {
+                    switch (k)
+                    {
+                        case 0: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P0"); break;
+                        case 1: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P1");break;
+                        case 2: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P2"); break;
+                        case 3: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P3"); break;
+                        case 4: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R0"); break;
+                        case 5: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
+                        case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
+                        case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                    }
                 }
             
                 //open the datatset
@@ -3474,10 +3491,13 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     dset_r0 = H5Dopen (group_id, "R0", H5P_DEFAULT); 
                     dset_r1 = H5Dopen (group_id, "R1", H5P_DEFAULT);
                     dset_r2 = H5Dopen (group_id, "R2", H5P_DEFAULT);
-                    dset_s0 = H5Dopen (group_id, "S0", H5P_DEFAULT); 
-                    dset_s1 = H5Dopen (group_id, "S1", H5P_DEFAULT);
-                    dset_s2 = H5Dopen (group_id, "S2", H5P_DEFAULT);
-                    dset_s3 = H5Dopen (group_id, "S3", H5P_DEFAULT);
+                    if (stokes_switch!=0)
+                    {
+                        dset_s0 = H5Dopen (group_id, "S0", H5P_DEFAULT);
+                        dset_s1 = H5Dopen (group_id, "S1", H5P_DEFAULT);
+                        dset_s2 = H5Dopen (group_id, "S2", H5P_DEFAULT);
+                        dset_s3 = H5Dopen (group_id, "S3", H5P_DEFAULT);
+                    }
                     dset_num_scatt = H5Dopen (group_id, "NS", H5P_DEFAULT);
                 
                     //read the data in
@@ -3488,10 +3508,13 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     status = H5Dread(dset_r0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r0+j));
                     status = H5Dread(dset_r1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r1+j));
                     status = H5Dread(dset_r2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r2+j));
-                    status = H5Dread(dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s0+j));
-                    status = H5Dread(dset_s1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s1+j));
-                    status = H5Dread(dset_s2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s2+j));
-                    status = H5Dread(dset_s3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s3+j));
+                    if (stokes_switch!=0)
+                    {
+                        status = H5Dread(dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s0+j));
+                        status = H5Dread(dset_s1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s1+j));
+                        status = H5Dread(dset_s2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s2+j));
+                        status = H5Dread(dset_s3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s3+j));
+                    }
                     status = H5Dread(dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (num_scatt+j));
                 
                     //get the number of points
@@ -3503,7 +3526,10 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     status = H5Sclose (dspace);
                     status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
                     status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
-                    status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
+                    if (stokes_switch!=0)
+                    {
+                        status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
+                    }
                     status = H5Dclose (dset_num_scatt); 
                     status = H5Gclose(group_id);
                 }
@@ -3520,10 +3546,13 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             dset_r0=H5Dcreate2(file_new, "R0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_r1=H5Dcreate2(file_new, "R1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_r2=H5Dcreate2(file_new, "R2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            dset_s0=H5Dcreate2(file_new, "S0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            dset_s1=H5Dcreate2(file_new, "S1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            dset_s2=H5Dcreate2(file_new, "S2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            dset_s3=H5Dcreate2(file_new, "S3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            if (stokes_switch!=0)
+            {
+                dset_s0=H5Dcreate2(file_new, "S0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                dset_s1=H5Dcreate2(file_new, "S1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                dset_s2=H5Dcreate2(file_new, "S2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                dset_s3=H5Dcreate2(file_new, "S3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            }
             dset_num_scatt=H5Dcreate2(file_new, "NS", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             
             //save the data in the new file
@@ -3547,18 +3576,21 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         
             status = H5Dwrite (dset_r2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, r2);
-                        
-            status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-                            H5P_DEFAULT, s0);
-        
-            status = H5Dwrite (dset_s1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-                            H5P_DEFAULT, s1);
-                        
-            status = H5Dwrite (dset_s2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-                            H5P_DEFAULT, s2);
-                        
-            status = H5Dwrite (dset_s3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-                            H5P_DEFAULT, s3);
+            
+            if (stokes_switch!=0)
+            {
+                status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                                H5P_DEFAULT, s0);
+            
+                status = H5Dwrite (dset_s1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                                H5P_DEFAULT, s1);
+                
+                status = H5Dwrite (dset_s2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                                H5P_DEFAULT, s2);
+                
+                status = H5Dwrite (dset_s3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                                H5P_DEFAULT, s3);
+            }
                         
             status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, num_scatt);
@@ -3566,7 +3598,10 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             status = H5Sclose (dspace);
             status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
             status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
-            status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
+            if (stokes_switch!=0)
+            {
+                status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
+            }
             status = H5Dclose (dset_num_scatt); 
             status = H5Fclose (file_new);
         

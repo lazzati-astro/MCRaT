@@ -14,7 +14,7 @@ struct photon
     double r1; //y
     double r2; //z
     double s0; //stokes I always 1
-    double s1; //stokes Q/I 
+    double s1; //stokes Q/I +1 is in positive y_tilde coordinate (z_hat X photon 4 momentum)
     double s2; //stokes U/I
     double s3; //Stokes V/I
     double num_scatt;
@@ -80,7 +80,7 @@ int saveCheckpoint(char dir[200], int frame,  int frame2, int scatt_frame, int p
 
 void readCheckpoint(char dir[200], struct photon **ph,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size, int dim_switch, int riken_switch );
 
-void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs,  int angle_id, int dim_switch, int riken_switch, FILE *fPtr);
+void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs,  int angle_id, int dim_switch, int riken_switch, int stokes_switch, FILE *fPtr);
 
 void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array);
 

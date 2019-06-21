@@ -1008,7 +1008,7 @@ int main(int argc, char **argv)
                 fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
                 fflush(fPtr);
                 
-                dirFileMerge(mc_dir, frm0, last_frm, old_num_angle_procs, angle_id, dim_switch, RIKEN_SWITCH, fPtr); 
+                dirFileMerge(mc_dir, frm0, last_frm, old_num_angle_procs, angle_id, dim_switch, RIKEN_SWITCH, STOKES_SWITCH, fPtr); 
             }
         }
         
