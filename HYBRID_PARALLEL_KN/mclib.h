@@ -66,7 +66,7 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
 
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr);
 
-int singleScatter(double *el_comov, double *ph_comov, double *x_tilde, double *y_tilde, double *s, gsl_rng * rand, int stokes_switch, FILE *fPtr);
+int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand, int stokes_switch, FILE *fPtr);
 
 int comptonScatter(double *theta, double *phi, gsl_rng * rand, FILE *fPtr);
 
