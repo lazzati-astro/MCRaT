@@ -2448,91 +2448,6 @@ double findPhi(double *x_old, double *y_old, double *x_new, double *y_new)
 
 void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FILE *fPtr)
 {
-    /*
-     this function calcs the stokes axis in the original frame, with respect to the photon original vector and the z axis, then finds the next stokes coordinates
-     in the reference of the original photon 4 momentum and the velocity boost vector. It finds the angle to rotate the stokes vector between these two first sets of coordinate systems. then it finds the new stokes coordinate system after the lorentz boost between the boosted photon 4 mometum and the velocity boost vector. It changes from this system to one between the boosted photon 4 momentum and the z axis by finding the angle between the coordinate systems and rotating the stokes vector by that angle.
-     This procedure is outlined by Lundman
-     */
-    
-    /*
-    double dotprod_1, dotprod_2;
-    double theta=0;
-    gsl_vector_view x, y, v_ph, v_boost, v_ph_boosted; //v_boost is the velocity vector that the photon has been boosted into 
-    gsl_vector *v_boost_tilde=gsl_vector_calloc(3); //v_boost projected onto the stokes plane
-    gsl_vector *v_ph_scaled=gsl_vector_calloc(3);
-    gsl_vector *y_rot=gsl_vector_calloc(3); //hold the new rotated y_tilde axis
-    gsl_vector *x_rot=gsl_vector_calloc(3); //hold the new rotated x_tilde axis
-    
-    //save as gsl_vectors to do dot products, etc
-    x=gsl_vector_view_array(x_tilde, 3);
-    y=gsl_vector_view_array(y_tilde, 3);
-    v_ph=gsl_vector_view_array((p_ph+1), 3);
-    v_ph_boosted=gsl_vector_view_array((p_ph_boosted+1), 3);
-    v_boost=gsl_vector_view_array(v, 3);
-    
-    gsl_blas_ddot(&v_ph.vector, &v_boost.vector, &dotprod_1);
-    //fprintf(fPtr, "v_ph= %e %e %e\nv_boost= %e %e %e\n", gsl_vector_get(&v_ph.vector, 0), gsl_vector_get(&v_ph.vector, 1), gsl_vector_get(&v_ph.vector, 2), gsl_vector_get(&v_boost.vector, 0), gsl_vector_get(&v_boost.vector, 1), gsl_vector_get(&v_boost.vector, 2));
-    //fprintf(fPtr, "v_ph dot v_boost=%e\n", dotprod_1);
-    
-    gsl_blas_ddot(&v_ph.vector, &v_ph.vector, &dotprod_2);
-    gsl_blas_daxpy(dotprod_1/dotprod_2, &v_ph.vector, v_ph_scaled); //result is saved to v_ph_scaled, in python: (np.dot(v_boost,v_ph)/ np.dot(v_ph,v_ph))*v_ph
-    //fprintf(fPtr, "v_ph_scaled= %e %e %e\n", gsl_vector_get(v_ph_scaled, 0), gsl_vector_get(v_ph_scaled, 1), gsl_vector_get(v_ph_scaled, 2));
-    
-    gsl_vector_memcpy(v_boost_tilde, &v_boost.vector); //to use v_boost_tilde next
-    //fprintf(fPtr, "v_boost_tilde before = %e %e %e\n", gsl_vector_get(v_boost_tilde, 0), gsl_vector_get(v_boost_tilde, 1), gsl_vector_get(v_boost_tilde, 2));
-
-    gsl_vector_sub(v_boost_tilde, v_ph_scaled); //in python: v_tilde=v-(np.dot(v,v_ph)/ np.dot(v_ph,v_ph))*v_ph
-    //fprintf(fPtr, "v_boost_tilde= %e %e %e\n", gsl_vector_get(v_boost_tilde, 0), gsl_vector_get(v_boost_tilde, 1), gsl_vector_get(v_boost_tilde, 2));
-    
-    gsl_blas_ddot(&x.vector, v_boost_tilde, &dotprod_1);
-    gsl_blas_ddot(&y.vector, v_boost_tilde, &dotprod_2);
-    
-    //fprintf(fPtr, "y_tilde dot v_boost_tilde=%e  x_tilde dot v_boost_tilde=%e\n", dotprod_2, dotprod_1);
-    //if y is already perpendicular do nothing, else make it so
-    if (dotprod_2!=0)
-    {
-        theta=atan2(dotprod_1, dotprod_2)-(M_PI/2.0); // -pi/2 because atan2 tells us how much to rotate the y axis to make it alogn with the projected velocity vector
-        //fprintf(fPtr, "In if, in stokesRotation\n");
-    }
-    //fprintf(fPtr, "Theta= %e\n", theta*180/M_PI);
-    
-    //rotate y_tilde CW around the photon velocity vector by theta, https://math.stackexchange.com/questions/511370/how-to-rotate-one-vector-about-another
-    // in python: np.linalg.norm(y_tilde_perp)*((y_tilde_perp*(np.cos(theta)/np.linalg.norm(y_tilde_perp) )) + (np.sin(theta)*x_tilde/np.linalg.norm(x_tilde))  ) here y_tilde_perp is just y_tilde since its already orthogonal to v_ph
-    //gsl_blas_daxpy(cos(theta), &y.vector, y_rot); //y_tilde_perp*np.cos(theta)
-    //gsl_blas_daxpy(gsl_blas_dnrm2(&y.vector)*sin(theta)/gsl_blas_dnrm2(&x.vector), &x.vector, y_rot); //y_tilde_perp*np.cos(theta) + np.linalg.norm(y_tilde_perp)*np.sin(theta)*x_tilde/np.linalg.norm(x_tilde) is saved into y_rot
-    //gsl_blas_dscal(1.0/gsl_blas_dnrm2(y_rot), y_rot);
-    rotateStokesAxis(theta, y_tilde, x_tilde,gsl_vector_ptr(y_rot, 0));
-    
-    //now calculate cross product of y_rot and p_ph_boosted to get the new x_tilde axis in the new reference frame
-    gsl_vector_set(x_rot, 0, gsl_vector_get(y_rot, 1)*gsl_vector_get(&v_ph_boosted.vector, 2) - gsl_vector_get(y_rot, 2)*gsl_vector_get(&v_ph_boosted.vector, 1)  ); //x component
-    gsl_vector_set(x_rot, 1, -1*(gsl_vector_get(y_rot, 0)*gsl_vector_get(&v_ph_boosted.vector, 2) - gsl_vector_get(y_rot, 2)*gsl_vector_get(&v_ph_boosted.vector, 0))  ); //y
-    gsl_vector_set(x_rot, 2, gsl_vector_get(y_rot, 0)*gsl_vector_get(&v_ph_boosted.vector, 1) - gsl_vector_get(y_rot, 1)*gsl_vector_get(&v_ph_boosted.vector, 0)  ); //z
-    
-    gsl_blas_ddot(v_boost_tilde, y_rot, &dotprod_1);
-    //fprintf(fPtr, "Angle between the new y_tilde and the boost velocity vector is: %e\n", acos(dotprod_1/ gsl_blas_dnrm2(v_boost_tilde))*180/M_PI);
-    gsl_blas_dscal(1.0/gsl_blas_dnrm2(x_rot), x_rot);
-    //fprintf(fPtr, "norm of y_tilde and x_tilde: %e %e\n", gsl_blas_dnrm2(y_rot), gsl_blas_dnrm2(x_rot));
-    
-    gsl_blas_ddot(&v_ph_boosted.vector, y_rot, &dotprod_1);
-    //fprintf(fPtr, "Angle between the new y_tilde and the boosted photon vector is: %e\n", acos(dotprod_1/ gsl_blas_dnrm2(&v_ph_boosted.vector))*180/M_PI);
-    
-    //save the new x and y tilde axes 
-    *(x_tilde+0)=gsl_vector_get(x_rot, 0);
-    *(x_tilde+1)=gsl_vector_get(x_rot, 1);
-    *(x_tilde+2)=gsl_vector_get(x_rot, 2);
-    *(y_tilde+0)=gsl_vector_get(y_rot, 0);
-    *(y_tilde+1)=gsl_vector_get(y_rot, 1);
-    *(y_tilde+2)=gsl_vector_get(y_rot, 2);
-    
-    //make the CW rotation of theta to the stokes parameters
-    mullerMatrixRotation(theta, s, fPtr);
-    
-    //free up vectors and stuff
-    gsl_vector_free(v_boost_tilde);
-    gsl_vector_free(v_ph_scaled);
-    gsl_vector_free(y_rot);
-    gsl_vector_free(x_rot);
-     */
     
     double z_hat[3]={0,0,1}; //z to calulate stokes
     double x[3]={0,0,0}, y[3]={0,0,0}, x_new[3]={0,0,0}, y_new[3]={0,0,0};//initalize arrays to hold stokes coordinate system
@@ -2672,7 +2587,7 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
             //fprintf(fPtr, "Theta: %e Phi %e Lab: x_tilde: %e, %e, %e, y_tilde: %e %e %e\n", theta, phi, *(x_tilde+0), *(x_tilde+1), *(x_tilde+2), *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
         
             //then rotate the stokes plane by some angle such that we are in the stokes coordinat eystsem after the lorentz boost
-            //if (stokes_switch != 0)
+            if (stokes_switch != 0)
             {
                 stokesRotation(fluid_beta, (ph_p+1), (ph_p_comov+1), s, fPtr);
             }
@@ -2706,9 +2621,15 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
                 //fprintf(fPtr,"Scattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
                 //fflush(fPtr);
                 
-                //if (stokes_switch != 0)
+                if (stokes_switch != 0)
                 {
                     stokesRotation(negative_fluid_beta, (ph_p_comov+1), (ph_p+1), s, fPtr); //rotate to boost back to lab frame
+                    
+                    //save stokes parameters
+                    ((ph+ph_index)->s0)= *(s+0); //I ==1
+                    ((ph+ph_index)->s1)= *(s+1);
+                    ((ph+ph_index)->s2)= *(s+2);
+                    ((ph+ph_index)->s3)= *(s+3);
                 }
             
                 if (((*(ph_p+0))*C_LIGHT/1.6e-9) > 1e4)
@@ -2725,12 +2646,6 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
                 ((ph+ph_index)->p2)=(*(ph_p+2));
                 ((ph+ph_index)->p3)=(*(ph_p+3));
                 //printf("Done assigning values to original struct\n");
-
-                //save stokes parameters
-                ((ph+ph_index)->s0)= *(s+0); //I ==1
-                ((ph+ph_index)->s1)= *(s+1);
-                ((ph+ph_index)->s2)= *(s+2);
-                ((ph+ph_index)->s3)= *(s+3);
     
                 //incremement that photons number of scatterings
                 ((ph+ph_index)->num_scatt)+=1;
@@ -2919,8 +2834,11 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     //printf("New ph_p in electron rest frame: %e, %e, %e,%e\n", *(ph_p_prime+0), *(ph_p_prime+1), *(ph_p_prime+2), *(ph_p_prime+3));
     
     //rotate 'stokes plane'
-    stokesRotation(el_v, (ph_comov+1), (ph_p_prime+1), s, fPtr);
-    stokes=gsl_vector_view_array(s, 4);
+    if (stokes_switch != 0)
+    {
+        stokesRotation(el_v, (ph_comov+1), (ph_p_prime+1), s, fPtr);
+        stokes=gsl_vector_view_array(s, 4);
+    }
     
     //fprintf(fPtr, "y_tilde: %e, %e, %e\n", *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
     
@@ -3006,41 +2924,44 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
         
         //do the scattering of the stokes vector
         //rotate it by phi and then scatter it and rotate back and then renormalize it such that i=1
-        mullerMatrixRotation(phi, s, fPtr);
-        gsl_matrix_set(scatt, 0,0,1.0+pow(cos(theta), 2.0)+((1-cos(theta))*((*(ph_p_prime+0)) - gsl_vector_get(result,0))/(M_EL*C_LIGHT ) ) ); //following lundman's matrix
-        gsl_matrix_set(scatt, 0,1, sin(theta)*sin(theta));
-        gsl_matrix_set(scatt, 1,0, sin(theta)*sin(theta));
-        gsl_matrix_set(scatt, 1,1,1.0+cos(theta)*cos(theta));
-        gsl_matrix_set(scatt, 2,2, 2.0*cos(theta));
-        gsl_matrix_set(scatt, 3,3, 2.0*cos(theta)+ ((cos(theta))*(1-cos(theta))*((*(ph_p_prime+0)) - gsl_vector_get(result,0))/(M_EL*C_LIGHT )) );
-        //gsl_matrix_scale(scatt, (gsl_vector_get(result,0)/(*(ph_p_prime+0)))*((gsl_vector_get(result,0)/(*(ph_p_prime+0))))*0.5*3*THOM_X_SECT/(8*M_PI) ); //scale the matrix by 0.5*r_0^2 (\epsilon/\epsilon_0)^2 DONT NEED THIS BECAUSE WE NORMALIZE STOKES VECTOR SO THIS CANCELS ITSELF OUT
-        gsl_blas_dgemv(CblasNoTrans, 1, scatt, &stokes.vector, 0, scatt_result);
-        /*
-        fprintf(fPtr,"before s: %e, %e, %e,%e\n", gsl_vector_get(&stokes.vector,0), gsl_vector_get(&stokes.vector,1), gsl_vector_get(&stokes.vector,2), gsl_vector_get(&stokes.vector,3));
-        fprintf(fPtr,"Scatt Matrix 0: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 0,0), gsl_matrix_get(scatt, 0,1), gsl_matrix_get(scatt, 0,2), gsl_matrix_get(scatt, 0,3));
-        fprintf(fPtr,"Scatt Matrix 1: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 1,0), gsl_matrix_get(scatt, 1,1), gsl_matrix_get(scatt, 1,2), gsl_matrix_get(scatt, 1,3));
-        fprintf(fPtr,"Scatt Matrix 2: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 2,0), gsl_matrix_get(scatt, 2,1), gsl_matrix_get(scatt, 2,2), gsl_matrix_get(scatt, 2,3));
-        fprintf(fPtr,"Scatt Matrix 3: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 3,0), gsl_matrix_get(scatt, 3,1), gsl_matrix_get(scatt, 3,2), gsl_matrix_get(scatt, 3,3));
-        fprintf(fPtr,"s: %e, %e, %e,%e\n", gsl_vector_get(scatt_result,0), gsl_vector_get(scatt_result,1), gsl_vector_get(scatt_result,2), gsl_vector_get(scatt_result,3));
-        */
-        //normalize and rotate back
-        *(s+0)=gsl_vector_get(scatt_result,0)/gsl_vector_get(scatt_result,0); //should be 1.0
-        *(s+1)=gsl_vector_get(scatt_result,1)/gsl_vector_get(scatt_result,0);
-        *(s+2)=gsl_vector_get(scatt_result,2)/gsl_vector_get(scatt_result,0);
-        *(s+3)=gsl_vector_get(scatt_result,3)/gsl_vector_get(scatt_result,0);
-        //fprintf(fPtr,"s after norm: %e, %e, %e,%e\n", gsl_vector_get(&stokes.vector,0), gsl_vector_get(&stokes.vector,1), gsl_vector_get(&stokes.vector,2), gsl_vector_get(&stokes.vector,3));
-        
-        //need to find current stokes coordinate system defined in the plane of k-k_0
-        findXY(gsl_vector_ptr(result,1),(ph_p_prime+1), x_tilde, y_tilde);
-        
-        //then find the new coordinate system between scattered photon 4 onetum and the z axis
-        findXY(gsl_vector_ptr(result,1),z_axis_electron_rest_frame, x_tilde_new, y_tilde_new);
-        
-        //find phi to transform between the two coodinate systems
-        phi=findPhi(x_tilde, y_tilde, x_tilde_new, y_tilde_new);
-        
-        //do the rotation
-        mullerMatrixRotation(phi, s, fPtr);
+        if (stokes_switch != 0)
+        {
+            mullerMatrixRotation(phi, s, fPtr);
+            gsl_matrix_set(scatt, 0,0,1.0+pow(cos(theta), 2.0)+((1-cos(theta))*((*(ph_p_prime+0)) - gsl_vector_get(result,0))/(M_EL*C_LIGHT ) ) ); //following lundman's matrix
+            gsl_matrix_set(scatt, 0,1, sin(theta)*sin(theta));
+            gsl_matrix_set(scatt, 1,0, sin(theta)*sin(theta));
+            gsl_matrix_set(scatt, 1,1,1.0+cos(theta)*cos(theta));
+            gsl_matrix_set(scatt, 2,2, 2.0*cos(theta));
+            gsl_matrix_set(scatt, 3,3, 2.0*cos(theta)+ ((cos(theta))*(1-cos(theta))*((*(ph_p_prime+0)) - gsl_vector_get(result,0))/(M_EL*C_LIGHT )) );
+            //gsl_matrix_scale(scatt, (gsl_vector_get(result,0)/(*(ph_p_prime+0)))*((gsl_vector_get(result,0)/(*(ph_p_prime+0))))*0.5*3*THOM_X_SECT/(8*M_PI) ); //scale the matrix by 0.5*r_0^2 (\epsilon/\epsilon_0)^2 DONT NEED THIS BECAUSE WE NORMALIZE STOKES VECTOR SO THIS CANCELS ITSELF OUT
+            gsl_blas_dgemv(CblasNoTrans, 1, scatt, &stokes.vector, 0, scatt_result);
+            /*
+            fprintf(fPtr,"before s: %e, %e, %e,%e\n", gsl_vector_get(&stokes.vector,0), gsl_vector_get(&stokes.vector,1), gsl_vector_get(&stokes.vector,2), gsl_vector_get(&stokes.vector,3));
+            fprintf(fPtr,"Scatt Matrix 0: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 0,0), gsl_matrix_get(scatt, 0,1), gsl_matrix_get(scatt, 0,2), gsl_matrix_get(scatt, 0,3));
+            fprintf(fPtr,"Scatt Matrix 1: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 1,0), gsl_matrix_get(scatt, 1,1), gsl_matrix_get(scatt, 1,2), gsl_matrix_get(scatt, 1,3));
+            fprintf(fPtr,"Scatt Matrix 2: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 2,0), gsl_matrix_get(scatt, 2,1), gsl_matrix_get(scatt, 2,2), gsl_matrix_get(scatt, 2,3));
+            fprintf(fPtr,"Scatt Matrix 3: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 3,0), gsl_matrix_get(scatt, 3,1), gsl_matrix_get(scatt, 3,2), gsl_matrix_get(scatt, 3,3));
+            fprintf(fPtr,"s: %e, %e, %e,%e\n", gsl_vector_get(scatt_result,0), gsl_vector_get(scatt_result,1), gsl_vector_get(scatt_result,2), gsl_vector_get(scatt_result,3));
+            */
+            //normalize and rotate back
+            *(s+0)=gsl_vector_get(scatt_result,0)/gsl_vector_get(scatt_result,0); //should be 1.0
+            *(s+1)=gsl_vector_get(scatt_result,1)/gsl_vector_get(scatt_result,0);
+            *(s+2)=gsl_vector_get(scatt_result,2)/gsl_vector_get(scatt_result,0);
+            *(s+3)=gsl_vector_get(scatt_result,3)/gsl_vector_get(scatt_result,0);
+            //fprintf(fPtr,"s after norm: %e, %e, %e,%e\n", gsl_vector_get(&stokes.vector,0), gsl_vector_get(&stokes.vector,1), gsl_vector_get(&stokes.vector,2), gsl_vector_get(&stokes.vector,3));
+            
+            //need to find current stokes coordinate system defined in the plane of k-k_0
+            findXY(gsl_vector_ptr(result,1),(ph_p_prime+1), x_tilde, y_tilde);
+            
+            //then find the new coordinate system between scattered photon 4 onetum and the z axis
+            findXY(gsl_vector_ptr(result,1),z_axis_electron_rest_frame, x_tilde_new, y_tilde_new);
+            
+            //find phi to transform between the two coodinate systems
+            phi=findPhi(x_tilde, y_tilde, x_tilde_new, y_tilde_new);
+            
+            //do the rotation
+            mullerMatrixRotation(phi, s, fPtr);
+        }
         
         //recalc x_tilde from rotation about y by angle theta do x_tilde=y_tilde X v_ph
         //test =gsl_vector_view_array(gsl_vector_ptr(result, 1), 3);
@@ -3125,7 +3046,10 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
         //printf("Undo boost 1: %e, %e, %e, %e\n",  *(ph_comov+0), *(ph_comov+1),  *(ph_comov+2),  *(ph_comov+3));
         
         //dont need to find stokes vector and do previosu rotations, can just find the stokes coordinates in function because the stokes coordinate vectors rotate with the photon vector and no rotations to a new stokes coordinate system are needed
-        stokesRotation(negative_el_v, (ph_p_prime+1), (ph_comov+1), s, fPtr);
+        if (stokes_switch != 0)
+        {
+            stokesRotation(negative_el_v, (ph_p_prime+1), (ph_comov+1), s, fPtr);
+        }
         
         //exit(0);
     }
