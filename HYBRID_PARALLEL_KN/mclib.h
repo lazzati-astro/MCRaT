@@ -10,6 +10,10 @@ struct photon
     double p1; // p_x
     double p2; //p_y
     double p3; //p_z
+    double comv_p0; //E/c, 4 momentum is in comoving frame
+    double comv_p1; // p_x
+    double comv_p2; //p_y
+    double comv_p3; //p_z
     double r0; //x in MCRaT coordinates
     double r1; //y
     double r2; //z
@@ -23,7 +27,7 @@ struct photon
 } ; //structure to hold photon information
 
 
-void printPhotons(struct photon *ph, int num_ph, int frame, int  frame_inj,char dir[200], int angle_rank, int stokes_switch, FILE *fPtr );
+void printPhotons(struct photon *ph, int num_ph, int frame, int  frame_inj,char dir[200], int angle_rank, int stokes_switch, int comv_switch, FILE *fPtr );
 
 void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large,\
 int *last_frm, int *frm2_small,int *frm2_large, double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart,  int *dim_switch);
@@ -80,7 +84,7 @@ int saveCheckpoint(char dir[200], int frame,  int frame2, int scatt_frame, int p
 
 void readCheckpoint(char dir[200], struct photon **ph,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size, int dim_switch, int riken_switch );
 
-void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs,  int angle_id, int dim_switch, int riken_switch, int stokes_switch, FILE *fPtr);
+void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs,  int angle_id, int dim_switch, int riken_switch, int stokes_switch, int comv_switch, FILE *fPtr);
 
 void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array);
 

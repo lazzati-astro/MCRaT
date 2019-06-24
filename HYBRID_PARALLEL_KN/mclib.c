@@ -141,7 +141,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
 }
 
 
-void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200], int angle_rank, int stokes_switch, FILE *fPtr )
+void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200], int angle_rank, int stokes_switch, int comv_switch, FILE *fPtr )
 {
     //function to save the photons' positions and 4 momentum
     
@@ -157,9 +157,9 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     int num_thread=omp_get_num_threads();
     char mc_file[200]="", group[200]="";
     double p0[num_ph], p1[num_ph], p2[num_ph], p3[num_ph] , r0[num_ph], r1[num_ph], r2[num_ph], num_scatt[num_ph], weight[num_ph];
-    double s0[num_ph], s1[num_ph], s2[num_ph], s3[num_ph];
+    double s0[num_ph], s1[num_ph], s2[num_ph], s3[num_ph], comv_p0[num_ph], comv_p1[num_ph], comv_p2[num_ph], comv_p3[num_ph];
     hid_t  file, file_init, dspace, fspace, mspace, prop, group_id;
-    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_2; 
+    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_2, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3;
     herr_t status, status_group;
     hsize_t dims[1]={num_ph}, dims_old[1]={0}; //1 is the number of dimansions for the dataset, called rank
     hsize_t maxdims[1]={H5S_UNLIMITED};
@@ -174,6 +174,10 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         p1[i]= ((ph+i)->p1);
         p2[i]= ((ph+i)->p2);
         p3[i]= ((ph+i)->p3);
+        comv_p0[i]= ((ph+i)->comv_p0);
+        comv_p1[i]= ((ph+i)->comv_p1);
+        comv_p2[i]= ((ph+i)->comv_p2);
+        comv_p3[i]= ((ph+i)->comv_p3);
         r0[i]= ((ph+i)->r0);
         r1[i]= ((ph+i)->r1);
         r2[i]= ((ph+i)->r2);
@@ -823,6 +827,10 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
                 (*ph)[i].p1=phHolder->p1;
                 (*ph)[i].p2=phHolder->p2;
                 (*ph)[i].p3=phHolder->p3;
+                (*ph)[i].comv_p0=phHolder->comv_p0;
+                (*ph)[i].comv_p1=phHolder->comv_p1;
+                (*ph)[i].comv_p2=phHolder->comv_p2;
+                (*ph)[i].comv_p3=phHolder->comv_p3;
                 (*ph)[i].r0= phHolder->r0; 
                 (*ph)[i].r1=phHolder->r1 ;
                 (*ph)[i].r2=phHolder->r2; 
@@ -1489,6 +1497,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                    *(p_comv+1)=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*cos(com_v_phi);
                    *(p_comv+2)=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*sin(com_v_phi);
                    *(p_comv+3)=(PL_CONST*fr_dum/C_LIGHT)*cos(com_v_theta);
+                    
                    
                     //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
                     *(boost+0)=-1*(*(vx+i))*cos(position_phi);
@@ -1504,6 +1513,10 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                 (*ph)[ph_tot].p1=(*(l_boost+1));
                 (*ph)[ph_tot].p2=(*(l_boost+2));
                 (*ph)[ph_tot].p3=(*(l_boost+3));
+                (*ph)[ph_tot].comv_p0=(*(p_comv+0));
+                (*ph)[ph_tot].comv_p1=(*(p_comv+1));
+                (*ph)[ph_tot].comv_p2=(*(p_comv+2));
+                (*ph)[ph_tot].comv_p3=(*(p_comv+3));
                 
                 //place photons in rand positions within fluid element
                 position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
@@ -1835,6 +1848,8 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     
     int index=0;
     double mfp=0,min_mfp=0, beta=0;
+    double el_p[4];
+    double ph_p_comv[4], ph_p[4], fluid_beta[3];
     
     //initialize gsl random number generator fo each thread
     
@@ -1908,6 +1923,33 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 if (min_index != -1)
                 {
                     (ph+i)->nearest_block_index=min_index; //save the index if min_index != -1
+                    
+                    //also recalculate the photons' comoving frequency in this new fluid element
+                    ph_p[0]=((ph+i)->p0);
+                    ph_p[1]=((ph+i)->p1);
+                    ph_p[2]=((ph+i)->p2);
+                    ph_p[3]=((ph+i)->p3);
+                    
+                    if (dim_switch_3d==0)
+                    {
+                        fluid_beta[0]=(*(velx+min_index))*cos(ph_phi);
+                        fluid_beta[1]=(*(velx+min_index))*sin(ph_phi);
+                        fluid_beta[2]=(*(vely+min_index));
+                    }
+                    else
+                    {
+                        fluid_beta[0]=(*(velx+min_index));
+                        fluid_beta[1]=(*(vely+min_index));
+                        fluid_beta[2]=(*(velz+min_index));
+                    }
+                    
+                    lorentzBoost(&fluid_beta, &ph_p, &ph_p_comv, 'p', fPtr);
+                    
+                    ((ph+i)->comv_p0)=ph_p_comv[0];
+                    ((ph+i)->comv_p1)=ph_p_comv[1];
+                    ((ph+i)->comv_p2)=ph_p_comv[2];
+                    ((ph+i)->comv_p3)=ph_p_comv[3];
+                    
                 }
                 else
                 {
@@ -1952,7 +1994,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         
                 if (dim_switch_3d==0)
                 {
-                    beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
+                    beta=pow((n_vx_tmp*n_vx_tmp)+(n_vy_tmp*n_vy_tmp),0.5);
                 }
                 else
                 {
@@ -2512,6 +2554,8 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
             //fprintf(fPtr,"i: %d, Photon: %d, Delta t=%e\n", i, ph_index, scatt_time-old_scatt_time);
             //fflush(fPtr);
             
+            //WHAT IF THE PHOTON MOVES TO A NEW BLOCK BETWEEN WHEN WE CALC MFP AND MOVE IT TO DO THE SCATTERING????
+            //it mostly happens at low optical depth, near the photosphere so we would have a large mfp anyways so we probably wouldn't be in this function in that case
             index=(ph+ph_index)->nearest_block_index; //the sorted_indexes gives index of photon with smallest time to potentially scatter then extract the index of the block closest to that photon
     
             flash_vx=*(all_flash_vx+  index);
@@ -2571,7 +2615,12 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
             */
     
             //first we bring the photon to the fluid's comoving frame
-            lorentzBoost(fluid_beta, ph_p, ph_p_comov, 'p', fPtr);
+            //lorentzBoost(fluid_beta, ph_p, ph_p_comov, 'p', fPtr);
+            *(ph_p_comov+0)=((ph+ph_index)->comv_p0);
+            *(ph_p_comov+1)=((ph+ph_index)->comv_p1);
+            *(ph_p_comov+2)=((ph+ph_index)->comv_p2);
+            *(ph_p_comov+3)=((ph+ph_index)->comv_p3);
+            
             /*
             fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
             fflush(fPtr);
@@ -2644,6 +2693,12 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
                 ((ph+ph_index)->p1)=(*(ph_p+1));
                 ((ph+ph_index)->p2)=(*(ph_p+2));
                 ((ph+ph_index)->p3)=(*(ph_p+3));
+                
+                //assign it the comoving frame 4 momentum
+                ((ph+ph_index)->comv_p0)=(*(ph_p_comov+0));
+                ((ph+ph_index)->comv_p1)=(*(ph_p_comov+1));
+                ((ph+ph_index)->comv_p2)=(*(ph_p_comov+2));
+                ((ph+ph_index)->comv_p3)=(*(ph_p_comov+3));
                 //printf("Done assigning values to original struct\n");
     
                 //incremement that photons number of scatterings
@@ -3313,11 +3368,11 @@ void structuredFireballPrep(double *r, double *theta,  double *x, double *y, dou
 }
 
 
-void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, int angle_id, int dim_switch, int riken_switch, int stokes_switch, FILE *fPtr )
+void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, int angle_id, int dim_switch, int riken_switch, int stokes_switch, int comv_switch, FILE *fPtr )
 {
     //function to merge files in mcdir produced by various threads
     double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;
-    int i=0, j=0, k=0, isNotCorrupted=0, num_types= (stokes_switch!=0) ? 12 : 8;
+    int i=0, j=0, k=0, isNotCorrupted=0, num_types=12;
     int increment=1;
     char filename_k[2000]="", file_no_thread_num[2000]="", cmd[2000]="", mcdata_type[20]="";
     char group[200]="";
@@ -3329,6 +3384,21 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
     //printf("Merging files in %s\n", dir); 
     //#pragma omp parallel for num_threads(num_thread) firstprivate( filename_k, file_no_thread_num, cmd,mcdata_type,num_files, increment ) private(i,j,k)
     // i < last frame because calculation before this function gives last_frame as the first frame of the next process set of frames to merge files for
+    
+    if ((comv_switch!=0) && (stokes_switch!=0))
+    {
+        num_types=16;//both switches on, want to save comv and stokes
+    }
+    else if ((comv_switch!=0) || (stokes_switch!=0))
+    {
+        num_types=12;//either switch acivated, just subtract 4 datasets
+    }
+    else
+    {
+        num_types=8;//just save lab 4 momentum, position and num_scatt
+    }
+    
+    
     
     for (i=start_frame;i<last_frame;i=i+increment)
     {
@@ -3392,7 +3462,29 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             
             for (k=0;k<num_types;k++)
             {
-                if (stokes_switch!=0)
+                if ((comv_switch!=0) && (stokes_switch!=0))
+                {
+                    switch (k)
+                    {
+                        case 0: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P0"); break;
+                        case 1: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P1");break;
+                        case 2: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P2"); break;
+                        case 3: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P3"); break;
+                        case 4: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "COMV_P0"); break;
+                        case 5: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "COMV_P1");break;
+                        case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "COMV_P2"); break;
+                        case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "COMV_P3"); break;
+                        case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R0"); break;
+                        case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
+                        case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
+                        case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S0"); break;
+                        case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S1");break;
+                        case 13: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S2"); break;
+                        case 14: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
+                        case 15: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                    }
+                }
+                else if (stokes_switch!=0)
                 {
                     switch (k)
                     {
@@ -3407,6 +3499,24 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S1");break;
                         case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S2"); break;
                         case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
+                        case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                    }
+                }
+                else if (comv_switch!=0)
+                {
+                    switch (k)
+                    {
+                        case 0: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P0"); break;
+                        case 1: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P1");break;
+                        case 2: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P2"); break;
+                        case 3: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P3"); break;
+                        case 4: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "COMV_P0"); break;
+                        case 5: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "COMV_P1");break;
+                        case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "COMV_P2"); break;
+                        case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "COMV_P3"); break;
+                        case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R0"); break;
+                        case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
+                        case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
                         case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                     }
                 }

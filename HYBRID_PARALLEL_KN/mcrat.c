@@ -88,7 +88,8 @@
 
 #define MCPAR "mc.par"
 #define RIKEN_SWITCH 0
-#define STOKES_SWITCH 0
+#define STOKES_SWITCH 1
+#define COMV_SWITCH 0
 
 int main(int argc, char **argv)
 {
@@ -883,7 +884,7 @@ int main(int argc, char **argv)
                     if (save_chkpt_success==0)
                     {
                         //if we saved the checkpoint successfully also save the photons to the hdf5 file, else there may be something wrong with the file system
-                        printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, angle_id, STOKES_SWITCH, fPtr);
+                        printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, angle_id, STOKES_SWITCH, COMV_SWITCH, fPtr);
                     }
                     else
                     {
@@ -1008,7 +1009,7 @@ int main(int argc, char **argv)
                 fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
                 fflush(fPtr);
                 
-                dirFileMerge(mc_dir, frm0, last_frm, old_num_angle_procs, angle_id, dim_switch, RIKEN_SWITCH, STOKES_SWITCH, fPtr); 
+                dirFileMerge(mc_dir, frm0, last_frm, old_num_angle_procs, angle_id, dim_switch, RIKEN_SWITCH, STOKES_SWITCH, COMV_SWITCH, fPtr); 
             }
         }
         
