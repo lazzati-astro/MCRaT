@@ -153,7 +153,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
      //if the frame does exist then read information from the prewritten data and then add new data to it as extended chunk
      
      
-     int i=0, rank=1;
+    int i=0, rank=1;
     int num_thread=omp_get_num_threads();
     char mc_file[200]="", group[200]="";
     double p0[num_ph], p1[num_ph], p2[num_ph], p3[num_ph] , r0[num_ph], r1[num_ph], r2[num_ph], num_scatt[num_ph], weight[num_ph];
@@ -257,8 +257,23 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         
         dset_p3 = H5Dcreate2 (group_id, "P3", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
+        
+        if (comv_switch!=0)
+        {
+            dset_comv_p0 = H5Dcreate2 (group_id, "COMV_P0", H5T_NATIVE_DOUBLE, dspace,
+                                  H5P_DEFAULT, prop, H5P_DEFAULT);
+            
+            dset_comv_p1 = H5Dcreate2 (group_id, "COMV_P1", H5T_NATIVE_DOUBLE, dspace,
+                                  H5P_DEFAULT, prop, H5P_DEFAULT);
+            
+            dset_comv_p2 = H5Dcreate2 (group_id, "COMV_P2", H5T_NATIVE_DOUBLE, dspace,
+                                  H5P_DEFAULT, prop, H5P_DEFAULT);
+            
+            dset_comv_p3 = H5Dcreate2 (group_id, "COMV_P3", H5T_NATIVE_DOUBLE, dspace,
+                                  H5P_DEFAULT, prop, H5P_DEFAULT);
+        }
                             
-         dset_r0 = H5Dcreate2 (group_id, "R0", H5T_NATIVE_DOUBLE, dspace,
+        dset_r0 = H5Dcreate2 (group_id, "R0", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
         
         dset_r1 = H5Dcreate2 (group_id, "R1", H5T_NATIVE_DOUBLE, dspace,
@@ -305,6 +320,21 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
                         
         status = H5Dwrite (dset_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                         H5P_DEFAULT, p3);
+        
+        if (comv_switch!=0)
+        {
+            status = H5Dwrite (dset_comv_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                               H5P_DEFAULT, comv_p0);
+            
+            status = H5Dwrite (dset_comv_p1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                               H5P_DEFAULT, comv_p1);
+            
+            status = H5Dwrite (dset_comv_p2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                               H5P_DEFAULT, comv_p2);
+            
+            status = H5Dwrite (dset_comv_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                               H5P_DEFAULT, comv_p3);
+        }
                         
         status = H5Dwrite (dset_r0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                         H5P_DEFAULT, r0);
@@ -423,6 +453,74 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         status = H5Sclose (dspace);
         status = H5Sclose (mspace);
         status = H5Sclose (fspace);
+        
+        if (comv_switch!=0)
+        {
+            dset_comv_p0 = H5Dopen (group_id, "COMV_P0", H5P_DEFAULT); //open dataset
+            dspace = H5Dget_space (dset_comv_p0);
+            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+            size[0] = dims[0]+ dims_old[0];
+            status = H5Dset_extent (dset_comv_p0, size);
+            fspace = H5Dget_space (dset_comv_p0);
+            offset[0] = dims_old[0];
+            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                          dims, NULL);
+            mspace = H5Screate_simple (rank, dims, NULL);
+            status = H5Dwrite (dset_comv_p0, H5T_NATIVE_DOUBLE, mspace, fspace,
+                               H5P_DEFAULT, comv_p0);
+            status = H5Sclose (dspace);
+            status = H5Sclose (mspace);
+            status = H5Sclose (fspace);
+            
+            dset_comv_p1 = H5Dopen (group_id, "COMV_P1", H5P_DEFAULT); //open dataset
+            dspace = H5Dget_space (dset_comv_p1);
+            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+            size[0] = dims[0]+ dims_old[0];
+            status = H5Dset_extent (dset_comv_p1, size);
+            fspace = H5Dget_space (dset_comv_p1);
+            offset[0] = dims_old[0];
+            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                          dims, NULL);
+            mspace = H5Screate_simple (rank, dims, NULL);
+            status = H5Dwrite (dset_comv_p1, H5T_NATIVE_DOUBLE, mspace, fspace,
+                               H5P_DEFAULT, comv_p1);
+            status = H5Sclose (dspace);
+            status = H5Sclose (mspace);
+            status = H5Sclose (fspace);
+            
+            dset_comv_p2 = H5Dopen (group_id, "COMV_P2", H5P_DEFAULT); //open dataset
+            dspace = H5Dget_space (dset_comv_p2);
+            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+            size[0] = dims[0]+ dims_old[0];
+            status = H5Dset_extent (dset_comv_p2, size);
+            fspace = H5Dget_space (dset_comv_p2);
+            offset[0] = dims_old[0];
+            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                          dims, NULL);
+            mspace = H5Screate_simple (rank, dims, NULL);
+            status = H5Dwrite (dset_comv_p2, H5T_NATIVE_DOUBLE, mspace, fspace,
+                               H5P_DEFAULT, comv_p2);
+            status = H5Sclose (dspace);
+            status = H5Sclose (mspace);
+            status = H5Sclose (fspace);
+            
+            dset_comv_p3 = H5Dopen (group_id, "COMV_P3", H5P_DEFAULT); //open dataset
+            dspace = H5Dget_space (dset_comv_p3);
+            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+            size[0] = dims[0]+ dims_old[0];
+            status = H5Dset_extent (dset_comv_p3, size);
+            fspace = H5Dget_space (dset_comv_p3);
+            offset[0] = dims_old[0];
+            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                          dims, NULL);
+            mspace = H5Screate_simple (rank, dims, NULL);
+            status = H5Dwrite (dset_comv_p3, H5T_NATIVE_DOUBLE, mspace, fspace,
+                               H5P_DEFAULT, comv_p3);
+            status = H5Sclose (dspace);
+            status = H5Sclose (mspace);
+            status = H5Sclose (fspace);
+            
+        }
         
         dset_r0 = H5Dopen (group_id, "R0", H5P_DEFAULT); //open dataset
         dspace = H5Dget_space (dset_r0);
@@ -612,6 +710,10 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     /* Close resources */
     //status = H5Sclose (dspace);
     status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
+    if (comv_switch!=0)
+    {
+        status = H5Dclose (dset_comv_p0); status = H5Dclose (dset_comv_p1); status = H5Dclose (dset_comv_p2); status = H5Dclose (dset_comv_p3);
+    }
     status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
     if (stokes_switch!=0)
     {
@@ -628,7 +730,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
    status = H5Gclose(group_id);
     
     /* Terminate access to the file. */
-      status = H5Fclose(file); 
+    status = H5Fclose(file); 
 
 }
 
