@@ -35,6 +35,9 @@
  * 
  * ver 6.0 Dec 28, 2016: rewrote the code in C, added checkpoint file so if the code is interrupted all the progress wont be lost, made the code only need to be compiled once for a given MC_XXX directory path
                                             so you just need to supply the sub directory of MC_XXX as a command line argument
+*  version 7.0 used OpenMP to parallelize the code by angle and the function findminmfp()
+ 
+ version 8.0 added 3D capabilities for RIKEN hydro data  and 2D capablities for RIKEN 2D hydro data and made it more efficient with grid selection to speed it up
 */
 
 #include <stdio.h>
@@ -46,21 +49,51 @@
 #include <dirent.h>
 #include <math.h>
 #include <gsl/gsl_rng.h>
-//#include "mclib.h"
+#include "mclib.h"
 #include "mclib_3d.h"
 #include <omp.h>
+#include "mpi.h"
 
-
+/*
+#define THISRUN "Spherical"
+#define FILEPATH "/Users/Tylerparsotan/Documents/16TI/"
+#define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
+#define MC_PATH "KN_CMC_16TI_SPHERICAL/"
+ 
 #define THISRUN "Science"
-#define FILEPATH "/Users/Tylerparsotan/Documents/Box\ Sync/RIKEN_HYDRO_DATA/JP_HYDRODATA/"
-#define FILEROOT "u"
-#define MC_PATH "PHOTON_TEST/"
+#define FILEPATH "/Users/Tylerparsotan/Documents/Box Sync/1spike/"
+#define FILEROOT "m0_rhop0.1big_hdf5_plt_cnt_"
+#define MC_PATH "CMC_1spike/"
 //#define MC_PATH "MC_16OI/Single_Photon_Cy_mc_total/"
-#define MCPAR "riken_mc.par"
+ * */
+ /*
+ #define THISRUN "Science"
+#define FILEPATH "/home/physics/parsotat/16OM/"
+#define FILEROOT "rhd_jet_big_16OM_hdf5_plt_cnt_"
+#define MC_PATH "DIR_TEST/"
 
+ #define THISRUN "Spherical"
+#define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16OI/"
+//#define FILEPATH "/Users/Tylerparsotan//Documents/16OI_TEST/"
+#define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
+#define MC_PATH "TEST/"
+
+//#define THISRUN "Spherical"
+#define THISRUN "Structured Spherical"
+#define FILEPATH "/home/physics/parsotat/16TI/"
+//#define FILEPATH "/Users/Tylerparsotan//Documents/16OI_TEST/"
+#define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
+#define MC_PATH "KN_16TI_SPHERICAL_2/"
+*/
+/*
+#define MCPAR "mc.par"
+#define RIKEN_SWITCH 0
+#define STOKES_SWITCH 1
+#define COMV_SWITCH 1
+*/
 int main(int argc, char **argv)
 {
-    //compile each time a macro is changed
+    //compile each time a macro is changed, have to supply the subfolder within the MC_PATH directory as a command line argument to the C program eg. MCRAT 1/
     
 	// Define variables
 	char flash_prefix[200]="";
@@ -68,24 +101,63 @@ int main(int argc, char **argv)
     char this_run[200]=THISRUN;
     char *cyl="Cylindrical";
     char *sph="Spherical";
+    char *struct_sph="Structured Spherical";
     char spect;//type of spectrum
     char restrt;//restart or not
-    double fps, theta_jmin, theta_jmax ;//frames per second of sim, min opening angle of jet, max opening angle of jet in radians
-    double inj_radius_small, inj_radius_large,  ph_weight_suggest ;//radius at chich photons are injected into sim
-    int frm0_small, frm0_large,last_frm, frm2_small, frm2_large, j=0, min_photons, max_photons ;//frame starting from, last frame of sim, frame of last injection
-    
-    int num_thread=0, angle_count=0;
-    int half_threads=floor((num_thread/2));
-    int num_angles=0;
+    double fps, fps_modified, theta_jmin, theta_jmax,hydro_domain_y, hydro_domain_x ;//frames per second of sim, min opening angle of jet, max opening angle of jet in radians, max y value in hydro domain
+    double inj_radius_small, inj_radius_large,  ph_weight_suggest, ph_weight_small, ph_weight_large ;//radius at chich photons are injected into sim
+    int frm0,last_frm, frm2_small, frm2_large, j=0, min_photons, max_photons, frm0_small, frm0_large ;//frame starting from, last frame of sim, frame of last injection
     int dim_switch=0;
+    int find_nearest_grid_switch=0;
+    int increment_inj=1, increment_scatt=1; //increments for injection loop and scattering loop, outer and inner loops respectively, the increment can change for RIKEN 3D hydro files
+    
+    double inj_radius;
+    int frm2,save_chkpt_success=0;
+    char mc_filename[200]="";
+    char mc_filename_2[200]="";
+    char mc_operation[200]="";
+    char mc_dir[200]="" ;
+    int file_count = 0;
+    DIR * dirp;
+    struct dirent * entry;
+    struct stat st = {0};
+    double theta_jmin_thread=0, theta_jmax_thread=0;
+        
+    char flash_file[200]="";
+    char log_file[200]="";
+    FILE *fPtr=NULL; //pointer to log file for each thread
+    double *xPtr=NULL,  *yPtr=NULL,  *rPtr=NULL,  *thetaPtr=NULL,  *velxPtr=NULL,  *velyPtr=NULL,  *densPtr=NULL,  *presPtr=NULL,  *gammaPtr=NULL,  *dens_labPtr=NULL;
+    double *szxPtr=NULL,*szyPtr=NULL, *tempPtr=NULL; //pointers to hold data from FLASH files
+    double *phiPtr=NULL, *velzPtr=NULL, *zPtr=NULL, *all_time_steps=NULL;
+    int num_ph=0, array_num=0, ph_scatt_index=0, max_scatt=0, min_scatt=0,i=0; //number of photons produced in injection algorithm, number of array elleemnts from reading FLASH file, index of photon whch does scattering, generic counter
+    double dt_max=0, thescatt=0, accum_time=0; 
+    double  gamma_infinity=0, time_now=0, time_step=0, avg_scatt=0,avg_r=0; //gamma_infinity not used?
+    double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0, ph_vzPtr=0;// *ph_cosanglePtr=NULL ;
+    double min_r=0, max_r=0, min_theta=0, max_theta=0;
+    int frame=0, scatt_frame=0, frame_scatt_cnt=0, scatt_framestart=0, framestart=0;
+    struct photon *phPtr=NULL; //pointer to array of photons 
+    
+    int angle_count=0;
+    int num_angles=0, old_num_angle_procs=0; //old_num_angle_procs is to hold the old number of procs in each angle when cont sims, if  restarting sims this gets set to angle_procs
+    int *frame_array=NULL, *proc_frame_array=NULL, *element_num=NULL, *sorted_indexes=NULL, proc_frame_size=0;
     double *thread_theta=NULL; //saves ranges of thetas for each thread to go through
-    double delta_theta=0;
+    double delta_theta=1;
+    
+    int myid, numprocs, angle_procs, angle_id, procs_per_angle;
+    
    
+   //new OpenMPI stuff
+   MPI_Init(NULL,NULL);
+   MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
+   MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+   
+  
     //new muliple threads injecting and propagating photons
     const gsl_rng_type *rng_t;
-    gsl_rng **rng;
+    gsl_rng *rng;
     gsl_rng_env_setup();
     rng_t = gsl_rng_ranlxs0;
+    rng = gsl_rng_alloc (rng_t); //initalize random number generator to seed the others with random numbers
 
     
     //want to break up simulation by angle and injection frame & have each thread save data in its own folder 
@@ -94,140 +166,372 @@ int main(int argc, char **argv)
     
     //make strings of proper directories etc.
 	snprintf(flash_prefix,sizeof(flash_prefix),"%s%s",FILEPATH,FILEROOT );
-	//snprintf(mc_dir,sizeof(flash_prefix),"%s%s",FILEPATH,MC_PATH);
-    //snprintf(mc_file,sizeof(flash_prefix),"%s%s",mc_dir, MCPAR);
     snprintf(mc_file,sizeof(flash_prefix),"%s%s%s",FILEPATH, MC_PATH,MCPAR);
 
     
-    //printf(">> mc.py:  Reading mc.par\n");
+    printf(">> mc.py:  Reading mc.par: %s\n", mc_file);
     
-    readMcPar(mc_file, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small , &frm0_large ,&last_frm ,&frm2_small, &frm2_large, &ph_weight_suggest, &min_photons, &max_photons, &spect, &restrt, &num_thread, &dim_switch); //thetas that comes out is in degrees
-    
-    //printf("small: %d large: %d weights: %e, %c\n", min_photons, max_photons, ph_weight_suggest, restrt);
-    if (num_thread==0)
-    {
-        num_thread=omp_get_max_threads(); //if user specifies 0 in mc.par, default to max number of threads possible
-    }
-    
-    half_threads=floor((num_thread/2));
-    //thread_theta=malloc(((half_threads)+1)*sizeof(double) );
-    
-    
-    rng = (gsl_rng **) malloc((num_thread ) * sizeof(gsl_rng *)); 
-     rng[0] = gsl_rng_alloc (rng_t); //initalize first random number generator to seed the others with random numbers
-     
-    for(j=1;j<num_thread;j++)
-    {
-        rng[j] = gsl_rng_alloc (rng_t);
-        gsl_rng_set(rng[j],gsl_rng_get(rng[0])); 
-    }
+    readMcPar(mc_file, &hydro_domain_x, &hydro_domain_y, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &ph_weight_small, &ph_weight_large, &min_photons, &max_photons, &spect, &restrt); //thetas that comes out is in degrees
+    //printf("%c\n", restrt);
     
     //divide up angles and frame injections among threads DONT WANT NUMBER OF THREADS TO BE ODD
     //assign ranges to array that hold them
-    /*
-    delta_theta=(theta_jmax-theta_jmin)/(half_threads);
-    *(thread_theta+0)=theta_jmin;
-    //printf("%e\n", *(thread_theta+0));
     
-    for (j=1;j<(half_threads+1); j++)
-    {
-        *(thread_theta+j)=*(thread_theta+(j-1))+delta_theta;
-        //printf("%e\n", *(thread_theta+j)*180/M_PI);
-    }
-    */
-    
-     //leave angles in degrees here
+    //leave angles in degrees here
     num_angles=(int) (((theta_jmax-theta_jmin)/delta_theta)) ;//*(180/M_PI));
     thread_theta=malloc( num_angles *sizeof(double) );
     *(thread_theta+0)=theta_jmin;//*(180/M_PI);
-    printf("%e\n", *(thread_theta+0));
+    //printf("%e\n", *(thread_theta+0));
     
     for (j=1;j<(num_angles); j++)
     {
         *(thread_theta+j)=*(thread_theta+(j-1))+delta_theta;
-        printf("%e\n", *(thread_theta+j));
+        //printf("%e\n", *(thread_theta+j));
     }
-    
-    
-    
-    //printf("half_threads: %d\n", half_threads);
-    //start parallel section with half the threads possible and assign each thread to its value of theta by rewriting its private value of theta min and max that was read from mcrat
-    omp_set_nested(1); //allow for nested parallelization
-    //omp_set_dynamic(0);
-    //omp_set_num_threads(num_thread);
-    //#pragma omp parallel firstprivate(theta_jmin_thread, theta_jmax_thread, mc_dir, phPtr, framestart, scatt_framestart, num_ph, restrt, time_now, st, dirp, file_count, mc_filename, mc_operation, dt_max)
-    //printf("%d\n", omp_get_num_threads() );
-    //    for (angle_count=(int) (theta_jmin); angle_count< (int) (theta_jmax+1)  ;angle_count=angle_count+delta_theta )
 
-    #pragma omp parallel for num_threads(num_thread) private(angle_count)
-    for (angle_count=0; angle_count< num_angles ;angle_count++ )
-    {
+    
+
+    //make comm without the procs that deal with angle
+     //comm for angles
+     
+     procs_per_angle= numprocs/num_angles;
+     //printf("%d\n", procs_per_angle);
+     
+     MPI_Comm angle_comm;
+     if (restrt=='r') //uncomment this when I run MCRAT for sims that didnt originally save angle_procs 
+     {
         
-        printf("%d\t%lf\n", omp_get_thread_num(), delta_theta );
-        double inj_radius;
-        int frm2, frm0;
-        char mc_filename[200]="";
-        char mc_filename_2[200]="";
-        char mc_operation[200]="";
-        char mc_dir[200]="" ;
-        int file_count = 0;
-        DIR * dirp;
-        struct dirent * entry;
-        struct stat st = {0};
-        double theta_jmin_thread=0, theta_jmax_thread=0;
+        MPI_Comm_split(MPI_COMM_WORLD, myid/procs_per_angle , myid, &angle_comm);
+        MPI_Comm_rank(angle_comm, &angle_id);
+        MPI_Comm_size(angle_comm, &angle_procs);
         
+        //printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d\n", myid, numprocs, angle_id, angle_procs);    
                 
-        theta_jmin_thread= (*(thread_theta+angle_count))*(M_PI/180);//(*(thread_theta+omp_get_thread_num() ));
-        theta_jmax_thread= ((*(thread_theta+angle_count))+delta_theta)*(M_PI/180);//(*(thread_theta+omp_get_thread_num()+1 ));
-        printf("Thread %d: %0.1lf, %0.1lf \n %d %d\n", omp_get_thread_num(),  theta_jmin_thread*180/M_PI,  theta_jmax_thread*180/M_PI, frm2_small, frm2_large );
+        theta_jmin_thread= (*(thread_theta+  (myid/procs_per_angle))) *(M_PI/180);
+        theta_jmax_thread= theta_jmin_thread+(delta_theta*(M_PI/180));
         
         snprintf(mc_dir,sizeof(flash_prefix),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
         
-        printf(">> Thread %d in  MCRaT: I am working on path: %s \n",omp_get_thread_num(), mc_dir  );
+        old_num_angle_procs=angle_procs;
+     }
+     else
+     {
+         MPI_Group sub_world_group;
+         MPI_Comm sub_world_comm;
+         int incl_procs[procs_per_angle*num_angles], count, sub_world_id;
+         int total_num_to_restart=0;
+         int color=1;
+         int  *all_cont_process_idPtr=NULL, *each_num_to_restart_per_anglePtr=NULL, *tmp=NULL;
+        //for restart='c' case if the number of processes isnt a multiple of procs_per_angle*num_angles make a comm out of those that are in order to analyze files and count number of processes for each angle range need to con't
+        count=0;
+        for (j=0;j<numprocs;j++)
+        {
+            if (j<procs_per_angle*num_angles)
+            {
+                incl_procs[count]=j;
+                count++;
+            }
+        }
         
-        if ((theta_jmin_thread >= 0) &&  (theta_jmax_thread <= (2*M_PI/180) )) //if within small angle (0-2 degrees) use _small inj_radius and frm2
+        if (myid<procs_per_angle*num_angles)
+        {
+            int myid_2=0;
+            // Get the group of processes in MPI_COMM_WORLD and make a sub group to go through checkpoint files
+            MPI_Group world_group;
+            MPI_Comm root_angle_comm;
+            
+            MPI_Comm_group(MPI_COMM_WORLD, &world_group);
+            MPI_Group_incl(world_group, procs_per_angle*num_angles, incl_procs, &sub_world_group);
+            MPI_Comm_create_group(MPI_COMM_WORLD, sub_world_group, 0, &sub_world_comm);
+            MPI_Comm_rank(sub_world_comm, &myid_2);
+        
+            MPI_Comm_split(sub_world_comm, myid_2/procs_per_angle , myid_2, &angle_comm);
+            MPI_Comm_rank(angle_comm, &angle_id);
+            MPI_Comm_size(angle_comm, &angle_procs);
+    
+            //create group of all the processes that have angle_id==0
+            if (angle_id==0)
+            {
+                color=0; //set different color for root processes in each group of angle_comm
+            }
+            MPI_Comm_split(sub_world_comm, color , myid_2, &root_angle_comm); //create comm to exchange info about number of processes to restart for each angle range
+            
+        
+            printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d\n", myid, numprocs, angle_id, angle_procs);    
+                
+            theta_jmin_thread= (*(thread_theta+  (myid_2/procs_per_angle))) *(M_PI/180);
+            theta_jmax_thread= theta_jmin_thread+(delta_theta*(M_PI/180));
+        
+            snprintf(mc_dir,sizeof(flash_prefix),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
+        
+            //call the function to count the num of processes for each angle range that need to be con't
+            int  count_cont_procs=0, total_cont_procs_angle=0, global_cont_procs=0;
+            int *cont_proc_idsPtr=NULL, *total_cont_procs_angle_Ptr=NULL, *displPtr=NULL; //becomes the size of the number of old procceses 
+            int *cont_proc_ids_anglePtr=NULL;
+            
+            old_num_angle_procs=getOrigNumProcesses(&count_cont_procs,  &cont_proc_idsPtr, mc_dir, angle_id,  angle_procs,  last_frm, RIKEN_SWITCH);
+            
+            if (old_num_angle_procs==-1)
+            {
+                printf("MCRAT wasnt able to get a value of old_num_angle_procs to continue the simulation. Now exiting to prevent data corruption.\n" );
+                MPI_Abort(MPI_COMM_WORLD, 1);
+            }
+            
+            total_cont_procs_angle_Ptr=malloc(angle_procs*sizeof(int));
+            displPtr=malloc(angle_procs*sizeof(int));
+            MPI_Gather(&count_cont_procs,1,MPI_INT, total_cont_procs_angle_Ptr, 1, MPI_INT, 0,angle_comm );//hold the number of elements that each process will send the root process
+            
+            MPI_Barrier(angle_comm);
+            MPI_Barrier(sub_world_comm);
+            if (angle_id==0)
+            {
+                printf("Angle_procs: %d 1st gather: %d, %d, %d\n", angle_procs, *(total_cont_procs_angle_Ptr), *(total_cont_procs_angle_Ptr+1), *(total_cont_procs_angle_Ptr+2));
+            }
+            
+            MPI_Reduce(&count_cont_procs, &total_cont_procs_angle, 1, MPI_INT, MPI_SUM, 0, angle_comm); //for each angle sum the number of procs to continue and pass it to the root for angle_comm
+            
+            cont_proc_ids_anglePtr=malloc(total_cont_procs_angle*sizeof(int)); //each root proc in angle comm has to hold the id's of the old set of processes to cont
+            
+            *(displPtr+0)=0;
+            if (angle_id==0)
+            {
+                for (j=1;j<angle_procs;j++)
+                {
+                    *(displPtr+j)=(*(displPtr+j-1))+(*(total_cont_procs_angle_Ptr+j-1 )); //set the displacement for each proces to put its vector of pprocess IDs that need to be continued
+                    printf("Displacement: %d\n", *(displPtr+j));
+                }
+                
+            }
+            
+            MPI_Gatherv(cont_proc_idsPtr,count_cont_procs,MPI_INT, cont_proc_ids_anglePtr, total_cont_procs_angle_Ptr, displPtr , MPI_INT, 0,angle_comm ); //send the vectors with the ids of the old processes that need to be cont to root in angle_comm
+            
+            MPI_Barrier(angle_comm);
+            MPI_Barrier(sub_world_comm);
+            
+            if (angle_id==0)
+            {
+                printf("Total Cont Procs: %d\n", total_cont_procs_angle);
+                for (j=0;j<total_cont_procs_angle;j++)
+                {
+                    {
+                        printf("Number: %d ID: %d\n",j,  *(cont_proc_ids_anglePtr+j));
+                    }
+                }
+            }
+            
+            //each root for angle_comm has the number of processes each angle range needs to restart and the array of what the IDs of those processes used to be
+            //now have to combine all that info for rank 0 in MPI_COMM_WORLD and then end it to all processes in MPI_COMM_WORLD
+            //if (myid==0)
+            {
+                free(displPtr);
+                displPtr=NULL;
+                //initalize variables to hold all data
+                
+                
+                each_num_to_restart_per_anglePtr=malloc(num_angles*sizeof(int));
+                displPtr=malloc(num_angles*sizeof(int));
+                *(displPtr+0)=0;
+            }
+            
+            MPI_Barrier(angle_comm);
+            MPI_Barrier(sub_world_comm);
+            
+            if (angle_id==0)
+            {
+                //this is the part where all the root processes of angle_comm transfer thier info to the root proc of MPI_WORLD
+                MPI_Reduce(&total_cont_procs_angle, &total_num_to_restart, 1, MPI_INT, MPI_SUM, 0, root_angle_comm); //for each angle sum the number of procs to continue and pass it to the root for MPI_COMM_WORLD
+            
+                MPI_Gather(&total_cont_procs_angle,1,MPI_INT, each_num_to_restart_per_anglePtr, 1, MPI_INT, 0,root_angle_comm );//hold the number of elements that each process sent the root  for MPI_COMM_WORLD
+            
+            
+                if (myid==0)
+                {
+                    for (j=1;j<num_angles;j++)
+                    {
+                        *(displPtr+j)=(*(displPtr+j-1))+(*(each_num_to_restart_per_anglePtr+j-1 )); //set the displacement for each proces to put its vector of pprocess IDs that need to be continued
+                    }
+                }
+            
+            
+                all_cont_process_idPtr=malloc(total_num_to_restart*sizeof(int));
+            
+            
+                MPI_Gatherv(cont_proc_ids_anglePtr, total_cont_procs_angle, MPI_INT, all_cont_process_idPtr, each_num_to_restart_per_anglePtr,   displPtr, MPI_INT, 0, root_angle_comm);
+            }
+            
+            MPI_Barrier(angle_comm);
+            MPI_Barrier(sub_world_comm);
+            
+            if (myid==0)
+            {
+                printf("Global Cont Procs: %d\n", total_num_to_restart);
+                for (j=0;j<total_num_to_restart;j++)
+                {
+                    {
+                        printf("Global ID: %d\n", *(all_cont_process_idPtr+j));
+                    }
+                }
+            }
+            
+            //destroy the old comms
+            MPI_Barrier(angle_comm);
+            MPI_Barrier(sub_world_comm);
+            //destroy current angle comm and recreate a new one 
+            MPI_Comm_free(&root_angle_comm);
+            MPI_Comm_free(&angle_comm);
+            MPI_Comm_free(&sub_world_comm);
+            MPI_Group_free(&sub_world_group);
+            MPI_Group_free(&world_group);
+            free(cont_proc_idsPtr);
+            free(cont_proc_ids_anglePtr);
+            free(total_cont_procs_angle_Ptr);
+            free(displPtr);
+            //free(each_num_to_restart_per_anglePtr);
+            //free(all_cont_process_idPtr);
+        }
+        
+        //send all of myid==0 data to all processes in MPI_COMM_WORLD 
+        MPI_Bcast( &total_num_to_restart, 1, MPI_INT, 0, MPI_COMM_WORLD );
+        
+        if (total_num_to_restart>0)
+        {
+            if (myid != 0 )
+            {
+                printf("Proc: %d, Global Cont Procs: %d\n", myid, total_num_to_restart);
+                //allocate data of appropriate size for all processes to hold the data from MPI_Bcast
+                tmp=realloc(all_cont_process_idPtr,total_num_to_restart *sizeof(int));
+                if (tmp!=NULL)
+                {
+                    all_cont_process_idPtr=tmp;
+                }
+                else
+                {
+                    printf("Error with reserving space to hold data about restarting process ID's\n");
+                }
+                //free(tmp);
+                printf("Proc: %d, Num_angles: %d\n", myid, num_angles);
+                tmp=realloc(each_num_to_restart_per_anglePtr, num_angles*sizeof(int));
+                if (tmp!=NULL)
+                {
+                    each_num_to_restart_per_anglePtr=tmp;
+                }
+                else
+                {
+                    printf("Error with reserving space to hold data about restarting process numbers for each angle range\n");
+                }
+                //free(tmp);
+            }
+            
+            MPI_Barrier(MPI_COMM_WORLD);
+            MPI_Bcast( all_cont_process_idPtr, total_num_to_restart, MPI_INT, 0, MPI_COMM_WORLD );
+            MPI_Bcast( each_num_to_restart_per_anglePtr, num_angles, MPI_INT, 0, MPI_COMM_WORLD );
+            MPI_Bcast( &old_num_angle_procs, 1, MPI_INT, 0, MPI_COMM_WORLD );
+        
+            MPI_Barrier(MPI_COMM_WORLD);
+            if (myid==numprocs-1)
+            {
+                printf("Number of processes: %d\n", old_num_angle_procs);
+                printf("restarting process numbers for each angle range: %d, %d, %d\n", *(each_num_to_restart_per_anglePtr), *(each_num_to_restart_per_anglePtr+1), *(each_num_to_restart_per_anglePtr+2));
+            }
+        
+            //assign proper number of processes to each angle range to con't sims and then reset angle_id to original value from when simulation was first started
+            color=0; //by default all processes have this value
+        
+            count=0;
+            for (j=0;j<num_angles;j++)
+            {
+                if (myid>=count   &&   myid<count+(*(each_num_to_restart_per_anglePtr+j)) )
+                {
+                    color=j;
+                }   
+                count+=(*(each_num_to_restart_per_anglePtr+j));
+                printf("Myid: %d, Color: %d, Count %d, Num To Start Per Angle: %d\n", myid, color, count, (*(each_num_to_restart_per_anglePtr+j)));
+            }
+        
+        
+            MPI_Comm_split(MPI_COMM_WORLD, color , myid, &angle_comm);
+            MPI_Comm_rank(angle_comm, &angle_id);
+            MPI_Comm_size(angle_comm, &angle_procs);
+        
+            printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d\n", myid, numprocs, angle_id, angle_procs);
+        
+            angle_procs=old_num_angle_procs;
+        
+            //reset the angle for each process
+            theta_jmin_thread= (*(thread_theta+  color)) *(M_PI/180);
+            theta_jmax_thread= theta_jmin_thread+(delta_theta*(M_PI/180));
+                
+            //reset the angle_id for each process
+            count=0;
+            for (j=0;j<color;j++)
+            {
+                count+=(*(each_num_to_restart_per_anglePtr+j));
+            }
+        
+            angle_id=(*(all_cont_process_idPtr+count+angle_id));
+        
+            snprintf(mc_dir,sizeof(flash_prefix),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
+        }
+        else
+        {
+            //if there are no more processes to continue just break up processes normally  so they read in checkpoint files of completed processes and jump to merging files
+            MPI_Comm_split(MPI_COMM_WORLD, myid/procs_per_angle , myid, &angle_comm);
+            MPI_Comm_rank(angle_comm, &angle_id);
+            MPI_Comm_size(angle_comm, &angle_procs);
+        }
+        free(all_cont_process_idPtr);
+        free(each_num_to_restart_per_anglePtr);
+    }
+      
+         MPI_Barrier(MPI_COMM_WORLD);
+        
+        if ((theta_jmin_thread >= 0) &&  (theta_jmax_thread <= (2*M_PI/180) )) //if within small angle (0-2 degrees) use _small inj_radius and frm2 have to think about this for larger domains
         {
             inj_radius=inj_radius_small;
             frm2=frm2_small;
             frm0=frm0_small;
+            ph_weight_suggest=ph_weight_small;
         }
         else
         {
             inj_radius=inj_radius_large;
             frm2=frm2_large;
             frm0=frm0_large;
+            ph_weight_suggest=ph_weight_large;
         }
-        printf("Thread %d: %0.1lf, %0.1lf \n %d %e %d\n", omp_get_thread_num(),  theta_jmin_thread*180/M_PI,  theta_jmax_thread*180/M_PI, frm2, inj_radius, frm0 );
-
-        //want to also have another set of threads that each has differing ranges of frame injections therefore do nested parallelism here so each thread can read its own checkpoint file
-        //#pragma omp parallel num_threads(2) firstprivate(restrt)
+        
+        //make vector to hold the frames we are injecting in, vector should have (frm2-frm0)/angle_procs slots, if fps is const
+            proc_frame_size=ceil((frm2-frm0)/ (float) angle_procs);
+            frame_array=malloc(((frm2-frm0)+1)*sizeof(int));
+            
+            for (j=0;j<((frm2-frm0)+1); j++)
+            {
+                *(frame_array+j)=frm0+j ;
+            	//printf("proc: %d frame: %d\n", angle_id, *(frame_array+j));
+            }
+       
+            
         {
-            char flash_file[200]="";
-            char log_file[200]="";
-            FILE *fPtr=NULL; //pointer to log file for each thread
-            double *xPtr=NULL,  *yPtr=NULL,  *rPtr=NULL,  *thetaPtr=NULL,  *velxPtr=NULL,  *velyPtr=NULL,  *densPtr=NULL,  *presPtr=NULL,  *gammaPtr=NULL,  *dens_labPtr=NULL;
-            double *phiPtr=NULL, *velzPtr=NULL, *zPtr=NULL;
-            double *szxPtr=NULL,*szyPtr=NULL, *tempPtr=NULL; //pointers to hold data from FLASH files
-            int num_ph=0, array_num=0, ph_scatt_index=0, max_scatt=0, min_scatt=0,i=0; //number of photons produced in injection algorithm, number of array elleemnts from reading FLASH file, index of photon whch does scattering, generic counter
-            double dt_max=0, thescatt=0, accum_time=0; 
-            double  gamma_infinity=0, time_now=0, time_step=0, avg_scatt=0; //gamma_infinity not used?
-            double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0, ph_vzPtr=0;// *ph_cosanglePtr=NULL ;
-            double min_r=0, max_r=0;
-            int frame=0, scatt_frame=0, frame_scatt_cnt=0, scatt_framestart=0, framestart=0;
-            struct photon *phPtr=NULL; //pointer to array of photons 
-            
-            
-            //if (omp_get_thread_num()==0)
-            //{
-                //printf( "A:%d Im Thread: %d with ancestor %d working in %s\n", omp_get_num_threads(),  omp_get_thread_num(), omp_get_ancestor_thread_num(1), mc_dir);
-            //}
+            //set this now incase there is no checkpoint file, then this wont be overwritten and the corretc values will be passed even if the user decides to restart
+            framestart=(*(frame_array +(angle_id*proc_frame_size)));
+            scatt_framestart=framestart;
+                 
+            if (angle_id != (angle_procs-1)) 
+            {
+                frm2=(*(frame_array +((angle_id*proc_frame_size) + proc_frame_size-1) )); //section off blocks of the frame_array to give to each angle_id
+            }
+            else
+            {
+                frm2=(*(frame_array + (frm2-frm0) )); //if angle_id is last give it the last set, even if its uneven
+            }
+                
             
             if (restrt=='c')
             {
                 printf(">> mc.py:  Reading checkpoint\n");
                 //#pragma omp critical
-                {
-                    readCheckpoint(mc_dir, &phPtr, frm0, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now);
+                
+                    readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs, RIKEN_SWITCH);
                 
                 /*
                 for (i=0;i<num_ph;i++)
@@ -237,30 +541,27 @@ int main(int argc, char **argv)
                 */
                 if (restrt=='c')
                 {
-                    printf(">> Thread %d with ancestor %d: Starting from photons injected at frame: %d out of %d\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1),framestart, frm2);
-                    printf(">> Thread %d with ancestor %d: Continuing scattering %d photons from frame: %d\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1),num_ph, scatt_framestart);
-                    printf(">> Thread %d with ancestor %d: The time now is: %e\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1),time_now);
+                    printf(">> Rank %d: Starting from photons injected at frame: %d out of %d\n", angle_id,framestart, frm2);
+                    printf(">> Rank %d with angles %0.1lf-%0.1lf: Continuing scattering %d photons from frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph, scatt_framestart);
+                    printf(">> Rank %d with angles %0.1lf-%0.1lf: The time now is: %e\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,time_now);
                 }
                 else
                 {
-                    printf(">> Thread %d with ancestor %d: Continuing simulation by injecting photons at frame: %d out of %d\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1),framestart, frm2); //starting with new photon injection is same as restarting sim
+                    printf(">> Rank %d with angles %0.1lf-%0.1lf: Continuing simulation by injecting photons at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,framestart, frm2); //starting with new photon injection is same as restarting sim
                 }
-                }
+                
             }
-            else if (stat(mc_dir, &st) == -1)
+            else if ((stat(mc_dir, &st) == -1) && (restrt=='r'))
             {
                 mkdir(mc_dir, 0777); //make the directory with full permissions
                 
-                framestart=frm0; //if restarting then start from parameters given in mc.par file
-                scatt_framestart=frm0;
+                
             }
             else 
             {
-                //remove everything from MC directory to ensure no corruption of data if theres other files there besides the mc.par file
-                //for a checkpoint implementation, need to find the latest checkpoint file and read it and not delete the files
-                #pragma omp critical
+                if (angle_id==0)
                 {
-                    printf(">> Thread %d with ancestor %d:  Cleaning directory \n",omp_get_thread_num(), omp_get_ancestor_thread_num(1));
+                    printf(">> proc %d with angles %0.1lf-%0.1lf:  Cleaning directory \n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     dirp = opendir(mc_dir);
                     while ((entry = readdir(dirp)) != NULL) 
                     {
@@ -272,89 +573,112 @@ int main(int argc, char **argv)
                     
                     if (file_count>0)
                     {
-                        for (i=0;i<=last_frm;i++)
-                        {
-                            
-                            snprintf(mc_filename,sizeof(mc_filename),"%s%s%d%s", mc_dir,"mcdata_",i,"_P0.dat");
-                            if(( access( mc_filename, F_OK ) != -1 ) )
-                            {
-                                snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s%d%s","exec rm ", mc_dir,"mcdata_",i,"_*.dat"); //prepares string to remove *.dat in mc_dir
-                                printf("%s\n",mc_operation);
-                                system(mc_operation);
-                                
-                                //snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s%d%s","exec rm ", mc_dir,"mcdata_",i,"_*");
-                                //system(mc_operation);
-                            }
-                        }
-                        //snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mcdata_PW_*.dat"); //prepares string to remove *.dat in mc_dir
-                        //system(mc_operation);
-                        
-                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mcdata_PW.dat"); //prepares string to remove *.dat in mc_dir
+                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mc_proc_*"); //prepares string to remove *.dat in mc_dir
                         system(mc_operation);
                         
-                        //snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mc_chkpt_*.dat"); //prepares string to remove *.dat in mc_dir
-                        //system(mc_operation);
+                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mcdata_PW_*"); //prepares string to remove *.dat in mc_dir
+                        system(mc_operation);
+                        
+                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mcdata_PW*"); //prepares string to remove *.dat in mc_dir
+                        system(mc_operation);
+                        
+                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mc_chkpt_*.dat"); //prepares string to remove *.dat in mc_dir
+                        system(mc_operation);
                         
                         snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mc_output_*.log"); //prepares string to remove *.log in mc_dir
                         system(mc_operation);
                         
                     }
                 }
-                framestart=frm0; //if restarting then start from parameters given in mc.par file
-                scatt_framestart=frm0;
-                
             }
             
-            dt_max=1.0/fps;
-            //#pragma omp barrier
+            if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (framestart>=3000))
+            {
+                increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                fps_modified=1;
+            }
+            else
+            {
+                increment_inj=1;
+                fps_modified=fps;
+            }
             
-            snprintf(log_file,sizeof(log_file),"%s%s",mc_dir,"mc_output.log" );
+            dt_max=1.0/fps_modified;
+           
+            MPI_Barrier(angle_comm); 
+            snprintf(log_file,sizeof(log_file),"%s%s%d%s",mc_dir,"mc_output_", angle_id,".log" );
             printf("%s\n",log_file);
-            fPtr=fopen(log_file, "w");
+            fPtr=fopen(log_file, "a");
             
-            fprintf(fPtr, "%d Im Thread: %d with ancestor %d Starting on Frame: %d scatt_framestart: %d\n", omp_get_num_threads(),  omp_get_thread_num(), omp_get_ancestor_thread_num(1), framestart, scatt_framestart);
+            printf( "Im Proc %d with angles %0.1lf-%0.1lf proc_frame_size is %d Starting on Frame: %d Injecting until %d scatt_framestart: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, proc_frame_size, framestart, frm2, scatt_framestart);
+            
+            fprintf(fPtr, "Im Proc %d with angles %0.1lf-%0.1lf  Starting on Frame: %d scatt_framestart: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, framestart, scatt_framestart);
             fflush(fPtr);
-            //fclose(fPtr);
-            //#pragma omp barrier
-            //exit(0);
-            //loop over frames 
+            
+            free(frame_array);
+            
             //for a checkpoint implementation, start from the last saved "frame" value and go to the saved "frm2" value
             
             //#pragma omp for 
-            for (frame=framestart;frame<=frm2;frame++)
+            
+            for (frame=framestart;frame<=frm2;frame=frame+increment_inj)
             {
+                
+                if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (frame>=3000))
+                {
+                    increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                    fps_modified=1;
+                }
+                else
+                {
+                    increment_inj=1;
+                    fps_modified=fps;
+                }
+                
                  if (restrt=='r')
                  {
                     time_now=frame/fps; //for a checkpoint implmentation, load the saved "time_now" value when reading the ckeckpoint file otherwise calculate it normally
                  }
                 
                 //printf(">> mc.py: Working on Frame %d\n", frame);
-                fprintf(fPtr,"%d Im Thread: %d with ancestor %d Working on Frame: %d\n", omp_get_num_threads(),  omp_get_thread_num(), omp_get_ancestor_thread_num(1), frame);
+                fprintf(fPtr,"Im Proc: %d with angles %0.1lf - %0.1lf Working on Frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frame);
                 fflush(fPtr);
                 
                 if (restrt=='r')
                 {
-                       
-                    //exit(0);
-                    //read in FLASH file
-                    //for a checkpoint implmentation, dont need to read the file yet
-                    if (dim_switch==0)
+                    
+                    
+                    if (strcmp(DIM_SWITCH, dim_2d_str)==0)
                     {
-                        //put proper number at the end of the flash file                    
-                        modifyFlashName(flash_file, flash_prefix, frame, dim_switch);
-                        fprintf(fPtr,">> Im Thread: %d with ancestor %d: Opening FLASH file %s\n",omp_get_thread_num(), omp_get_ancestor_thread_num(1), flash_file);
+                        if (RIKEN_SWITCH==0)
+                        {
+                            //if using FLASH data for 2D
+                        //put proper number at the end of the flash file
+                        modifyFlashName(flash_file, flash_prefix, frame);
+                        
+                        fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
                         fflush(fPtr);
                         
-                        #pragma omp critical
-                        {
-                            readAndDecimate(flash_file, inj_radius, fps, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
+                        readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
                         }
+                        else
+                        {
+                            //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
+                            readHydro2D(FILEPATH, frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                        &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
+                            //fprintf(fPtr, "%d\n\n", array_num);
+                        }
+                        fprintf(fPtr, "Number of Flash Elements %d\n", array_num);
+        //exit(0);
                     }
                     else
                     {
+                        fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+                        fflush(fPtr);
+                        
                         read_hydro(FILEPATH, frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fps, fPtr);
+                                   &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fps_modified, fPtr);
                     }
                     
                     //check for run type
@@ -365,29 +689,39 @@ int main(int argc, char **argv)
                     }
                     else if (strcmp(sph, this_run)==0)
                     {
-                        sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num );
+                        //printf("In Spherical\n");
+                        sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
+                    }
+                    else if (strcmp(struct_sph, this_run)==0)
+                    {
+                        //printf("In Structural Spherical\n");
+                        structuredFireballPrep(rPtr, thetaPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
                     }
                         
                     //determine where to place photons and how many should go in a given place
                     //for a checkpoint implmentation, dont need to inject photons, need to load photons' last saved data 
-                    fprintf(fPtr,">>  Thread: %d with ancestor %d: Injecting photons\n",omp_get_thread_num(), omp_get_ancestor_thread_num(1));
+                    fprintf(fPtr,">>  Proc: %d with angles %0.1lf-%0.1lf: Injecting photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     fflush(fPtr);
                     
-                    if (dim_switch==0)
+                    if (strcmp(DIM_SWITCH, dim_2d_str)==0)
                     {
-                        photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng[omp_get_thread_num()] ); 
+                        photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng, RIKEN_SWITCH, fPtr );
                     }
                     else
                     {
-                        photonInjection3D(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, zPtr, szxPtr, szyPtr,rPtr,thetaPtr, phiPtr, tempPtr, velxPtr, velyPtr, velzPtr, rng[omp_get_thread_num()] ); 
+                        photonInjection3D(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, zPtr, szxPtr, szyPtr,rPtr,thetaPtr, phiPtr, tempPtr, velxPtr, velyPtr, velzPtr, rng, fPtr);
+
                     }
                     
-                    //printf("%d\n",num_ph); //num_ph is one more photon than i actually have
-                    /*
-                    for (i=0;i<num_ph;i++)
-                        printf("%e,%e,%e \n",(phPtr+i)->r0, (phPtr+i)->r1, (phPtr+i)->r2 );
-                    */
+                    //printf("This many Photons: %d\n",num_ph); //num_ph is one more photon than i actually have
+                    
+                    //for (i=0;i<num_ph;i++)
+                    //    printf("%e,%e,%e \n",(phPtr+i)->r0, (phPtr+i)->r1, (phPtr+i)->r2 );
+                    
                 }
+                
+                all_time_steps=malloc(num_ph*sizeof(double));
+                sorted_indexes=malloc(num_ph*sizeof(int));
                 
                 //scatter photons all the way thoughout the jet
                 //for a checkpoint implmentation, start from the last saved "scatt_frame" value eh start_frame=frame or start_frame=cont_frame
@@ -396,35 +730,59 @@ int main(int argc, char **argv)
                     scatt_framestart=frame; //have to make sure that once the inner loop is done and the outer loop is incrememnted by one the inner loop starts at that new value and not the one read by readCheckpoint()
                 }
                 
-                for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame++)
+                for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame=scatt_frame+increment_scatt)
                 {
+                    if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (scatt_frame>=3000))
+                    {
+                        increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                        fps_modified=1; //therefore dt between files become 1 second
+                        
+                    }
+                    else
+                    {
+                        increment_scatt=1;
+                        fps_modified=fps;
+                    }
+                    
+                    dt_max=1.0/fps_modified; //if working with RIKEN files and scatt_frame>=3000 dt  is 1 second between each subsequent frame
+                    
                     fprintf(fPtr,">>\n");
-                    fprintf(fPtr,">> Thread %d with ancestor %d : Working on photons injected at frame: %d out of %d\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1),frame, frm2);
-                    fprintf(fPtr,">> Thread %d with ancestor %d: %s - Working on frame %d\n",omp_get_thread_num(), omp_get_ancestor_thread_num(1), THISRUN, scatt_frame);
-                    fprintf(fPtr,">> Thread %d with ancestor %d: Opening file...\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1));
+                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Working on photons injected at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,frame, frm2);
+                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: %s - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, THISRUN, scatt_frame);
+                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Opening file...\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     fflush(fPtr);
                     
+                    //set new seed to increase randomness?
+                    gsl_rng_set(rng, gsl_rng_get(rng));
                     
-                    
-                    
-                    if (dim_switch==0)
+                   
+                    if (strcmp(DIM_SWITCH, dim_2d_str)==0)
                     {
-                        //put proper number at the end of the flash file
-                        modifyFlashName(flash_file, flash_prefix, scatt_frame, dim_switch);
-                        #pragma omp critical
+                        if (RIKEN_SWITCH==0)
                         {
-                            phMinMax(phPtr, num_ph, &min_r, &max_r);
-                            readAndDecimate(flash_file, inj_radius, fps, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
+                            //put proper number at the end of the flash file
+                            modifyFlashName(flash_file, flash_prefix, scatt_frame);
+                            phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
+                            readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr);
+                        }
+                        else
+                        {
+                            phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
+                            //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
+                            readHydro2D(FILEPATH, scatt_frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                        &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
+                        
                         }
                     }
                     else
                     {
-                        phMinMax(phPtr, num_ph, &min_r, &max_r);
-                        
+                        phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                         read_hydro(FILEPATH, scatt_frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fps, fPtr);
+                                   &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fps_modified, fPtr);
                     }
+                    fprintf(fPtr, "Number of Flash Elements %d\n", array_num);
+                    
                     
                     //check for run type
                     if(strcmp(cyl, this_run)==0)
@@ -434,51 +792,64 @@ int main(int argc, char **argv)
                     }
                     else if (strcmp(sph, this_run)==0)
                     {
-                        sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num );
+                        sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num, fPtr );
+                    }
+                    else if (strcmp(struct_sph, this_run)==0)
+                    {
+                        //printf("In Structural Spherical\n");
+                        structuredFireballPrep(rPtr, thetaPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
                     }
                         //printf("The result of read and decimate are arrays with %d elements\n", array_num);
                         
-                    fprintf(fPtr,">> Thread %d with ancestor %d: propagating and scattering %d photons\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1),num_ph);
+                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph);
                     fflush(fPtr);
                     
                     frame_scatt_cnt=0;
-                    while (time_now<((scatt_frame+1)/fps))
+                    find_nearest_grid_switch=1; // set to true so the function findNearestPropertiesAndMinMFP by default finds the index of the grid block closest to each photon since we just read in a file and the prior index is invalid
+                    
+                    while (time_now<((scatt_frame+increment_scatt)/fps))
                     {
                         //if simulation time is less than the simulation time of the next frame, keep scattering in this frame
+                        //for RIKEN hydro data, theres still 10 fps but after frame 3000, file increment is 10 not 1, therefore modify dt_max not fps
+                        
                         //go through each photon and find blocks closest to each photon and properties of those blocks to calulate mean free path
                         //and choose the photon with the smallest mfp and calculate the timestep
                         
-                        ph_scatt_index=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, &time_step, xPtr,  yPtr, zPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
-                            &ph_dens_labPtr, &ph_vxPtr, &ph_vyPtr, &ph_vzPtr, &ph_tempPtr, rng[omp_get_thread_num()], dim_switch);
-                            
-                        //printf("In main: %e, %d, %e, %e\n", *(ph_num_scatt+ph_scatt_index), ph_scatt_index, time_step, time_now);
-                        printf("In main: %e, %d, %e, %e\n",((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
+
+                        ph_scatt_index=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, &time_step, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
+                                                                      all_time_steps, sorted_indexes, rng, find_nearest_grid_switch, RIKEN_SWITCH, fPtr);
+                        
+                        find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
+
+                        
+                        //fprintf(fPtr, "In main: %d, %e, Newest Method results: %d, %e\n", ph_scatt_index, time_step, *(sorted_indexes+0), *(all_time_steps+(*(sorted_indexes+0))) );
+                        //fflush(fPtr);
+                        //for (i=1;i<num_ph;i++)
+                        //{
+                        //    fprintf(fPtr, "Newest Method results: %d, %e\n", *(sorted_indexes+i), *(all_time_steps+(*(sorted_indexes+i))) );
+                        //}
+                        
                         
                          if (time_step<dt_max)
                         {
-                            
-                            //update number of scatterings and time
-                            //(*(ph_num_scatt+ph_scatt_index))+=1;
-                            ((phPtr+ph_scatt_index)->num_scatt)+=1;
-                            frame_scatt_cnt+=1;
+                            //scatter the photon
+                            //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
+
+                            time_step=photonScatter( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, rng, fPtr );
                             time_now+=time_step;
                             
-                            updatePhotonPosition(phPtr, num_ph, time_step);
-                            
-                            //scatter the photon
-                            //printf("Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
-
-                            photonScatter( (phPtr+ph_scatt_index), (ph_vxPtr), (ph_vyPtr), ph_vzPtr, (ph_tempPtr), rng[omp_get_thread_num()] , dim_switch, fPtr);
                             
                             
-                            //if (frame_scatt_cnt%1000 == 0)
+                            if (frame_scatt_cnt%1000 == 0)
                             {
                                 fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
-                                fprintf(fPtr,"The local temp is: %e\n", (ph_tempPtr));
-                                fprintf(fPtr,"Average photon energy is: %e\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 and then do (*3e10/1.6e-9)
+                                //fprintf(fPtr,"Scattering Photon Number: %d\n", ph_scatt_index);
+                                fprintf(fPtr,"The local temp is: %e K\n", *(tempPtr + (phPtr+ph_scatt_index)->nearest_block_index) );
+                                fprintf(fPtr,"Average photon energy is: %e ergs\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 can then do (1.6e-9) to get keV
+                                fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                                 fflush(fPtr);
                             }
-                            
+                            //exit(0);
                         }
                         else
                         {
@@ -486,59 +857,171 @@ int main(int argc, char **argv)
                             
                             //for each photon update its position based on its momentum
                             
-                            updatePhotonPosition(phPtr, num_ph, dt_max);
+                            updatePhotonPosition(phPtr, num_ph, dt_max, fPtr);
                         }
                         
                         //printf("In main 2: %e, %d, %e, %e\n", ((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
 
                     }
                     
-                //get scattering statistics
-                phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt);
+                    //get scattering statistics
+                    phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
                         
-                fprintf(fPtr,"The number of scatterings in this frame is: %d\n", frame_scatt_cnt);
-                fprintf(fPtr,"The last time step was: %lf.\nThe time now is: %lf\n", time_step,time_now);
-                fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scattering for a photon is: %d\n", max_scatt, min_scatt);
-                fprintf(fPtr,"The average number of scatterings thus far is: %lf\n", avg_scatt);
-                fflush(fPtr);
+                    fprintf(fPtr,"The number of scatterings in this frame is: %d\n", frame_scatt_cnt);
+                    fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
+                    fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scattering for a photon is: %d\n", max_scatt, min_scatt);
+                    fprintf(fPtr,"The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
+                    fflush(fPtr);
+                    
+                    fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Making checkpoint file\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+                    fflush(fPtr);
                 
-                printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir);
-                exit(0);
-                //for a checkpoint implmentation,save the checkpoint file here after every 5 frames or something
-                //save the photons data, the scattering number data, the scatt_frame value, and the frame value
-                //WHAT IF THE PROGRAM STOPS AFTER THE LAST SCATT_FRAME, DURING THE FIRST SCATT_FRAME OF NEW FRAME VARIABLE - save restrt variable as 'r'
-                fprintf(fPtr, ">> Thread %d with ancestor %d: Making checkpoint file\n", omp_get_thread_num(), omp_get_ancestor_thread_num(1));
-                fflush(fPtr);
-                saveCheckpoint(mc_dir, frame, scatt_frame, num_ph, time_now, phPtr, last_frm);
+                    fprintf(fPtr, " mc_dir: %s\nframe %d\nfrm2: %d\nscatt_frame: %d\n num_photon: %d\ntime_now: %e\nlast_frame: %d\n", mc_dir, frame, frm2, scatt_frame, num_ph, time_now, last_frm  );
+                    fflush(fPtr);
+
+                    save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id, old_num_angle_procs);
+                    
+                    if (save_chkpt_success==0)
+                    {
+                        //if we saved the checkpoint successfully also save the photons to the hdf5 file, else there may be something wrong with the file system
+                        printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, angle_id, fPtr);
+                    }
+                    else
+                    {
+                        fprintf(fPtr, "There is an issue with opening and saving the chkpt file therefore MCRaT is not saving data to the checkpoint or mc_proc files to prevent corruption of those data.\n");
+                        printf("There is an issue with opening and saving the chkpt file therefore MCRaT is not saving data to the checkpoint or mc_proc files to prevent corruption of those data.\n");
+                        fflush(fPtr);
+                        exit(1);
+                    }
+                    //exit(0);
+                    
+                     if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+                    {
+                        if (RIKEN_SWITCH==1)
+                        {
+                            free(zPtr);free(phiPtr);free(velzPtr);
+                            zPtr=NULL; phiPtr=NULL; velzPtr=NULL;
+                        }
+                    }
                 
-                free(xPtr);free(yPtr);free(szxPtr);free(szyPtr);free(rPtr);free(thetaPtr);free(velxPtr);free(velyPtr);free(densPtr);free(presPtr);
-                free(gammaPtr);free(dens_labPtr);free(tempPtr);
-                xPtr=NULL; yPtr=NULL;  rPtr=NULL;thetaPtr=NULL;velxPtr=NULL;velyPtr=NULL;densPtr=NULL;presPtr=NULL;gammaPtr=NULL;dens_labPtr=NULL;
-                szxPtr=NULL; szyPtr=NULL; tempPtr=NULL;
+                    free(xPtr);free(yPtr);free(szxPtr);free(szyPtr);free(rPtr);free(thetaPtr);free(velxPtr);free(velyPtr);free(densPtr);free(presPtr);
+                    free(gammaPtr);free(dens_labPtr);free(tempPtr);
+                    xPtr=NULL; yPtr=NULL;  rPtr=NULL;thetaPtr=NULL;velxPtr=NULL;velyPtr=NULL;densPtr=NULL;presPtr=NULL;gammaPtr=NULL;dens_labPtr=NULL;
+                    szxPtr=NULL; szyPtr=NULL; tempPtr=NULL;
                 }
+                
                 restrt='r';//set this to make sure that the next iteration of propogating photons doesnt use the values from the last reading of the checkpoint file
                 free(phPtr); 
                 phPtr=NULL;
-                
+                free(all_time_steps);
+                all_time_steps=NULL;
+                free(sorted_indexes);
+                sorted_indexes=NULL;
             } 
-        
+            save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, 0, time_now, phPtr, last_frm, angle_id, old_num_angle_procs); //this is for processes using the old code that didnt restart efficiently
+            fprintf(fPtr, "Process %d has completed the MC calculation.\n", angle_id);
+            fflush(fPtr);
+            
+            //exit(0);
         
         }//end omp parallel inner section
         
-        //merge files from each worker thread within a directory
-        //dirFileMerge(mc_dir, frm0, last_frm);
+        MPI_Barrier(angle_comm);
         
-    } //end omp parallel section
+        //merge files from each worker thread within a directory
+        {
+            
+             increment_scatt=1;
+             file_count=0;
+             
+             //count number of files
+             for (i=frm0;i<=last_frm;i=i+increment_scatt)
+             {
+                if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
+                {
+                    increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                }
+                file_count++;
+             }
+             
+             //holds number of files for each process to merge
+             MPI_Comm_size(angle_comm, &angle_procs); //to get the proper number of processes within the group
+             MPI_Comm_rank(angle_comm, &angle_id); //reset the value of angle_id to what it should actualy be to properly distribute files to merge
+             
+             proc_frame_size=floor(file_count/ (float) angle_procs);
+             frame_array=malloc(file_count*sizeof(int));
+             proc_frame_array=malloc(angle_procs*sizeof(int)); //sets index of each proceesed acquired value
+             element_num=malloc(angle_procs*sizeof(int));
+             
+             for (i=0;i<angle_procs;i++)
+             {
+                *(proc_frame_array+i)=i*proc_frame_size;
+                *(element_num+i)=1;
+             }
+             
+             //make vector with the files in order to pass them to each of the processes
+             increment_scatt=1;
+             file_count=0;
+             for (i=frm0;i<=last_frm;i=i+increment_scatt)
+             {
+                if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
+                {
+                    increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                }
+             
+                *(frame_array+file_count)=i ;
+                file_count++;
+                //printf("file_count: %d frame: %d\n",  file_count-1, *(frame_array+file_count-1));
+             }
+             //pass  first frame number that each rpocess should start to merge, can calulate the file it should merge until
+             MPI_Scatterv(frame_array, element_num, proc_frame_array, MPI_INT, &frm0, 1, MPI_INT, 0, angle_comm);
+             
+             //fprintf(fPtr, "Value: last_frm: ,%d\n", file_count);
+             //fflush(fPtr);
+             
+             //make sure all files get merged by giving the rest to the last process
+             if (angle_id==angle_procs-1)
+             {
+                proc_frame_size=file_count-proc_frame_size*(angle_procs-1); //for last process take over the remaining number of files
+             }
+             //calculate what the last file the preocess should merge up to
+             i=0;
+             last_frm=frm0;
+             while(i<proc_frame_size)
+             {
+                if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (last_frm>=3000))
+                {
+                    increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                }
+                else
+                {
+                    increment_scatt=1;
+                }
+             
+                last_frm+=increment_scatt;
+                i++;
+             }
+             
+             
+            //if (angle_id==0)
+            {
+                //fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
+                fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
+                fflush(fPtr);
+                
+                dirFileMerge(mc_dir, frm0, last_frm, old_num_angle_procs, angle_id, RIKEN_SWITCH, fPtr);
+            }
+        }
+        
+        fprintf(fPtr, "Process %d has completed merging files.\n", angle_id);
+        fflush(fPtr);
+            
+    fclose(fPtr);
+    gsl_rng_free (rng);
+   	 
+    MPI_Finalize();
+    //free(rng);
+    //free(thread_theta);
     
-    //gsl_rng_free (rand);
-    //free rand number generator
-    for (j=0;j<num_thread;j++)
-    {
-        gsl_rng_free(rng[j]);
-    }
-    free(rng);
-    free(thread_theta);
-    
-	return 0;
-    
+	return 0;    
 }
