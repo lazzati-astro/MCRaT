@@ -58,7 +58,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     
     //density
     snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"u0", 1,"-" );
-    modifyFlashName(file_num, hydrofile, frame,1);
+    modifyFlashName(file_num, hydrofile, frame);
     
     fprintf(fPtr,">> Opening file %s\n", file_num);
     fflush(fPtr);
@@ -128,7 +128,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     //velocities divided by c
     //v_r
     snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"u0", 2,"-" );
-    modifyFlashName(file_num, hydrofile, frame,1);
+    modifyFlashName(file_num, hydrofile, frame);
     snprintf(full_file, sizeof(full_file), "%s%s", file_num, file_end);
     /*
     fprintf(fPtr,"Reading v_r: %s\n", full_file);
@@ -158,7 +158,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
      
     //v_theta
     snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"u0", 3,"-" );
-    modifyFlashName(file_num, hydrofile, frame,1);
+    modifyFlashName(file_num, hydrofile, frame);
     snprintf(full_file, sizeof(full_file), "%s%s", file_num, file_end);
     /*
     fprintf(fPtr,"Reading v_theta: %s\n", full_file);
@@ -188,7 +188,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     
     //v_phi
     snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"u0", 4,"-" );
-    modifyFlashName(file_num, hydrofile, frame,1);
+    modifyFlashName(file_num, hydrofile, frame);
     snprintf(full_file, sizeof(full_file), "%s%s", file_num, file_end);
     /*
     fprintf(fPtr,"Reading v_phi: %s\n", full_file);
@@ -218,7 +218,7 @@ void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, dou
     
     //pressure (divided by c^2)
     snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"u0", 8,"-" );
-    modifyFlashName(file_num, hydrofile, frame,1);
+    modifyFlashName(file_num, hydrofile, frame);
     snprintf(full_file, sizeof(full_file), "%s%s", file_num, file_end);
     /*
     fprintf(fPtr,"Reading pres: %s\n", full_file);

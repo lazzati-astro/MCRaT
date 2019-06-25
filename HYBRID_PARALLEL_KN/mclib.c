@@ -37,7 +37,7 @@ const double K_B=1.380658e-16, M_P=1.6726231e-24, THOM_X_SECT=6.65246e-25, M_EL=
 char const *dim_3d_str="3D";
 char const *dim_2d_str="2D";
 
-int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200], int angle_rank,  int angle_procs, int last_frame, int dim_switch, int riken_switch)
+int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200], int angle_rank,  int angle_procs, int last_frame, int riken_switch)
 {
     int i=0, j=0, val=0, original_num_procs=-1, rand_num=0;
     int frame2=0, framestart=0, scatt_framestart=0, ph_num=0;
@@ -75,7 +75,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
                 //printf("TEST: %s\n", mc_chkpt_files);
             }
         }
-        readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, &restrt, &time, rand_num, &original_num_procs, dim_switch, riken_switch);
+        readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, &restrt, &time, rand_num, &original_num_procs, riken_switch);
     
         //original_num_procs= 70;
         
@@ -104,7 +104,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
                 //printf("TEST: %s\n", mc_chkpt_files);
                 if ( access( mc_chkpt_files, F_OK ) != -1 )
                 {
-                    readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, &restrt, &time, count_procs[j], &i, dim_switch, riken_switch);
+                    readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, &restrt, &time, count_procs[j], &i, riken_switch);
                     free(phPtr); 
                     phPtr=NULL;
                     
@@ -873,7 +873,7 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
     return success;
 }
 
-void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size , int dim_switch, int riken_switch )
+void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size, int riken_switch )
 {
     //function to read in data from checkpoint file
     FILE *fPtr=NULL;
@@ -904,7 +904,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
         {
             fread(scatt_framestart, sizeof(int), 1, fPtr);
             
-            if ((riken_switch==1) && (dim_switch==1) && ((*scatt_framestart)>=3000))
+            if ((riken_switch==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && ((*scatt_framestart)>=3000))
             {
                 *scatt_framestart+=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1                        
             }
@@ -951,7 +951,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
         }
         else
         {
-            if ((riken_switch==1) && (dim_switch==1) && ((*framestart)>=3000))
+            if ((riken_switch==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && ((*framestart)>=3000))
             {
                 *framestart+=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1                        
             }
@@ -974,7 +974,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
     }
 }
 
-void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart,  int *dim_switch)
+void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart)
 {
     //function to read mc.par file
 	FILE *fptr=NULL;
@@ -1087,7 +1087,8 @@ void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, d
     printf("MAKE SURE THERE IS NO NUM_THREADS LINE IN THE MC.PAR FILE.\n");
     //fgets(buf, 100,fptr);
     
-    fscanf(fptr, "%d",dim_switch);
+    //fscanf(fptr, "%d",dim_switch);
+    printf("MAKE SURE THERE IS NO DIM_SWITCH LINE IN THE MC.PAR FILE.\n");
     //printf("%d\n",*dim_switch);
     
 	//close file
@@ -1784,7 +1785,7 @@ double *zeroNorm(double *p_ph)
     return p_ph;
 }
 
-int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z,  int dim_switch_3d)
+int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z)
 {
     double dist=0, dist_min=1e15, block_dist=0;
     int min_index=0, j=0;
@@ -1797,7 +1798,7 @@ int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, doubl
                 for(j=0;j<array_num;j++)
                 {
                     //if the distance between them is within 3e9, to restrict number of possible calculations,  calulate the total distance between the box and photon
-                    if ((dim_switch_3d==0) && (fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
+                    if ((strcmp(DIM_SWITCH, dim_2d_str)==0) && (fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
                     {
                         
                         dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)) , 2.0),0.5);
@@ -1814,7 +1815,7 @@ int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, doubl
                         }
                         
                     }
-                    else if ((dim_switch_3d==1) &&(fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist) && (fabs(ph_z- (*(z+j)))<block_dist))
+                    else if ((strcmp(DIM_SWITCH, dim_3d_str)==0) &&(fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist) && (fabs(ph_z- (*(z+j)))<block_dist))
                     {
                         dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)),2.0 ) + pow(ph_z- (*(z+j)) , 2.0),0.5);
                         if((dist<dist_min))
@@ -1833,7 +1834,7 @@ int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, doubl
             return min_index;
 }
 
-int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, int dim_switch_3d, int riken_switch, FILE *fPtr)
+int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, int riken_switch, FILE *fPtr)
 {
     int i=0, within_block_index=0;
     bool is_in_block=0; //boolean to determine if the photon is outside of a grid
@@ -1842,7 +1843,7 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
     for (i=0;i<array_num;i++)
     {
         
-            is_in_block=checkInBlock(i,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
+            is_in_block=checkInBlock(i,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  riken_switch);
         
             if (is_in_block)
             {
@@ -1853,9 +1854,9 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
         
     }
     //printf("Within Block Index:  %d\n",within_block_index);
-    if ((dim_switch_3d!=0) || (riken_switch==1))
+    if ((strcmp(DIM_SWITCH, dim_3d_str)==0) || (riken_switch==1))
     {
-        fprintf(fPtr, "3D switch is: %d and RIKEN switch is: %d\n", dim_switch_3d, riken_switch);
+        fprintf(fPtr, "3D switch is: %d and RIKEN switch is: %d\n", DIM_SWITCH, riken_switch);
     }
     
     
@@ -1870,14 +1871,14 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
 
 
 
-int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int dim_switch_3d, int riken_switch)
+int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int riken_switch)
 {
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
     double x0=0, x1=0, x2=0, sz_x0=0, sz_x1=0, sz_x2=0; //coordinate and sizes of grid block, in cartesian its x,y,z in spherical its r,theta,phi
     int return_val=0;
 
     
-        if (dim_switch_3d==0)
+        if (strcmp(DIM_SWITCH, dim_2d_str)==0)
         {
             
             if (riken_switch==0)
@@ -1937,7 +1938,7 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
 }
 
 int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
-                                   double *temp, double *all_time_steps, int *sorted_indexes, gsl_rng * rand, int dim_switch_3d, int find_nearest_block_switch, int riken_switch, FILE *fPtr)
+                                   double *temp, double *all_time_steps, int *sorted_indexes, gsl_rng * rand, int find_nearest_block_switch, int riken_switch, FILE *fPtr)
 {
     
     int i=0, min_index=0, ph_block_index=0;
@@ -1990,7 +1991,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             ph_block_index=0; //if starting a new frame set index=0 to avoid this issue
         }
         
-        if (dim_switch_3d==0)
+        if (strcmp(DIM_SWITCH, dim_2d_str)==0)
         {
             ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to FLASH x coordinate
             ph_y=((ph+i)->r2);
@@ -2010,7 +2011,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         if ((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x))
         {
         
-            is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
+            is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  riken_switch);
         
             if (find_nearest_block_switch==0 && is_in_block)
             {
@@ -2020,10 +2021,10 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             else
             {
                 //find the new index of the block closest to the photon
-                //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z,   dim_switch_3d); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
+                //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
             
                 //find the new index of the block that the photon is actually in
-                min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch,  dim_switch_3d,  riken_switch, fPtr);
+                min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch,  riken_switch, fPtr);
                 if (min_index != -1)
                 {
                     (ph+i)->nearest_block_index=min_index; //save the index if min_index != -1
@@ -2034,7 +2035,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                     ph_p[2]=((ph+i)->p2);
                     ph_p[3]=((ph+i)->p3);
                     
-                    if (dim_switch_3d==0)
+                    if (strcmp(DIM_SWITCH, dim_2d_str)==0)
                     {
                         fluid_beta[0]=(*(velx+min_index))*cos(ph_phi);
                         fluid_beta[1]=(*(velx+min_index))*sin(ph_phi);
@@ -2072,12 +2073,12 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 (n_vx_tmp)= (*(velx+min_index));
                 (n_vy_tmp)= (*(vely+min_index));
                 (n_temp_tmp)= (*(temp+min_index));
-                if (dim_switch_3d==1)
+                if (strcmp(DIM_SWITCH, dim_3d_str)==0)
                 {
                     (n_vz_tmp)= (*(velz+min_index));
                 }
         
-                if (dim_switch_3d==0)
+                if (strcmp(DIM_SWITCH, dim_2d_str)==0)
                 {
                     fl_v_x=(*(velx+min_index))*cos(ph_phi);
                     fl_v_y=(*(velx+min_index))*sin(ph_phi);
@@ -2096,7 +2097,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
                 (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
         
-                if (dim_switch_3d==0)
+                if (strcmp(DIM_SWITCH, dim_2d_str)==0)
                 {
                     beta=pow((n_vx_tmp*n_vx_tmp)+(n_vy_tmp*n_vy_tmp),0.5);
                 }
@@ -2208,7 +2209,7 @@ int compare2 ( const void *a, const void *b, void *ar)
 }
 
 int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
-                                   double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int dim_switch_3d, int find_nearest_block_switch, int riken_switch, FILE *fPtr)
+                                   double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int find_nearest_block_switch, int riken_switch, FILE *fPtr)
 {
     /*
      * THIS FUNCTION IS WRITTEN JUST FOR 2D SIMS AS OF NOW 
@@ -2264,7 +2265,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             ph_block_index=0; //if starting a new frame set index=0 to avoid this issue
         }
         
-        if (dim_switch_3d==0)
+        if (strcmp(DIM_SWITCH, dim_2d_str)==0)
         {
             ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to FLASH x coordinate
             ph_y=((ph+i)->r2);
@@ -2280,7 +2281,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         }
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         
-        is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  dim_switch_3d,  riken_switch);
+        is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  riken_switch);
         
         if (find_nearest_block_switch==0 && is_in_block)
         {
@@ -2290,10 +2291,10 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         else
         {
             //find the new index of the block closest to the photon
-            //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z,   dim_switch_3d); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
+            //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
             
             //find the new index of the block that the photon is actually in
-            min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, dim_switch_3d,  riken_switch, fPtr);
+            min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch,  riken_switch, fPtr);
             
             (ph+i)->nearest_block_index=min_index; //save the index
             
@@ -2306,7 +2307,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         bottom_dist_min=1e15;
         for (j=0;j<array_num;j++)
         {
-            if ((dim_switch_3d==0))
+            if (strcmp(DIM_SWITCH, dim_2d_str)==0)
             {
                 dist= pow(pow((*(x+min_index))- (*(x+j)), 2.0) + pow((*(y+min_index))- (*(y+j)) , 2.0),0.5);
             }
@@ -2371,7 +2372,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             (n_vx_tmp)+= (*(velx+all_adjacent_block_indexes[j]))*dv;
             (n_vy_tmp)+= (*(vely+all_adjacent_block_indexes[j]))*dv;
             (n_temp_tmp)+= (*(temp+all_adjacent_block_indexes[j]))*dv;
-            if (dim_switch_3d==1)
+            if (strcmp(DIM_SWITCH, dim_3d_str)==0)
             {
                 (n_vz_tmp)+= (*(velz+all_adjacent_block_indexes[j]))*dv;
             }
@@ -2386,12 +2387,12 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         (n_vx_tmp)/= v;
         (n_vy_tmp)/= v;
         (n_temp_tmp)/= v;
-        if (dim_switch_3d==1)
+        if (strcmp(DIM_SWITCH, dim_3d_str)==0)
         {
             (n_vz_tmp)/= v;
         }
         
-        if (dim_switch_3d==0)
+        if (strcmp(DIM_SWITCH, dim_2d_str)==0)
         {
             fl_v_x=n_vx_tmp*cos(ph_phi);
             fl_v_y=n_vx_tmp*sin(ph_phi);
@@ -2410,7 +2411,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
         (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
         
-        if (dim_switch_3d==0)
+        if (strcmp(DIM_SWITCH, dim_2d_str)==0)
         {
             beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
         }
@@ -2433,7 +2434,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             n_dens_lab_min= n_dens_lab_tmp;
             n_vx_min= n_vx_tmp;
             n_vy_min= n_vy_tmp;
-            if (dim_switch_3d==1)
+            if (strcmp(DIM_SWITCH, dim_3d_str)==0)
             {
                 n_vz_min= n_vz_tmp;
             }
@@ -2457,7 +2458,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     *(n_dens_lab)= n_dens_lab_min;
     *(n_vx)= n_vx_min;
     *(n_vy)= n_vy_min;
-    if (dim_switch_3d==1)
+    if (strcmp(DIM_SWITCH, dim_3d_str)==0)
     {
         *(n_vz)= n_vz_min;
     }
@@ -2623,7 +2624,7 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
 }
 
 
-double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand,int dim_switch_3d, FILE *fPtr)
+double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand, FILE *fPtr)
 {
     //function to perform single photon scattering
     //stokes switch of 0 means that we don't consider the stokes parameters (aka no polarization)
@@ -2665,7 +2666,7 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
             flash_vx=*(all_flash_vx+  index);
             flash_vy=*(all_flash_vy+  index);
             fluid_temp=*(all_fluid_temp+  index);
-            if (dim_switch_3d==1)
+            if (strcmp(DIM_SWITCH, dim_3d_str)==0)
             {
                 flash_vz=*(all_flash_vz+  index);
             }
@@ -2680,7 +2681,7 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
             //convert flash coordinated into MCRaT coordinates
             //printf("Getting fluid_beta\n");
     
-            if (dim_switch_3d==0)
+            if (strcmp(DIM_SWITCH, dim_2d_str)==0)
             {
                 (*(fluid_beta+0))=flash_vx*cos(ph_phi);
                 (*(fluid_beta+1))=flash_vx*sin(ph_phi);
@@ -3472,7 +3473,7 @@ void structuredFireballPrep(double *r, double *theta,  double *x, double *y, dou
 }
 
 
-void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, int angle_id, int dim_switch, int riken_switch, FILE *fPtr )
+void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, int angle_id, int riken_switch, FILE *fPtr )
 {
     //function to merge files in mcdir produced by various threads
     double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *comv_p0=NULL, *comv_p1=NULL, *comv_p2=NULL, *comv_p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;
@@ -3509,7 +3510,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
         fprintf(fPtr, "Merging files for frame: %d\n", i);
         fflush(fPtr);
         
-        if ((riken_switch==1) && (dim_switch==1) && (i>=3000))
+        if ((riken_switch==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
         {
             increment=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
         }
@@ -3942,11 +3943,11 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
     
 }
 
-void modifyFlashName(char flash_file[200], char prefix[200], int frame, int dim_switch)
+void modifyFlashName(char flash_file[200], char prefix[200], int frame)
 {
     int lim1=0, lim2=0, lim3=0;
     
-    if (dim_switch==0)
+    if (strcmp(DIM_SWITCH, dim_2d_str)==0)
     {
         //2D case
         lim1=10;
@@ -4008,7 +4009,7 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
 
     //density
     snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"u0", 1,"-" );
-    modifyFlashName(file_num, hydrofile, frame,0);
+    modifyFlashName(file_num, hydrofile, frame);
     
     fprintf(fPtr,">> Opening file %s\n", file_num);
     fflush(fPtr);
@@ -4065,7 +4066,7 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     
     //V_r
     snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"u0", 2,"-" );
-    modifyFlashName(file_num, hydrofile, frame,0);
+    modifyFlashName(file_num, hydrofile, frame);
     snprintf(full_file, sizeof(full_file), "%s%s", file_num, file_end);
     
     hydroPtr=fopen(full_file, "rb");
@@ -4085,7 +4086,7 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     
     //V_theta
     snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"u0", 3,"-" );
-    modifyFlashName(file_num, hydrofile, frame,0);
+    modifyFlashName(file_num, hydrofile, frame);
     snprintf(full_file, sizeof(full_file), "%s%s", file_num, file_end);
     
     hydroPtr=fopen(full_file, "rb");
@@ -4106,7 +4107,7 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     
     //pres
     snprintf(hydrofile,sizeof(hydrofile),"%s%s%d%s",hydro_prefix,"u0", 8,"-" );
-    modifyFlashName(file_num, hydrofile, frame,0);
+    modifyFlashName(file_num, hydrofile, frame);
     snprintf(full_file, sizeof(full_file), "%s%s", file_num, file_end);
     
     //fprintf(fPtr,">> Opening file %s\n", full_file);

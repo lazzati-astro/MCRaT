@@ -33,7 +33,7 @@
 #define RIKEN_SWITCH 0
 #define STOKES_SWITCH 1
 #define COMV_SWITCH 1
-#define DIM_SWITCH "3D"
+#define DIM_SWITCH "2D"
 /*
  Modify parameters above this comment only
  */
@@ -75,7 +75,7 @@ struct photon
 void printPhotons(struct photon *ph, int num_ph, int frame, int  frame_inj,char dir[200], int angle_rank, FILE *fPtr );
 
 void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large,\
-int *last_frm, int *frm2_small,int *frm2_large, double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart,  int *dim_switch);
+int *last_frm, int *frm2_small,int *frm2_large, double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart);
 
 void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
  double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr);
@@ -87,21 +87,21 @@ void lorentzBoost(double *boost, double *p_ph, double *result, char object,  FIL
 
 double *zeroNorm(double *p_ph);
 
-int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z,  int dim_switch_3d);
+int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z);
 
-int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, int dim_switch_3d, int riken_switch, FILE *fPtr);
+int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, int riken_switch, FILE *fPtr);
 
-int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int dim_switch_3d, int riken_switch);
+int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int riken_switch);
 
 int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y,  double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
-                                   double *temp, double *all_time_steps, int *sorted_indexes, gsl_rng * rand, int dim_switch_3d, int find_nearest_block_switch, int riken_switch, FILE *fPtr);
+                                   double *temp, double *all_time_steps, int *sorted_indexes, gsl_rng * rand, int find_nearest_block_switch, int riken_switch, FILE *fPtr);
                                    
 int compare (void *ar, const void *a, const void *b);
 
 int compare2 ( const void *a, const void *b, void *ar);
                                    
 int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
-                                   double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int dim_switch_3d, int find_nearest_block_switch, int riken_switch, FILE *fPtr);
+                                   double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int find_nearest_block_switch, int riken_switch, FILE *fPtr);
     
 void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr);
 
@@ -111,7 +111,7 @@ void findXY(double *v_ph, double *vector, double *x, double *y);
 
 void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FILE *fPtr);
 
-double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand, int dim_switch_3d, FILE *fPtr);
+double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand, FILE *fPtr);
 
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr);
 
@@ -127,9 +127,9 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
 
 int saveCheckpoint(char dir[200], int frame,  int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph , int last_frame, int angle_rank, int angle_size);
 
-void readCheckpoint(char dir[200], struct photon **ph,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size, int dim_switch, int riken_switch );
+void readCheckpoint(char dir[200], struct photon **ph,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size, int riken_switch );
 
-void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs,  int angle_id, int dim_switch, int riken_switch, FILE *fPtr);
+void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs,  int angle_id, int riken_switch, FILE *fPtr);
 
 void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array);
 
@@ -137,10 +137,10 @@ void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, 
 
 void structuredFireballPrep(double *r, double *theta,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array, FILE *fPtr);
 
-void modifyFlashName(char flash_file[200], char prefix[200], int frame, int dim_switch);
+void modifyFlashName(char flash_file[200], char prefix[200], int frame);
 
 
 void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
                      double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, FILE *fPtr);
 
-int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200], int angle_rank,  int angle_procs, int last_frame, int dim_switch, int riken_switch);
+int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200], int angle_rank,  int angle_procs, int last_frame, int riken_switch);

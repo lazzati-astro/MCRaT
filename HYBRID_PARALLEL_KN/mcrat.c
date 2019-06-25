@@ -171,7 +171,7 @@ int main(int argc, char **argv)
     
     printf(">> mc.py:  Reading mc.par: %s\n", mc_file);
     
-    readMcPar(mc_file, &hydro_domain_x, &hydro_domain_y, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &ph_weight_small, &ph_weight_large, &min_photons, &max_photons, &spect, &restrt,&dim_switch); //thetas that comes out is in degrees
+    readMcPar(mc_file, &hydro_domain_x, &hydro_domain_y, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &ph_weight_small, &ph_weight_large, &min_photons, &max_photons, &spect, &restrt); //thetas that comes out is in degrees
     //printf("%c\n", restrt);
     
     //divide up angles and frame injections among threads DONT WANT NUMBER OF THREADS TO BE ODD
@@ -269,7 +269,7 @@ int main(int argc, char **argv)
             int *cont_proc_idsPtr=NULL, *total_cont_procs_angle_Ptr=NULL, *displPtr=NULL; //becomes the size of the number of old procceses 
             int *cont_proc_ids_anglePtr=NULL;
             
-            old_num_angle_procs=getOrigNumProcesses(&count_cont_procs,  &cont_proc_idsPtr, mc_dir, angle_id,  angle_procs,  last_frm, dim_switch, RIKEN_SWITCH);
+            old_num_angle_procs=getOrigNumProcesses(&count_cont_procs,  &cont_proc_idsPtr, mc_dir, angle_id,  angle_procs,  last_frm, RIKEN_SWITCH);
             
             if (old_num_angle_procs==-1)
             {
@@ -531,7 +531,7 @@ int main(int argc, char **argv)
                 printf(">> mc.py:  Reading checkpoint\n");
                 //#pragma omp critical
                 
-                    readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs, dim_switch, RIKEN_SWITCH);
+                    readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs, RIKEN_SWITCH);
                 
                 /*
                 for (i=0;i<num_ph;i++)
@@ -654,7 +654,7 @@ int main(int argc, char **argv)
                         {
                             //if using FLASH data for 2D
                         //put proper number at the end of the flash file
-                        modifyFlashName(flash_file, flash_prefix, frame, dim_switch);
+                        modifyFlashName(flash_file, flash_prefix, frame);
                         
                         fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
                         fflush(fPtr);
@@ -761,7 +761,7 @@ int main(int argc, char **argv)
                         if (RIKEN_SWITCH==0)
                         {
                             //put proper number at the end of the flash file
-                            modifyFlashName(flash_file, flash_prefix, scatt_frame, dim_switch);
+                            modifyFlashName(flash_file, flash_prefix, scatt_frame);
                             phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                             readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                     &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr);
@@ -817,7 +817,7 @@ int main(int argc, char **argv)
                         
 
                         ph_scatt_index=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, &time_step, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
-                                                                      all_time_steps, sorted_indexes, rng, dim_switch, find_nearest_grid_switch, RIKEN_SWITCH, fPtr);
+                                                                      all_time_steps, sorted_indexes, rng, find_nearest_grid_switch, RIKEN_SWITCH, fPtr);
                         
                         find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
 
@@ -835,7 +835,7 @@ int main(int argc, char **argv)
                             //scatter the photon
                             //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
-                            time_step=photonScatter( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, rng, dim_switch, fPtr );
+                            time_step=photonScatter( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, rng, fPtr );
                             time_now+=time_step;
                             
                             
@@ -1009,7 +1009,7 @@ int main(int argc, char **argv)
                 fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
                 fflush(fPtr);
                 
-                dirFileMerge(mc_dir, frm0, last_frm, old_num_angle_procs, angle_id, dim_switch, RIKEN_SWITCH, fPtr);
+                dirFileMerge(mc_dir, frm0, last_frm, old_num_angle_procs, angle_id, RIKEN_SWITCH, fPtr);
             }
         }
         
