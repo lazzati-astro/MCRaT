@@ -1,3 +1,4 @@
+//MODIFY C COMPILER DIRECTIVES BELOW THIS LINE
 #define THISRUN "Spherical"
 #define FILEPATH "/Users/Tylerparsotan/Documents/16TI/"
 #define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
@@ -29,21 +30,25 @@
  #define MC_PATH "KN_16TI_SPHERICAL_2/"
  */
 
-#define MCPAR "mc.par"
 #define RIKEN_SWITCH 0
 #define STOKES_SWITCH 1
 #define COMV_SWITCH 1
-
+#define DIM_SWITCH "3D"
 /*
  Modify parameters above this comment only
  */
+
 
 extern const double C_LIGHT;
 extern const double A_RAD;
 extern const double PL_CONST;
 extern const double K_B;
+extern const char *dim_3d_str;
+extern const char *dim_2d_str;
 
 #define STR_BUFFER 2000
+#define MCPAR "mc.par"
+
 struct photon
 {
     double p0; //E/c, 4 momentum is in lab frame
@@ -67,7 +72,7 @@ struct photon
 } ; //structure to hold photon information
 
 
-void printPhotons(struct photon *ph, int num_ph, int frame, int  frame_inj,char dir[200], int angle_rank, int stokes_switch, int comv_switch, FILE *fPtr );
+void printPhotons(struct photon *ph, int num_ph, int frame, int  frame_inj,char dir[200], int angle_rank, FILE *fPtr );
 
 void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large,\
 int *last_frm, int *frm2_small,int *frm2_large, double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart,  int *dim_switch);
@@ -106,15 +111,15 @@ void findXY(double *v_ph, double *vector, double *x, double *y);
 
 void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FILE *fPtr);
 
-double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand, int dim_switch_3d, int stokes_switch, FILE *fPtr);
+double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand, int dim_switch_3d, FILE *fPtr);
 
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr);
 
-int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand, int stokes_switch, FILE *fPtr);
+int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand, FILE *fPtr);
 
 int comptonScatter(double *theta, double *phi, gsl_rng * rand, FILE *fPtr);
 
-int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double u, gsl_rng * rand, int stokes_switch, FILE *fPtr);
+int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double u, gsl_rng * rand, FILE *fPtr);
 
 double averagePhotonEnergy(struct photon *ph, int num_ph);
 
@@ -124,7 +129,7 @@ int saveCheckpoint(char dir[200], int frame,  int frame2, int scatt_frame, int p
 
 void readCheckpoint(char dir[200], struct photon **ph,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size, int dim_switch, int riken_switch );
 
-void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs,  int angle_id, int dim_switch, int riken_switch, int stokes_switch, int comv_switch, FILE *fPtr);
+void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs,  int angle_id, int dim_switch, int riken_switch, FILE *fPtr);
 
 void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array);
 

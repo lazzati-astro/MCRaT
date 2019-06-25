@@ -34,6 +34,8 @@
 //define constants
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27;
 const double K_B=1.380658e-16, M_P=1.6726231e-24, THOM_X_SECT=6.65246e-25, M_EL=9.1093879e-28 ;
+char const *dim_3d_str="3D";
+char const *dim_2d_str="2D";
 
 int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200], int angle_rank,  int angle_procs, int last_frame, int dim_switch, int riken_switch)
 {
@@ -141,13 +143,13 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
 }
 
 
-void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200], int angle_rank, int stokes_switch, int comv_switch, FILE *fPtr )
+void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200], int angle_rank,  FILE *fPtr )
 {
     //function to save the photons' positions and 4 momentum
     
      //now using hdf5 file for each process w/ group structure /(weights or Hydro File #)/(p0,p1,p2,p3, r0, r1, r2, s0, s1, s2, or num_scatt)
     
-    //if (stokes_switch==0), not going to save the polarization info
+    //if (STOKES_SWITCH==0), not going to save the polarization info
      
      //open the file if it exists and see if the group exists for the given frame, if frame doesnt exist then write datasets for all photons as extendable
      //if the frame does exist then read information from the prewritten data and then add new data to it as extended chunk
@@ -258,7 +260,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         dset_p3 = H5Dcreate2 (group_id, "P3", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
         
-        if (comv_switch!=0)
+        if (COMV_SWITCH!=0)
         {
             dset_comv_p0 = H5Dcreate2 (group_id, "COMV_P0", H5T_NATIVE_DOUBLE, dspace,
                                   H5P_DEFAULT, prop, H5P_DEFAULT);
@@ -282,7 +284,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         dset_r2 = H5Dcreate2 (group_id, "R2", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
         
-        if (stokes_switch!=0)
+        if (STOKES_SWITCH!=0)
         {
             dset_s0 = H5Dcreate2 (group_id, "S0", H5T_NATIVE_DOUBLE, dspace,
                                 H5P_DEFAULT, prop, H5P_DEFAULT);
@@ -321,7 +323,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         status = H5Dwrite (dset_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                         H5P_DEFAULT, p3);
         
-        if (comv_switch!=0)
+        if (COMV_SWITCH!=0)
         {
             status = H5Dwrite (dset_comv_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                                H5P_DEFAULT, comv_p0);
@@ -344,7 +346,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
                         
         status = H5Dwrite (dset_r2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                         H5P_DEFAULT, r2);
-        if (stokes_switch!=0)
+        if (STOKES_SWITCH!=0)
         {
             status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, s0);
@@ -454,7 +456,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         status = H5Sclose (mspace);
         status = H5Sclose (fspace);
         
-        if (comv_switch!=0)
+        if (COMV_SWITCH!=0)
         {
             dset_comv_p0 = H5Dopen (group_id, "COMV_P0", H5P_DEFAULT); //open dataset
             dspace = H5Dget_space (dset_comv_p0);
@@ -570,7 +572,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         status = H5Sclose (mspace);
         status = H5Sclose (fspace);
         
-        if (stokes_switch!=0)
+        if (STOKES_SWITCH!=0)
         {
              dset_s0 = H5Dopen (group_id, "S0", H5P_DEFAULT); //open dataset
             dspace = H5Dget_space (dset_s0);
@@ -710,12 +712,12 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     /* Close resources */
     //status = H5Sclose (dspace);
     status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
-    if (comv_switch!=0)
+    if (COMV_SWITCH!=0)
     {
         status = H5Dclose (dset_comv_p0); status = H5Dclose (dset_comv_p1); status = H5Dclose (dset_comv_p2); status = H5Dclose (dset_comv_p3);
     }
     status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
-    if (stokes_switch!=0)
+    if (STOKES_SWITCH!=0)
     {
         status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
     }
@@ -2621,7 +2623,7 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
 }
 
 
-double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand,int dim_switch_3d, int stokes_switch, FILE *fPtr)
+double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand,int dim_switch_3d, FILE *fPtr)
 {
     //function to perform single photon scattering
     //stokes switch of 0 means that we don't consider the stokes parameters (aka no polarization)
@@ -2737,7 +2739,7 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
             //fprintf(fPtr, "Theta: %e Phi %e Lab: x_tilde: %e, %e, %e, y_tilde: %e %e %e\n", theta, phi, *(x_tilde+0), *(x_tilde+1), *(x_tilde+2), *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
         
             //then rotate the stokes plane by some angle such that we are in the stokes coordinat eystsem after the lorentz boost
-            if (stokes_switch != 0)
+            if (STOKES_SWITCH != 0)
             {
                 stokesRotation(fluid_beta, (ph_p+1), (ph_p_comov+1), s, fPtr);
             }
@@ -2750,7 +2752,7 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
      
     
             //third we perform the scattering and save scattered photon 4 monetum in ph_p_comov @ end of function
-            scatter_did_occur=singleScatter(el_p_comov, ph_p_comov, s, rand, stokes_switch, fPtr);
+            scatter_did_occur=singleScatter(el_p_comov, ph_p_comov, s, rand, fPtr);
         
         
     
@@ -2771,7 +2773,7 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
                 //fprintf(fPtr,"Scattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
                 //fflush(fPtr);
                 
-                if (stokes_switch != 0)
+                if (STOKES_SWITCH != 0)
                 {
                     stokesRotation(negative_fluid_beta, (ph_p_comov+1), (ph_p+1), s, fPtr); //rotate to boost back to lab frame
                     
@@ -2948,7 +2950,7 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
     gsl_matrix_free (rot);gsl_vector_free(result);
 }
 
-int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand, int stokes_switch, FILE *fPtr)
+int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand, FILE *fPtr)
 {
     //This routine performs a scattering between a photon and a moving electron.
     int i=0, scattering_occured=0;
@@ -2990,7 +2992,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     //printf("New ph_p in electron rest frame: %e, %e, %e,%e\n", *(ph_p_prime+0), *(ph_p_prime+1), *(ph_p_prime+2), *(ph_p_prime+3));
     
     //rotate 'stokes plane'
-    if (stokes_switch != 0)
+    if (STOKES_SWITCH != 0)
     {
         stokesRotation(el_v, (ph_comov+1), (ph_p_prime+1), s, fPtr);
         stokes=gsl_vector_view_array(s, 4);
@@ -3062,7 +3064,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     
     //determine if the scattering will occur between photon and electron
     //scattering_occured=comptonScatter(&theta, &phi, rand, fPtr); //determine the angles phi and theta for the photon to scatter into using thompson differential cross section 
-    scattering_occured=kleinNishinaScatter(&theta, &phi, *(ph_p_prime+0), *(s+1), *(s+2), rand, stokes_switch, fPtr);//determine the angles phi and theta for the photon to scatter into using KN differential cross section, if the photon will end up scattering
+    scattering_occured=kleinNishinaScatter(&theta, &phi, *(ph_p_prime+0), *(s+1), *(s+2), rand, fPtr);//determine the angles phi and theta for the photon to scatter into using KN differential cross section, if the photon will end up scattering
     
     //fprintf(fPtr,"Phi: %e, Theta: %e\n", phi, theta);
     
@@ -3080,7 +3082,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
         
         //do the scattering of the stokes vector
         //rotate it by phi and then scatter it and rotate back and then renormalize it such that i=1
-        if (stokes_switch != 0)
+        if (STOKES_SWITCH != 0)
         {
             mullerMatrixRotation(phi, s, fPtr);
             gsl_matrix_set(scatt, 0,0,1.0+pow(cos(theta), 2.0)+((1-cos(theta))*((*(ph_p_prime+0)) - gsl_vector_get(result,0))/(M_EL*C_LIGHT ) ) ); //following lundman's matrix
@@ -3202,7 +3204,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
         //printf("Undo boost 1: %e, %e, %e, %e\n",  *(ph_comov+0), *(ph_comov+1),  *(ph_comov+2),  *(ph_comov+3));
         
         //dont need to find stokes vector and do previosu rotations, can just find the stokes coordinates in function because the stokes coordinate vectors rotate with the photon vector and no rotations to a new stokes coordinate system are needed
-        if (stokes_switch != 0)
+        if (STOKES_SWITCH != 0)
         {
             stokesRotation(negative_el_v, (ph_p_prime+1), (ph_comov+1), s, fPtr);
         }
@@ -3240,7 +3242,7 @@ int comptonScatter(double *theta, double *phi, gsl_rng * rand, FILE *fPtr)
 }
 
 
-int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double u, gsl_rng * rand, int stokes_switch, FILE *fPtr)
+int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double u, gsl_rng * rand, FILE *fPtr)
 {
     //sample theta using:  https://doi.org/10.13182/NSE11-57
     double phi_dum=0, cos_theta_dum=0, f_phi_dum=0, f_cos_theta_dum=0, f_theta_dum=0, phi_y_dum=0, cos_theta_y_dum=0, KN_x_section_over_thomson_x_section=0, rand_num=0;
@@ -3282,7 +3284,7 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
         
         while ((phi_y_dum>f_phi_dum) )
         {
-            if (u!=0 && q!=0 && stokes_switch!=0)
+            if (u!=0 && q!=0 && STOKES_SWITCH!=0)
             {
                 //if we are considering polarization calulate the norm for the distributiion to be between 1 and 0
                 phi_max=atan(fabs(u)/fabs(q))/2.0;
@@ -3470,7 +3472,7 @@ void structuredFireballPrep(double *r, double *theta,  double *x, double *y, dou
 }
 
 
-void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, int angle_id, int dim_switch, int riken_switch, int stokes_switch, int comv_switch, FILE *fPtr )
+void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, int angle_id, int dim_switch, int riken_switch, FILE *fPtr )
 {
     //function to merge files in mcdir produced by various threads
     double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *comv_p0=NULL, *comv_p1=NULL, *comv_p2=NULL, *comv_p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;
@@ -3487,11 +3489,11 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
     //#pragma omp parallel for num_threads(num_thread) firstprivate( filename_k, file_no_thread_num, cmd,mcdata_type,num_files, increment ) private(i,j,k)
     // i < last frame because calculation before this function gives last_frame as the first frame of the next process set of frames to merge files for
     
-    if ((comv_switch!=0) && (stokes_switch!=0))
+    if ((COMV_SWITCH!=0) && (STOKES_SWITCH!=0))
     {
         num_types=16;//both switches on, want to save comv and stokes
     }
-    else if ((comv_switch!=0) || (stokes_switch!=0))
+    else if ((COMV_SWITCH!=0) || (STOKES_SWITCH!=0))
     {
         num_types=12;//either switch acivated, just subtract 4 datasets
     }
@@ -3564,7 +3566,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             
             for (k=0;k<num_types;k++)
             {
-                if ((comv_switch!=0) && (stokes_switch!=0))
+                if ((COMV_SWITCH!=0) && (STOKES_SWITCH!=0))
                 {
                     switch (k)
                     {
@@ -3586,7 +3588,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 15: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                     }
                 }
-                else if (stokes_switch!=0)
+                else if (STOKES_SWITCH!=0)
                 {
                     switch (k)
                     {
@@ -3604,7 +3606,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                     }
                 }
-                else if (comv_switch!=0)
+                else if (COMV_SWITCH!=0)
                 {
                     switch (k)
                     {
@@ -3700,7 +3702,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     dset_p1 = H5Dopen (group_id, "P1", H5P_DEFAULT);
                     dset_p2 = H5Dopen (group_id, "P2", H5P_DEFAULT);
                     dset_p3 = H5Dopen (group_id, "P3", H5P_DEFAULT);
-                    if (comv_switch!=0)
+                    if (COMV_SWITCH!=0)
                     {
                         dset_comv_p0 = H5Dopen (group_id, "COMV_P0", H5P_DEFAULT); //open dataset
                         dset_comv_p1 = H5Dopen (group_id, "COMV_P1", H5P_DEFAULT);
@@ -3710,7 +3712,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     dset_r0 = H5Dopen (group_id, "R0", H5P_DEFAULT); 
                     dset_r1 = H5Dopen (group_id, "R1", H5P_DEFAULT);
                     dset_r2 = H5Dopen (group_id, "R2", H5P_DEFAULT);
-                    if (stokes_switch!=0)
+                    if (STOKES_SWITCH!=0)
                     {
                         dset_s0 = H5Dopen (group_id, "S0", H5P_DEFAULT);
                         dset_s1 = H5Dopen (group_id, "S1", H5P_DEFAULT);
@@ -3724,7 +3726,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     status = H5Dread(dset_p1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p1+j));
                     status = H5Dread(dset_p2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p2+j));
                     status = H5Dread(dset_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p3+j));
-                    if (comv_switch!=0)
+                    if (COMV_SWITCH!=0)
                     {
                         status = H5Dread(dset_comv_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (comv_p0+j));
                         status = H5Dread(dset_comv_p1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (comv_p1+j));
@@ -3734,7 +3736,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     status = H5Dread(dset_r0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r0+j));
                     status = H5Dread(dset_r1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r1+j));
                     status = H5Dread(dset_r2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r2+j));
-                    if (stokes_switch!=0)
+                    if (STOKES_SWITCH!=0)
                     {
                         status = H5Dread(dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s0+j));
                         status = H5Dread(dset_s1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s1+j));
@@ -3751,12 +3753,12 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                 
                     status = H5Sclose (dspace);
                     status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
-                    if (comv_switch!=0)
+                    if (COMV_SWITCH!=0)
                     {
                         status = H5Dclose (dset_comv_p0); status = H5Dclose (dset_comv_p1); status = H5Dclose (dset_comv_p2); status = H5Dclose (dset_comv_p3);
                     }
                     status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
-                    if (stokes_switch!=0)
+                    if (STOKES_SWITCH!=0)
                     {
                         status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
                     }
@@ -3773,7 +3775,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             dset_p1=H5Dcreate2(file_new, "P1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_p2=H5Dcreate2(file_new, "P2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_p3=H5Dcreate2(file_new, "P3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            if (comv_switch!=0)
+            if (COMV_SWITCH!=0)
             {
                 dset_comv_p0=H5Dcreate2(file_new, "COMV_P0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
                 dset_comv_p1=H5Dcreate2(file_new, "COMV_P1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -3783,7 +3785,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             dset_r0=H5Dcreate2(file_new, "R0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_r1=H5Dcreate2(file_new, "R1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_r2=H5Dcreate2(file_new, "R2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            if (stokes_switch!=0)
+            if (STOKES_SWITCH!=0)
             {
                 dset_s0=H5Dcreate2(file_new, "S0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
                 dset_s1=H5Dcreate2(file_new, "S1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -3805,7 +3807,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             status = H5Dwrite (dset_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, p3);
             
-            if (comv_switch!=0)
+            if (COMV_SWITCH!=0)
             {
                 status = H5Dwrite (dset_comv_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                                    H5P_DEFAULT, comv_p0);
@@ -3829,7 +3831,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             status = H5Dwrite (dset_r2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, r2);
             
-            if (stokes_switch!=0)
+            if (STOKES_SWITCH!=0)
             {
                 status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                                 H5P_DEFAULT, s0);
@@ -3849,12 +3851,12 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
         
             status = H5Sclose (dspace);
             status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
-            if (comv_switch!=0)
+            if (COMV_SWITCH!=0)
             {
                 status = H5Dclose (dset_comv_p0); status = H5Dclose (dset_comv_p1); status = H5Dclose (dset_comv_p2); status = H5Dclose (dset_comv_p3);
             }
             status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
-            if (stokes_switch!=0)
+            if (STOKES_SWITCH!=0)
             {
                 status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
             }

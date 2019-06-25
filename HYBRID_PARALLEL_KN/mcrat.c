@@ -592,7 +592,7 @@ int main(int argc, char **argv)
                 }
             }
             
-            if ((RIKEN_SWITCH==1) && (dim_switch==1) && (framestart>=3000))
+            if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (framestart>=3000))
             {
                 increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
                 fps_modified=1;
@@ -624,7 +624,7 @@ int main(int argc, char **argv)
             for (frame=framestart;frame<=frm2;frame=frame+increment_inj)
             {
                 
-                if ((RIKEN_SWITCH==1) && (dim_switch==1) && (frame>=3000))
+                if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (frame>=3000))
                 {
                     increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
                     fps_modified=1;
@@ -648,7 +648,7 @@ int main(int argc, char **argv)
                 {
                     
                     
-                    if (dim_switch==0)
+                    if (strcmp(DIM_SWITCH, dim_2d_str)==0)
                     {
                         if (RIKEN_SWITCH==0)
                         {
@@ -703,7 +703,7 @@ int main(int argc, char **argv)
                     fprintf(fPtr,">>  Proc: %d with angles %0.1lf-%0.1lf: Injecting photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     fflush(fPtr);
                     
-                    if (dim_switch==0)
+                    if (strcmp(DIM_SWITCH, dim_2d_str)==0)
                     {
                         photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng, RIKEN_SWITCH, fPtr );
                     }
@@ -732,7 +732,7 @@ int main(int argc, char **argv)
                 
                 for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame=scatt_frame+increment_scatt)
                 {
-                    if ((RIKEN_SWITCH==1) && (dim_switch==1) && (scatt_frame>=3000))
+                    if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (scatt_frame>=3000))
                     {
                         increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
                         fps_modified=1; //therefore dt between files become 1 second
@@ -756,7 +756,7 @@ int main(int argc, char **argv)
                     gsl_rng_set(rng, gsl_rng_get(rng));
                     
                    
-                    if (dim_switch==0)
+                    if (strcmp(DIM_SWITCH, dim_2d_str)==0)
                     {
                         if (RIKEN_SWITCH==0)
                         {
@@ -835,7 +835,7 @@ int main(int argc, char **argv)
                             //scatter the photon
                             //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
-                            time_step=photonScatter( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, rng, dim_switch, STOKES_SWITCH, fPtr );
+                            time_step=photonScatter( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, rng, dim_switch, fPtr );
                             time_now+=time_step;
                             
                             
@@ -884,7 +884,7 @@ int main(int argc, char **argv)
                     if (save_chkpt_success==0)
                     {
                         //if we saved the checkpoint successfully also save the photons to the hdf5 file, else there may be something wrong with the file system
-                        printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, angle_id, STOKES_SWITCH, COMV_SWITCH, fPtr);
+                        printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, angle_id, fPtr);
                     }
                     else
                     {
@@ -895,7 +895,7 @@ int main(int argc, char **argv)
                     }
                     //exit(0);
                     
-                     if (dim_switch==1)
+                     if (strcmp(DIM_SWITCH, dim_3d_str)==0)
                     {
                         if (RIKEN_SWITCH==1)
                         {
@@ -937,7 +937,7 @@ int main(int argc, char **argv)
              //count number of files
              for (i=frm0;i<=last_frm;i=i+increment_scatt)
              {
-                if ((RIKEN_SWITCH==1) && (dim_switch==1) && (i>=3000))
+                if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
                 {
                     increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
                 }
@@ -964,7 +964,7 @@ int main(int argc, char **argv)
              file_count=0;
              for (i=frm0;i<=last_frm;i=i+increment_scatt)
              {
-                if ((RIKEN_SWITCH==1) && (dim_switch==1) && (i>=3000))
+                if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
                 {
                     increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
                 }
@@ -989,7 +989,7 @@ int main(int argc, char **argv)
              last_frm=frm0;
              while(i<proc_frame_size)
              {
-                if ((RIKEN_SWITCH==1) && (dim_switch==1) && (last_frm>=3000))
+                if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (last_frm>=3000))
                 {
                     increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
                 }
@@ -1009,7 +1009,7 @@ int main(int argc, char **argv)
                 fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
                 fflush(fPtr);
                 
-                dirFileMerge(mc_dir, frm0, last_frm, old_num_angle_procs, angle_id, dim_switch, RIKEN_SWITCH, STOKES_SWITCH, COMV_SWITCH, fPtr); 
+                dirFileMerge(mc_dir, frm0, last_frm, old_num_angle_procs, angle_id, dim_switch, RIKEN_SWITCH, fPtr);
             }
         }
         
