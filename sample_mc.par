@@ -1,0 +1,20 @@
+5e12		#max x limit of hydro simulation
+2.5e13		#max y limit of hydro sims
+5.              # number of frames per second of simulation (likely always the same)
+200              #(125 old) frame at which photon injection starts
+200		#frame to start photon injection for large angle
+224		    # last available frame  (get it from the last file in the data folder)
+2               # number of frames for which photons are injected small angle
+2		#large angles
+15e11   		# the radius at which the photons are injected. small angle
+15e11		#large angles
+0.              # the minimum off-axis angle (in degrees)
+6.              # the maximum off-axis angle (in degrees)
+3.		# delta angle that you want to consider, smaller delta angle -> higher angle resolution
+5e50		#photon weight for every photon 
+5e50		#photon weight for every photon at high viewing angles
+50		#min number of photons
+100		#max number of photons
+b		#type of spectrum we inject with, w=wien b=blackbody
+r		#restart of continue simulation (r=restart (delete all files) c=continue
+0		#switch to say if hydro files are 3D (set as 1) or not (set as 0)

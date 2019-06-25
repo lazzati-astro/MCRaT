@@ -1,0 +1,21 @@
+\contentsline {section}{\numberline {1}Introduction}{2}{section.1}
+\contentsline {section}{\numberline {2}Getting Started}{2}{section.2}
+\contentsline {subsection}{\numberline {2.1}Required Libraries}{2}{subsection.2.1}
+\contentsline {subsection}{\numberline {2.2}Downloading and Compiling MCRaT}{3}{subsection.2.2}
+\contentsline {subsection}{\numberline {2.3}The MCRaT Parameter File}{4}{subsection.2.3}
+\contentsline {subsection}{\numberline {2.4}Understanding MCRaT's Parallelism}{5}{subsection.2.4}
+\contentsline {subsection}{\numberline {2.5}Running MCRaT}{5}{subsection.2.5}
+\contentsline {subsection}{\numberline {2.6}MCRaT Output}{6}{subsection.2.6}
+\contentsline {subsection}{\numberline {2.7}Restarting MCRaT}{7}{subsection.2.7}
+\contentsline {subsubsection}{\numberline {2.7.1}Using The mcrat\_msp.sh Shell Script}{8}{subsubsection.2.7.1}
+\contentsline {subsection}{\numberline {2.8}Using Hybrid-Parellelization}{8}{subsection.2.8}
+\contentsline {subsection}{\numberline {2.9}Post-Processing MCRaT Data}{8}{subsection.2.9}
+\contentsline {section}{\numberline {3}The MCRaT Code}{9}{section.3}
+\contentsline {subsection}{\numberline {3.1}Assumptions about the RHD Simulation}{9}{subsection.3.1}
+\contentsline {subsection}{\numberline {3.2}Algorithm}{9}{subsection.3.2}
+\contentsline {subsection}{\numberline {3.3}Output}{13}{subsection.3.3}
+\contentsline {subsection}{\numberline {3.4}Post-processing Algorithm}{15}{subsection.3.4}
+\contentsline {section}{\numberline {4}Physics Included in MCRaT}{15}{section.4}
+\contentsline {subsection}{\numberline {4.1}Injecting Photons}{15}{subsection.4.1}
+\contentsline {subsection}{\numberline {4.2}Scattering Photons}{16}{subsection.4.2}
+\contentsline {subsection}{\numberline {4.3}Polarization}{16}{subsection.4.3}
