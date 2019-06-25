@@ -20,9 +20,6 @@
 #include "mclib.h"
 #include "mpi.h"
 
-
-#define MCPAR "mc.par"
-
 int main(int argc, char **argv)
 {
     double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;

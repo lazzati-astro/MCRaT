@@ -56,9 +56,9 @@
 
 /*
 #define THISRUN "Spherical"
-#define FILEPATH "/home/physics/parsotat/16TI/"
+#define FILEPATH "/Users/Tylerparsotan/Documents/16TI/"
 #define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
-#define MC_PATH "CMC_16TI_SPHERICAL/"
+#define MC_PATH "KN_CMC_16TI_SPHERICAL/"
  
 #define THISRUN "Science"
 #define FILEPATH "/Users/Tylerparsotan/Documents/Box Sync/1spike/"
@@ -71,13 +71,13 @@
 #define FILEPATH "/home/physics/parsotat/16OM/"
 #define FILEROOT "rhd_jet_big_16OM_hdf5_plt_cnt_"
 #define MC_PATH "DIR_TEST/"
-*/
+
  #define THISRUN "Spherical"
 #define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16OI/"
 //#define FILEPATH "/Users/Tylerparsotan//Documents/16OI_TEST/"
 #define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
 #define MC_PATH "TEST/"
-/*
+
 //#define THISRUN "Spherical"
 #define THISRUN "Structured Spherical"
 #define FILEPATH "/home/physics/parsotat/16TI/"
@@ -85,12 +85,12 @@
 #define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
 #define MC_PATH "KN_16TI_SPHERICAL_2/"
 */
-
+/*
 #define MCPAR "mc.par"
 #define RIKEN_SWITCH 0
 #define STOKES_SWITCH 1
-#define COMV_SWITCH 0
-
+#define COMV_SWITCH 1
+*/
 int main(int argc, char **argv)
 {
     //compile each time a macro is changed, have to supply the subfolder within the MC_PATH directory as a command line argument to the C program eg. MCRAT 1/
