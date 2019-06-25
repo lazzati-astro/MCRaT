@@ -22,8 +22,8 @@
 
 int main(int argc, char **argv)
 {
-    double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;
-    double *p0_p=NULL, *p1_p=NULL, *p2_p=NULL, *p3_p=NULL, *r0_p=NULL, *r1_p=NULL, *r2_p=NULL, *s0_p=NULL, *s1_p=NULL, *s2_p=NULL, *s3_p=NULL, *num_scatt_p=NULL, *weight_p=NULL;
+    double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *comv_p0=NULL, *comv_p1=NULL, *comv_p2=NULL, *comv_p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;
+    double *p0_p=NULL, *p1_p=NULL, *p2_p=NULL, *p3_p=NULL, *comv_p0_p=NULL, *comv_p1_p=NULL, *comv_p2_p=NULL, *comv_p3_p=NULL, *r0_p=NULL, *r1_p=NULL, *r2_p=NULL, *s0_p=NULL, *s1_p=NULL, *s2_p=NULL, *s3_p=NULL, *num_scatt_p=NULL, *weight_p=NULL;
     int num_angle_dirs=0, i=0, j=0, k=0, l=0, num_types=12;
     int *num_procs_per_dir=NULL, frm0_small, frm0_large, last_frm, frm2_small, frm2_large, small_frm, large_frm, frm=0, all_photons;
     int *frm_array=NULL, *each_subdir_number=NULL, *displPtr=NULL;
@@ -51,7 +51,20 @@ int main(int argc, char **argv)
      hsize_t      size[1];
     hsize_t      offset[1];
     herr_t	status, status_group;
-    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight;
+    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight;
+    
+    if ((COMV_SWITCH!=0) && (STOKES_SWITCH!=0))
+    {
+        num_types=16;//both switches on, want to save comv and stokes
+    }
+    else if ((COMV_SWITCH!=0) || (STOKES_SWITCH!=0))
+    {
+        num_types=12;//either switch acivated, just subtract 4 datasets
+    }
+    else
+    {
+        num_types=8;//just save lab 4 momentum, position and num_scatt
+    }
 
     while((dent = readdir(srcdir)) != NULL)
     {
@@ -304,20 +317,77 @@ int main(int argc, char **argv)
             
             for (k=0;k<num_types;k++)
             {
-                switch (k)
+                if ((COMV_SWITCH!=0) && (STOKES_SWITCH!=0))
                 {
-                    case 0: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P0"); break;
-                    case 1: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P1");break;
-                    case 2: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P2"); break;
-                    case 3: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P3"); break;
-                    case 4: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R0"); break;
-                    case 5: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
-                    case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
-                    case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S0"); break;
-                    case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S1");break;
-                    case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S2"); break;
-                    case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
-                    case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                    switch (k)
+                    {
+                        case 0: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P0"); break;
+                        case 1: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P1");break;
+                        case 2: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P2"); break;
+                        case 3: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P3"); break;
+                        case 4: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "COMV_P0"); break;
+                        case 5: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "COMV_P1");break;
+                        case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "COMV_P2"); break;
+                        case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "COMV_P3"); break;
+                        case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R0"); break;
+                        case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
+                        case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
+                        case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S0"); break;
+                        case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S1");break;
+                        case 13: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S2"); break;
+                        case 14: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
+                        case 15: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                    }
+                }
+                else if (STOKES_SWITCH!=0)
+                {
+                    switch (k)
+                    {
+                        case 0: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P0"); break;
+                        case 1: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P1");break;
+                        case 2: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P2"); break;
+                        case 3: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P3"); break;
+                        case 4: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R0"); break;
+                        case 5: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
+                        case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
+                        case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S0"); break;
+                        case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S1");break;
+                        case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S2"); break;
+                        case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
+                        case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                    }
+                }
+                else if (COMV_SWITCH!=0)
+                {
+                    switch (k)
+                    {
+                        case 0: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P0"); break;
+                        case 1: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P1");break;
+                        case 2: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P2"); break;
+                        case 3: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P3"); break;
+                        case 4: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "COMV_P0"); break;
+                        case 5: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "COMV_P1");break;
+                        case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "COMV_P2"); break;
+                        case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "COMV_P3"); break;
+                        case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R0"); break;
+                        case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
+                        case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
+                        case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                    }
+                }
+                else
+                {
+                    switch (k)
+                    {
+                        case 0: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P0"); break;
+                        case 1: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P1");break;
+                        case 2: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P2"); break;
+                        case 3: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "P3"); break;
+                        case 4: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R0"); break;
+                        case 5: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
+                        case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
+                        case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                    }
                 }
             
                 //open the datatset
@@ -427,20 +497,37 @@ int main(int argc, char **argv)
                         dset_p1 = H5Dopen (group_id, "P1", H5P_DEFAULT);
                         dset_p2 = H5Dopen (group_id, "P2", H5P_DEFAULT);
                         dset_p3 = H5Dopen (group_id, "P3", H5P_DEFAULT);
+                        if (COMV_SWITCH!=0)
+                        {
+                            dset_comv_p0 = H5Dopen (group_id, "COMV_P0", H5P_DEFAULT); //open dataset
+                            dset_comv_p1 = H5Dopen (group_id, "COMV_P1", H5P_DEFAULT);
+                            dset_comv_p2 = H5Dopen (group_id, "COMV_P2", H5P_DEFAULT);
+                            dset_comv_p3 = H5Dopen (group_id, "COMV_P3", H5P_DEFAULT);
+                        }
                         dset_r0 = H5Dopen (group_id, "R0", H5P_DEFAULT); 
                         dset_r1 = H5Dopen (group_id, "R1", H5P_DEFAULT);
                         dset_r2 = H5Dopen (group_id, "R2", H5P_DEFAULT);
-                        dset_s0 = H5Dopen (group_id, "S0", H5P_DEFAULT); 
-                        dset_s1 = H5Dopen (group_id, "S1", H5P_DEFAULT);
-                        dset_s2 = H5Dopen (group_id, "S2", H5P_DEFAULT);
-                        dset_s3 = H5Dopen (group_id, "S3", H5P_DEFAULT);
+                        if (STOKES_SWITCH!=0)
+                        {
+                            dset_s0 = H5Dopen (group_id, "S0", H5P_DEFAULT);
+                            dset_s1 = H5Dopen (group_id, "S1", H5P_DEFAULT);
+                            dset_s2 = H5Dopen (group_id, "S2", H5P_DEFAULT);
+                            dset_s3 = H5Dopen (group_id, "S3", H5P_DEFAULT);
+                        }
                         dset_num_scatt = H5Dopen (group_id, "NS", H5P_DEFAULT);
                         
                         //malloc memory
                         p0_p=malloc(j*sizeof(double));  p1_p=malloc(j*sizeof(double));  p2_p=malloc(j*sizeof(double));  p3_p=malloc(j*sizeof(double));
+                        if (COMV_SWITCH!=0)
+                        {
+                            comv_p0_p=malloc(j*sizeof(double));  comv_p1_p=malloc(j*sizeof(double));  comv_p2_p=malloc(j*sizeof(double));  comv_p3_p=malloc(j*sizeof(double));
+                        }
                         r0_p=malloc(j*sizeof(double));  r1_p=malloc(j*sizeof(double));  r2_p=malloc(j*sizeof(double));
-                        s0_p=malloc(j*sizeof(double));  s1_p=malloc(j*sizeof(double));  s2_p=malloc(j*sizeof(double));  s3_p=malloc(j*sizeof(double));
-                        num_scatt_p=malloc(j*sizeof(double)); 
+                        if (STOKES_SWITCH!=0)
+                        {
+                            s0_p=malloc(j*sizeof(double));  s1_p=malloc(j*sizeof(double));  s2_p=malloc(j*sizeof(double));  s3_p=malloc(j*sizeof(double));
+                        }
+                        num_scatt_p=malloc(j*sizeof(double));
                         
                         //printf("start: %d, j: %d\n", *(photon_injection_count+k), dims[0]);
                         
@@ -471,6 +558,29 @@ int main(int argc, char **argv)
                         status = H5Dread(dset_p3, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (p3_p));
                         status = H5Sclose (dspace); status = H5Dclose (dset_p3);
                         
+                        if (COMV_SWITCH != 0)
+                        {
+                            dspace = H5Dget_space(dset_comv_p0);
+                            status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dread(dset_comv_p0, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (comv_p0_p));
+                            status = H5Sclose (dspace);  status = H5Dclose (dset_comv_p0);
+                            
+                            dspace = H5Dget_space(dset_comv_p1);
+                            status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dread(dset_comv_p1, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (comv_p1_p));
+                            status = H5Sclose (dspace);  status = H5Dclose (dset_comv_p1);
+                            
+                            dspace = H5Dget_space(dset_comv_p2);
+                            status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dread(dset_comv_p2, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (comv_p2_p));
+                            status = H5Sclose (dspace);  status = H5Dclose (dset_comv_p2);
+                            
+                            dspace = H5Dget_space(dset_comv_p3);
+                            status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dread(dset_comv_p3, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (comv_p3_p));
+                            status = H5Sclose (dspace);  status = H5Dclose (dset_comv_p3);
+                        }
+                        
                         dspace = H5Dget_space(dset_r0);
                         status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         status = H5Dread(dset_r0, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (r0_p));
@@ -486,25 +596,28 @@ int main(int argc, char **argv)
                         status = H5Dread(dset_r2, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (r2_p));
                         status = H5Sclose (dspace); status = H5Dclose (dset_r2);
                         
-                        dspace = H5Dget_space(dset_s0);
-                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
-                        status = H5Dread(dset_s0, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (s0_p));
-                        status = H5Sclose (dspace); status = H5Dclose (dset_s0); 
-                        
-                        dspace = H5Dget_space(dset_s1);
-                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
-                        status = H5Dread(dset_s1, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (s1_p));
-                        status = H5Sclose (dspace); status = H5Dclose (dset_s1); 
-                        
-                        dspace = H5Dget_space(dset_s2);
-                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
-                        status = H5Dread(dset_s2, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (s2_p));
-                        status = H5Sclose (dspace); status = H5Dclose (dset_s2); 
-                        
-                        dspace = H5Dget_space(dset_s3);
-                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
-                        status = H5Dread(dset_s3, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (s3_p));
-                        status = H5Sclose (dspace); status = H5Dclose (dset_s3);
+                        if (STOKES_SWITCH != 0)
+                        {
+                            dspace = H5Dget_space(dset_s0);
+                            status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dread(dset_s0, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (s0_p));
+                            status = H5Sclose (dspace); status = H5Dclose (dset_s0);
+                            
+                            dspace = H5Dget_space(dset_s1);
+                            status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dread(dset_s1, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (s1_p));
+                            status = H5Sclose (dspace); status = H5Dclose (dset_s1);
+                            
+                            dspace = H5Dget_space(dset_s2);
+                            status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dread(dset_s2, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (s2_p));
+                            status = H5Sclose (dspace); status = H5Dclose (dset_s2);
+                            
+                            dspace = H5Dget_space(dset_s3);
+                            status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dread(dset_s3, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (s3_p));
+                            status = H5Sclose (dspace); status = H5Dclose (dset_s3);
+                        }
                         
                         dspace = H5Dget_space(dset_num_scatt);
                         status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
@@ -521,8 +634,15 @@ int main(int argc, char **argv)
                         //allocate memory so Allgather doesn't fail with NULL pointer
                         j=1;
                         p0_p=malloc(j*sizeof(double));  p1_p=malloc(j*sizeof(double));  p2_p=malloc(j*sizeof(double));  p3_p=malloc(j*sizeof(double));
+                        if (COMV_SWITCH!=0)
+                        {
+                            comv_p0_p=malloc(j*sizeof(double));  comv_p1_p=malloc(j*sizeof(double));  comv_p2_p=malloc(j*sizeof(double));  comv_p3_p=malloc(j*sizeof(double));
+                        }
                         r0_p=malloc(j*sizeof(double));  r1_p=malloc(j*sizeof(double));  r2_p=malloc(j*sizeof(double));
-                        s0_p=malloc(j*sizeof(double));  s1_p=malloc(j*sizeof(double));  s2_p=malloc(j*sizeof(double));  s3_p=malloc(j*sizeof(double));
+                        if (STOKES_SWITCH!=0)
+                        {
+                            s0_p=malloc(j*sizeof(double));  s1_p=malloc(j*sizeof(double));  s2_p=malloc(j*sizeof(double));  s3_p=malloc(j*sizeof(double));
+                        }
                         num_scatt_p=malloc(j*sizeof(double)); 
                     }
                     
@@ -554,8 +674,15 @@ int main(int argc, char **argv)
                     
                     //now allocate enough ememory for all_photons in the mpi files from proc 0 initially 
                     p0=malloc(all_photons*sizeof(double));  p1=malloc(all_photons*sizeof(double));  p2=malloc(all_photons*sizeof(double));  p3=malloc(all_photons*sizeof(double));
+                    if (COMV_SWITCH!=0)
+                    {
+                        comv_p0=malloc(all_photons*sizeof(double));  comv_p1=malloc(all_photons*sizeof(double));  comv_p2=malloc(all_photons*sizeof(double));  comv_p3=malloc(all_photons*sizeof(double));
+                    }
                     r0=malloc(all_photons*sizeof(double));  r1=malloc(all_photons*sizeof(double));  r2=malloc(all_photons*sizeof(double));
-                    s0=malloc(all_photons*sizeof(double));  s1=malloc(all_photons*sizeof(double));  s2=malloc(all_photons*sizeof(double));  s3=malloc(all_photons*sizeof(double));
+                    if (STOKES_SWITCH!=0)
+                    {
+                        s0=malloc(all_photons*sizeof(double));  s1=malloc(all_photons*sizeof(double));  s2=malloc(all_photons*sizeof(double));  s3=malloc(all_photons*sizeof(double));
+                    }
                     num_scatt=malloc(all_photons*sizeof(double)); 
                     
                     
@@ -566,13 +693,23 @@ int main(int argc, char **argv)
                     MPI_Allgatherv(p1_p, dims[0], MPI_DOUBLE, p1, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
                     MPI_Allgatherv(p2_p, dims[0], MPI_DOUBLE, p2, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
                     MPI_Allgatherv(p3_p, dims[0], MPI_DOUBLE, p3, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    if (COMV_SWITCH!=0)
+                    {
+                        MPI_Allgatherv(comv_p0_p, dims[0], MPI_DOUBLE, comv_p0, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                        MPI_Allgatherv(comv_p1_p, dims[0], MPI_DOUBLE, comv_p1, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                        MPI_Allgatherv(comv_p2_p, dims[0], MPI_DOUBLE, comv_p2, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                        MPI_Allgatherv(comv_p3_p, dims[0], MPI_DOUBLE, comv_p3, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    }
                     MPI_Allgatherv(r0_p, dims[0], MPI_DOUBLE, r0, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
                     MPI_Allgatherv(r1_p, dims[0], MPI_DOUBLE, r1, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
                     MPI_Allgatherv(r2_p, dims[0], MPI_DOUBLE, r2, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
-                    MPI_Allgatherv(s0_p, dims[0], MPI_DOUBLE, s0, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
-                    MPI_Allgatherv(s1_p, dims[0], MPI_DOUBLE, s1, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
-                    MPI_Allgatherv(s2_p, dims[0], MPI_DOUBLE, s2, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
-                    MPI_Allgatherv(s3_p, dims[0], MPI_DOUBLE, s3, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    if (STOKES_SWITCH!=0)
+                    {
+                        MPI_Allgatherv(s0_p, dims[0], MPI_DOUBLE, s0, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                        MPI_Allgatherv(s1_p, dims[0], MPI_DOUBLE, s1, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                        MPI_Allgatherv(s2_p, dims[0], MPI_DOUBLE, s2, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                        MPI_Allgatherv(s3_p, dims[0], MPI_DOUBLE, s3, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    }
                     MPI_Allgatherv(num_scatt_p, dims[0], MPI_DOUBLE, num_scatt, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
                     
                     /*
@@ -601,17 +738,26 @@ int main(int argc, char **argv)
                         
                         
                         dset_p0=H5Dcreate2(file_id, "P0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
-                        
                         dset_p1=H5Dcreate2(file_id, "P1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
                         dset_p2=H5Dcreate2(file_id, "P2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
                         dset_p3=H5Dcreate2(file_id, "P3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        if (COMV_SWITCH!=0)
+                        {
+                            dset_comv_p0=H5Dcreate2(file_id, "COMV_P0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                            dset_comv_p1=H5Dcreate2(file_id, "COMV_P1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                            dset_comv_p2=H5Dcreate2(file_id, "COMV_P2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                            dset_comv_p3=H5Dcreate2(file_id, "COMV_P3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        }
                         dset_r0=H5Dcreate2(file_id, "R0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
                         dset_r1=H5Dcreate2(file_id, "R1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
                         dset_r2=H5Dcreate2(file_id, "R2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
-                        dset_s0=H5Dcreate2(file_id, "S0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
-                        dset_s1=H5Dcreate2(file_id, "S1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
-                        dset_s2=H5Dcreate2(file_id, "S2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
-                        dset_s3=H5Dcreate2(file_id, "S3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        if (STOKES_SWITCH!=0)
+                        {
+                            dset_s0=H5Dcreate2(file_id, "S0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                            dset_s1=H5Dcreate2(file_id, "S1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                            dset_s2=H5Dcreate2(file_id, "S2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                            dset_s3=H5Dcreate2(file_id, "S3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        }
                         dset_num_scatt=H5Dcreate2(file_id, "NS", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
                          
                         
@@ -645,6 +791,30 @@ int main(int argc, char **argv)
                         status = H5Dwrite (dset_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, p3);
                         H5Sclose(dspace);
                         
+                        if (COMV_SWITCH!=0)
+                        {
+                            dspace = H5Dget_space(dset_comv_p0);
+                            status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dwrite (dset_comv_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, comv_p0);
+                            H5Sclose(dspace);
+                            
+                            
+                            dspace = H5Dget_space(dset_comv_p1);
+                            status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dwrite (dset_comv_p1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, comv_p1);
+                            H5Sclose(dspace);
+                            
+                            dspace = H5Dget_space(dset_comv_p2);
+                            status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dwrite (dset_comv_p2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, comv_p2);
+                            H5Sclose(dspace);
+                            
+                            dspace = H5Dget_space(dset_comv_p3);
+                            status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dwrite (dset_comv_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, comv_p3);
+                            H5Sclose(dspace);
+                        }
+                        
                         dspace = H5Dget_space(dset_r0);
                         status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         status = H5Dwrite (dset_r0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, r0);
@@ -660,25 +830,28 @@ int main(int argc, char **argv)
                         status = H5Dwrite (dset_r2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, r2);
                         H5Sclose(dspace);
                         
-                        dspace = H5Dget_space(dset_s0);
-                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
-                        status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, s0);
-                        H5Sclose(dspace);
-                        
-                        dspace = H5Dget_space(dset_s1);
-                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
-                        status = H5Dwrite (dset_s1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, s1);
-                        H5Sclose(dspace);
-                        
-                        dspace = H5Dget_space(dset_s2);
-                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
-                        status = H5Dwrite (dset_s2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, s2);
-                        H5Sclose(dspace);
-                        
-                        dspace = H5Dget_space(dset_s3);
-                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
-                        status = H5Dwrite (dset_s3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,  plist_id_data, s3);
-                        H5Sclose(dspace);
+                        if (STOKES_SWITCH!=0)
+                        {
+                            dspace = H5Dget_space(dset_s0);
+                            status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, s0);
+                            H5Sclose(dspace);
+                            
+                            dspace = H5Dget_space(dset_s1);
+                            status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dwrite (dset_s1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, s1);
+                            H5Sclose(dspace);
+                            
+                            dspace = H5Dget_space(dset_s2);
+                            status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dwrite (dset_s2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, s2);
+                            H5Sclose(dspace);
+                            
+                            dspace = H5Dget_space(dset_s3);
+                            status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dwrite (dset_s3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,  plist_id_data, s3);
+                            H5Sclose(dspace);
+                        }
                         
                         dspace = H5Dget_space(dset_num_scatt);
                         status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
@@ -687,8 +860,15 @@ int main(int argc, char **argv)
                         
                         status = H5Dclose (dset_p0); 
                         status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
+                        if (COMV_SWITCH!=0)
+                        {
+                            status = H5Dclose (dset_comv_p0); status = H5Dclose (dset_comv_p1); status = H5Dclose (dset_comv_p2); status = H5Dclose (dset_comv_p3);
+                        }
                         status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
-                        status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
+                        if (STOKES_SWITCH!=0)
+                        {
+                            status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
+                        }
                         status = H5Dclose (dset_num_scatt);
                         
                         H5Pclose(plist_id_data);
@@ -763,6 +943,69 @@ int main(int argc, char **argv)
                         status = H5Sclose (fspace);
                         status = H5Dclose (dset_p3);
                         
+                        if (COMV_SWITCH!=0)
+                        {
+                            dset_comv_p0 = H5Dopen (file_id, "COMV_P0", H5P_DEFAULT); //open dataset
+                            dspace = H5Dget_space (dset_comv_p0);
+                            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                            size[0] = dims[0]+ dims_old[0];
+                            status = H5Dset_extent (dset_comv_p0, size);
+                            fspace = H5Dget_space (dset_comv_p0);
+                            offset[0] = dims_old[0];
+                            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            mspace = H5Screate_simple (1, dims, NULL);
+                            status = H5Dwrite (dset_comv_p0, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, comv_p0);
+                            status = H5Sclose (dspace);
+                            status = H5Sclose (mspace);
+                            status = H5Sclose (fspace);
+                            status = H5Dclose (dset_comv_p0);
+                            
+                            dset_comv_p1 = H5Dopen (file_id, "COMV_P1", H5P_DEFAULT); //open dataset
+                            dspace = H5Dget_space (dset_comv_p1);
+                            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                            size[0] = dims[0]+ dims_old[0];
+                            status = H5Dset_extent (dset_comv_p1, size);
+                            fspace = H5Dget_space (dset_comv_p1);
+                            offset[0] = dims_old[0];
+                            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            mspace = H5Screate_simple (1, dims, NULL);
+                            status = H5Dwrite (dset_comv_p1, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, comv_p1);
+                            status = H5Sclose (dspace);
+                            status = H5Sclose (mspace);
+                            status = H5Sclose (fspace);
+                            status = H5Dclose (dset_comv_p1);
+                            
+                            dset_comv_p2 = H5Dopen (file_id, "COMV_P2", H5P_DEFAULT); //open dataset
+                            dspace = H5Dget_space (dset_comv_p2);
+                            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                            size[0] = dims[0]+ dims_old[0];
+                            status = H5Dset_extent (dset_comv_p2, size);
+                            fspace = H5Dget_space (dset_comv_p2);
+                            offset[0] = dims_old[0];
+                            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            mspace = H5Screate_simple (1, dims, NULL);
+                            status = H5Dwrite (dset_comv_p2, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, comv_p2);
+                            status = H5Sclose (dspace);
+                            status = H5Sclose (mspace);
+                            status = H5Sclose (fspace);
+                            status = H5Dclose (dset_comv_p2);
+                            
+                            dset_comv_p3 = H5Dopen (file_id, "COMV_P3", H5P_DEFAULT); //open dataset
+                            dspace = H5Dget_space (dset_comv_p3);
+                            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                            size[0] = dims[0]+ dims_old[0];
+                            status = H5Dset_extent (dset_comv_p3, size);
+                            fspace = H5Dget_space (dset_comv_p3);
+                            offset[0] = dims_old[0];
+                            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            mspace = H5Screate_simple (1, dims, NULL);
+                            status = H5Dwrite (dset_comv_p3, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, comv_p3);
+                            status = H5Sclose (dspace);
+                            status = H5Sclose (mspace);
+                            status = H5Sclose (fspace);
+                            status = H5Dclose (dset_comv_p3);
+                        }
+                        
                         dset_r0 = H5Dopen (file_id, "R0", H5P_DEFAULT); //open dataset
                         dspace = H5Dget_space (dset_r0);
                         status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
@@ -808,65 +1051,68 @@ int main(int argc, char **argv)
                         status = H5Sclose (fspace);
                         status = H5Dclose (dset_r2);
                         
-                        dset_s0 = H5Dopen (file_id, "S0", H5P_DEFAULT); //open dataset
-                        dspace = H5Dget_space (dset_s0);
-                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
-                        size[0] = dims[0]+ dims_old[0];
-                        status = H5Dset_extent (dset_s0, size);
-                        fspace = H5Dget_space (dset_s0);
-                        offset[0] = dims_old[0];
-                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
-                        mspace = H5Screate_simple (1, dims, NULL);
-                        status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, s0);
-                        status = H5Sclose (dspace);
-                        status = H5Sclose (mspace);
-                        status = H5Sclose (fspace);
-                        status = H5Dclose (dset_s0);
-                        
-                        dset_s1 = H5Dopen (file_id, "S1", H5P_DEFAULT); //open dataset
-                        dspace = H5Dget_space (dset_s1);
-                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
-                        size[0] = dims[0]+ dims_old[0];
-                        status = H5Dset_extent (dset_s1, size);
-                        fspace = H5Dget_space (dset_s1);
-                        offset[0] = dims_old[0];
-                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
-                        mspace = H5Screate_simple (1, dims, NULL);
-                        status = H5Dwrite (dset_s1, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, s1);
-                        status = H5Sclose (dspace);
-                        status = H5Sclose (mspace);
-                        status = H5Sclose (fspace);
-                        status = H5Dclose (dset_s1);
-                        
-                        dset_s2 = H5Dopen (file_id, "S2", H5P_DEFAULT); //open dataset
-                        dspace = H5Dget_space (dset_s2);
-                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
-                        size[0] = dims[0]+ dims_old[0];
-                        status = H5Dset_extent (dset_s2, size);
-                        fspace = H5Dget_space (dset_s2);
-                        offset[0] = dims_old[0];
-                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
-                        mspace = H5Screate_simple (1, dims, NULL);
-                        status = H5Dwrite (dset_s2, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, s2);
-                        status = H5Sclose (dspace);
-                        status = H5Sclose (mspace);
-                        status = H5Sclose (fspace);
-                        status = H5Dclose (dset_s2);
-                        
-                        dset_s3 = H5Dopen (file_id, "S3", H5P_DEFAULT); //open dataset
-                        dspace = H5Dget_space (dset_s3);
-                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
-                        size[0] = dims[0]+ dims_old[0];
-                        status = H5Dset_extent (dset_s3, size);
-                        fspace = H5Dget_space (dset_s3);
-                        offset[0] = dims_old[0];
-                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
-                        mspace = H5Screate_simple (1, dims, NULL);
-                        status = H5Dwrite (dset_s3, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, s3);
-                        status = H5Sclose (dspace);
-                        status = H5Sclose (mspace);
-                        status = H5Sclose (fspace);
-                        status = H5Dclose (dset_s3);
+                        if (STOKES_SWITCH!=0)
+                        {
+                            dset_s0 = H5Dopen (file_id, "S0", H5P_DEFAULT); //open dataset
+                            dspace = H5Dget_space (dset_s0);
+                            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                            size[0] = dims[0]+ dims_old[0];
+                            status = H5Dset_extent (dset_s0, size);
+                            fspace = H5Dget_space (dset_s0);
+                            offset[0] = dims_old[0];
+                            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            mspace = H5Screate_simple (1, dims, NULL);
+                            status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, s0);
+                            status = H5Sclose (dspace);
+                            status = H5Sclose (mspace);
+                            status = H5Sclose (fspace);
+                            status = H5Dclose (dset_s0);
+                            
+                            dset_s1 = H5Dopen (file_id, "S1", H5P_DEFAULT); //open dataset
+                            dspace = H5Dget_space (dset_s1);
+                            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                            size[0] = dims[0]+ dims_old[0];
+                            status = H5Dset_extent (dset_s1, size);
+                            fspace = H5Dget_space (dset_s1);
+                            offset[0] = dims_old[0];
+                            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            mspace = H5Screate_simple (1, dims, NULL);
+                            status = H5Dwrite (dset_s1, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, s1);
+                            status = H5Sclose (dspace);
+                            status = H5Sclose (mspace);
+                            status = H5Sclose (fspace);
+                            status = H5Dclose (dset_s1);
+                            
+                            dset_s2 = H5Dopen (file_id, "S2", H5P_DEFAULT); //open dataset
+                            dspace = H5Dget_space (dset_s2);
+                            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                            size[0] = dims[0]+ dims_old[0];
+                            status = H5Dset_extent (dset_s2, size);
+                            fspace = H5Dget_space (dset_s2);
+                            offset[0] = dims_old[0];
+                            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            mspace = H5Screate_simple (1, dims, NULL);
+                            status = H5Dwrite (dset_s2, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, s2);
+                            status = H5Sclose (dspace);
+                            status = H5Sclose (mspace);
+                            status = H5Sclose (fspace);
+                            status = H5Dclose (dset_s2);
+                            
+                            dset_s3 = H5Dopen (file_id, "S3", H5P_DEFAULT); //open dataset
+                            dspace = H5Dget_space (dset_s3);
+                            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                            size[0] = dims[0]+ dims_old[0];
+                            status = H5Dset_extent (dset_s3, size);
+                            fspace = H5Dget_space (dset_s3);
+                            offset[0] = dims_old[0];
+                            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            mspace = H5Screate_simple (1, dims, NULL);
+                            status = H5Dwrite (dset_s3, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, s3);
+                            status = H5Sclose (dspace);
+                            status = H5Sclose (mspace);
+                            status = H5Sclose (fspace);
+                            status = H5Dclose (dset_s3);
+                        }
                         
                         dset_num_scatt = H5Dopen (file_id, "NS", H5P_DEFAULT); //open dataset
                         dspace = H5Dget_space (dset_num_scatt);
@@ -896,13 +1142,27 @@ int main(int argc, char **argv)
                     }
                     
                     free(p0_p);free(p1_p); free(p2_p);free(p3_p);
+                    if (COMV_SWITCH!=0)
+                    {
+                        free(comv_p0_p);free(comv_p1_p); free(comv_p2_p);free(comv_p3_p);
+                    }
                     free(r0_p);free(r1_p); free(r2_p);
-                    free(s0_p);free(s1_p); free(s2_p);free(s3_p);
+                    if (STOKES_SWITCH!=0)
+                    {
+                        free(s0_p);free(s1_p); free(s2_p);free(s3_p);
+                    }
                     free(num_scatt_p);
                     
                     free(p0);free(p1); free(p2);free(p3);
+                    if (COMV_SWITCH!=0)
+                    {
+                        free(comv_p0);free(comv_p1); free(comv_p2);free(comv_p3);
+                    }
                     free(r0);free(r1); free(r2);
-                    free(s0);free(s1); free(s2);free(s3);
+                    if (STOKES_SWITCH!=0)
+                    {
+                        free(s0);free(s1); free(s2);free(s3);
+                    }
                     free(num_scatt);
                     
                     //exit(0);
