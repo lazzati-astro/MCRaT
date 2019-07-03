@@ -2492,10 +2492,10 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
             
             new_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 );
             
-            if ((new_position-old_position)/t > C_LIGHT)
-            {
-                fprintf(fPtr, "PHOTON NUMBER %d IS SUPERLUMINAL. ITS SPEED IS %e c.\n", i, ((new_position-old_position)/t)/C_LIGHT);
-            }
+            //if ((new_position-old_position)/t > C_LIGHT)
+            //{
+            //    fprintf(fPtr, "PHOTON NUMBER %d IS SUPERLUMINAL. ITS SPEED IS %e c.\n", i, ((new_position-old_position)/t)/C_LIGHT);
+            //}
             
             if ( (ph+i)->s0 != 1)
             {
@@ -3068,6 +3068,12 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     scattering_occured=kleinNishinaScatter(&theta, &phi, *(ph_p_prime+0), *(s+1), *(s+2), rand, fPtr);//determine the angles phi and theta for the photon to scatter into using KN differential cross section, if the photon will end up scattering
     
     //fprintf(fPtr,"Phi: %e, Theta: %e\n", phi, theta);
+    theta=M_PI/4;
+    phi=0;
+    *(s+0)=1; //should be 1.0
+    *(s+1)=1;
+    *(s+2)=0;
+    *(s+3)=0;
     
     
     if (scattering_occured==1)

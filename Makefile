@@ -1,6 +1,6 @@
 HDF_INSTALL = /usr/local/hdf5
 EXTLIB = -L$(HDF_INSTALL)/lib -L/usr/local/lib/ -L/opt/local/lib/
-CC          = gcc-mp-5
+CC          = gcc-mp-8
 #CFLAGS      = -Wall -O2 -fopenmp
 CFLAGS      = -Wall -g -fopenmp
 LIB         = -lz -lm -ldl -lgsl -lgslcblas -lm -lmpi
