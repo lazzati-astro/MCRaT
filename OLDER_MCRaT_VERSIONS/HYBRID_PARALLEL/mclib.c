@@ -1857,7 +1857,7 @@ void photonScatter(struct photon *ph, double flash_vx, double flash_vy, double f
     fprintf(fPtr,"Fluid Beta: %e, %e, %e\n", *(fluid_beta+0),*(fluid_beta+1), *(fluid_beta+2));
     fflush(fPtr);
     */
-    
+   
     //first we bring the photon to the fluid's comoving frame
     lorentzBoost(fluid_beta, ph_p, ph_p_comov, 'p', fPtr);
     /*

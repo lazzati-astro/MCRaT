@@ -17,4 +17,3 @@
 100		#max number of photons
 b		#type of spectrum we inject with, w=wien b=blackbody
 r		#restart of continue simulation (r=restart (delete all files) c=continue
-0		#switch to say if hydro files are 3D (set as 1) or not (set as 0)
