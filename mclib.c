@@ -2984,10 +2984,13 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     gsl_vector_view ph_p ;//create vector to hold comoving photon and electron 4 momentum
     gsl_vector_view el_p ;
     gsl_vector_view stokes, test, test_x, test_y;
+    /*
+     Dont need these vectors anymore, plus didnt have code to free allocations so it was causing memory leaks
     gsl_vector *result0_x=gsl_vector_alloc (3); //vectors to hold results of rotations for stokes coordinates
     gsl_vector *result1_x=gsl_vector_alloc (3);
     gsl_vector *result0_y=gsl_vector_alloc (3); //vectors to hold results of rotations for stokes coordinates
     gsl_vector *result1_y=gsl_vector_alloc (3);
+     */
     
     //fill in z-axis basis vector
     *(z_axis_electron_rest_frame+0)=0;

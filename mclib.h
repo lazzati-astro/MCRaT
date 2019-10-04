@@ -1,8 +1,8 @@
 //MODIFY C COMPILER DIRECTIVES BELOW THIS LINE
-#define THISRUN "Spherical"
-#define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16TI/"
+#define THISRUN "Science"
+#define FILEPATH "/Volumes/LACIE_RAID/Collapsars/2D/HUGE_BOXES/CONSTANT/16TI/"
 #define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
-#define MC_PATH "KN_CMC_16TI_SPHERICAL/"
+#define MC_PATH "KN_CMC_16TI/"
 /*
  #define THISRUN "Science"
  #define FILEPATH "/Users/Tylerparsotan/Documents/Box Sync/1spike/"
@@ -32,7 +32,7 @@
 
 #define RIKEN_SWITCH 0
 #define STOKES_SWITCH 1
-#define COMV_SWITCH 1
+#define COMV_SWITCH 0
 #define DIM_SWITCH "2D"
 /*
  Modify parameters above this comment only

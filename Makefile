@@ -8,7 +8,8 @@ LIB         = -lz -lm -ldl -lgsl -lgslcblas -lm -lmpi
 DEPS = mclib.h mclib_3d.h
 OBJ = mcrat.o mclib.o mclib_3d.o
 
-INCLUDE   = -I$(HDF_INSTALL)/include -I/usr/local/include/ -I/opt/local/lib/gcc5/gcc/x86_64-apple-darwin15/5.3.0/include/
+INCLUDE   = -I$(HDF_INSTALL)/include -I/usr/local/include/ -I/usr/include/ #-I/opt/local/lib/gcc8/gcc/x86_64-apple-darwin18/8.2.0/include-fixed/
+
 LIBSHDF   = $(EXTLIB) $(HDF_INSTALL)/lib/libhdf5.a 
 
 MCRAT: $(OBJ)
