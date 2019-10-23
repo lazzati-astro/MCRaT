@@ -868,7 +868,10 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
             success=0;
         }
     }
-    fclose(fPtr);
+    if (success==0)
+    {
+        fclose(fPtr);
+    }
     
     return success;
 }

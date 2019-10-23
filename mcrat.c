@@ -447,6 +447,13 @@ int main(int argc, char **argv)
                 count+=(*(each_num_to_restart_per_anglePtr+j));
                 printf("Myid: %d, Color: %d, Count %d, Num To Start Per Angle: %d\n", myid, color, count, (*(each_num_to_restart_per_anglePtr+j)));
             }
+            
+            if (count!=numprocs)
+            {
+                //if the number of processes needed to continue the simulation is different from the number of processes in the mpiexec call exit
+                printf('The simulation needs %d processes to properly continue. The number of processes initialized was %d.\nThe program is now exiting to prevent data corruption\n.', count, numprocs);
+                exit(2);
+            }
         
         
             MPI_Comm_split(MPI_COMM_WORLD, color , myid, &angle_comm);
@@ -483,32 +490,32 @@ int main(int argc, char **argv)
         free(each_num_to_restart_per_anglePtr);
     }
       
-         MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
+    
+    if ((theta_jmin_thread >= 0) &&  (theta_jmax_thread <= (2*M_PI/180) )) //if within small angle (0-2 degrees) use _small inj_radius and frm2 have to think about this for larger domains
+    {
+        inj_radius=inj_radius_small;
+        frm2=frm2_small;
+        frm0=frm0_small;
+        ph_weight_suggest=ph_weight_small;
+    }
+    else
+    {
+        inj_radius=inj_radius_large;
+        frm2=frm2_large;
+        frm0=frm0_large;
+        ph_weight_suggest=ph_weight_large;
+    }
+    
+    //make vector to hold the frames we are injecting in, vector should have (frm2-frm0)/angle_procs slots, if fps is const
+        proc_frame_size=ceil((frm2-frm0)/ (float) angle_procs);
+        frame_array=malloc(((frm2-frm0)+1)*sizeof(int));
         
-        if ((theta_jmin_thread >= 0) &&  (theta_jmax_thread <= (2*M_PI/180) )) //if within small angle (0-2 degrees) use _small inj_radius and frm2 have to think about this for larger domains
+        for (j=0;j<((frm2-frm0)+1); j++)
         {
-            inj_radius=inj_radius_small;
-            frm2=frm2_small;
-            frm0=frm0_small;
-            ph_weight_suggest=ph_weight_small;
+            *(frame_array+j)=frm0+j ;
+            //printf("proc: %d frame: %d\n", angle_id, *(frame_array+j));
         }
-        else
-        {
-            inj_radius=inj_radius_large;
-            frm2=frm2_large;
-            frm0=frm0_large;
-            ph_weight_suggest=ph_weight_large;
-        }
-        
-        //make vector to hold the frames we are injecting in, vector should have (frm2-frm0)/angle_procs slots, if fps is const
-            proc_frame_size=ceil((frm2-frm0)/ (float) angle_procs);
-            frame_array=malloc(((frm2-frm0)+1)*sizeof(int));
-            
-            for (j=0;j<((frm2-frm0)+1); j++)
-            {
-                *(frame_array+j)=frm0+j ;
-            	//printf("proc: %d frame: %d\n", angle_id, *(frame_array+j));
-            }
        
             
         {

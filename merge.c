@@ -1197,7 +1197,7 @@ int main(int argc, char **argv)
             for (k=0;k<max_num_procs_per_dir;k++)
             {
                 dims[0]=0;
-                 j=0;
+                j=0;
                 
                 snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dirs[subdir_id],"mc_proc_", k, ".h5" );
                 //printf("Dir: %s\n",filename_k );
