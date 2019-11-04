@@ -234,165 +234,7 @@ int main(int argc, char **argv)
         *(photon_injection_count+k)=0;
     }
     
-    //first merge the photon weights
-    if (index==0)
-    {
-        plist_id_file = H5Pcreate(H5P_FILE_ACCESS);
-        H5Pset_fapl_mpio(plist_id_file, frames_to_merge_comm, info);
-        //merge the weights in the same order
-        snprintf(merged_filename,sizeof(merged_filename),"%smcdata_PW.h5",dir );
-        
-        file_id = H5Fcreate(merged_filename, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id_file);
-        
-        for (i= small_frm; i<large_frm+1;i++)
-        {
-            //last_frm
-            for (k=0;k<max_num_procs_per_dir;k++)
-            {
-                dims[0]=0;
-                j=0;
-                
-                snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dirs[subdir_id],"mc_proc_", k, ".h5" );
-                //printf("Dir: %s\n",filename_k );
-                
-                //open the file and see if t exists
-                status = H5Eset_auto(NULL, NULL, NULL); //turn of error printing if the file doesnt exist, if the process number doesnt exist
-                file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
-                status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
-                
-                if (file>=0)
-                {
-                    //if the file exists, see if the frame exists
-                    snprintf(group,sizeof(group),"%d/Weight",i );
-                    status = H5Eset_auto(NULL, NULL, NULL);
-                    status_group = H5Gget_objinfo (file, group, 0, NULL);
-                    status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
-                }
-                
-                //printf("Proc %d has status_group %d\n", subdir_id, status_group);
-                
-                if ((status_group == 0) && (file>=0))
-                {
-                    
-                    //read dataset and then
-                    snprintf(group,sizeof(group),"%d",i );
-                    group_id = H5Gopen2(file, group, H5P_DEFAULT);
-                    dset_weight = H5Dopen (group_id, "Weight", H5P_DEFAULT); //open dataset
-                    
-                    //get the number of points
-                    dspace = H5Dget_space (dset_weight);
-                    status=H5Sget_simple_extent_dims(dspace, dims, NULL); //save dimesnions in dims
-                    j=dims[0];//calculate the total number of photons to save to new hdf5 file
-                    
-                    weight_p=malloc(j*sizeof(double));
-                    
-                    status = H5Dread(dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (weight_p));
-                    
-                    status = H5Sclose (dspace);
-                    status = H5Dclose (dset_weight);
-                    status = H5Gclose(group_id);
-                }
-                else
-                {
-                    //theres nothing to read
-                    j=1;
-                    weight_p=malloc(j*sizeof(double));
-                }
-                
-                //find total number of photons
-                MPI_Allreduce(&dims[0], &all_photons, 1, MPI_INT, MPI_SUM,  frames_to_merge_comm);
-                
-                //printf("ID %d j: %d\n", subdir_id, dims[0]);
-                
-                //get the number for each subdir for later use
-                MPI_Allgather(&dims[0], 1, MPI_INT, each_subdir_number, 1, MPI_INT,   frames_to_merge_comm);
-                //for (j=0;j<num_angle_dirs;j++)
-                //{
-                //       printf("ID %d eachsubdir_num %d \n",  subdir_id, *(each_subdir_number+j));
-                //}
-                
-                
-                //set up the displacement of data
-                for (j=1;j<num_angle_dirs;j++)
-                {
-                    *(displPtr+j)=(*(displPtr+j-1))+(*(each_subdir_number+j-1));
-                    // printf("Displ %d eachsubdir_num %d \n",  *(displPtr+j), *(each_subdir_number+j-1));
-                }
-                
-                weight=malloc(all_photons*sizeof(double));
-                
-                //MPI_Type_commit( &stype );
-                MPI_Allgatherv(weight_p, dims[0], MPI_DOUBLE, weight, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
-                
-                dims[0]=all_photons;
-                
-                if ((i== small_frm) && (all_photons>0))
-                {
-                    //create new datatset
-                    plist_id_data = H5Pcreate (H5P_DATASET_CREATE);
-                    status = H5Pset_chunk (plist_id_data, 1, dims);
-                    dspace = H5Screate_simple (1, dims, maxdims);
-                    
-                    dset_weight=H5Dcreate(file_id, "Weight", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
-                    H5Pclose(plist_id_data);
-                    H5Sclose(dspace);
-                    
-                    plist_id_data = H5Pcreate (H5P_DATASET_XFER);
-                    H5Pset_dxpl_mpio (plist_id_data, H5FD_MPIO_COLLECTIVE);
-                    
-                    //write data
-                    offset[0]=0;
-                    dspace = H5Dget_space(dset_weight);
-                    status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
-                    status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, weight);
-                    H5Sclose(dspace);
-                    status = H5Dclose (dset_weight);
-                    
-                    H5Pclose(plist_id_data);
-                    
-                }
-                else if ((i != small_frm) && (all_photons>0))
-                {
-                    //extend the datatset
-                    plist_id_data = H5Pcreate (H5P_DATASET_XFER);
-                    H5Pset_dxpl_mpio (plist_id_data, H5FD_MPIO_COLLECTIVE);
-                    
-                    dset_weight = H5Dopen (file_id, "Weight", H5P_DEFAULT); //open dataset
-                    dspace = H5Dget_space (dset_weight);
-                    status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
-                    
-                    size[0] = dims[0]+ dims_old[0];
-                    status = H5Dset_extent (dset_weight, size);
-                    
-                    fspace = H5Dget_space (dset_weight);
-                    offset[0] = dims_old[0];
-                    
-                    status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
-                    mspace = H5Screate_simple (1, dims, NULL);
-                    status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, weight);
-                    status = H5Sclose (dspace);
-                    status = H5Sclose (mspace);
-                    status = H5Sclose (fspace);
-                    status = H5Dclose (dset_weight);
-                }
-                
-                //exit(0);
-                if (file>=0)
-                {
-                    status = H5Fclose(file);
-                }
-                
-            }
-            
-        }
-        
-        H5Pclose(plist_id_file);
-        free(weight_p); free(weight);
-        H5Fclose(file_id);
-    }
-    
-    
-    //create files starting with the last one so user can do light curves, etc at end of sim ASAP
+    //create files
     //start_count=2474;
     //end_count=143;
     for (i= end_count-1; i>=start_count;i--)
@@ -1337,6 +1179,163 @@ int main(int argc, char **argv)
         
         H5Pclose(plist_id_file);
         
+    }
+    
+    
+    if (index==0)
+    {
+        plist_id_file = H5Pcreate(H5P_FILE_ACCESS);
+        H5Pset_fapl_mpio(plist_id_file, frames_to_merge_comm, info);
+        //merge the weights in the same order
+        snprintf(merged_filename,sizeof(merged_filename),"%smcdata_PW.h5",dir );
+        
+        file_id = H5Fcreate(merged_filename, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id_file);
+        
+         for (i= small_frm; i<large_frm+1;i++)
+         {
+        //last_frm
+            for (k=0;k<max_num_procs_per_dir;k++)
+            {
+                dims[0]=0;
+                j=0;
+                
+                snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dirs[subdir_id],"mc_proc_", k, ".h5" );
+                //printf("Dir: %s\n",filename_k );
+            
+                //open the file and see if t exists
+                status = H5Eset_auto(NULL, NULL, NULL); //turn of error printing if the file doesnt exist, if the process number doesnt exist
+                file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
+                status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                
+                if (file>=0)
+                {
+                    //if the file exists, see if the frame exists
+                    snprintf(group,sizeof(group),"%d/Weight",i );
+                    status = H5Eset_auto(NULL, NULL, NULL);
+                    status_group = H5Gget_objinfo (file, group, 0, NULL);
+                    status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                }
+                
+                //printf("Proc %d has status_group %d\n", subdir_id, status_group);
+                
+                if ((status_group == 0) && (file>=0))
+                {
+            
+                    //read dataset and then 
+                     snprintf(group,sizeof(group),"%d",i );
+                    group_id = H5Gopen2(file, group, H5P_DEFAULT);
+                    dset_weight = H5Dopen (group_id, "Weight", H5P_DEFAULT); //open dataset
+                    
+                    //get the number of points
+                    dspace = H5Dget_space (dset_weight);
+                    status=H5Sget_simple_extent_dims(dspace, dims, NULL); //save dimesnions in dims
+                    j=dims[0];//calculate the total number of photons to save to new hdf5 file
+                    
+                    weight_p=malloc(j*sizeof(double));
+                    
+                    status = H5Dread(dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (weight_p));
+                    
+                    status = H5Sclose (dspace);
+                    status = H5Dclose (dset_weight);
+                    status = H5Gclose(group_id);
+                }
+                else
+                {
+                    //theres nothing to read
+                    j=1;
+                    weight_p=malloc(j*sizeof(double));
+                }
+                
+                //find total number of photons
+                MPI_Allreduce(&dims[0], &all_photons, 1, MPI_INT, MPI_SUM,  frames_to_merge_comm);
+                    
+                //printf("ID %d j: %d\n", subdir_id, dims[0]);
+                    
+                //get the number for each subdir for later use
+                MPI_Allgather(&dims[0], 1, MPI_INT, each_subdir_number, 1, MPI_INT,   frames_to_merge_comm);
+                //for (j=0;j<num_angle_dirs;j++)
+                //{
+                 //       printf("ID %d eachsubdir_num %d \n",  subdir_id, *(each_subdir_number+j));
+                //}
+                    
+        
+                //set up the displacement of data
+                for (j=1;j<num_angle_dirs;j++)
+                {
+                    *(displPtr+j)=(*(displPtr+j-1))+(*(each_subdir_number+j-1));
+                       // printf("Displ %d eachsubdir_num %d \n",  *(displPtr+j), *(each_subdir_number+j-1));
+                }
+                
+                weight=malloc(all_photons*sizeof(double)); 
+                    
+                //MPI_Type_commit( &stype ); 
+                MPI_Allgatherv(weight_p, dims[0], MPI_DOUBLE, weight, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                
+                dims[0]=all_photons;
+                
+                if ((i== small_frm) && (all_photons>0))
+                {
+                    //create new datatset
+                    plist_id_data = H5Pcreate (H5P_DATASET_CREATE);
+                    status = H5Pset_chunk (plist_id_data, 1, dims);
+                    dspace = H5Screate_simple (1, dims, maxdims);
+                        
+                    dset_weight=H5Dcreate(file_id, "Weight", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                    H5Pclose(plist_id_data);
+                    H5Sclose(dspace);
+                        
+                    plist_id_data = H5Pcreate (H5P_DATASET_XFER);
+                    H5Pset_dxpl_mpio (plist_id_data, H5FD_MPIO_COLLECTIVE);
+                        
+                    //write data
+                    offset[0]=0;
+                    dspace = H5Dget_space(dset_weight);
+                    status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                    status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, weight);
+                    H5Sclose(dspace);
+                    status = H5Dclose (dset_weight);
+                        
+                    H5Pclose(plist_id_data);
+                    
+                }
+                else if ((i != small_frm) && (all_photons>0))
+                {
+                    //extend the datatset
+                    plist_id_data = H5Pcreate (H5P_DATASET_XFER);
+                    H5Pset_dxpl_mpio (plist_id_data, H5FD_MPIO_COLLECTIVE);
+                        
+                    dset_weight = H5Dopen (file_id, "Weight", H5P_DEFAULT); //open dataset
+                    dspace = H5Dget_space (dset_weight);
+                    status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                        
+                    size[0] = dims[0]+ dims_old[0];
+                    status = H5Dset_extent (dset_weight, size);
+                        
+                    fspace = H5Dget_space (dset_weight);
+                    offset[0] = dims_old[0];
+                        
+                    status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                    mspace = H5Screate_simple (1, dims, NULL);
+                    status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, weight);
+                    status = H5Sclose (dspace);
+                    status = H5Sclose (mspace);
+                    status = H5Sclose (fspace);
+                    status = H5Dclose (dset_weight);
+                }
+                
+                //exit(0);
+                 if (file>=0)
+                {
+                    status = H5Fclose(file);
+                }
+            
+            }
+            
+         }
+        
+        H5Pclose(plist_id_file);
+        free(weight_p); free(weight);
+        H5Fclose(file_id);
     }
     
     
