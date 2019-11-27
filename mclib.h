@@ -1,15 +1,16 @@
 //MODIFY C COMPILER DIRECTIVES BELOW THIS LINE
+/*
 #define THISRUN "Science"
 #define FILEPATH "/Volumes/LACIE_RAID/Collapsars/2D/HUGE_BOXES/CONSTANT/16TI/"
 #define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
 #define MC_PATH "KN_CMC_16TI/"
-/*
+*/
  #define THISRUN "Science"
- #define FILEPATH "/Users/Tylerparsotan/Documents/Box Sync/1spike/"
- #define FILEROOT "m0_rhop0.1big_hdf5_plt_cnt_"
- #define MC_PATH "CMC_1spike/"
+ #define FILEPATH "/Users/parsotat/Downloads/"
+ #define FILEROOT "data."
+ #define MC_PATH "PLUTO_MCRAT/"
  //#define MC_PATH "MC_16OI/Single_Photon_Cy_mc_total/"
- * */
+ 
 /*
  #define THISRUN "Science"
  #define FILEPATH "/home/physics/parsotat/16OM/"
@@ -30,10 +31,14 @@
  #define MC_PATH "KN_CMC_16TI_SPHERICAL/"
 */
 
-#define RIKEN_SWITCH 0
+#define RIKEN_SWITCH 0 //need to replace this when done testing
+#define SIM_SWITCH "PLUTO_CHOMBO"
 #define STOKES_SWITCH 1
 #define COMV_SWITCH 0
 #define DIM_SWITCH "2D"
+
+#define MCPAR "mc.par"
+
 /*
  Modify parameters above this comment only
  */
@@ -45,9 +50,11 @@ extern const double PL_CONST;
 extern const double K_B;
 extern const char *dim_3d_str;
 extern const char *dim_2d_str;
+extern char const *flash_sim;
+extern char const *pluto_amr_sim;
+extern char const *riken_sim;
 
 #define STR_BUFFER 2000
-#define MCPAR "mc.par"
 
 struct photon
 {

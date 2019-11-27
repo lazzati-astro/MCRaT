@@ -51,6 +51,7 @@
 #include <gsl/gsl_rng.h>
 #include "mclib.h"
 #include "mclib_3d.h"
+#include "mclib_pluto.h"
 #include <omp.h>
 #include "mpi.h"
 
@@ -99,6 +100,7 @@ int main(int argc, char **argv)
 	char flash_prefix[200]="";
 	char mc_file[200]="" ;
     char this_run[200]=THISRUN;
+    char this_sim[200]=SIM_SWITCH;
     char *cyl="Cylindrical";
     char *sph="Spherical";
     char *struct_sph="Structured Spherical";
@@ -169,7 +171,7 @@ int main(int argc, char **argv)
     snprintf(mc_file,sizeof(flash_prefix),"%s%s%s",FILEPATH, MC_PATH,MCPAR);
 
     
-    printf(">> mc.py:  Reading mc.par: %s\n", mc_file);
+    printf(">> MCRaT:  Reading mc.par: %s\n", mc_file);
     
     readMcPar(mc_file, &hydro_domain_x, &hydro_domain_y, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &ph_weight_small, &ph_weight_large, &min_photons, &max_photons, &spect, &restrt); //thetas that comes out is in degrees
     //printf("%c\n", restrt);
@@ -657,7 +659,7 @@ int main(int argc, char **argv)
                     
                     if (strcmp(DIM_SWITCH, dim_2d_str)==0)
                     {
-                        if (RIKEN_SWITCH==0)
+                        if (strcmp(flash_sim, this_sim)==0)
                         {
                             //if using FLASH data for 2D
                         //put proper number at the end of the flash file
@@ -668,6 +670,18 @@ int main(int argc, char **argv)
                         
                         readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                 &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
+                        }
+                        else if (strcmp(pluto_amr_sim, this_sim)==0)
+                        {
+                            modifyPlutoName(flash_file, flash_prefix, frame);
+                            
+                            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
+                            fflush(fPtr);
+                            
+                            readPlutoChombo(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
+                            
+                            exit(0);
                         }
                         else
                         {

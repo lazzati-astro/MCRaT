@@ -36,6 +36,9 @@ const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27;
 const double K_B=1.380658e-16, M_P=1.6726231e-24, THOM_X_SECT=6.65246e-25, M_EL=9.1093879e-28 ;
 char const *dim_3d_str="3D";
 char const *dim_2d_str="2D";
+char const *flash_sim="FLASH";
+char const *pluto_amr_sim="PLUTO_CHOMBO";
+char const *riken_sim="RIKEN";
 
 int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200], int angle_rank,  int angle_procs, int last_frame, int riken_switch)
 {
@@ -56,7 +59,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
         snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s", dir,"mc_chkpt_*" );
         val=glob(mc_chkpt_files, 0, NULL,&files );
     
-        printf("TEST: %s\n", mc_chkpt_files);
+        //printf("TEST: %s\n", mc_chkpt_files);
     
         //look @ a file by choosing rand int between 0 and files.gl_pathc and if the file exists open and read it to get the actual value for the old number of angle_procs
         srand(angle_rank);
@@ -64,7 +67,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
         
         rand_num=rand() % files.gl_pathc;
         snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s%d%s", dir,"mc_chkpt_",  rand_num,".dat" );
-        printf("TEST: %s\n", mc_chkpt_files);
+        //printf("TEST: %s\n", mc_chkpt_files);
     
         if ( access( mc_chkpt_files, F_OK ) == -1 )
         {
@@ -83,46 +86,46 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
     }
     
     int count_procs[original_num_procs], count=0;
-            int cont_procs[original_num_procs];
-            //create array of files including any checkpoint file which may not have been created yet b/c old process was still in 1st frame of scattering
+    int cont_procs[original_num_procs];
+    //create array of files including any checkpoint file which may not have been created yet b/c old process was still in 1st frame of scattering
+    
+    for (j=0;j<original_num_procs;j++)
+    {
+        count_procs[j]=j;
+        cont_procs[j]=-1; //set to impossible value for previous mpi process rank that needs to be con't
+    }
+    
+    int limit= (angle_rank != angle_procs-1) ? (angle_rank+1)*original_num_procs/angle_procs : original_num_procs;
+    //char mc_chkpt_files[200]="";
+    
+    printf("Angle ID: %d, start_num: %d, limit: %d\n", angle_rank, (angle_rank*original_num_procs/angle_procs),  limit);
+    
+    count=0;
+    for (j=floor(angle_rank*original_num_procs/angle_procs);j<limit;j++)
+    {
+        snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s%d%s", dir,"mc_chkpt_",  j,".dat" );
+        //printf("TEST: %s\n", mc_chkpt_files);
+        if ( access( mc_chkpt_files, F_OK ) != -1 )
+        {
+            readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, &restrt, &time, count_procs[j], &i, riken_switch);
+            free(phPtr);
+            phPtr=NULL;
             
-            for (j=0;j<original_num_procs;j++)
+            if ((framestart<=frame2) && (scatt_framestart<=last_frame)) //add another condition here
             {
-                count_procs[j]=j;
-                cont_procs[j]=-1; //set to impossible value for previous mpi process rank that needs to be con't
+                cont_procs[count]=j;
+                //printf("ACCEPTED: %s\n", mc_chkpt_files);
+                count++;
             }
-            
-            int limit= (angle_rank != angle_procs-1) ? (angle_rank+1)*original_num_procs/angle_procs : original_num_procs;
-            //char mc_chkpt_files[200]="";
-            
-            printf("Angle ID: %d, start_num: %d, limit: %d\n", angle_rank, (angle_rank*original_num_procs/angle_procs),  limit);
-            
-            count=0;
-            for (j=floor(angle_rank*original_num_procs/angle_procs);j<limit;j++)
-            {
-                snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s%d%s", dir,"mc_chkpt_",  j,".dat" );
-                //printf("TEST: %s\n", mc_chkpt_files);
-                if ( access( mc_chkpt_files, F_OK ) != -1 )
-                {
-                    readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, &restrt, &time, count_procs[j], &i, riken_switch);
-                    free(phPtr); 
-                    phPtr=NULL;
-                    
-                    if ((framestart<=frame2) && (scatt_framestart<=last_frame)) //add another condition here
-                    {
-                        cont_procs[count]=j;
-                        printf("ACCEPTED: %s\n", mc_chkpt_files);
-                        count++;
-                    }
-                }
-                else
-                {
-                    cont_procs[count]=j;
-                    printf("ACCEPTED: %s\n", mc_chkpt_files);
-                    count++;
-                }
-                               
-            }
+        }
+        else
+        {
+            cont_procs[count]=j;
+            //printf("ACCEPTED: %s\n", mc_chkpt_files);
+            count++;
+        }
+                       
+    }
     
     (*proc_array)=malloc (count * sizeof (int )); //allocate space to pointer to hold the old process angle_id's
     count=0;
@@ -1087,11 +1090,11 @@ void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, d
     
     //dont need this line fo code for MPI 
     //fscanf(fptr, "%d",num_threads);
-    printf("MAKE SURE THERE IS NO NUM_THREADS LINE IN THE MC.PAR FILE.\n");
+    //printf("MAKE SURE THERE IS NO NUM_THREADS LINE IN THE MC.PAR FILE.\n");
     //fgets(buf, 100,fptr);
     
     //fscanf(fptr, "%d",dim_switch);
-    printf("MAKE SURE THERE IS NO DIM_SWITCH LINE IN THE MC.PAR FILE.\n");
+    //printf("MAKE SURE THERE IS NO DIM_SWITCH LINE IN THE MC.PAR FILE.\n");
     //printf("%d\n",*dim_switch);
     
 	//close file
@@ -1128,7 +1131,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     
     //ret=H5Pclose(acc_tpl1);
     
-    fprintf(fPtr, ">> mc.py: Reading positional, density, pressure, and velocity information...\n");
+    fprintf(fPtr, ">> MCRaT: Reading positional, density, pressure, and velocity information...\n");
     fflush(fPtr);
     //printf("Reading coord\n");
     dset = H5Dopen (file, "coordinates", H5P_DEFAULT);
