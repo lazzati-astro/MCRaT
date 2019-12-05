@@ -26,15 +26,24 @@
 #include "mclib_pluto.h"
 #include <omp.h>
 
+#define PROC_IDX_SIZE 4
 
 void readPlutoChombo( char pluto_file[200], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
 double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr)
 {
     hid_t  file, dset, space, group, attr;
     herr_t status;
-    int num_dims=0, num_levels=0, num_vars=4;
+    hsize_t dims[1]={0}; //hold number of processes in each level
+    int i=0, num_dims=0, num_levels=0, num_vars=4;
     char level[200]="";
+    int **proc_indexes=NULL;
     
+    //define dataset for boxes of each level
+    hid_t box_dtype = H5Tcreate (H5T_COMPOUND, sizeof(box2d));
+    H5Tinsert(box_dtype, "lo_i", HOFFSET(box2d, lo_i), H5T_NATIVE_INT);
+    H5Tinsert(box_dtype, "lo_j", HOFFSET(box2d, lo_j), H5T_NATIVE_INT);
+    H5Tinsert(box_dtype, "hi_i", HOFFSET(box2d, hi_i), H5T_NATIVE_INT);
+    H5Tinsert(box_dtype, "hi_j", HOFFSET(box2d, hi_j), H5T_NATIVE_INT);
     
     //open the pluto file
     file = H5Fopen (pluto_file, H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -70,8 +79,33 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
     status = H5Aclose (attr);
     printf("readPlutoChombo num_vars: %d\n", num_vars);
     
+    //get the total number of values that I need to allocate memory for
+    //for (i=0;i<num_levels;i++)
+    {
+        
+    }
     
+    group = H5Gopen(file, "level_0", H5P_DEFAULT);
+    dset= H5Dopen(group, "boxes", H5P_DEFAULT);
     
+    //get dimensions of array and save it
+    space = H5Dget_space (dset);
+    H5Sget_simple_extent_dims(space, dims, NULL); //save dimesnions in dims
+        
+    box2d box_data[dims[0]];
+    
+    status = H5Dread (dset, box_dtype, H5S_ALL, H5S_ALL, H5P_DEFAULT,box_data);
+    /*
+    for (i=0; i<dims[0]; i++)
+    {
+        printf("i %d %d %d %d %d \n", i, box_data[i].lo_i, box_data[i].lo_j, box_data[i].hi_i, box_data[i].hi_j);
+    }
+*/
+
+    status = H5Sclose (space);
+    H5Dclose(dset);
+    H5Gclose(group);
+
     
     
     status = H5Fclose (file);
@@ -114,3 +148,4 @@ void modifyPlutoName(char file[200], char prefix[200], int frame)
         snprintf(file,200, "%s%d.hdf5",prefix,frame);
     }
 }
+
