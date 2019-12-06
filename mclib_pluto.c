@@ -34,12 +34,15 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
     hid_t  file, dset, space, group, attr;
     herr_t status;
     hsize_t dims[1]={0}; //hold number of processes in each level
-    int i=0, j=0, k=0, num_dims=0, num_levels=0, num_vars=4, logr=0;
+    int i=0, j=0, k=0, l=0, m=0, num_dims=0, num_levels=0, num_vars=4, logr=0;
+    int nbx=0, nby=0, nbz=0, total_size=0, total_box_size=0, offset=0;
     box2d prob_domain[1]={0,0,0,0};
     char level[200]="";
     double ph_rmin=0, ph_rmax=0, ph_thetamin=0, ph_thetamax=0;
-    double *radii=NULL, *angles=NULL;
+    int *level_dims=NULL, *box_offset=NULL;
+    double *radii=NULL, *angles=NULL, *dradii=NULL, *dangles=NULL;
     double *dombeg1=NULL, *dombeg2=NULL, *dombeg3=NULL, *dx=NULL, *g_x2stretch=NULL, *g_x3stretch=NULL;
+    double *all_data=NULL, *r_buffer=NULL, *theta_buffer=NULL, *dr_buffer=NULL, *dtheta_buffer=NULL;
 
     
     if (ph_inj_switch==0)
@@ -89,6 +92,7 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
     dx=malloc(num_levels*sizeof(double));
     g_x2stretch=malloc(num_levels*sizeof(double));
     g_x3stretch=malloc(num_levels*sizeof(double));
+    level_dims=malloc(num_levels*sizeof(int));
     
     //3. get number of variables to read in (should be 4 in non-MHD case)
     attr = H5Aopen (file, "num_components", H5P_DEFAULT);
@@ -105,15 +109,70 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
         
         group = H5Gopen(file, level, H5P_DEFAULT);
         
+        dset= H5Dopen(group, "data:datatype=0", H5P_DEFAULT);
+        
+        //get dimensions of array and save it
+        space = H5Dget_space (dset);
+        H5Sget_simple_extent_dims(space, dims, NULL); //save dimesnions in dims
+        
+        total_size+=dims[0];
+        *(level_dims+i)=dims[0];
+        
+        status = H5Sclose (space);
+        H5Dclose(dset);
+        H5Gclose(group);
+    }
+    printf("The total number of elements is %d\n", total_size);
+    
+    //now allocate space to save data
+    all_data=malloc(total_size*sizeof (double));
+    
+    //and allocate arrays to hold r and theta values to calulate them on the fly
+    r_buffer=malloc(total_size*sizeof (double));
+    theta_buffer=malloc(total_size*sizeof (double));
+    dr_buffer=malloc(total_size*sizeof (double));
+    dtheta_buffer=malloc(total_size*sizeof (double));
+
+    //vel_x_buffer= malloc ((total_size/num_vars) * sizeof (double));
+    //vel_y_buffer=malloc ((total_size/num_vars) * sizeof (double));
+    //dens_buffer= malloc ((total_size/num_vars) * sizeof (double));
+    //pres_buffer=malloc ((total_size/num_vars) * sizeof (double));
+
+    
+    offset=0;
+    //read in the data
+    for (i=0;i<num_levels;i++)
+    {
+        snprintf(level, sizeof(level), "level_%d", i);
+        printf("Opening level %d Boxes\n", i);
+        
+        group = H5Gopen(file, level, H5P_DEFAULT);
+        
+        //read in the data
+        dset= H5Dopen(group, "data:datatype=0", H5P_DEFAULT);
+        status = H5Dread (dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,(all_data+offset));
+        H5Dclose(dset);
+        printf("Last few data %e %e\n", *(all_data+(*(level_dims+i))-2), *(all_data+(*(level_dims+i))-1));
+        
+        //read in the box offsets in all_data
+        dset= H5Dopen(group, "data:offsets=0", H5P_DEFAULT);
+        
+        space = H5Dget_space (dset);
+        H5Sget_simple_extent_dims(space, dims, NULL); //save dimesnions in dims
+        box_offset=malloc(dims[0]*sizeof(int));
+        status = H5Sclose (space);
+        
+        status = H5Dread (dset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, box_offset);
+        H5Dclose(dset);
+
+        
+        
         //open various properties about that refinement level
         attr = H5Aopen (group, "prob_domain", H5P_DEFAULT);
         status = H5Aread (attr, box_dtype, &prob_domain);
         status = H5Aclose (attr);
         printf("Prob_domain %d %d %d %d\n", prob_domain->lo_i, prob_domain->lo_j, prob_domain->hi_i, prob_domain->hi_j);
-        
-        radii=malloc( (prob_domain->hi_i - prob_domain->lo_i +1) * sizeof (double ));
-        angles=malloc( (prob_domain->hi_j - prob_domain->lo_j +1) * sizeof (double ));
-        
+               
         attr = H5Aopen (group, "dx", H5P_DEFAULT);
         status = H5Aread (attr, H5T_NATIVE_DOUBLE, (dx+i));
         status = H5Aclose (attr);
@@ -156,42 +215,127 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
             status = H5Aread (attr, H5T_NATIVE_DOUBLE, (dombeg3+i));
             status = H5Aclose (attr);
         }
-            
-        
-        
-        
-        //if the photons are not being injected need to calculate the limiting indicies to exclude parts of domain
-        //if (ph_inj_switch==0)
-        {
-            
-        }
-        
+               
+        //read in the boxes
         dset= H5Dopen(group, "boxes", H5P_DEFAULT);
         
         //get dimensions of array and save it
         space = H5Dget_space (dset);
         H5Sget_simple_extent_dims(space, dims, NULL); //save dimesnions in dims
-            
+                    
         box2d box_data[dims[0]];
         
         status = H5Dread (dset, box_dtype, H5S_ALL, H5S_ALL, H5P_DEFAULT,box_data);
-        
-        //for (j=0; j<dims[0]; j++)
-        {
-        //    printf("i %d %d %d %d %d \n", j, box_data[j].lo_i, box_data[j].lo_j, box_data[j].hi_i, box_data[j].hi_j);
-        }
-        
-        
         status = H5Sclose (space);
         H5Dclose(dset);
+        
+        radii=malloc( (prob_domain->hi_i - prob_domain->lo_i +1) * sizeof (double ));
+        angles=malloc( (prob_domain->hi_j - prob_domain->lo_j +1) * sizeof (double ));
+        dradii=malloc( (prob_domain->hi_i - prob_domain->lo_i +1) * sizeof (double ));
+        dangles=malloc( (prob_domain->hi_j - prob_domain->lo_j +1) * sizeof (double ));
+
+        //create the arrays that hold the refinement level radii and angles
+        for (j=0;j<(prob_domain->hi_i - prob_domain->lo_i +1);j++)
+        {
+            if (logr==0)
+            {
+                *(radii+j)=(*(dombeg1+i)) + (*(dx+i)) * (prob_domain->lo_i + j + 0.5);
+                *(dradii+j)=(*(dx+i));
+            }
+            else
+            {
+                *(radii+j)=(*(dombeg1+i)) * 0.5 * (exp((*(dx+i)) * (prob_domain->lo_i + j + 1)) + exp((*(dx+i)) * (prob_domain->lo_i + j))   );
+                *(dradii+j)=(*(dombeg1+i)) * (exp((*(dx+i)) * (prob_domain->lo_i + j + 1)) - exp((*(dx+i)) * (prob_domain->lo_i + j))   );
+            }
+            //printf("radii: %0.8e\n", *(radii+j));
+        }
+        
+        for (j=0;j<(prob_domain->hi_j - prob_domain->lo_j +1);j++)
+        {
+            *(angles+j)=(*(dombeg2+i)) + (*(dx+i)) * (*(g_x2stretch+i)) * (prob_domain->lo_j + j + 0.5);
+            *(dangles+j)=(*(dx+i))*(*(g_x2stretch+i));
+        }
+        
+        //go through the boxes to create the r and theta arrays
+        total_box_size=0;
+        for (j=0; j<dims[0]; j++)
+        {
+            //printf("i %d %d %d %d %d \n", j, box_data[j].lo_i, box_data[j].lo_j, box_data[j].hi_i, box_data[j].hi_j);
+            nbx=box_data[j].hi_i-box_data[j].lo_i+1;
+            nby=1;
+            nbz=1;
+            
+            if (num_dims >1)
+            {
+                nby=box_data[j].hi_j-box_data[j].lo_j+1;
+            }
+            /* for future 3D support
+            else if (dim>2)
+            {
+                nbz=box_data[j].hi_k-box_data[j].lo_k+1;
+            }
+             */
+            //loop over each variable values of box
+            if (i==2)
+            {
+                for (k=0;k<num_vars;k++)
+                {
+                    //loop over the radii
+                    for (l=0; l<nbx; l++)
+                    {
+                        //loop over the angles
+                        for (m=0 ;m<nby ;m++)
+                        {
+                            printf("all_data val: %0.8e\t", *(all_data+offset+(*(box_offset+j))+ k*num_vars+ l*nbx +m*nby  ));
+                        }
+                        printf("\n");
+                    }
+                    printf("\n");
+                }
+            }
+            
+            /*
+            for (k=0;k<num_vars;k++)
+            {
+                //loop over the radii
+                for (l= ; l< l++)
+                {
+                    //loop over the angles
+                    for (m= ;m< ;m++)
+                    {
+                        printf(
+                        *(r_buffer+offset+(*(box_offset+j))+   )=
+                        *(theta_buffer+offset+(*(box_offset+j)) )=
+                        *(dr_buffer+offset+(*(box_offset+j)) )=
+                        *(dtheta_buffer+offset+(*(box_offset+j)) )=
+                    }
+                }
+            }
+             */
+            
+            
+            
+            
+            total_box_size+=(nbx * nby * nbz);
+            
+            
+            
+        }
+        printf("The total number of elements is %d , times num_vars=%d\n", total_box_size, total_box_size * num_vars);
+        
+        
+        
         H5Gclose(group);
-        free(radii); free(angles);
+        free(radii); free(angles); free(box_offset);
     }
 
     
-    
+    offset+=(*(level_dims+i));
     status = H5Fclose (file);
     free(dombeg1); free(dombeg2); free(dombeg3); free(dx); free(g_x2stretch); free(g_x3stretch);
+    
+    
+    free(all_data); free(r_buffer); free(theta_buffer);
 
 }
 
