@@ -55,43 +55,6 @@
 #include <omp.h>
 #include "mpi.h"
 
-/*
-#define THISRUN "Spherical"
-#define FILEPATH "/Users/Tylerparsotan/Documents/16TI/"
-#define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
-#define MC_PATH "KN_CMC_16TI_SPHERICAL/"
- 
-#define THISRUN "Science"
-#define FILEPATH "/Users/Tylerparsotan/Documents/Box Sync/1spike/"
-#define FILEROOT "m0_rhop0.1big_hdf5_plt_cnt_"
-#define MC_PATH "CMC_1spike/"
-//#define MC_PATH "MC_16OI/Single_Photon_Cy_mc_total/"
- * */
- /*
- #define THISRUN "Science"
-#define FILEPATH "/home/physics/parsotat/16OM/"
-#define FILEROOT "rhd_jet_big_16OM_hdf5_plt_cnt_"
-#define MC_PATH "DIR_TEST/"
-
- #define THISRUN "Spherical"
-#define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16OI/"
-//#define FILEPATH "/Users/Tylerparsotan//Documents/16OI_TEST/"
-#define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
-#define MC_PATH "TEST/"
-
-//#define THISRUN "Spherical"
-#define THISRUN "Structured Spherical"
-#define FILEPATH "/home/physics/parsotat/16TI/"
-//#define FILEPATH "/Users/Tylerparsotan//Documents/16OI_TEST/"
-#define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
-#define MC_PATH "KN_16TI_SPHERICAL_2/"
-*/
-/*
-#define MCPAR "mc.par"
-#define RIKEN_SWITCH 0
-#define STOKES_SWITCH 1
-#define COMV_SWITCH 1
-*/
 int main(int argc, char **argv)
 {
     //compile each time a macro is changed, have to supply the subfolder within the MC_PATH directory as a command line argument to the C program eg. MCRAT 1/
@@ -100,7 +63,7 @@ int main(int argc, char **argv)
 	char flash_prefix[200]="";
 	char mc_file[200]="" ;
     char this_run[200]=THISRUN;
-    char this_sim[200]=SIM_SWITCH;
+    //char this_sim[200]=SIM_SWITCH;
     char *cyl="Cylindrical";
     char *sph="Spherical";
     char *struct_sph="Structured Spherical";
@@ -271,7 +234,7 @@ int main(int argc, char **argv)
             int *cont_proc_idsPtr=NULL, *total_cont_procs_angle_Ptr=NULL, *displPtr=NULL; //becomes the size of the number of old procceses 
             int *cont_proc_ids_anglePtr=NULL;
             
-            old_num_angle_procs=getOrigNumProcesses(&count_cont_procs,  &cont_proc_idsPtr, mc_dir, angle_id,  angle_procs,  last_frm, RIKEN_SWITCH);
+            old_num_angle_procs=getOrigNumProcesses(&count_cont_procs,  &cont_proc_idsPtr, mc_dir, angle_id,  angle_procs,  last_frm);
             
             if (old_num_angle_procs==-1)
             {
@@ -520,7 +483,7 @@ int main(int argc, char **argv)
         }
        
             
-        {
+        
             //set this now incase there is no checkpoint file, then this wont be overwritten and the corretc values will be passed even if the user decides to restart
             framestart=(*(frame_array +(angle_id*proc_frame_size)));
             scatt_framestart=framestart;
@@ -540,7 +503,7 @@ int main(int argc, char **argv)
                 printf(">> mc.py:  Reading checkpoint\n");
                 //#pragma omp critical
                 
-                    readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs, RIKEN_SWITCH);
+                    readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs);
                 
                 /*
                 for (i=0;i<num_ph;i++)
@@ -600,18 +563,21 @@ int main(int argc, char **argv)
                     }
                 }
             }
-            
-            if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (framestart>=3000))
+    
+            #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+            if (framestart>=3000)
             {
                 increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-                fps_modified=1;
+                fps_modified=1; //therefore dt between files become 1 second
+                
             }
-            else
+            #else
             {
                 increment_inj=1;
                 fps_modified=fps;
             }
-            
+            #endif
+                        
             dt_max=1.0/fps_modified;
            
             MPI_Barrier(angle_comm); 
@@ -633,17 +599,20 @@ int main(int argc, char **argv)
             for (frame=framestart;frame<=frm2;frame=frame+increment_inj)
             {
                 
-                if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (frame>=3000))
+                #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+                if (frame>=3000)
                 {
                     increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-                    fps_modified=1;
+                    fps_modified=1; //therefore dt between files become 1 second
+                    
                 }
-                else
+                #else
                 {
                     increment_inj=1;
                     fps_modified=fps;
                 }
-                
+                #endif
+                                
                  if (restrt=='r')
                  {
                     time_now=frame/fps; //for a checkpoint implmentation, load the saved "time_now" value when reading the ckeckpoint file otherwise calculate it normally
@@ -657,22 +626,25 @@ int main(int argc, char **argv)
                 {
                     
                     
-                    if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+                    //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+                    #if DIMENSIONS == 2
                     {
-                        if (strcmp(flash_sim, this_sim)==0)
-                        {
+                        //if (strcmp(flash_sim, this_sim)==0)
+                        #if SIM_SWITCH == FLASH
+                        //{
                             //if using FLASH data for 2D
-                        //put proper number at the end of the flash file
-                        modifyFlashName(flash_file, flash_prefix, frame);
-                        
-                        fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
-                        fflush(fPtr);
-                        
-                        readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
-                        }
-                        else if (strcmp(pluto_amr_sim, this_sim)==0)
-                        {
+                            //put proper number at the end of the flash file
+                            modifyFlashName(flash_file, flash_prefix, frame);
+                            
+                            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
+                            fflush(fPtr);
+                            
+                            readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
+                        //}
+                        //else if (strcmp(pluto_amr_sim, this_sim)==0)
+                        #elif SIM_SWITCH == PLUTO_CHOMBO
+                        //{
                             modifyPlutoName(flash_file, flash_prefix, frame);
                             
                             fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
@@ -681,19 +653,20 @@ int main(int argc, char **argv)
                             readPlutoChombo(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                     &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
                             
-                            exit(0);
-                        }
-                        else
-                        {
+                            //exit(0);
+                        //}
+                        #else
+                        //{
                             //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
                             readHydro2D(FILEPATH, frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                         &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
                             //fprintf(fPtr, "%d\n\n", array_num);
-                        }
-                        fprintf(fPtr, "Number of Flash Elements %d\n", array_num);
+                        //}
+                        #endif
+                        fprintf(fPtr, "Number of Hydro Elements %d\n", array_num);
         //exit(0);
                     }
-                    else
+                    #else
                     {
                         fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                         fflush(fPtr);
@@ -701,6 +674,7 @@ int main(int argc, char **argv)
                         read_hydro(FILEPATH, frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
                                    &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fps_modified, fPtr);
                     }
+                    #endif
                     
                     //check for run type
                     if(strcmp(cyl, this_run)==0)
@@ -724,15 +698,17 @@ int main(int argc, char **argv)
                     fprintf(fPtr,">>  Proc: %d with angles %0.1lf-%0.1lf: Injecting photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     fflush(fPtr);
                     
-                    if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+                    //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+                    #if DIMENSIONS == 2
                     {
-                        photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng, RIKEN_SWITCH, fPtr );
+                        photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng, fPtr );
                     }
-                    else
+                    #else
                     {
                         photonInjection3D(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, zPtr, szxPtr, szyPtr,rPtr,thetaPtr, phiPtr, tempPtr, velxPtr, velyPtr, velzPtr, rng, fPtr);
 
                     }
+                    #endif
                     
                     //printf("This many Photons: %d\n",num_ph); //num_ph is one more photon than i actually have
                     
@@ -753,17 +729,19 @@ int main(int argc, char **argv)
                 
                 for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame=scatt_frame+increment_scatt)
                 {
-                    if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (scatt_frame>=3000))
+                    #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+                    if (scatt_frame>=3000)
                     {
                         increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
                         fps_modified=1; //therefore dt between files become 1 second
                         
                     }
-                    else
+                    #else
                     {
                         increment_scatt=1;
                         fps_modified=fps;
                     }
+                    #endif
                     
                     dt_max=1.0/fps_modified; //if working with RIKEN files and scatt_frame>=3000 dt  is 1 second between each subsequent frame
                     
@@ -777,32 +755,56 @@ int main(int argc, char **argv)
                     gsl_rng_set(rng, gsl_rng_get(rng));
                     
                    
-                    if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+                    //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+                    #if DIMENSIONS == 2
                     {
-                        if (RIKEN_SWITCH==0)
+                        //if (strcmp(flash_sim, this_sim)==0)
+                        #if SIM_SWITCH == FLASH
                         {
+                            //if using FLASH data for 2D
                             //put proper number at the end of the flash file
-                            modifyFlashName(flash_file, flash_prefix, scatt_frame);
-                            phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
+                            modifyFlashName(flash_file, flash_prefix, frame);
+                            
+                            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
+                            fflush(fPtr);
+                            
                             readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr);
+                                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
                         }
-                        else
+                        //else if (strcmp(pluto_amr_sim, this_sim)==0)
+                        #elif SIM_SWITCH == PLUTO_CHOMBO
                         {
-                            phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
-                            //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
-                            readHydro2D(FILEPATH, scatt_frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                        &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
-                        
+                            modifyPlutoName(flash_file, flash_prefix, frame);
+                            
+                            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
+                            fflush(fPtr);
+                            
+                            readPlutoChombo(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
+                            
+                            exit(0);
                         }
+                        #else
+                        {
+                            //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
+                            readHydro2D(FILEPATH, frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                        &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
+                            //fprintf(fPtr, "%d\n\n", array_num);
+                        }
+                        #endif
+                        fprintf(fPtr, "Number of Hydo Elements %d\n", array_num);
+        //exit(0);
                     }
-                    else
+                    #else
                     {
-                        phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
-                        read_hydro(FILEPATH, scatt_frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                   &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fps_modified, fPtr);
+                        fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+                        fflush(fPtr);
+                        
+                        read_hydro(FILEPATH, frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                   &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fps_modified, fPtr);
                     }
-                    fprintf(fPtr, "Number of Flash Elements %d\n", array_num);
+                    #endif
+                    fprintf(fPtr, "Number of Hydo Elements %d\n", array_num);
                     
                     
                     //check for run type
@@ -838,7 +840,7 @@ int main(int argc, char **argv)
                         
 
                         ph_scatt_index=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, &time_step, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
-                                                                      all_time_steps, sorted_indexes, rng, find_nearest_grid_switch, RIKEN_SWITCH, fPtr);
+                                                                      all_time_steps, sorted_indexes, rng, find_nearest_grid_switch, fPtr);
                         
                         find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
 
@@ -916,14 +918,16 @@ int main(int argc, char **argv)
                     }
                     //exit(0);
                     
-                     if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+                     //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+                    #if SIM_SWITCH == RIKEN && DIMENSIONS ==3
                     {
-                        if (RIKEN_SWITCH==1)
+                        //if (RIKEN_SWITCH==1)
                         {
                             free(zPtr);free(phiPtr);free(velzPtr);
                             zPtr=NULL; phiPtr=NULL; velzPtr=NULL;
                         }
                     }
+                    #endif
                 
                     free(xPtr);free(yPtr);free(szxPtr);free(szyPtr);free(rPtr);free(thetaPtr);free(velxPtr);free(velyPtr);free(densPtr);free(presPtr);
                     free(gammaPtr);free(dens_labPtr);free(tempPtr);
@@ -944,9 +948,7 @@ int main(int argc, char **argv)
             fflush(fPtr);
             
             //exit(0);
-        
-        }//end omp parallel inner section
-        
+                
         MPI_Barrier(angle_comm);
         
         //merge files from each worker thread within a directory
@@ -958,10 +960,14 @@ int main(int argc, char **argv)
              //count number of files
              for (i=frm0;i<=last_frm;i=i+increment_scatt)
              {
-                if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
+                 
+                //if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
+                #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+                if (i>=3000)
                 {
                     increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
                 }
+                #endif
                 file_count++;
              }
              
@@ -985,11 +991,14 @@ int main(int argc, char **argv)
              file_count=0;
              for (i=frm0;i<=last_frm;i=i+increment_scatt)
              {
-                if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
+                //if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
+                #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+                if (i>=3000)
                 {
                     increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
                 }
-             
+                #endif
+
                 *(frame_array+file_count)=i ;
                 file_count++;
                 //printf("file_count: %d frame: %d\n",  file_count-1, *(frame_array+file_count-1));
@@ -1010,14 +1019,17 @@ int main(int argc, char **argv)
              last_frm=frm0;
              while(i<proc_frame_size)
              {
-                if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (last_frm>=3000))
+                //if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (last_frm>=3000))
+                #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+                if (last_frm>=3000)
                 {
                     increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
                 }
-                else
+                #else
                 {
                     increment_scatt=1;
                 }
+                #endif
              
                 last_frm+=increment_scatt;
                 i++;
@@ -1030,7 +1042,7 @@ int main(int argc, char **argv)
                 fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
                 fflush(fPtr);
                 
-                dirFileMerge(mc_dir, frm0, last_frm, old_num_angle_procs, angle_id, RIKEN_SWITCH, fPtr);
+                dirFileMerge(mc_dir, frm0, last_frm, old_num_angle_procs, angle_id, fPtr);
             }
         }
         

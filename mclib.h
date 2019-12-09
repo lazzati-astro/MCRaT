@@ -1,58 +1,21 @@
-//MODIFY C COMPILER DIRECTIVES BELOW THIS LINE
-/*
-#define THISRUN "Science"
-#define FILEPATH "/Volumes/LACIE_RAID/Collapsars/2D/HUGE_BOXES/CONSTANT/16TI/"
-#define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
-#define MC_PATH "KN_CMC_16TI/"
-*/
- #define THISRUN "Science"
- #define FILEPATH "/Users/parsotat/Downloads/"
- #define FILEROOT "data."
- #define MC_PATH "PLUTO_MCRAT/"
- //#define MC_PATH "MC_16OI/Single_Photon_Cy_mc_total/"
- 
-/*
- #define THISRUN "Science"
- #define FILEPATH "/home/physics/parsotat/16OM/"
- #define FILEROOT "rhd_jet_big_16OM_hdf5_plt_cnt_"
- #define MC_PATH "DIR_TEST/"
- 
- #define THISRUN "Spherical"
- #define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16OI/"
- //#define FILEPATH "/Users/Tylerparsotan//Documents/16OI_TEST/"
- #define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
- #define MC_PATH "TEST/"
- 
- #define THISRUN "Spherical"
- //#define THISRUN "Structured Spherical"
- //#define FILEPATH "/home/physics/parsotat/16TI/"
- #define FILEPATH "/Users/Tylerparsotan/Documents/16TI/"
- #define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
- #define MC_PATH "KN_CMC_16TI_SPHERICAL/"
-*/
+//define on and off for switches
+#define ON 1
+#define OFF 0
 
-#define RIKEN_SWITCH 0 //need to replace this when done testing
-#define SIM_SWITCH "PLUTO_CHOMBO"
-#define STOKES_SWITCH 1
-#define COMV_SWITCH 0
-#define DIM_SWITCH "2D"
+//define the codes for the different type sof simulations
+#define FLASH 0
+#define PLUTO_CHOMBO 1
+#define RIKEN 2 //need to replace this when done testing, just keeping it in the background for now and minimize its effect
 
-#define MCPAR "mc.par"
 
-/*
- Modify parameters above this comment only
- */
+
+#include "mcrat_input.h"
 
 
 extern const double C_LIGHT;
 extern const double A_RAD;
 extern const double PL_CONST;
 extern const double K_B;
-extern const char *dim_3d_str;
-extern const char *dim_2d_str;
-extern char const *flash_sim;
-extern char const *pluto_amr_sim;
-extern char const *riken_sim;
 
 #define STR_BUFFER 2000
 
@@ -88,7 +51,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
  double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr);
  
  void photonInjection( struct photon **ph, int *ph_num, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, int array_length, double fps, double theta_min, double theta_max,\
-double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temps, double *vx, double *vy, gsl_rng * rand,  int riken_switch, FILE *fPtr);
+double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temps, double *vx, double *vy, gsl_rng * rand, FILE *fPtr);
 
 void lorentzBoost(double *boost, double *p_ph, double *result, char object,  FILE *fPtr);
 
@@ -96,19 +59,19 @@ double *zeroNorm(double *p_ph);
 
 int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z);
 
-int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, int riken_switch, FILE *fPtr);
+int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, FILE *fPtr);
 
-int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int riken_switch);
+int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy);
 
 int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y,  double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
-                                   double *temp, double *all_time_steps, int *sorted_indexes, gsl_rng * rand, int find_nearest_block_switch, int riken_switch, FILE *fPtr);
+                                   double *temp, double *all_time_steps, int *sorted_indexes, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr);
                                    
 int compare (void *ar, const void *a, const void *b);
 
 int compare2 ( const void *a, const void *b, void *ar);
                                    
 int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
-                                   double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int find_nearest_block_switch, int riken_switch, FILE *fPtr);
+                                   double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr);
     
 void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr);
 
@@ -134,9 +97,9 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
 
 int saveCheckpoint(char dir[200], int frame,  int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph , int last_frame, int angle_rank, int angle_size);
 
-void readCheckpoint(char dir[200], struct photon **ph,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size, int riken_switch );
+void readCheckpoint(char dir[200], struct photon **ph,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size );
 
-void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs,  int angle_id, int riken_switch, FILE *fPtr);
+void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs,  int angle_id, FILE *fPtr);
 
 void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array);
 
@@ -150,4 +113,4 @@ void modifyFlashName(char flash_file[200], char prefix[200], int frame);
 void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
                      double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, FILE *fPtr);
 
-int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200], int angle_rank,  int angle_procs, int last_frame, int riken_switch);
+int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200], int angle_rank,  int angle_procs, int last_frame);

@@ -34,13 +34,8 @@
 //define constants
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27;
 const double K_B=1.380658e-16, M_P=1.6726231e-24, THOM_X_SECT=6.65246e-25, M_EL=9.1093879e-28 ;
-char const *dim_3d_str="3D";
-char const *dim_2d_str="2D";
-char const *flash_sim="FLASH";
-char const *pluto_amr_sim="PLUTO_CHOMBO";
-char const *riken_sim="RIKEN";
 
-int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200], int angle_rank,  int angle_procs, int last_frame, int riken_switch)
+int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200], int angle_rank,  int angle_procs, int last_frame)
 {
     int i=0, j=0, val=0, original_num_procs=-1, rand_num=0;
     int frame2=0, framestart=0, scatt_framestart=0, ph_num=0;
@@ -78,7 +73,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
                 //printf("TEST: %s\n", mc_chkpt_files);
             }
         }
-        readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, &restrt, &time, rand_num, &original_num_procs, riken_switch);
+        readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, &restrt, &time, rand_num, &original_num_procs);
     
         //original_num_procs= 70;
         
@@ -107,7 +102,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
         //printf("TEST: %s\n", mc_chkpt_files);
         if ( access( mc_chkpt_files, F_OK ) != -1 )
         {
-            readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, &restrt, &time, count_procs[j], &i, riken_switch);
+            readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, &restrt, &time, count_procs[j], &i);
             free(phPtr);
             phPtr=NULL;
             
@@ -263,7 +258,8 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         dset_p3 = H5Dcreate2 (group_id, "P3", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
         
-        if (COMV_SWITCH!=0)
+        //if (COMV_SWITCH!=0)
+        #if COMV_SWITCH == ON
         {
             dset_comv_p0 = H5Dcreate2 (group_id, "COMV_P0", H5T_NATIVE_DOUBLE, dspace,
                                   H5P_DEFAULT, prop, H5P_DEFAULT);
@@ -277,6 +273,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
             dset_comv_p3 = H5Dcreate2 (group_id, "COMV_P3", H5T_NATIVE_DOUBLE, dspace,
                                   H5P_DEFAULT, prop, H5P_DEFAULT);
         }
+        #endif
                             
         dset_r0 = H5Dcreate2 (group_id, "R0", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
@@ -287,7 +284,8 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         dset_r2 = H5Dcreate2 (group_id, "R2", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
         
-        if (STOKES_SWITCH!=0)
+        //if (STOKES_SWITCH!=0)
+        #if STOKES_SWITCH == ON
         {
             dset_s0 = H5Dcreate2 (group_id, "S0", H5T_NATIVE_DOUBLE, dspace,
                                 H5P_DEFAULT, prop, H5P_DEFAULT);
@@ -301,6 +299,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
             dset_s3 = H5Dcreate2 (group_id, "S3", H5T_NATIVE_DOUBLE, dspace,
                                 H5P_DEFAULT, prop, H5P_DEFAULT);
         }
+        #endif
         
         dset_num_scatt = H5Dcreate2 (group_id, "NS", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
@@ -326,7 +325,8 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         status = H5Dwrite (dset_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                         H5P_DEFAULT, p3);
         
-        if (COMV_SWITCH!=0)
+        //if (COMV_SWITCH!=0)
+        #if COMV_SWITCH == ON
         {
             status = H5Dwrite (dset_comv_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                                H5P_DEFAULT, comv_p0);
@@ -340,6 +340,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
             status = H5Dwrite (dset_comv_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                                H5P_DEFAULT, comv_p3);
         }
+        #endif
                         
         status = H5Dwrite (dset_r0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                         H5P_DEFAULT, r0);
@@ -349,7 +350,9 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
                         
         status = H5Dwrite (dset_r2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                         H5P_DEFAULT, r2);
-        if (STOKES_SWITCH!=0)
+        
+        //if (STOKES_SWITCH!=0)
+        #if STOKES_SWITCH == ON
         {
             status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, s0);
@@ -363,6 +366,8 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
             status = H5Dwrite (dset_s3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, s3);
         }
+        #endif
+        
         status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                         H5P_DEFAULT, num_scatt);
         
@@ -459,7 +464,8 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         status = H5Sclose (mspace);
         status = H5Sclose (fspace);
         
-        if (COMV_SWITCH!=0)
+        //if (COMV_SWITCH!=0)
+        #if COMV_SWITCH == ON
         {
             dset_comv_p0 = H5Dopen (group_id, "COMV_P0", H5P_DEFAULT); //open dataset
             dspace = H5Dget_space (dset_comv_p0);
@@ -526,6 +532,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
             status = H5Sclose (fspace);
             
         }
+        #endif
         
         dset_r0 = H5Dopen (group_id, "R0", H5P_DEFAULT); //open dataset
         dspace = H5Dget_space (dset_r0);
@@ -575,7 +582,8 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         status = H5Sclose (mspace);
         status = H5Sclose (fspace);
         
-        if (STOKES_SWITCH!=0)
+        //if (STOKES_SWITCH!=0)
+        #if STOKES_SWITCH == ON
         {
              dset_s0 = H5Dopen (group_id, "S0", H5P_DEFAULT); //open dataset
             dspace = H5Dget_space (dset_s0);
@@ -641,6 +649,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
             status = H5Sclose (mspace);
             status = H5Sclose (fspace);
         }
+        #endif
         
         dset_num_scatt = H5Dopen (group_id, "NS", H5P_DEFAULT); //open dataset
         dspace = H5Dget_space (dset_num_scatt);
@@ -715,15 +724,20 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     /* Close resources */
     //status = H5Sclose (dspace);
     status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
-    if (COMV_SWITCH!=0)
+    //if (COMV_SWITCH!=0)
+    #if COMV_SWITCH == ON
     {
         status = H5Dclose (dset_comv_p0); status = H5Dclose (dset_comv_p1); status = H5Dclose (dset_comv_p2); status = H5Dclose (dset_comv_p3);
     }
+    #endif
     status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
-    if (STOKES_SWITCH!=0)
+    //if (STOKES_SWITCH!=0)
+    #if STOKES_SWITCH == ON
     {
         status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
     }
+    #endif
+    
     status = H5Dclose (dset_num_scatt); 
     if (frame==frame_inj)
     {
@@ -879,7 +893,7 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
     return success;
 }
 
-void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size, int riken_switch )
+void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size )
 {
     //function to read in data from checkpoint file
     FILE *fPtr=NULL;
@@ -910,14 +924,17 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
         {
             fread(scatt_framestart, sizeof(int), 1, fPtr);
             
-            if ((riken_switch==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && ((*scatt_framestart)>=3000))
+            //if ((riken_switch==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && ((*scatt_framestart)>=3000))
+            #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+            if ((*scatt_framestart)>=3000)
             {
                 *scatt_framestart+=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1                        
             }
-            else
+            #else
             {
             *scatt_framestart+=1; //add one to start at the next frame after the simulation was interrrupted
             }
+            #endif
 
             //printf("%d\n", *scatt_framestart);
             fread(time, sizeof(double), 1, fPtr);
@@ -957,14 +974,17 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
         }
         else
         {
-            if ((riken_switch==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && ((*framestart)>=3000))
+            //if ((riken_switch==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && ((*framestart)>=3000))
+            #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+            if ((*framestart)>=3000)
             {
                 *framestart+=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1                        
             }
-            else
+            #else
             {
             *framestart+=1; //if the  checkpoint file saved and the program was inturrupted before the frame variable had just increased and before the scatt_frame iteration was saved, add one to the frame start
             }
+            #endif
             
             *scatt_framestart=(*framestart);
         }
@@ -1437,7 +1457,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
 
 
 void photonInjection( struct photon **ph, int *ph_num, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, int array_length, double fps, double theta_min, double theta_max,\
-double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temps, double *vx, double *vy, gsl_rng * rand,  int riken_switch, FILE *fPtr)
+double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temps, double *vx, double *vy, gsl_rng * rand, FILE *fPtr)
 {
     int i=0, block_cnt=0, *ph_dens=NULL, ph_tot=0, j=0,k=0;
     double ph_dens_calc=0.0, fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, fr_max=0, bb_norm=0, position_phi, ph_weight_adjusted, rmin, rmax;
@@ -1508,15 +1528,16 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
             //if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
             if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
                 {
-                    if (riken_switch==0)
+                    #if SIM_SWITCH == RIKEN
+                    {
+                        ph_dens_calc=(num_dens_coeff*2.0*M_PI*pow(*(r+i),2)*sin(*(theta+i))*pow(*(temps+i),3.0)*(*(szx+i))*(*(szy+i)) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1); //dV=2 *pi* r^2 Sin(theta) dr dtheta
+                    }
+                    #else
                     {
                         //using FLASH
                         ph_dens_calc=(4.0/3.0)*(num_dens_coeff*2.0*M_PI*(*(x+i))*pow(*(temps+i),3.0)*pow(*(szx+i),2.0) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1) ; //a*T^3/(weight) dV, dV=2*PI*x*dx^2,
                     }
-                    else
-                    {
-                        ph_dens_calc=(num_dens_coeff*2.0*M_PI*pow(*(r+i),2)*sin(*(theta+i))*pow(*(temps+i),3.0)*(*(szx+i))*(*(szy+i)) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1); //dV=2 *pi* r^2 Sin(theta) dr dtheta
-                    }
+                    #endif
                     
                      (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
                      
@@ -1804,34 +1825,37 @@ int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, doubl
                 for(j=0;j<array_num;j++)
                 {
                     //if the distance between them is within 3e9, to restrict number of possible calculations,  calulate the total distance between the box and photon
-                    if ((strcmp(DIM_SWITCH, dim_2d_str)==0) && (fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
-                    {
-                        
-                        dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)) , 2.0),0.5);
-                        //fprintf(fPtr,"Dist calculated as: %e, index: %d\n", dist, j);
-                        //printf("In outer if statement, OLD: %e, %d\n", dist_min, min_index);
-                        
-                        if((dist<dist_min))
+                    #if DIMENSIONS == 2
+                        if ((fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
                         {
-                            //fprintf(fPtr,"In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
-                            dist_min=dist; //save new minimum distance
-                            min_index=j; //save index
-                            //printf("New Min dist: %e, New min Index: %d, Array_Num: %d\n", dist_min, min_index, array_num);
+                            
+                            dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)) , 2.0),0.5);
+                            //fprintf(fPtr,"Dist calculated as: %e, index: %d\n", dist, j);
+                            //printf("In outer if statement, OLD: %e, %d\n", dist_min, min_index);
+                            
+                            if((dist<dist_min))
+                            {
+                                //fprintf(fPtr,"In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
+                                dist_min=dist; //save new minimum distance
+                                min_index=j; //save index
+                                //printf("New Min dist: %e, New min Index: %d, Array_Num: %d\n", dist_min, min_index, array_num);
+                                
+                            }
                             
                         }
-                        
-                    }
-                    else if ((strcmp(DIM_SWITCH, dim_3d_str)==0) &&(fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist) && (fabs(ph_z- (*(z+j)))<block_dist))
-                    {
-                        dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)),2.0 ) + pow(ph_z- (*(z+j)) , 2.0),0.5);
-                        if((dist<dist_min))
+                    #elif DIMENSIONS == 3
+                        if ((fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist) && (fabs(ph_z- (*(z+j)))<block_dist))
                         {
-                            //printf("In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
-                            dist_min=dist; //save new minimum distance
-                            min_index=j; //save index
-                            //fprintf(fPtr,"New Min dist: %e, New min Index: %d, Array_Num: %e\n", dist_min, min_index, array_num);
+                            dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)),2.0 ) + pow(ph_z- (*(z+j)) , 2.0),0.5);
+                            if((dist<dist_min))
+                            {
+                                //printf("In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
+                                dist_min=dist; //save new minimum distance
+                                min_index=j; //save index
+                                //fprintf(fPtr,"New Min dist: %e, New min Index: %d, Array_Num: %e\n", dist_min, min_index, array_num);
+                            }
                         }
-                    }
+                    #endif
                 }
                 block_dist*=10; //increase size of accepted distances for gris points, if dist_min==1e12 then the next time the acceptance range wil be larger
                 
@@ -1840,7 +1864,7 @@ int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, doubl
             return min_index;
 }
 
-int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, int riken_switch, FILE *fPtr)
+int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, FILE *fPtr)
 {
     int i=0, within_block_index=0;
     bool is_in_block=0; //boolean to determine if the photon is outside of a grid
@@ -1849,7 +1873,7 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
     for (i=0;i<array_num;i++)
     {
         
-            is_in_block=checkInBlock(i,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  riken_switch);
+            is_in_block=checkInBlock(i,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy);
         
             if (is_in_block)
             {
@@ -1860,11 +1884,12 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
         
     }
     //printf("Within Block Index:  %d\n",within_block_index);
-    if ((strcmp(DIM_SWITCH, dim_3d_str)==0) || (riken_switch==1))
+    //if ((strcmp(DIM_SWITCH, dim_3d_str)==0) || (riken_switch==1))
+    #if SIM_SWITCH == RIKEN || DIMENSIONS == 3
     {
-        fprintf(fPtr, "3D switch is: %d and RIKEN switch is: %d\n", DIM_SWITCH, riken_switch);
+        fprintf(fPtr, "3D switch is: %d and SIM switch is: %d\n", DIMENSIONS, SIM_SWITCH);
     }
-    
+    #endif
     
     if (is_in_block==0)
     {
@@ -1877,27 +1902,18 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
 
 
 
-int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int riken_switch)
+int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy)
 {
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
     double x0=0, x1=0, x2=0, sz_x0=0, sz_x1=0, sz_x2=0; //coordinate and sizes of grid block, in cartesian its x,y,z in spherical its r,theta,phi
     int return_val=0;
 
     
-        if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+        //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+        #if DIMENSIONS == 2
         {
             
-            if (riken_switch==0)
-            {
-                x0=(*(x+block_index));
-                x1=(*(y+block_index));
-                
-                sz_x0=(*(szx+block_index));
-                sz_x1=(*(szy+block_index));
-                
-                is_in_block= (2*fabs(ph_x-x0)-sz_x0 <= 0) && (2*fabs(ph_y-x1)-sz_x1 <= 0);
-            }
-            else
+            #if SIM_SWITCH == RIKEN
             {
                 x0=pow(pow((*(x+block_index)),2.0)+pow((*(y+block_index)),2.0), 0.5);
                 x1=atan2((*(x+block_index)), (*(y+block_index)));
@@ -1907,9 +1923,23 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
                 
                 //pow(pow( ph_x, 2.0) + pow(ph_y, 2.0),0.5)      atan2(ph_x, ph_y)
                 is_in_block= (2*fabs(pow(pow( ph_x, 2.0) + pow(ph_y, 2.0),0.5) - x0)- sz_x0 <= 0) && (2*fabs(atan2(ph_x, ph_y) - x1 ) - sz_x1 <= 0);
+
             }
+            #else
+            {
+                x0=(*(x+block_index));
+                x1=(*(y+block_index));
+                
+                sz_x0=(*(szx+block_index));
+                sz_x1=(*(szy+block_index));
+                
+                is_in_block= (2*fabs(ph_x-x0)-sz_x0 <= 0) && (2*fabs(ph_y-x1)-sz_x1 <= 0);
+
+            }
+            #endif
             
         }
+        #endif
         /*
         else
         {
@@ -1944,7 +1974,7 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
 }
 
 int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
-                                   double *temp, double *all_time_steps, int *sorted_indexes, gsl_rng * rand, int find_nearest_block_switch, int riken_switch, FILE *fPtr)
+                                   double *temp, double *all_time_steps, int *sorted_indexes, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)
 {
     
     int i=0, min_index=0, ph_block_index=0;
@@ -1997,27 +2027,29 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             ph_block_index=0; //if starting a new frame set index=0 to avoid this issue
         }
         
-        if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+        //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+        #if DIMENSIONS == 2
         {
             ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to FLASH x coordinate
             ph_y=((ph+i)->r2);
             ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
             ph_r=pow(ph_x*ph_x + ph_y*ph_y, 0.5);
         }
-        else
+        #else
         {
             ph_x=((ph+i)->r0);
             ph_y=((ph+i)->r1);
             ph_z=((ph+i)->r2);
             ph_r=pow(ph_x*ph_x + ph_y*ph_y+ph_z*ph_z, 0.5);
         }
+        #endif
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         
         //if the location of the photon is less than the domain of the hydro simulation then do all of this, otherwise assing huge mfp value so no scattering occurs and the next frame is loaded
         if ((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x))
         {
         
-            is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  riken_switch);
+            is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy);
         
             if (find_nearest_block_switch==0 && is_in_block)
             {
@@ -2030,7 +2062,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
             
                 //find the new index of the block that the photon is actually in
-                min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch,  riken_switch, fPtr);
+                min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, fPtr);
                 if (min_index != -1)
                 {
                     (ph+i)->nearest_block_index=min_index; //save the index if min_index != -1
@@ -2041,18 +2073,20 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                     ph_p[2]=((ph+i)->p2);
                     ph_p[3]=((ph+i)->p3);
                     
-                    if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+                    //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+                    #if DIMENSIONS == 2
                     {
                         fluid_beta[0]=(*(velx+min_index))*cos(ph_phi);
                         fluid_beta[1]=(*(velx+min_index))*sin(ph_phi);
                         fluid_beta[2]=(*(vely+min_index));
                     }
-                    else
+                    #else
                     {
                         fluid_beta[0]=(*(velx+min_index));
                         fluid_beta[1]=(*(vely+min_index));
                         fluid_beta[2]=(*(velz+min_index));
                     }
+                    #endif
                     
                     lorentzBoost(&fluid_beta, &ph_p, &ph_p_comv, 'p', fPtr);
                     
@@ -2079,38 +2113,44 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 (n_vx_tmp)= (*(velx+min_index));
                 (n_vy_tmp)= (*(vely+min_index));
                 (n_temp_tmp)= (*(temp+min_index));
-                if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+                //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+                #if DIMENSIONS == 3
                 {
                     (n_vz_tmp)= (*(velz+min_index));
                 }
+                #endif
         
-                if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+                //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+                #if DIMENSIONS == 2
                 {
                     fl_v_x=(*(velx+min_index))*cos(ph_phi);
                     fl_v_y=(*(velx+min_index))*sin(ph_phi);
                     fl_v_z=(*(vely+min_index));
                 }
-                else
+                #else
                 {
                     fl_v_x=(*(velx+min_index));
                     fl_v_y=(*(vely+min_index));
                     fl_v_z=(*(velz+min_index));
                 }
-        
+                #endif
+                
                 fl_v_norm=pow(pow(fl_v_x, 2.0)+pow(fl_v_y, 2.0)+pow(fl_v_z, 2.0), 0.5);
                 ph_v_norm=pow(pow(((ph+i)->p1), 2.0)+pow(((ph+i)->p2), 2.0)+pow(((ph+i)->p3), 2.0), 0.5);
         
                 //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
                 (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
         
-                if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+                //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+                #if DIMENSIONS == 2
                 {
                     beta=pow((n_vx_tmp*n_vx_tmp)+(n_vy_tmp*n_vy_tmp),0.5);
                 }
-                else
+                #else
                 {
                     beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)+pow((n_vz_tmp),2)),0.5);
                 }
+                #endif
                 //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
                 rnd_tracker=0;
         
@@ -2215,7 +2255,7 @@ int compare2 ( const void *a, const void *b, void *ar)
 }
 
 int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
-                                   double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int find_nearest_block_switch, int riken_switch, FILE *fPtr)
+                                   double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)
 {
     /*
      * THIS FUNCTION IS WRITTEN JUST FOR 2D SIMS AS OF NOW 
@@ -2271,23 +2311,25 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             ph_block_index=0; //if starting a new frame set index=0 to avoid this issue
         }
         
-        if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+        //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+        #if DIMENSIONS == 2
         {
             ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to FLASH x coordinate
             ph_y=((ph+i)->r2);
             ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
             
         }
-        else
+        #else
         {
             ph_x=((ph+i)->r0);
             ph_y=((ph+i)->r1);
             ph_z=((ph+i)->r2);
             
         }
+        #endif
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         
-        is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy,  riken_switch);
+        is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy);
         
         if (find_nearest_block_switch==0 && is_in_block)
         {
@@ -2300,7 +2342,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
             
             //find the new index of the block that the photon is actually in
-            min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch,  riken_switch, fPtr);
+            min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, fPtr);
             
             (ph+i)->nearest_block_index=min_index; //save the index
             
@@ -2313,14 +2355,16 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         bottom_dist_min=1e15;
         for (j=0;j<array_num;j++)
         {
-            if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+            //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+            #if DIMENSIONS == 2
             {
                 dist= pow(pow((*(x+min_index))- (*(x+j)), 2.0) + pow((*(y+min_index))- (*(y+j)) , 2.0),0.5);
             }
-            else 
+            #else
             {
                 dist= pow(pow((*(x+min_index))- (*(x+j)), 2.0) + pow((*(y+min_index))- (*(y+j)),2.0 ) + pow((*(z+min_index))- (*(z+j)) , 2.0),0.5);
             }
+            #endif
             
             if ((*(x+j))<(*(x+min_index)) && (dist < left_dist_min) )
             {
@@ -2360,17 +2404,21 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             
         for (j=0;j<4;j++)
         {
-             if (riken_switch==0)
-            {
-                //using FLASH
-                dv=2.0*M_PI*(*(x+all_adjacent_block_indexes[j]))*pow(*(szx+all_adjacent_block_indexes[j]),2.0)  ; 
-            }
-            else
+            
+            #if SIM_SWITCH == RIKEN
             {
                 r=pow(pow((*(x+all_adjacent_block_indexes[j])),2.0)+pow((*(y+all_adjacent_block_indexes[j])),2.0), 0.5);
                 theta=atan2((*(x+all_adjacent_block_indexes[j])), (*(y+all_adjacent_block_indexes[j])));
-                dv=2.0*M_PI*pow(r,2)*sin(theta)*(*(szx+all_adjacent_block_indexes[j]))*(*(szy+all_adjacent_block_indexes[j])) ; 
+                dv=2.0*M_PI*pow(r,2)*sin(theta)*(*(szx+all_adjacent_block_indexes[j]))*(*(szy+all_adjacent_block_indexes[j])) ;
             }
+            #else
+            {
+                //using FLASH
+                dv=2.0*M_PI*(*(x+all_adjacent_block_indexes[j]))*pow(*(szx+all_adjacent_block_indexes[j]),2.0)  ;
+
+            }
+            #endif
+            
             v+=dv;
             
             //save values
@@ -2378,10 +2426,13 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             (n_vx_tmp)+= (*(velx+all_adjacent_block_indexes[j]))*dv;
             (n_vy_tmp)+= (*(vely+all_adjacent_block_indexes[j]))*dv;
             (n_temp_tmp)+= (*(temp+all_adjacent_block_indexes[j]))*dv;
-            if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+            
+            //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+            #if DIMENSIONS == 3
             {
                 (n_vz_tmp)+= (*(velz+all_adjacent_block_indexes[j]))*dv;
             }
+            #endif
             
         }
         
@@ -2393,23 +2444,27 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         (n_vx_tmp)/= v;
         (n_vy_tmp)/= v;
         (n_temp_tmp)/= v;
-        if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+        //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+        #if DIMENSIONS == 3
         {
             (n_vz_tmp)/= v;
         }
+        #endif
         
-        if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+        //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+        #if DIMENSIONS == 2
         {
             fl_v_x=n_vx_tmp*cos(ph_phi);
             fl_v_y=n_vx_tmp*sin(ph_phi);
             fl_v_z=n_vy_tmp;
         }
-        else
+        #else
         {
             fl_v_x=n_vx_tmp;
             fl_v_y=n_vy_tmp;
             fl_v_z=n_vz_tmp;
         }
+        #endif
         
         fl_v_norm=pow(pow(fl_v_x, 2.0)+pow(fl_v_y, 2.0)+pow(fl_v_z, 2.0), 0.5);
         ph_v_norm=pow(pow(((ph+i)->p1), 2.0)+pow(((ph+i)->p2), 2.0)+pow(((ph+i)->p3), 2.0), 0.5);
@@ -2417,14 +2472,16 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
         (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
         
-        if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+        //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+        #if DIMENSIONS == 2
         {
             beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)),0.5);
         }
-        else
+        #else
         {
             beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)+pow((n_vz_tmp),2)),0.5);
         }
+        #endif
         //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
         rnd_tracker=0;
         
@@ -2440,10 +2497,13 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             n_dens_lab_min= n_dens_lab_tmp;
             n_vx_min= n_vx_tmp;
             n_vy_min= n_vy_tmp;
-            if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+            //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+            #if DIMENSIONS == 3
             {
                 n_vz_min= n_vz_tmp;
             }
+            #endif
+            
             n_temp_min= n_temp_tmp;
             index=i;
             //fprintf(fPtr, "Thread is %d. new min: %e for photon %d with block properties: %e, %e, %e Located at: %e, %e, Dist: %e\n", omp_get_thread_num(), mfp, index, n_vx_tmp, n_vy_tmp, n_temp_tmp, *(x+min_index), *(y+min_index), dist_min);
@@ -2464,10 +2524,13 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     *(n_dens_lab)= n_dens_lab_min;
     *(n_vx)= n_vx_min;
     *(n_vy)= n_vy_min;
-    if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+    //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+    #if DIMENSIONS == 3
     {
         *(n_vz)= n_vz_min;
     }
+    #endif
+    
     *(n_temp)= n_temp_min;
     (*time_step)=min_mfp/C_LIGHT;
     return index;
@@ -2679,11 +2742,12 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
             flash_vx=*(all_flash_vx+  index);
             flash_vy=*(all_flash_vy+  index);
             fluid_temp=*(all_fluid_temp+  index);
-            if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+            //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+            #if DIMENSIONS == 3
             {
                 flash_vz=*(all_flash_vz+  index);
             }
-    
+            #endif
     
             ph_phi=atan2(((ph+ph_index)->r1), (((ph+ph_index)->r0)));
             /*
@@ -2694,19 +2758,21 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
             //convert flash coordinated into MCRaT coordinates
             //printf("Getting fluid_beta\n");
     
-            if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+            //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+            #if DIMENSIONS == 2
             {
                 (*(fluid_beta+0))=flash_vx*cos(ph_phi);
                 (*(fluid_beta+1))=flash_vx*sin(ph_phi);
                 (*(fluid_beta+2))=flash_vy;
             }
-            else
+            #else
             {
                 (*(fluid_beta+0))=flash_vx;
                 (*(fluid_beta+1))=flash_vy;
                 (*(fluid_beta+2))=flash_vz;
             }
-    
+            #endif
+            
             /*
             fprintf(fPtr,"FLASH v: %e, %e\n", flash_vx,flash_vy);
             fflush(fPtr);
@@ -2753,10 +2819,13 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
             //fprintf(fPtr, "Theta: %e Phi %e Lab: x_tilde: %e, %e, %e, y_tilde: %e %e %e\n", theta, phi, *(x_tilde+0), *(x_tilde+1), *(x_tilde+2), *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
         
             //then rotate the stokes plane by some angle such that we are in the stokes coordinat eystsem after the lorentz boost
-            if (STOKES_SWITCH != 0)
+            //if (STOKES_SWITCH != 0)
+            #if STOKES_SWITCH == ON
             {
                 stokesRotation(fluid_beta, (ph_p+1), (ph_p_comov+1), s, fPtr);
             }
+            #endif
+            
             //exit(0);
             //second we generate a thermal electron at the correct temperature
             singleElectron(el_p_comov, fluid_temp, ph_p_comov, rand, fPtr);
@@ -2787,7 +2856,8 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
                 //fprintf(fPtr,"Scattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
                 //fflush(fPtr);
                 
-                if (STOKES_SWITCH != 0)
+                //if (STOKES_SWITCH != 0)
+                #if STOKES_SWITCH == ON
                 {
                     stokesRotation(negative_fluid_beta, (ph_p_comov+1), (ph_p+1), s, fPtr); //rotate to boost back to lab frame
                     
@@ -2797,6 +2867,7 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
                     ((ph+ph_index)->s2)= *(s+2);
                     ((ph+ph_index)->s3)= *(s+3);
                 }
+                #endif
             
                 if (((*(ph_p+0))*C_LIGHT/1.6e-9) > 1e4)
                 {
@@ -3035,13 +3106,15 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     //printf("New ph_p in electron rest frame: %e, %e, %e,%e\n", *(ph_p_prime+0), *(ph_p_prime+1), *(ph_p_prime+2), *(ph_p_prime+3));
     
     //rotate 'stokes plane'
-    if (STOKES_SWITCH != 0)
+    //if (STOKES_SWITCH != 0)
+    #if STOKES_SWITCH == ON
     {
         i=1;
         stokesRotation(el_v, (ph_comov+1), (ph_p_prime+1), s, fPtr);
         stokes=gsl_vector_view_array(s, 4);
         i=0;
     }
+    #endif
     
     //printf(fPtr, "y_tilde: %e, %e, %e\n", *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
     
@@ -3209,7 +3282,8 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
         
         //do the scattering of the stokes vector
         //rotate it by phi and then scatter it and rotate back and then renormalize it such that i=1
-        if (STOKES_SWITCH != 0)
+        //if (STOKES_SWITCH != 0)
+        #if STOKES_SWITCH == ON
         {
             //orient the stokes coordinate system such that its perpendicular to the scattering plane
             findXY(gsl_vector_ptr(ph_p_orig, 1),z_axis_electron_rest_frame, x_tilde, y_tilde);
@@ -3256,6 +3330,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
             //do the rotation
             mullerMatrixRotation(phi, s, fPtr);
         }
+        #endif
         
         //now update the array with the new scattered photon 4 monetum
         *(ph_p_prime+1)=gsl_vector_get(result0,0);
@@ -3275,10 +3350,12 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
         //printf("Undo boost 1: %e, %e, %e, %e\n",  *(ph_comov+0), *(ph_comov+1),  *(ph_comov+2),  *(ph_comov+3));
         
         //dont need to find stokes vector and do previosu rotations, can just find the stokes coordinates in function because the stokes coordinate vectors rotate with the photon vector and no rotations to a new stokes coordinate system are needed
-        if (STOKES_SWITCH != 0)
+        //if (STOKES_SWITCH != 0)
+        #if STOKES_SWITCH == ON
         {
             stokesRotation(negative_el_v, (ph_p_prime+1), (ph_comov+1), s, fPtr);
         }
+        #endif
         
         //exit(0);
     }
@@ -3355,22 +3432,8 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
         
         while ((phi_y_dum>f_phi_dum) )
         {
-            if (u!=0 && q!=0 && STOKES_SWITCH!=0)
-            {
-                //if we are considering polarization calulate the norm for the distributiion to be between 1 and 0
-                phi_max=abs(atan2(-u,q))/2.0;
-                norm=(f_theta_dum + pow(mu, -2.0)*pow(sin(*theta), 3.0) * (q*cos(2*phi_max)-u*sin(2*phi_max)));
-                //fprintf(fPtr,"norm: %e\n", norm);
-                //fflush(fPtr);
-                
-                phi_y_dum=gsl_rng_uniform(rand);
-                phi_dum=gsl_rng_uniform(rand)*2*M_PI;
-                f_phi_dum=(f_theta_dum + pow(mu, -2.0)*pow(sin(*theta), 3.0) * (q*cos(2*phi_dum)-u*sin(2*phi_dum)))/norm; //signs on q and u based on Lundman/ McMaster
-                
-                //fprintf(fPtr,"phi_y_dum: %e, theta_dum: %e, mu: %e, f_theta_dum: %e, phi_dum: %e, f_phi_dum: %e, u: %e, q: %e\n", phi_y_dum, theta_dum, mu, f_theta_dum, phi_dum, f_phi_dum, u, q);
-                //fflush(fPtr);
-            }
-            else
+            
+            #if STOKES_SWITCH == OFF
             {
                 //not considering polarization therefore can jjst sample between 0 and 2*pi evenly
                 phi_dum=gsl_rng_uniform(rand)*2*M_PI;
@@ -3378,7 +3441,27 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
                 
                 //fprintf(fPtr," phi_dum: %e\n", phi_dum);
                 //fflush(fPtr);
+
             }
+            #else
+            {
+                if (u!=0 && q!=0)
+                {
+                    //if we are considering polarization calulate the norm for the distributiion to be between 1 and 0
+                    phi_max=abs(atan2(-u,q))/2.0;
+                    norm=(f_theta_dum + pow(mu, -2.0)*pow(sin(*theta), 3.0) * (q*cos(2*phi_max)-u*sin(2*phi_max)));
+                    //fprintf(fPtr,"norm: %e\n", norm);
+                    //fflush(fPtr);
+                    
+                    phi_y_dum=gsl_rng_uniform(rand);
+                    phi_dum=gsl_rng_uniform(rand)*2*M_PI;
+                    f_phi_dum=(f_theta_dum + pow(mu, -2.0)*pow(sin(*theta), 3.0) * (q*cos(2*phi_dum)-u*sin(2*phi_dum)))/norm; //signs on q and u based on Lundman/ McMaster
+                    
+                    //fprintf(fPtr,"phi_y_dum: %e, theta_dum: %e, mu: %e, f_theta_dum: %e, phi_dum: %e, f_phi_dum: %e, u: %e, q: %e\n", phi_y_dum, theta_dum, mu, f_theta_dum, phi_dum, f_phi_dum, u, q);
+                    //fflush(fPtr);
+                }
+            }
+            #endif
             
         }
         *phi=phi_dum;
@@ -3543,7 +3626,7 @@ void structuredFireballPrep(double *r, double *theta,  double *x, double *y, dou
 }
 
 
-void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, int angle_id, int riken_switch, FILE *fPtr )
+void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, int angle_id, FILE *fPtr )
 {
     //function to merge files in mcdir produced by various threads
     double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *comv_p0=NULL, *comv_p1=NULL, *comv_p2=NULL, *comv_p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;
@@ -3560,18 +3643,21 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
     //#pragma omp parallel for num_threads(num_thread) firstprivate( filename_k, file_no_thread_num, cmd,mcdata_type,num_files, increment ) private(i,j,k)
     // i < last frame because calculation before this function gives last_frame as the first frame of the next process set of frames to merge files for
     
-    if ((COMV_SWITCH!=0) && (STOKES_SWITCH!=0))
+    //if ((COMV_SWITCH!=0) && (STOKES_SWITCH!=0))
+    #if COMV_SWITCH == ON && STOKES_SWITCH == ON
     {
         num_types=16;//both switches on, want to save comv and stokes
     }
-    else if ((COMV_SWITCH!=0) || (STOKES_SWITCH!=0))
+    //else if ((COMV_SWITCH!=0) || (STOKES_SWITCH!=0))
+    #elif COMV_SWITCH == ON || STOKES_SWITCH == ON
     {
         num_types=12;//either switch acivated, just subtract 4 datasets
     }
-    else
+    #else
     {
         num_types=8;//just save lab 4 momentum, position and num_scatt
     }
+    #endif
     
     
     
@@ -3580,10 +3666,12 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
         fprintf(fPtr, "Merging files for frame: %d\n", i);
         fflush(fPtr);
         
-        if ((riken_switch==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
+        #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+        if (i>=3000)
         {
             increment=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
         }
+        #endif
         
         j=0;
         for (k=0;k<numprocs;k++)
@@ -3637,7 +3725,8 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             
             for (k=0;k<num_types;k++)
             {
-                if ((COMV_SWITCH!=0) && (STOKES_SWITCH!=0))
+                //if ((COMV_SWITCH!=0) && (STOKES_SWITCH!=0))
+                #if COMV_SWITCH == ON && STOKES_SWITCH == ON
                 {
                     switch (k)
                     {
@@ -3659,7 +3748,8 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 15: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                     }
                 }
-                else if (STOKES_SWITCH!=0)
+                //else if (STOKES_SWITCH!=0)
+                #elif STOKES_SWITCH == ON && COMV_SWITCH == OFF
                 {
                     switch (k)
                     {
@@ -3677,7 +3767,8 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                     }
                 }
-                else if (COMV_SWITCH!=0)
+                //else if (COMV_SWITCH!=0)
+                #elif STOKES_SWITCH == OFF && COMV_SWITCH == ON
                 {
                     switch (k)
                     {
@@ -3695,7 +3786,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                     }
                 }
-                else
+                #else
                 {
                     switch (k)
                     {
@@ -3709,6 +3800,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                     }
                 }
+                #endif
             
                 //open the datatset
                 dset_p0 = H5Dopen (file_new, mcdata_type, H5P_DEFAULT); //open dataset
@@ -3773,23 +3865,31 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     dset_p1 = H5Dopen (group_id, "P1", H5P_DEFAULT);
                     dset_p2 = H5Dopen (group_id, "P2", H5P_DEFAULT);
                     dset_p3 = H5Dopen (group_id, "P3", H5P_DEFAULT);
-                    if (COMV_SWITCH!=0)
+                    
+                    //if (COMV_SWITCH!=0)
+                    #if COMV_SWITCH == ON
                     {
                         dset_comv_p0 = H5Dopen (group_id, "COMV_P0", H5P_DEFAULT); //open dataset
                         dset_comv_p1 = H5Dopen (group_id, "COMV_P1", H5P_DEFAULT);
                         dset_comv_p2 = H5Dopen (group_id, "COMV_P2", H5P_DEFAULT);
                         dset_comv_p3 = H5Dopen (group_id, "COMV_P3", H5P_DEFAULT);
                     }
+                    #endif
+                    
                     dset_r0 = H5Dopen (group_id, "R0", H5P_DEFAULT); 
                     dset_r1 = H5Dopen (group_id, "R1", H5P_DEFAULT);
                     dset_r2 = H5Dopen (group_id, "R2", H5P_DEFAULT);
-                    if (STOKES_SWITCH!=0)
+                    
+                    //if (STOKES_SWITCH!=0)
+                    #if STOKES_SWITCH == ON
                     {
                         dset_s0 = H5Dopen (group_id, "S0", H5P_DEFAULT);
                         dset_s1 = H5Dopen (group_id, "S1", H5P_DEFAULT);
                         dset_s2 = H5Dopen (group_id, "S2", H5P_DEFAULT);
                         dset_s3 = H5Dopen (group_id, "S3", H5P_DEFAULT);
                     }
+                    #endif
+                    
                     dset_num_scatt = H5Dopen (group_id, "NS", H5P_DEFAULT);
                 
                     //read the data in
@@ -3797,23 +3897,31 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     status = H5Dread(dset_p1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p1+j));
                     status = H5Dread(dset_p2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p2+j));
                     status = H5Dread(dset_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p3+j));
-                    if (COMV_SWITCH!=0)
+                    
+                    //if (COMV_SWITCH!=0)
+                    #if COMV_SWITCH == ON
                     {
                         status = H5Dread(dset_comv_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (comv_p0+j));
                         status = H5Dread(dset_comv_p1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (comv_p1+j));
                         status = H5Dread(dset_comv_p2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (comv_p2+j));
                         status = H5Dread(dset_comv_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (comv_p3+j));
                     }
+                    #endif
+                    
                     status = H5Dread(dset_r0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r0+j));
                     status = H5Dread(dset_r1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r1+j));
                     status = H5Dread(dset_r2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r2+j));
-                    if (STOKES_SWITCH!=0)
+                    
+                    //if (STOKES_SWITCH!=0)
+                    #if STOKES_SWITCH == ON
                     {
                         status = H5Dread(dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s0+j));
                         status = H5Dread(dset_s1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s1+j));
                         status = H5Dread(dset_s2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s2+j));
                         status = H5Dread(dset_s3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s3+j));
                     }
+                    #endif
+                    
                     status = H5Dread(dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (num_scatt+j));
                 
                     //get the number of points
@@ -3824,15 +3932,22 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                 
                     status = H5Sclose (dspace);
                     status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
-                    if (COMV_SWITCH!=0)
+                    //if (COMV_SWITCH!=0)
+                    #if COMV_SWITCH == ON
                     {
                         status = H5Dclose (dset_comv_p0); status = H5Dclose (dset_comv_p1); status = H5Dclose (dset_comv_p2); status = H5Dclose (dset_comv_p3);
                     }
+                    #endif
+                    
                     status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
-                    if (STOKES_SWITCH!=0)
+                    
+                    //if (STOKES_SWITCH!=0)
+                    #if STOKES_SWITCH == ON
                     {
                         status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
                     }
+                    #endif
+                    
                     status = H5Dclose (dset_num_scatt); 
                     status = H5Gclose(group_id);
                 }
@@ -3846,23 +3961,27 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             dset_p1=H5Dcreate2(file_new, "P1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_p2=H5Dcreate2(file_new, "P2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_p3=H5Dcreate2(file_new, "P3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            if (COMV_SWITCH!=0)
+            //if (COMV_SWITCH!=0)
+            #if COMV_SWITCH == ON
             {
                 dset_comv_p0=H5Dcreate2(file_new, "COMV_P0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
                 dset_comv_p1=H5Dcreate2(file_new, "COMV_P1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
                 dset_comv_p2=H5Dcreate2(file_new, "COMV_P2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
                 dset_comv_p3=H5Dcreate2(file_new, "COMV_P3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             }
+            #endif
             dset_r0=H5Dcreate2(file_new, "R0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_r1=H5Dcreate2(file_new, "R1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_r2=H5Dcreate2(file_new, "R2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            if (STOKES_SWITCH!=0)
+            //if (STOKES_SWITCH!=0)
+            #if STOKES_SWITCH == ON
             {
                 dset_s0=H5Dcreate2(file_new, "S0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
                 dset_s1=H5Dcreate2(file_new, "S1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
                 dset_s2=H5Dcreate2(file_new, "S2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
                 dset_s3=H5Dcreate2(file_new, "S3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             }
+            #endif
             dset_num_scatt=H5Dcreate2(file_new, "NS", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             
             //save the data in the new file
@@ -3878,7 +3997,8 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             status = H5Dwrite (dset_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, p3);
             
-            if (COMV_SWITCH!=0)
+            //if (COMV_SWITCH!=0)
+            #if COMV_SWITCH == ON
             {
                 status = H5Dwrite (dset_comv_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                                    H5P_DEFAULT, comv_p0);
@@ -3892,6 +4012,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                 status = H5Dwrite (dset_comv_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                                    H5P_DEFAULT, comv_p3);
             }
+            #endif
                         
             status = H5Dwrite (dset_r0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, r0);
@@ -3902,7 +4023,8 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             status = H5Dwrite (dset_r2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, r2);
             
-            if (STOKES_SWITCH!=0)
+            //if (STOKES_SWITCH!=0)
+            #if STOKES_SWITCH == ON
             {
                 status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                                 H5P_DEFAULT, s0);
@@ -3916,21 +4038,26 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                 status = H5Dwrite (dset_s3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                                 H5P_DEFAULT, s3);
             }
+            #endif
                         
             status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, num_scatt);
         
             status = H5Sclose (dspace);
             status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
-            if (COMV_SWITCH!=0)
+            //if (COMV_SWITCH!=0)
+            #if COMV_SWITCH == ON
             {
                 status = H5Dclose (dset_comv_p0); status = H5Dclose (dset_comv_p1); status = H5Dclose (dset_comv_p2); status = H5Dclose (dset_comv_p3);
             }
+            #endif
             status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
-            if (STOKES_SWITCH!=0)
+            //if (STOKES_SWITCH!=0)
+            #if STOKES_SWITCH == ON
             {
                 status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
             }
+            #endif
             status = H5Dclose (dset_num_scatt); 
             status = H5Fclose (file_new);
         
@@ -4017,20 +4144,22 @@ void modifyFlashName(char flash_file[200], char prefix[200], int frame)
 {
     int lim1=0, lim2=0, lim3=0;
     
-    if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+    //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+    #if DIMENSIONS == 2
     {
         //2D case
         lim1=10;
         lim2=100;
         lim3=1000;
     }
-    else
+    #else
     {
         //3d case
         lim1=100;
         lim2=1000;
         lim3=10000;
     }
+    #endif
     
     if (frame<lim1)
     {

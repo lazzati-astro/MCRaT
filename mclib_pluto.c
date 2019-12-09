@@ -26,8 +26,6 @@
 #include "mclib_pluto.h"
 #include <omp.h>
 
-#define PROC_IDX_SIZE 4
-
 void readPlutoChombo( char pluto_file[200], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
 double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr)
 {
@@ -76,7 +74,7 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
     status = H5Aclose (attr);
     status = H5Gclose (group);
     
-    printf("readPlutoChombo spacedim: %d\n", num_dims);
+    //printf("readPlutoChombo spacedim: %d\n", num_dims);
 
     
     //2. get the number of levels
@@ -84,7 +82,7 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
     status = H5Aread (attr, H5T_NATIVE_INT, &num_levels);
     
     status = H5Aclose (attr);
-    printf("readPlutoChombo num_levels: %d\n", num_levels);
+    //printf("readPlutoChombo num_levels: %d\n", num_levels);
     
     dombeg1=malloc(num_levels*sizeof(double));
     dombeg2=malloc(num_levels*sizeof(double));
@@ -99,13 +97,13 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
     status = H5Aread (attr, H5T_NATIVE_INT, &num_vars);
     
     status = H5Aclose (attr);
-    printf("readPlutoChombo num_vars: %d\n", num_vars);
+    //printf("readPlutoChombo num_vars: %d\n", num_vars);
     
     //get the total number of values that I need to allocate memory for
     for (i=0;i<num_levels;i++)
     {
         snprintf(level, sizeof(level), "level_%d", i);
-        printf("Opening level %d Boxes\n", i);
+        //printf("Opening level %d Boxes\n", i);
         
         group = H5Gopen(file, level, H5P_DEFAULT);
         
@@ -122,7 +120,7 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
         H5Dclose(dset);
         H5Gclose(group);
     }
-    printf("The total number of elements is %d\n", total_size);
+    //printf("The total number of elements is %d\n", total_size);
     
     //now allocate space to save data
     all_data=malloc(total_size*sizeof (double));
@@ -144,7 +142,7 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
     for (i=0;i<num_levels;i++)
     {
         snprintf(level, sizeof(level), "level_%d", i);
-        printf("Opening level %d Boxes\n", i);
+        //printf("Opening level %d Boxes\n", i);
         
         group = H5Gopen(file, level, H5P_DEFAULT);
         
@@ -152,7 +150,7 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
         dset= H5Dopen(group, "data:datatype=0", H5P_DEFAULT);
         status = H5Dread (dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,(all_data+offset));
         H5Dclose(dset);
-        printf("First few data %e %e %e Last few data %e %e\n", *(all_data+offset), *(all_data+offset+1), *(all_data+offset+2), *(all_data+offset+(*(level_dims+i))-2), *(all_data+offset+(*(level_dims+i))-1));
+        //printf("First few data %e %e %e Last few data %e %e\n", *(all_data+offset), *(all_data+offset+1), *(all_data+offset+2), *(all_data+offset+(*(level_dims+i))-2), *(all_data+offset+(*(level_dims+i))-1));
         
         //read in the box offsets in all_data
         dset= H5Dopen(group, "data:offsets=0", H5P_DEFAULT);
@@ -169,22 +167,22 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
         attr = H5Aopen (group, "prob_domain", H5P_DEFAULT);
         status = H5Aread (attr, box_dtype, &prob_domain);
         status = H5Aclose (attr);
-        printf("Prob_domain %d %d %d %d\n", prob_domain->lo_i, prob_domain->lo_j, prob_domain->hi_i, prob_domain->hi_j);
+        //printf("Prob_domain %d %d %d %d\n", prob_domain->lo_i, prob_domain->lo_j, prob_domain->hi_i, prob_domain->hi_j);
                
         attr = H5Aopen (group, "dx", H5P_DEFAULT);
         status = H5Aread (attr, H5T_NATIVE_DOUBLE, (dx+i));
         status = H5Aclose (attr);
-        printf("dx %e\n", *(dx+i));
+        //printf("dx %e\n", *(dx+i));
         
         attr = H5Aopen (group, "logr", H5P_DEFAULT);
         status = H5Aread (attr, H5T_NATIVE_INT, &logr);
         status = H5Aclose (attr);
-        printf("logr %d\n", logr);
+        //printf("logr %d\n", logr);
         
         attr = H5Aopen (group, "domBeg1", H5P_DEFAULT);
         status = H5Aread (attr, H5T_NATIVE_DOUBLE, (dombeg1+i));
         status = H5Aclose (attr);
-        printf("dombeg1 %e\n", *(dombeg1+i));
+        //printf("dombeg1 %e\n", *(dombeg1+i));
         
         //set default just in case
         *(dombeg2+i)=0;
@@ -195,12 +193,12 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
             attr = H5Aopen (group, "g_x2stretch", H5P_DEFAULT);
             status = H5Aread (attr, H5T_NATIVE_DOUBLE, (g_x2stretch+i));
             status = H5Aclose (attr);
-            printf("g_x2stretch %e\n", *(g_x2stretch+i));
+            //printf("g_x2stretch %e\n", *(g_x2stretch+i));
             
             attr = H5Aopen (group, "domBeg2", H5P_DEFAULT);
             status = H5Aread (attr, H5T_NATIVE_DOUBLE, (dombeg2+i));
             status = H5Aclose (attr);
-            printf("dombeg2 %e\n", *(dombeg2+i));
+            //printf("dombeg2 %e\n", *(dombeg2+i));
 
         }
         else if (num_dims==3)
@@ -309,34 +307,35 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
                 }
             }
             /*
-                      // this was for testing, the actual nested loop is below
-                      if (i==2 && j==1)
+              // this was for testing, the actual nested loop is below
+              if (i==2 && j==dims[0]-1)
+              {
+                  
+                  r_count=0;
+                  for (k=0;k<1;k++)
+                  {
+                      //loop over the radii
+                      for (l=0; l<nby; l++)
                       {
-                          
-                          count=0;
-                          for (k=0;k<num_vars;k++)
+                          //loop over the angles
+                          for (m=0 ;m<nbx ;m++)
                           {
-                              //loop over the radii
-                              for (l=0; l<nby; l++)
-                              {
-                                  //loop over the angles
-                                  for (m=0 ;m<nbx ;m++)
-                                  {
-                                      printf("count: %d idx: %d all_data val: %0.8e r: %e theta %e\n", (*(box_offset+j))+count, (*(box_offset+j))+k*nbx*nby + l*nby +m, *(all_data+offset+(*(box_offset+j))+ k*nbx*nby + l*nbx +m  ), *(radii+box_data[j].lo_i+m), *(angles+box_data[j].lo_j+l));
-                                      count++;
-                                  }
-                                  printf("\n");
-                              }
-                              printf("\n");
-                          }
-                          
-                          for (k=0;k<64;k++)
-                          {
-                              printf("r: %e, theta %e dens data: %e\n",*(r_buffer+ (offset+(*(box_offset+j)))/num_vars+k), *(theta_buffer+ (offset+(*(box_offset+j)))/num_vars +k), *(dens_buffer+ (offset+(*(box_offset+j)))/num_vars +k) );
+                              printf("count: %d idx: %d all_data val: %0.8e r: %e theta %e\n", (*(box_offset+j))+r_count, (*(box_offset+j))+k*nbx*nby + l*nby +m, *(all_data+offset+(*(box_offset+j))+ k*nbx*nby + l*nbx +m  ), *(radii+box_data[j].lo_i+m), *(angles+box_data[j].lo_j+l));
+                              r_count++;
                           }
                           printf("\n");
                       }
-            */
+                      printf("\n");
+                  }
+                  
+                  for (k=0;k<64;k++)
+                  {
+                      printf("r: %e, theta %e dens data: %e\n",*(x1_buffer+ (offset+(*(box_offset+j)))/num_vars+k), *(x2_buffer+ (offset+(*(box_offset+j)))/num_vars +k), *(dens_buffer+ (offset+(*(box_offset+j)))/num_vars +k) );
+                  }
+                  printf("\n");
+                   
+              }
+        */
             
              
         }
@@ -382,10 +381,10 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
                 }
             }
         }
-        printf( "r_count: %d\n", r_count);
+        //printf( "r_count: %d\n", r_count);
     }
-    //fprintf(fPtr, "Elem factor: %d Ph_rmin: %e rmax: %e Chosen FLASH min_r: %e max_r: %e min_theta: %e degrees max_theta: %e degrees\n", elem_factor, ph_rmin, ph_rmax, ph_rmin - (elem_factor*C_LIGHT/fps), ph_rmax + (elem_factor*C_LIGHT/fps), ph_thetamin*180/M_PI, ph_thetamax*180/M_PI);
-    //fflush(fPtr);
+    fprintf(fPtr, "Elem factor: %d Ph_rmin: %e rmax: %e Chosen FLASH min_r: %e max_r: %e min_theta: %e degrees max_theta: %e degrees\n", elem_factor, ph_rmin, ph_rmax, ph_rmin - (elem_factor*C_LIGHT/fps), ph_rmax + (elem_factor*C_LIGHT/fps), ph_thetamin*180/M_PI, ph_thetamax*180/M_PI);
+    fflush(fPtr);
 
     
     //allocate memory to hold processed data
@@ -472,20 +471,22 @@ void modifyPlutoName(char file[200], char prefix[200], int frame)
 {
     int lim1=0, lim2=0, lim3=0;
     
-    if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+    //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+    #if DIMENSIONS == 2
     {
         //2D case
         lim1=10;
         lim2=100;
         lim3=1000;
     }
-    else
+    #else
     {
         //3d case
         lim1=100;
         lim2=1000;
         lim3=10000;
     }
+    #endif
     
     if (frame<lim1)
     {
