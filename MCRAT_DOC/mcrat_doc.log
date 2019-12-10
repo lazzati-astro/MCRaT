@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex 2018.8.22)  25 JUN 2019 08:50
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex 2018.8.22)  9 DEC 2019 21:44
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -426,64 +426,64 @@ File: omscmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
 LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <12> not available
 (Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 34.
 
-[2]
-Overfull \hbox (1.9659pt too wide) in paragraph at lines 59--60
+[2] [3]
+Overfull \hbox (1.9659pt too wide) in paragraph at lines 60--61
 \OT1/cmr/m/n/12 to tell it whether they want to con-sider the ef-fects of po-la
 r-iza-tion, with the \OT1/cmtt/m/n/12 STOKES[]SWITCH\OT1/cmr/m/n/12 ,
  []
 
-[3]
-Underfull \hbox (badness 10000) in paragraph at lines 65--66
+
+Underfull \hbox (badness 10000) in paragraph at lines 100--101
 
  []
 
 
-Overfull \hbox (17.62482pt too wide) in paragraph at lines 87--88
+Overfull \hbox (17.62482pt too wide) in paragraph at lines 122--123
 [][] 
  []
 
-[4] [5]
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-[6]
-Overfull \hbox (4.22931pt too wide) in paragraph at lines 150--151
+[4] [5] [6] [7]
+Overfull \hbox (4.22931pt too wide) in paragraph at lines 185--186
 \OT1/cmtt/m/n/12 dir[]with[]MCRaT[]parameter[]file/angle[]dir/mc[]output[]* |gr
 ep "completed" |wc -l
  []
 
-[7] [8]
-Underfull \hbox (badness 10000) in paragraph at lines 169--170
+[8]
+Underfull \hbox (badness 10000) in paragraph at lines 204--205
 
  []
 
-[9] [10] [11]
-Overfull \hbox (31.56396pt too wide) in paragraph at lines 239--240
+[9] [10] [11] [12]
+Overfull \hbox (31.56396pt too wide) in paragraph at lines 274--275
 \OT1/cmr/m/n/12 Each MCRaT MPI pro-cess out-puts 3 files. These files are named
  \OT1/cmtt/m/n/12 mc[]proc[]$\OML/cmm/m/it/12 i$\OT1/cmtt/m/n/12 .h5\OT1/cmr/m/
 n/12 , \OT1/cmtt/m/n/12 mc[]chkpt[]$\OML/cmm/m/it/12 i$\OT1/cmtt/m/n/12 .dat\OT
 1/cmr/m/n/12 ,
  []
 
-[12] [13] [14] [15]
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 342.
- [16]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 342.
+[13]
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+[14] [15] [16]
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 377.
+ [17]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 377.
  (./mcrat_doc.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 342.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 342.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 377.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 377.
 Package rerunfilecheck Info: File `mcrat_doc.out' has not changed.
-(rerunfilecheck)             Checksum: B11AF192CC7B48683576B10AB4A65CF4;1423.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 342.
+(rerunfilecheck)             Checksum: 564F8E379D2A521A5AB7F07BAE030C2E;1499.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 377.
  ) 
 Here is how much of TeX's memory you used:
- 6627 strings out of 492642
- 95420 string characters out of 6129384
- 200376 words of memory out of 5000000
- 10395 multiletter control sequences out of 15000+600000
+ 6630 strings out of 492642
+ 95459 string characters out of 6129384
+ 205376 words of memory out of 5000000
+ 10396 multiletter control sequences out of 15000+600000
  12919 words of font info for 50 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 28i,12n,28p,1938b,328s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 28i,12n,28p,1938b,382s stack positions out of 5000i,500n,10000p,200000b,80000s
 </usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb
 ></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb>
 </usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb><
@@ -497,10 +497,10 @@ xlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texl
 ive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texliv
 e/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/local/texlive
 /2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb>
-Output written on mcrat_doc.pdf (16 pages, 202157 bytes).
+Output written on mcrat_doc.pdf (17 pages, 206713 bytes).
 PDF statistics:
- 256 PDF objects out of 1000 (max. 8388607)
- 222 compressed objects within 3 object streams
- 41 named destinations out of 1000 (max. 500000)
- 169 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 266 PDF objects out of 1000 (max. 8388607)
+ 231 compressed objects within 3 object streams
+ 43 named destinations out of 1000 (max. 500000)
+ 177 words of extra memory for PDF output out of 10000 (max. 10000000)
 
