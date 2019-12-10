@@ -3100,7 +3100,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     double *el_p_prime=malloc(4*sizeof(double));
     double phi0=0, phi1=0, phi=0, theta=0;
     double y_dum, f_x_dum, x_dum;
-    double x_tilde[3]={0,0,0}, y_tilde[3]={0,0,0}, x_tilde_new[3]={0,0,0}, y_tilde_new[3]={0,0,0}, z_hat={0,0,1};//initalize arrays to hold stokes coordinate system
+    double x_tilde[3]={0,0,0}, y_tilde[3]={0,0,0}, x_tilde_new[3]={0,0,0}, y_tilde_new[3]={0,0,0};//initalize arrays to hold stokes coordinate system
     gsl_matrix *rot0= gsl_matrix_calloc (3, 3); //create matricies thats 3x3 to do rotations
     gsl_matrix *rot1= gsl_matrix_calloc (3, 3);
     gsl_matrix *scatt= gsl_matrix_calloc (4, 4); //fano's matrix for scattering stokes parameters

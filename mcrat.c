@@ -746,7 +746,7 @@ int main(int argc, char **argv)
                     
                     fprintf(fPtr,">>\n");
                     fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Working on photons injected at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,frame, frm2);
-                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type %s - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, SIMULATION_TYPE, scatt_frame);
+                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type %d - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, SIMULATION_TYPE, scatt_frame);
                     fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Opening file...\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     fflush(fPtr);
                     
