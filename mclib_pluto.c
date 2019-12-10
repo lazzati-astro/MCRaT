@@ -23,7 +23,7 @@
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_sf_bessel.h>
 #include "mclib.h"
-#include "mclib_pluto.h"
+
 #include <omp.h>
 
 void readPlutoChombo( char pluto_file[200], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
@@ -243,7 +243,7 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
                 *(radii+j)=(*(dombeg1+i)) * 0.5 * (exp((*(dx+i)) * (prob_domain->lo_i + j + 1)) + exp((*(dx+i)) * (prob_domain->lo_i + j))   );
                 *(dradii+j)=(*(dombeg1+i)) * (exp((*(dx+i)) * (prob_domain->lo_i + j + 1)) - exp((*(dx+i)) * (prob_domain->lo_i + j))   );
             }
-            //printf("radii: %0.8e\n", *(radii+j));
+            //if (i==2) printf("radii: %0.8e dr: %0.8e\n", *(radii+j), *(dradii+j));
         }
         
         for (j=0;j<(prob_domain->hi_j - prob_domain->lo_j +1);j++)
@@ -284,10 +284,18 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
                         {
                             case 0:
                                 //when k is 0 save the radii, caus eonly need to do once and also save the densities
-                                *(x1_buffer+offset/num_vars+(*(box_offset+j))/num_vars+ l*nbx +m  )= (*(radii+box_data[j].lo_i+m))*1e9;
-                                *(x2_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx +m )=(*(angles+box_data[j].lo_j+l));
-                                *(dx1_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx +m)=(*(dradii+box_data[j].lo_i+m))*1e9;
-                                *(dx2_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx +m )=(*(dangles+box_data[j].lo_j+l));
+                                #if GEOMETRY == SPHERICAL
+                                    *(x1_buffer+offset/num_vars+(*(box_offset+j))/num_vars+ l*nbx +m  )= (*(radii+box_data[j].lo_i+m))*HYDRO_L_SCALE;
+                                    *(x2_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx +m )=(*(angles+box_data[j].lo_j+l));
+                                    *(dx1_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx +m)=(*(dradii+box_data[j].lo_i+m))*HYDRO_L_SCALE;
+                                    *(dx2_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx +m )=(*(dangles+box_data[j].lo_j+l));
+                                #elif GEOMETRY == CARTESIAN
+                                    *(x1_buffer+offset/num_vars+(*(box_offset+j))/num_vars+ l*nbx +m  )= (*(radii+box_data[j].lo_i+m))*HYDRO_L_SCALE;
+                                    *(x2_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx +m )=(*(angles+box_data[j].lo_j+l))*HYDRO_L_SCALE;
+                                    *(dx1_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx +m)=(*(dradii+box_data[j].lo_i+m))*HYDRO_L_SCALE;
+                                    *(dx2_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx +m )=(*(dangles+box_data[j].lo_j+l))*HYDRO_L_SCALE;
+                                #endif
+                                
                                 *(dens_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx +m)=(*(all_data+offset+(*(box_offset+j))+ k*nbx*nby + l*nbx +m  ));
                                 break;
                             case 1:
@@ -361,12 +369,20 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
         {
             if (ph_inj_switch==0)
             {
-                r_grid_innercorner = (*(x1_buffer+i)) - 0.5 * (*(dx1_buffer+i));
-                r_grid_outercorner = (*(x1_buffer+i)) + 0.5 * (*(dx1_buffer+i));
-                
-                theta_grid_innercorner = (*(x2_buffer+i)) - 0.5 * (*(dx2_buffer+i));
-                theta_grid_outercorner = (*(x2_buffer+i)) + 0.5 * (*(dx2_buffer+i));
-                
+                #if GEOMETRY == SPHERICAL
+                    r_grid_innercorner = (*(x1_buffer+i)) - 0.5 * (*(dx1_buffer+i));
+                    r_grid_outercorner = (*(x1_buffer+i)) + 0.5 * (*(dx1_buffer+i));
+                    
+                    theta_grid_innercorner = (*(x2_buffer+i)) - 0.5 * (*(dx2_buffer+i));
+                    theta_grid_outercorner = (*(x2_buffer+i)) + 0.5 * (*(dx2_buffer+i));
+                #elif GEOMETRY == CARTESIAN
+                    r_grid_innercorner = pow((*(x1_buffer+i) - *(dx1_buffer+i)/2.0) * ((*(x1_buffer+i) - *(dx1_buffer+i)/2.0))+(*(x2_buffer+i) - *(dx2_buffer+i)/2.0) * (*(x2_buffer+i) - *(dx2_buffer+i)/2.0),0.5);
+                    r_grid_outercorner = pow((*(x1_buffer+i) + *(dx1_buffer+i)/2.0) * ((*(x1_buffer+i) + *(dx1_buffer+i)/2.0))+(*(x2_buffer+i) + *(dx2_buffer+i)/2.0) * (*(x2_buffer+i) + *(dx2_buffer+i)/2.0),0.5);
+                    
+                    theta_grid_innercorner = acos( (*(x2_buffer+i) - *(dx2_buffer+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
+                    theta_grid_outercorner = acos( (*(x2_buffer+i) + *(dx2_buffer+i)/2.0) /r_grid_outercorner);
+                #endif
+                    
                 if (((ph_rmin - elem_factor*C_LIGHT/fps) <= r_grid_outercorner) && (r_grid_innercorner  <= (ph_rmax + elem_factor*C_LIGHT/fps) ) && (theta_grid_outercorner >= ph_thetamin) && (theta_grid_innercorner <= ph_thetamax) )
                 {
                     r_count++;
@@ -409,11 +425,19 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
     {
         if (ph_inj_switch==0)
         {
-           r_grid_innercorner = (*(x1_buffer+i)) - 0.5 * (*(dx1_buffer+i));
-           r_grid_outercorner = (*(x1_buffer+i)) + 0.5 * (*(dx1_buffer+i));
-           
-           theta_grid_innercorner = (*(x2_buffer+i)) - 0.5 * (*(dx2_buffer+i));
-           theta_grid_outercorner = (*(x2_buffer+i)) + 0.5 * (*(dx2_buffer+i));
+           #if GEOMETRY == SPHERICAL
+               r_grid_innercorner = (*(x1_buffer+i)) - 0.5 * (*(dx1_buffer+i));
+               r_grid_outercorner = (*(x1_buffer+i)) + 0.5 * (*(dx1_buffer+i));
+               
+               theta_grid_innercorner = (*(x2_buffer+i)) - 0.5 * (*(dx2_buffer+i));
+               theta_grid_outercorner = (*(x2_buffer+i)) + 0.5 * (*(dx2_buffer+i));
+           #elif GEOMETRY == CARTESIAN
+               r_grid_innercorner = pow((*(x1_buffer+i) - *(dx1_buffer+i)/2.0) * ((*(x1_buffer+i) - *(dx1_buffer+i)/2.0))+(*(x2_buffer+i) - *(dx2_buffer+i)/2.0) * (*(x2_buffer+i) - *(dx2_buffer+i)/2.0),0.5);
+               r_grid_outercorner = pow((*(x1_buffer+i) + *(dx1_buffer+i)/2.0) * ((*(x1_buffer+i) + *(dx1_buffer+i)/2.0))+(*(x2_buffer+i) + *(dx2_buffer+i)/2.0) * (*(x2_buffer+i) + *(dx2_buffer+i)/2.0),0.5);
+               
+               theta_grid_innercorner = acos( (*(x2_buffer+i) - *(dx2_buffer+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
+               theta_grid_outercorner = acos( (*(x2_buffer+i) + *(dx2_buffer+i)/2.0) /r_grid_outercorner);
+           #endif
             
             if (((ph_rmin - elem_factor*C_LIGHT/fps) <= r_grid_outercorner) && (r_grid_innercorner  <= (ph_rmax + elem_factor*C_LIGHT/fps) ) && (theta_grid_outercorner >= ph_thetamin) && (theta_grid_innercorner <= ph_thetamax))
             {
@@ -490,19 +514,19 @@ void modifyPlutoName(char file[200], char prefix[200], int frame)
     
     if (frame<lim1)
     {
-        snprintf(file,200, "%s%.3d%d.hdf5",prefix,000,frame);
+        snprintf(file,sizeof(file), "%s%.3d%d.hdf5",prefix,000,frame);
     }
     else if (frame<lim2)
     {
-        snprintf(file,200, "%s%.2d%d.hdf5",prefix,00,frame);
+        snprintf(file,sizeof(file), "%s%.2d%d.hdf5",prefix,00,frame);
     }
     else if (frame<lim3)
     {
-        snprintf(file,200, "%s%d%d.hdf5",prefix,0,frame);
+        snprintf(file,sizeof(file), "%s%d%d.hdf5",prefix,0,frame);
     }
     else
     {
-        snprintf(file,200, "%s%d.hdf5",prefix,frame);
+        snprintf(file,sizeof(file), "%s%d.hdf5",prefix,frame);
     }
 }
 

@@ -14,7 +14,7 @@
 #define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
 #define MC_PATH "KN_CMC_16TI/"
 */
- #define    THISRUN                 "Science"
+ #define    SIMULATION_TYPE         SCIENCE
  #define    FILEPATH                "/Users/parsotat/Downloads/"
  #define    FILEROOT                "data."
  #define    MC_PATH                 "PLUTO_MCRAT/"

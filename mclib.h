@@ -2,14 +2,20 @@
 #define ON 1
 #define OFF 0
 
-//define the codes for the different type sof simulations
+//define the codes for the different types of hydro simulations that we can use
 #define FLASH 0
 #define PLUTO_CHOMBO 1
 #define RIKEN 2 //need to replace this when done testing, just keeping it in the background for now and minimize its effect
 
+//define types of simulations that can be run
+#define SCIENCE 0
+#define CYLINDRICAL_OUTFLOW 1
+#define SPHERICAL_OUTFLOW 2
+#define STRUCTURED_SPHERICAL_OUTFLOW 3
 
-
-#include "mcrat_input.h"
+//define the geometries that we can handle
+#define CARTESIAN 0
+#define SPHERICAL 1
 
 
 extern const double C_LIGHT;
@@ -40,6 +46,11 @@ struct photon
     double weight; //each photon should have equal weight, sp this shouldnt matter, weight in mc.par file but across injections can have varying weights
     int nearest_block_index; //index that  allows for extraction of information of the hydro grid block closest to the photon
 } ; //structure to hold photon information
+
+#include "mcrat_input.h"
+
+#include "mclib_3d.h"
+#include "mclib_pluto.h"
 
 
 void printPhotons(struct photon *ph, int num_ph, int frame, int  frame_inj,char dir[200], int angle_rank, FILE *fPtr );

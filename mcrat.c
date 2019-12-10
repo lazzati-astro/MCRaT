@@ -50,8 +50,8 @@
 #include <math.h>
 #include <gsl/gsl_rng.h>
 #include "mclib.h"
-#include "mclib_3d.h"
-#include "mclib_pluto.h"
+//#include "mclib_3d.h"
+//#include "mclib_pluto.h"
 #include <omp.h>
 #include "mpi.h"
 
@@ -62,11 +62,6 @@ int main(int argc, char **argv)
 	// Define variables
 	char flash_prefix[200]="";
 	char mc_file[200]="" ;
-    char this_run[200]=THISRUN;
-    //char this_sim[200]=SIM_SWITCH;
-    char *cyl="Cylindrical";
-    char *sph="Spherical";
-    char *struct_sph="Structured Spherical";
     char spect;//type of spectrum
     char restrt;//restart or not
     double fps, fps_modified, theta_jmin, theta_jmax,hydro_domain_y, hydro_domain_x ;//frames per second of sim, min opening angle of jet, max opening angle of jet in radians, max y value in hydro domain
@@ -677,21 +672,25 @@ int main(int argc, char **argv)
                     #endif
                     
                     //check for run type
-                    if(strcmp(cyl, this_run)==0)
+                    //if(strcmp(cyl, this_run)==0)
+                    #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
                     {
                         //printf("In cylindrical prep\n");
                         cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
                     }
-                    else if (strcmp(sph, this_run)==0)
+                    //else if (strcmp(sph, this_run)==0)
+                    #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
                     {
                         //printf("In Spherical\n");
                         sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
                     }
-                    else if (strcmp(struct_sph, this_run)==0)
+                    //else if (strcmp(struct_sph, this_run)==0)
+                    #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
                     {
                         //printf("In Structural Spherical\n");
                         structuredFireballPrep(rPtr, thetaPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
                     }
+                    #endif
                         
                     //determine where to place photons and how many should go in a given place
                     //for a checkpoint implmentation, dont need to inject photons, need to load photons' last saved data 
@@ -747,7 +746,7 @@ int main(int argc, char **argv)
                     
                     fprintf(fPtr,">>\n");
                     fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Working on photons injected at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,frame, frm2);
-                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: %s - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, THISRUN, scatt_frame);
+                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type %s - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, SIMULATION_TYPE, scatt_frame);
                     fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Opening file...\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     fflush(fPtr);
                     
@@ -808,20 +807,24 @@ int main(int argc, char **argv)
                     
                     
                     //check for run type
-                    if(strcmp(cyl, this_run)==0)
+                    //if(strcmp(cyl, this_run)==0)
+                    #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
                     {
                         //printf("In cylindrical prep\n");
                         cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
                     }
-                    else if (strcmp(sph, this_run)==0)
+                    //else if (strcmp(sph, this_run)==0)
+                    #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
                     {
                         sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num, fPtr );
                     }
-                    else if (strcmp(struct_sph, this_run)==0)
+                    //else if (strcmp(struct_sph, this_run)==0)
+                    #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
                     {
                         //printf("In Structural Spherical\n");
                         structuredFireballPrep(rPtr, thetaPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
                     }
+                    #endif
                         //printf("The result of read and decimate are arrays with %d elements\n", array_num);
                         
                     fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph);

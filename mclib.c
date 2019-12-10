@@ -1465,7 +1465,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     double *l_boost=NULL; //pointer to hold array of lorentz boost, to lab frame, values
     float num_dens_coeff;
     double r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
-    double position_rand=0;
+    double position_rand=0, position2_rand=0;
     
     if (spect=='w') //from MCRAT paper, w for wien spectrum 
     {
@@ -1486,13 +1486,20 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     
     for(i=0;i<array_length;i++)
     {
-        
-        r_grid_innercorner = pow((*(x+i) - *(szx+i)/2.0) * ((*(x+i) - *(szx+i)/2.0))+(*(y+i) - *(szx+i)/2.0) * (*(y+i) - *(szx+i)/2.0),0.5);
-        r_grid_outercorner = pow((*(x+i) + *(szx+i)/2.0) * ((*(x+i) + *(szx+i)/2.0))+(*(y+i) + *(szx+i)/2.0) * (*(y+i) + *(szx+i)/2.0),0.5);
-        
-        theta_grid_innercorner = acos( (*(y+i) - *(szx+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
-        theta_grid_outercorner = acos( (*(y+i) + *(szx+i)/2.0) /r_grid_outercorner);
-        
+        #if GEOMETRY == CARTESIAN
+            r_grid_innercorner = pow((*(x+i) - *(szx+i)/2.0) * ((*(x+i) - *(szx+i)/2.0))+(*(y+i) - *(szy+i)/2.0) * (*(y+i) - *(szy+i)/2.0),0.5);
+            r_grid_outercorner = pow((*(x+i) + *(szx+i)/2.0) * ((*(x+i) + *(szx+i)/2.0))+(*(y+i) + *(szy+i)/2.0) * (*(y+i) + *(szy+i)/2.0),0.5);
+            
+            theta_grid_innercorner = acos( (*(y+i) - *(szx+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
+            theta_grid_outercorner = acos( (*(y+i) + *(szx+i)/2.0) /r_grid_outercorner);
+        #elif GEOMETRY == SPHERICAL
+            r_grid_innercorner = (*(r+i)) - 0.5 * (*(szx+i));
+            r_grid_outercorner = (*(r+i)) + 0.5 * (*(szx+i));
+            
+            theta_grid_innercorner = (*(theta+i)) - 0.5 * (*(szy+i));
+            theta_grid_outercorner = (*(theta+i)) + 0.5 * (*(szy+i));
+        #endif
+
         //look at all boxes in width delta r=c/fps and within angles we are interested in NEED TO IMPLEMENT
         //if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
         if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
@@ -1519,23 +1526,31 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
         {
             //printf("%d\n",i);
             //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
-            r_grid_innercorner = pow((*(x+i) - *(szx+i)/2.0) * ((*(x+i) - *(szx+i)/2.0))+(*(y+i) - *(szx+i)/2.0) * (*(y+i) - *(szx+i)/2.0),0.5);
-            r_grid_outercorner = pow((*(x+i) + *(szx+i)/2.0) * ((*(x+i) + *(szx+i)/2.0))+(*(y+i) + *(szx+i)/2.0) * (*(y+i) + *(szx+i)/2.0),0.5);
-            
-            theta_grid_innercorner = acos( (*(y+i) - *(szx+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
-            theta_grid_outercorner = acos( (*(y+i) + *(szx+i)/2.0) /r_grid_outercorner);
-            
+            #if GEOMETRY == CARTESIAN
+                r_grid_innercorner = pow((*(x+i) - *(szx+i)/2.0) * ((*(x+i) - *(szx+i)/2.0))+(*(y+i) - *(szy+i)/2.0) * (*(y+i) - *(szy+i)/2.0),0.5);
+                r_grid_outercorner = pow((*(x+i) + *(szx+i)/2.0) * ((*(x+i) + *(szx+i)/2.0))+(*(y+i) + *(szy+i)/2.0) * (*(y+i) + *(szy+i)/2.0),0.5);
+                
+                theta_grid_innercorner = acos( (*(y+i) - *(szx+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
+                theta_grid_outercorner = acos( (*(y+i) + *(szx+i)/2.0) /r_grid_outercorner);
+            #elif GEOMETRY == SPHERICAL
+                r_grid_innercorner = (*(r+i)) - 0.5 * (*(szx+i));
+                r_grid_outercorner = (*(r+i)) + 0.5 * (*(szx+i));
+                
+                theta_grid_innercorner = (*(theta+i)) - 0.5 * (*(szy+i));
+                theta_grid_outercorner = (*(theta+i)) + 0.5 * (*(szy+i));
+            #endif
+
             //if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
             if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
                 {
-                    #if SIM_SWITCH == RIKEN
+                    #if GEOMETRY == SPHERICAL
                     {
                         ph_dens_calc=(num_dens_coeff*2.0*M_PI*pow(*(r+i),2)*sin(*(theta+i))*pow(*(temps+i),3.0)*(*(szx+i))*(*(szy+i)) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1); //dV=2 *pi* r^2 Sin(theta) dr dtheta
                     }
                     #else
                     {
                         //using FLASH
-                        ph_dens_calc=(4.0/3.0)*(num_dens_coeff*2.0*M_PI*(*(x+i))*pow(*(temps+i),3.0)*pow(*(szx+i),2.0) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1) ; //a*T^3/(weight) dV, dV=2*PI*x*dx^2,
+                        ph_dens_calc=(4.0/3.0)*(num_dens_coeff*2.0*M_PI*(*(x+i))*pow(*(temps+i),3.0)**(szx+i))*(*(szy+i)) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1) ; //a*T^3/(weight) dV, dV=2*PI*x*dx^2,
                     }
                     #endif
                     
@@ -1581,11 +1596,19 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     k=0;
     for (i=0;i<array_length;i++)
     {
-        r_grid_innercorner = pow((*(x+i) - *(szx+i)/2.0) * ((*(x+i) - *(szx+i)/2.0))+(*(y+i) - *(szx+i)/2.0) * (*(y+i) - *(szx+i)/2.0),0.5);
-        r_grid_outercorner = pow((*(x+i) + *(szx+i)/2.0) * ((*(x+i) + *(szx+i)/2.0))+(*(y+i) + *(szx+i)/2.0) * (*(y+i) + *(szx+i)/2.0),0.5);
-        
-        theta_grid_innercorner = acos( (*(y+i) - *(szx+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
-        theta_grid_outercorner = acos( (*(y+i) + *(szx+i)/2.0) /r_grid_outercorner);
+        #if GEOMETRY == CARTESIAN
+            r_grid_innercorner = pow((*(x+i) - *(szx+i)/2.0) * ((*(x+i) - *(szx+i)/2.0))+(*(y+i) - *(szy+i)/2.0) * (*(y+i) - *(szy+i)/2.0),0.5);
+            r_grid_outercorner = pow((*(x+i) + *(szx+i)/2.0) * ((*(x+i) + *(szx+i)/2.0))+(*(y+i) + *(szy+i)/2.0) * (*(y+i) + *(szy+i)/2.0),0.5);
+            
+            theta_grid_innercorner = acos( (*(y+i) - *(szx+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
+            theta_grid_outercorner = acos( (*(y+i) + *(szx+i)/2.0) /r_grid_outercorner);
+        #elif GEOMETRY == SPHERICAL
+            r_grid_innercorner = (*(r+i)) - 0.5 * (*(szx+i));
+            r_grid_outercorner = (*(r+i)) + 0.5 * (*(szx+i));
+            
+            theta_grid_innercorner = (*(theta+i)) - 0.5 * (*(szy+i));
+            theta_grid_outercorner = (*(theta+i)) + 0.5 * (*(szy+i));
+        #endif
         
         //if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
         if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
@@ -1651,11 +1674,21 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                 (*ph)[ph_tot].comv_p3=(*(p_comv+3));
                 
                 //place photons in rand positions within fluid element
-                position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
-                (*ph)[ph_tot].r0= (*(x+i)+position_rand)*cos(position_phi); //put photons @ center of box that they are supposed to be in with random phi
-                (*ph)[ph_tot].r1=(*(x+i)+position_rand)*sin(position_phi) ;
-                position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0;
-                (*ph)[ph_tot].r2=(*(y+i)+position_rand); //y coordinate in flash becomes z coordinate in MCRaT
+                #if GEOMETRY == CARTESIAN
+                    position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
+                    (*ph)[ph_tot].r0= (*(x+i)+position_rand)*cos(position_phi); //put photons @ center of box that they are supposed to be in with random phi
+                    (*ph)[ph_tot].r1=(*(x+i)+position_rand)*sin(position_phi) ;
+                    position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0;
+                    (*ph)[ph_tot].r2=(*(y+i)+position_rand); //y coordinate in flash becomes z coordinate in MCRaT
+                #elif GEOMETRY == SPHERICAL
+                    position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
+                    position2_rand=gsl_rng_uniform_pos(rand)*(*(szy+i))-(*(szy+i))/2.0;
+                
+                    (*ph)[ph_tot].r0= (*(r+i)+position_rand)*sin(*(theta+i)+position2_rand)*cos(position_phi); //put photons @ center of box that they are supposed to be in with random phi
+                    (*ph)[ph_tot].r1=(*(r+i)+position_rand)*sin(*(theta+i)+position2_rand)*sin(position_phi) ;
+                    
+                    (*ph)[ph_tot].r2=(*(r+i)+position_rand)*cos(*(theta+i)+position2_rand); //y coordinate in flash becomes z coordinate in MCRaT
+                #endif
                 
                 (*ph)[ph_tot].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1 
                 (*ph)[ph_tot].s1=0;
@@ -1817,51 +1850,51 @@ int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, doubl
     double dist=0, dist_min=1e15, block_dist=0;
     int min_index=0, j=0;
     
-            dist_min=1e15;//set dist to impossible value to make sure at least first distance calulated is saved
-            block_dist=3e9;
-            while (dist_min==1e15) //if this is true, then the algorithm hasnt found blocks within the acceptable range given by block_dist
-            {
-                
-                for(j=0;j<array_num;j++)
+    dist_min=1e15;//set dist to impossible value to make sure at least first distance calulated is saved
+    block_dist=3e9;
+    while (dist_min==1e15) //if this is true, then the algorithm hasnt found blocks within the acceptable range given by block_dist
+    {
+        
+        for(j=0;j<array_num;j++)
+        {
+            //if the distance between them is within 3e9, to restrict number of possible calculations,  calulate the total distance between the box and photon
+            #if DIMENSIONS == 2
+                if ((fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
                 {
-                    //if the distance between them is within 3e9, to restrict number of possible calculations,  calulate the total distance between the box and photon
-                    #if DIMENSIONS == 2
-                        if ((fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
-                        {
-                            
-                            dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)) , 2.0),0.5);
-                            //fprintf(fPtr,"Dist calculated as: %e, index: %d\n", dist, j);
-                            //printf("In outer if statement, OLD: %e, %d\n", dist_min, min_index);
-                            
-                            if((dist<dist_min))
-                            {
-                                //fprintf(fPtr,"In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
-                                dist_min=dist; //save new minimum distance
-                                min_index=j; //save index
-                                //printf("New Min dist: %e, New min Index: %d, Array_Num: %d\n", dist_min, min_index, array_num);
-                                
-                            }
-                            
-                        }
-                    #elif DIMENSIONS == 3
-                        if ((fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist) && (fabs(ph_z- (*(z+j)))<block_dist))
-                        {
-                            dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)),2.0 ) + pow(ph_z- (*(z+j)) , 2.0),0.5);
-                            if((dist<dist_min))
-                            {
-                                //printf("In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
-                                dist_min=dist; //save new minimum distance
-                                min_index=j; //save index
-                                //fprintf(fPtr,"New Min dist: %e, New min Index: %d, Array_Num: %e\n", dist_min, min_index, array_num);
-                            }
-                        }
-                    #endif
+                    
+                    dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)) , 2.0),0.5);
+                    //fprintf(fPtr,"Dist calculated as: %e, index: %d\n", dist, j);
+                    //printf("In outer if statement, OLD: %e, %d\n", dist_min, min_index);
+                    
+                    if((dist<dist_min))
+                    {
+                        //fprintf(fPtr,"In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
+                        dist_min=dist; //save new minimum distance
+                        min_index=j; //save index
+                        //printf("New Min dist: %e, New min Index: %d, Array_Num: %d\n", dist_min, min_index, array_num);
+                        
+                    }
+                    
                 }
-                block_dist*=10; //increase size of accepted distances for gris points, if dist_min==1e12 then the next time the acceptance range wil be larger
-                
-            }
-            
-            return min_index;
+            #elif DIMENSIONS == 3
+                if ((fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist) && (fabs(ph_z- (*(z+j)))<block_dist))
+                {
+                    dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)),2.0 ) + pow(ph_z- (*(z+j)) , 2.0),0.5);
+                    if((dist<dist_min))
+                    {
+                        //printf("In innermost if statement, OLD: %e, %d\n", dist_min, min_index);
+                        dist_min=dist; //save new minimum distance
+                        min_index=j; //save index
+                        //fprintf(fPtr,"New Min dist: %e, New min Index: %d, Array_Num: %e\n", dist_min, min_index, array_num);
+                    }
+                }
+            #endif
+        }
+        block_dist*=10; //increase size of accepted distances for gris points, if dist_min==1e12 then the next time the acceptance range wil be larger
+        
+    }
+    
+    return min_index;
 }
 
 int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, FILE *fPtr)
@@ -1913,16 +1946,16 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
         #if DIMENSIONS == 2
         {
             
-            #if SIM_SWITCH == RIKEN
+            #if GEOMETRY == SPHERICAL
             {
-                x0=pow(pow((*(x+block_index)),2.0)+pow((*(y+block_index)),2.0), 0.5);
-                x1=atan2((*(x+block_index)), (*(y+block_index)));
+                x0=pow(pow((*(x+block_index)),2.0)+pow((*(y+block_index)),2.0), 0.5); //radius
+                x1=atan2((*(x+block_index)), (*(y+block_index))); //theta
                 
                 sz_x0=(*(szx+block_index));
                 sz_x1=(*(szy+block_index));
                 
                 //pow(pow( ph_x, 2.0) + pow(ph_y, 2.0),0.5)      atan2(ph_x, ph_y)
-                is_in_block= (2*fabs(pow(pow( ph_x, 2.0) + pow(ph_y, 2.0),0.5) - x0)- sz_x0 <= 0) && (2*fabs(atan2(ph_x, ph_y) - x1 ) - sz_x1 <= 0);
+                is_in_block= (2*fabs( ph_x - x0)- sz_x0 <= 0) && (2*fabs(ph_y - x1 ) - sz_x1 <= 0); //ph_x is ph_r for this geometry
 
             }
             #else
@@ -1934,7 +1967,6 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
                 sz_x1=(*(szy+block_index));
                 
                 is_in_block= (2*fabs(ph_x-x0)-sz_x0 <= 0) && (2*fabs(ph_y-x1)-sz_x1 <= 0);
-
             }
             #endif
             
@@ -1978,7 +2010,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
 {
     
     int i=0, min_index=0, ph_block_index=0;
-    double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, ph_r=0;
+    double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, ph_r=0, ph_theta=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
 
     double ph_v_norm=0, fl_v_norm=0;
@@ -2030,10 +2062,19 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
         #if DIMENSIONS == 2
         {
-            ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to FLASH x coordinate
-            ph_y=((ph+i)->r2);
-            ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
-            ph_r=pow(ph_x*ph_x + ph_y*ph_y, 0.5);
+            #if GEOMETRY == SPHERICAL
+                ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to 2d spherical coordinate
+                ph_y=((ph+i)->r2);
+                ph_r=pow(ph_x*ph_x + ph_y*ph_y, 0.5);
+                ph_theta=acos(ph_y/ph_r); //this is actually theta in this context
+                ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
+            #elif GEOMETRY == CARTESIAN
+                ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to FLASH x coordinate (2d cartesian hydro coordinates)
+                ph_y=((ph+i)->r2);
+                ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
+                ph_r=pow(ph_x*ph_x + ph_y*ph_y, 0.5);
+            #endif
+            
         }
         #else
         {
@@ -2048,8 +2089,11 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         //if the location of the photon is less than the domain of the hydro simulation then do all of this, otherwise assing huge mfp value so no scattering occurs and the next frame is loaded
         if ((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x))
         {
-        
-            is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy);
+            #if GEOMETRY == SPHERICAL
+                is_in_block=checkInBlock(ph_block_index,  ph_r,  ph_theta,  ph_z,  x,   y, z,  szx,  szy);
+            #elif GEOMETRY == CARTESIAN
+                is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy);
+            #endif
         
             if (find_nearest_block_switch==0 && is_in_block)
             {
@@ -2062,7 +2106,15 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
             
                 //find the new index of the block that the photon is actually in
-                min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, fPtr);
+                #if DIMENSIONS == 2
+                {
+                    #if GEOMETRY == SPHERICAL
+                        min_index=findContainingBlock(array_num,  ph_r,  ph_theta,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, fPtr);
+                    #elif GEOMETRY == CARTESIAN
+                        min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, fPtr);
+                    #endif
+                    }
+                #endif
                 if (min_index != -1)
                 {
                     (ph+i)->nearest_block_index=min_index; //save the index if min_index != -1
@@ -2258,7 +2310,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                                    double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)
 {
     /*
-     * THIS FUNCTION IS WRITTEN JUST FOR 2D SIMS AS OF NOW 
+     * THIS FUNCTION IS WRITTEN JUST FOR 2D SIMS AS OF NOW, not used
     */
     int i=0, j=0, min_index=0, ph_block_index=0;
     int left_block_index=0, right_block_index=0, bottom_block_index=0, top_block_index=0, all_adjacent_block_indexes[4];
@@ -4163,19 +4215,19 @@ void modifyFlashName(char flash_file[200], char prefix[200], int frame)
     
     if (frame<lim1)
     {
-        snprintf(flash_file,200, "%s%.3d%d",prefix,000,frame);
+        snprintf(flash_file,sizeof(flash_file), "%s%.3d%d",prefix,000,frame);
     }
     else if (frame<lim2)
     {
-        snprintf(flash_file,200, "%s%.2d%d",prefix,00,frame);
+        snprintf(flash_file,sizeof(flash_file), "%s%.2d%d",prefix,00,frame);
     }
     else if (frame<lim3)
     {
-        snprintf(flash_file,200, "%s%d%d",prefix,0,frame);
+        snprintf(flash_file,sizeof(flash_file), "%s%d%d",prefix,0,frame);
     }
     else
     {
-        snprintf(flash_file,200, "%s%d",prefix,frame);
+        snprintf(flash_file,sizeof(flash_file), "%s%d",prefix,frame);
     }
 }
 
