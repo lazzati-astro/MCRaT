@@ -1315,8 +1315,8 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
                 *(dens_unprc+count)=dens_buffer[i][j];
                 *(velx_unprc+count)=vel_x_buffer[i][j];
                 *(vely_unprc+count)=vel_y_buffer[i][j];
-                *(szx_unprc+count)=((block_sz_buffer[i][0])/8)*1e9; //divide by 8 for resolution, multiply by 1e9 to scale properly?
-                *(szy_unprc+count)=((block_sz_buffer[i][1])/8)*1e9;
+                *(szx_unprc+count)=((block_sz_buffer[i][0])/8)*HYDRO_L_SCALE; //divide by 8 for resolution, multiply by 1e9 to scale properly?
+                *(szy_unprc+count)=((block_sz_buffer[i][1])/8)*HYDRO_L_SCALE;
                 if (j%8==0)
                 {
                     x1_count=0;
@@ -1325,8 +1325,8 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
                 {
                     y1_count++;
                 }
-                *(x_unprc+count)=(coord_buffer[i][0]+block_sz_buffer[i][0]*x1[x1_count])*1e9;
-                *(y_unprc+count)=(coord_buffer[i][1]+block_sz_buffer[i][1]*x1[y1_count])*1e9;
+                *(x_unprc+count)=(coord_buffer[i][0]+block_sz_buffer[i][0]*x1[x1_count])*HYDRO_L_SCALE;
+                *(y_unprc+count)=(coord_buffer[i][1]+block_sz_buffer[i][1]*x1[y1_count])*HYDRO_L_SCALE;
 
                 //printf("%d,%d,%d,%d\n",count,j,x1_count,y1_count);
                 x1_count++;
