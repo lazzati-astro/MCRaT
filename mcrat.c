@@ -38,6 +38,9 @@
 *  version 7.0 used OpenMP to parallelize the code by angle and the function findminmfp()
  
  version 8.0 added 3D capabilities for RIKEN hydro data  and 2D capablities for RIKEN 2D hydro data and made it more efficient with grid selection to speed it up
+ 
+* Version 9.0 late 2017 included full Klein Nishina Cross Section and polarization with stokes parameters
+* Version 9.1 late 2018 including synchrotron absorption and emission
 */
 
 #include <stdio.h>
@@ -826,6 +829,8 @@ int main(int argc, char **argv)
                     }
                     #endif
                         //printf("The result of read and decimate are arrays with %d elements\n", array_num);
+                    
+                    //emit synchrotron photons here
                         
                     fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph);
                     fflush(fPtr);

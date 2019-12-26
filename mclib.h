@@ -22,12 +22,12 @@ extern const double C_LIGHT;
 extern const double A_RAD;
 extern const double PL_CONST;
 extern const double K_B;
-extern const double M_P
-extern const double THOM_X_SECT
-extern const double M_EL
-extern const double FINE_STRUCT
-extern const double CHARGE_EL
-extern const double R_EL
+extern const double M_P;
+extern const double THOM_X_SECT;
+extern const double M_EL;
+extern const double FINE_STRUCT;
+extern const double CHARGE_EL;
+extern const double R_EL;
 
 
 #define STR_BUFFER 2000
@@ -58,7 +58,7 @@ struct photon
 
 #include "mclib_3d.h"
 #include "mclib_pluto.h"
-
+#include "mc_synch.h"
 
 void printPhotons(struct photon *ph, int num_ph, int frame, int  frame_inj,char dir[200], int angle_rank, FILE *fPtr );
 
