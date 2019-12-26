@@ -23,6 +23,7 @@
 #include "mclib.h"
 #include <omp.h>
 #include "mpi.h"
+#include "mc_synch.h"
 
 #define PROP_DIM1 1
 #define PROP_DIM2 8
@@ -2005,7 +2006,7 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
     return return_val;
 }
 
-int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
+int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y, double epsilon_b, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
                                    double *temp, double *all_time_steps, int *sorted_indexes, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)
 {
     
@@ -2013,9 +2014,9 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, ph_r=0, ph_theta=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
 
-    double ph_v_norm=0, fl_v_norm=0;
-    double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
-    double rnd_tracker=0, n_dens_lab_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
+    double ph_v_norm=0, fl_v_norm=0, synch_x_sect=0;
+    double n_cosangle=0, n_dens_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
+    double rnd_tracker=0, n_dens_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
     int num_thread=omp_get_num_threads();
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
     
@@ -2023,6 +2024,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     double mfp=0,min_mfp=0, beta=0;
     double el_p[4];
     double ph_p_comv[4], ph_p[4], fluid_beta[3];
+
     
     //initialize gsl random number generator fo each thread
     
@@ -2046,7 +2048,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     //or just parallelize this part here
     
     min_mfp=1e12;
-    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
+    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
     for (i=0;i<num_ph; i++)
     {
         //printf("%d, %e,%e\n", i, ((ph+i)->r0), ((ph+i)->r1));
@@ -2162,9 +2164,11 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         
                 //save values
                 (n_dens_lab_tmp)= (*(dens_lab+min_index));
+                (n_dens_tmp)= (*(dens+min_index));
                 (n_vx_tmp)= (*(velx+min_index));
                 (n_vy_tmp)= (*(vely+min_index));
                 (n_temp_tmp)= (*(temp+min_index));
+                /*
                 //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
                 #if DIMENSIONS == 3
                 {
@@ -2203,13 +2207,28 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                     beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)+pow((n_vz_tmp),2)),0.5);
                 }
                 #endif
+                 */ //DO EVERYTHING IN COMOV FRAME NOW
+                *(ph_p+0)=((ph+i)->p0);
+                *(ph_p+1)=((ph+i)->p1);
+                *(ph_p+2)=((ph+i)->p2);
+                *(ph_p+3)=((ph+i)->p3);
+                
+                singleElectron(el_p, n_temp_tmp, ph_p, rand, fPtr); //get random electron
+                printf("after singleElectron n_temp_tmp %e from ptr %e n_dens_tmp %e from ptr %e\n", n_temp_tmp, (*(temp+min_index)), n_dens_tmp, (*(dens+min_index)));
+                
+                printf("Chosen el: p0 %e p1 %e p2 %e p3 %e\nph: p0 %e p1 %e p2 %e p3 %e\n", *(el_p+0), *(el_p+1), *(el_p+2), *(el_p+3), *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
+                
+                synch_x_sect=synCrossSection(n_dens_tmp/M_P, n_temp_tmp, *(ph_p+0)*C_LIGHT/PL_CONST, sqrt(((*(el_p+0))*(*(el_p+0))/(M_EL*M_EL*C_LIGHT*C_LIGHT))-1), epsilon_b);
+                printf("i: %d flash_array_idx %d synch_x_sect %e freq %e temp %e el_dens %e\n", i, min_index, synch_x_sect, *(ph_p+0)*C_LIGHT/PL_CONST, n_temp_tmp, n_dens_tmp/M_P);
+                
                 //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
                 rnd_tracker=0;
         
                 rnd_tracker=gsl_rng_uniform_pos(rng[omp_get_thread_num()]);
                 //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
         
-                mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths 
+
+                mfp=(-1)*log(rnd_tracker)*(M_P/((n_dens_tmp))/(THOM_X_SECT+synch_x_sect)); ///(1.0-beta*((n_cosangle)))) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths DO EVERYTHING IN COMOV FRAME NOW
             }
             else
             {
@@ -2224,7 +2243,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         
         *(all_time_steps+i)=mfp/C_LIGHT;
     }
-    
+    //exit(0);
     //free rand number generator
     for (i=1;i<num_thread;i++)
     {
@@ -2256,7 +2275,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     
     (*time_step)=*(all_time_steps+(*(sorted_indexes+0)));
     index= *(sorted_indexes+0);//first element of sorted array
-    
+    free(el_p);free(ph_p);
     return index;
     
 }

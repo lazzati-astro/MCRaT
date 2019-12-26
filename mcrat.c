@@ -831,6 +831,17 @@ int main(int argc, char **argv)
                         //printf("The result of read and decimate are arrays with %d elements\n", array_num);
                     
                     //emit synchrotron photons here
+                    if (scatt_frame != scatt_framestart)
+                    {
+                        printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0);
+                        
+                        fprintf(fPtr, "Emitting Synchrotron Photons\n", array_num);
+                        photonEmitSynch(&phPtr, &num_ph, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, 1, rng, RIKEN_SWITCH, fPtr);
+                        
+                        printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e (phPtr)[72].p0 %e (phPtr)[73].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0, (phPtr)[72].p0, (phPtr)[73].p0);
+                        
+                        
+                    }
                         
                     fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph);
                     fflush(fPtr);
@@ -847,8 +858,13 @@ int main(int argc, char **argv)
                         //and choose the photon with the smallest mfp and calculate the timestep
                         
 
-                        ph_scatt_index=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, &time_step, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
+                        ph_scatt_index=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, 1, &time_step, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
                                                                       all_time_steps, sorted_indexes, rng, find_nearest_grid_switch, fPtr);
+
+                        if (scatt_frame != scatt_framestart)
+                        {
+                            exit(0);
+                        }
                         
                         find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
 
