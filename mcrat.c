@@ -762,7 +762,7 @@ int main(int argc, char **argv)
                         {
                             //if using FLASH data for 2D
                             //put proper number at the end of the flash file
-                            modifyFlashName(flash_file, flash_prefix, frame);
+                            modifyFlashName(flash_file, flash_prefix, scatt_frame);
                             
                             fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
                             fflush(fPtr);
@@ -773,7 +773,7 @@ int main(int argc, char **argv)
                         //else if (strcmp(pluto_amr_sim, this_sim)==0)
                         #elif SIM_SWITCH == PLUTO_CHOMBO
                         {
-                            modifyPlutoName(flash_file, flash_prefix, frame);
+                            modifyPlutoName(flash_file, flash_prefix, scatt_frame);
                             
                             fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
                             fflush(fPtr);
@@ -786,7 +786,7 @@ int main(int argc, char **argv)
                         #else
                         {
                             //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
-                            readHydro2D(FILEPATH, frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                            readHydro2D(FILEPATH, scatt_frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                         &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
                             //fprintf(fPtr, "%d\n\n", array_num);
                         }
