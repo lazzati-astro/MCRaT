@@ -1077,6 +1077,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
                 (*ph)[i].num_scatt=phHolder->num_scatt;
                 (*ph)[i].weight=phHolder->weight;
                 (*ph)[i].nearest_block_index= phHolder->nearest_block_index;
+                (*ph)[i].type= phHolder->type;
             }
             
             free(phHolder);

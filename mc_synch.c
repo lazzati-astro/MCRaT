@@ -677,7 +677,7 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, double eps
     //ph 97, neg lab nu in frame 210, from -1 * c/h
     int i=0, count=0, abs_ph_count=0, num_thread=omp_get_num_threads();
     double el_dens=0, nu_c=0;
-    struct photon tmp_ph;//hold temporay photon to move its data
+    //struct photon tmp_ph;//hold temporay photon to move its data
     
     #pragma omp parallel for num_threads(num_thread) firstprivate(el_dens, nu_c) reduction(+:abs_ph_count)
     for (i=0;i<*num_ph;i++)
