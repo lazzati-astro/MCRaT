@@ -2050,7 +2050,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
     for (i=0;i<num_ph; i++)
     {
-        printf("%d, %d,%e\n", i, ((ph+i)->nearest_block_index), ((ph+i)->weight));
+        //printf("%d, %d,%e\n", i, ((ph+i)->nearest_block_index), ((ph+i)->weight));
         
         if (find_nearest_block_switch==0)
         {
@@ -2089,7 +2089,9 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         
         //if the location of the photon is less than the domain of the hydro simulation then do all of this, otherwise assing huge mfp value so no scattering occurs and the next frame is loaded
-        if (((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x)) && !(ph_block_index<0) )// absorbed photons have ph_block_index=-1, therefore if this value is not less than 0, calulate the mfp properly
+        // absorbed photons have ph_block_index=-1, therefore if this value is not less than 0, calulate the mfp properly but doesnt work when go to new frame and find new indexes (will change b/c will get rid of these photons when printing)
+        //alternatively make decision based on 0 weight
+        if (((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x)) && ((ph+i)->weight != 0) )
         {
             #if GEOMETRY == SPHERICAL
                 is_in_block=checkInBlock(ph_block_index,  ph_r,  ph_theta,  ph_z,  x,   y, z,  szx,  szy);
@@ -2257,7 +2259,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
          else
         {
             mfp=min_mfp;
-            printf("In ELSE\n");
+            fprintf(fPtr,"Photon %d In ELSE\n", i);
             //exit(0);
         }
         

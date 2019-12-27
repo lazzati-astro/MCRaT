@@ -921,7 +921,7 @@ int main(int argc, char **argv)
                             
                             
                             
-                            if (frame_scatt_cnt%1000 == 0)
+                            if ((frame_scatt_cnt%1000 == 0) && (frame_scatt_cnt != 0)) //modified this so it doesn't print when all photons get absorbed at first and frame_scatt_cnt=0
                             {
                                 fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
                                 //fprintf(fPtr,"Scattering Photon Number: %d\n", ph_scatt_index);

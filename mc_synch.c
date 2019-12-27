@@ -320,7 +320,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
                 position_phi=gsl_rng_uniform(rand)*2*M_PI;
                 com_v_phi=gsl_rng_uniform(rand)*2*M_PI;
                 com_v_theta=gsl_rng_uniform(rand)*M_PI; //  acos((gsl_rng_uniform(rand)*2)-1) this was for compton scatt, should be isotropic now?
-                printf("%lf, %lf, %lf\n", position_phi, com_v_phi, com_v_theta);
+                //printf("%lf, %lf, %lf\n", position_phi, com_v_phi, com_v_theta);
                 
                 //populate 4 momentum comoving array
                 //*(p_comv+0)=PL_CONST*fr_dum/C_LIGHT;
@@ -367,10 +367,12 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
     {
         /* everything ok */
         *ph_orig = tmp;
+        /*
         for (i=0;i<*num_ph;i++)
         {
             fprintf(fPtr, "i: %d after realloc freq %e\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST );
         }
+         */
     }
     else
     {
