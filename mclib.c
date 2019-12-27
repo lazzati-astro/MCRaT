@@ -2046,7 +2046,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     //or just parallelize this part here
     
     min_mfp=1e12;
-    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
+    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p) private(i) shared(min_mfp )
     for (i=0;i<num_ph; i++)
     {
         //printf("%d, %d,%e\n", i, ((ph+i)->nearest_block_index), ((ph+i)->weight));
@@ -2215,12 +2215,17 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 *(ph_p+2)=((ph+i)->p2);
                 *(ph_p+3)=((ph+i)->p3);
                 
-                singleElectron(el_p, n_temp_tmp, ph_p, rand, fPtr); //get random electron
+                ph_p_comv[0]=((ph+i)->comv_p0);
+                ph_p_comv[1]=((ph+i)->comv_p1);
+                ph_p_comv[2]=((ph+i)->comv_p2);
+                ph_p_comv[3]=((ph+i)->comv_p3);
+                
+                singleElectron(&el_p, n_temp_tmp, &ph_p_comv, rng[omp_get_thread_num()], fPtr); //get random electron
                 //printf("after singleElectron n_temp_tmp %e from ptr %e n_dens_tmp %e from ptr %e\n", n_temp_tmp, (*(temp+min_index)), n_dens_tmp, (*(dens+min_index)));
                 
                 //printf("Chosen el: p0 %e p1 %e p2 %e p3 %e\nph: p0 %e p1 %e p2 %e p3 %e\n", *(el_p+0), *(el_p+1), *(el_p+2), *(el_p+3), *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
                 
-                synch_x_sect=synCrossSection(n_dens_tmp/M_P, n_temp_tmp, *(ph_p+0)*C_LIGHT/PL_CONST, sqrt(((*(el_p+0))*(*(el_p+0))/(M_EL*M_EL*C_LIGHT*C_LIGHT))-1), epsilon_b);
+                synch_x_sect=synCrossSection(n_dens_tmp/M_P, n_temp_tmp, ph_p_comv[0]*C_LIGHT/PL_CONST, sqrt((el_p[0]*el_p[0]/(M_EL*M_EL*C_LIGHT*C_LIGHT))-1), epsilon_b);
                 //printf("i: %d flash_array_idx %d synch_x_sect %e freq %e temp %e el_dens %e\n", i, min_index, synch_x_sect, *(ph_p+0)*C_LIGHT/PL_CONST, n_temp_tmp, n_dens_tmp/M_P);
                 
                 if (synch_x_sect==0)
@@ -2296,7 +2301,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     
     (*time_step)=*(all_time_steps+(*(sorted_indexes+0))); //dont need these and dont need to return index b/c photonEvent doesnt use this, but mcrat.c uses this info
     index= *(sorted_indexes+0);//first element of sorted array
-    free(el_p);free(ph_p);
+    //free(el_p);free(ph_p_comv);
     return index;
     
 }
