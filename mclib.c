@@ -169,7 +169,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
     hsize_t      size[1];
     hsize_t      offset[1];
     
-    fprintf(fPtr, "Allocated weight to be %d values large and other arrays to be %d\n",weight_net_num_ph, net_num_ph);
+    fprintf(fPtr, "num_ph %d num_ph_abs %d num_null_ph %d num_ph_emit %d\nAllocated weight to be %d values large and other arrays to be %d\n",num_ph,num_ph_abs,num_null_ph,num_ph_emit, weight_net_num_ph, net_num_ph);
     
     //save photon data into large arrays, NEED TO KNOW HOW MANY NULL PHOTONS WE HAVE AKA SAVED SPACE THAT AREN'T ACTUALLY PHOTONS TO PROPERLY SAVE SPACE FOR ARRAYS ABOVE
     weight_net_num_ph=0; //used to keep track of weight values since it may not be the same as num_ph

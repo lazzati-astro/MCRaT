@@ -308,9 +308,9 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
             null_ph_count+=1;
         }
     }
-    *num_null_ph=null_ph_count;
     
-    fprintf(fPtr, "Emitting %d synchrotron photons between %e and %e in this frame\n", ph_tot, rmin, rmax);
+    
+    fprintf(fPtr, "Null photons %d\nEmitting %d synchrotron photons between %e and %e in this frame\n", null_ph_count, ph_tot, rmin, rmax);
     
     //allocate memory for that many photons and also allocate memory to hold comoving 4 momentum of each photon and the velocity of the fluid
     //ph_emit=malloc (ph_tot * sizeof (struct photon ));
@@ -357,6 +357,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         
         fprintf(fPtr,"Val %d\n", (*(null_ph_indexes+count_null_indexes-1)));
         *num_ph+=ph_tot; //update number of photons
+        *num_null_ph=((*num_ph)+ph_tot)-(*num_ph)-ph_tot; //reserved space - emitted photons-original photons
     }
     else
     {
@@ -380,6 +381,8 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         }
         
         count_null_indexes=null_ph_count;
+        
+        *num_null_ph=null_ph_count-ph_tot;
         
     }
     

@@ -899,7 +899,7 @@ int main(int argc, char **argv)
                     sorted_indexes=malloc(num_ph*sizeof(int));
                     will_scatter=malloc(num_ph*sizeof(int));//determines if photons will scatter (1) or be absorbed (0)
                         
-                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph);
+                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph-num_null_ph);
                     fflush(fPtr);
                     
                     frame_scatt_cnt=0;
@@ -916,8 +916,8 @@ int main(int argc, char **argv)
                         
 
                         num_photons_find_new_element+=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, 1, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, densPtr, tempPtr,\
-                                                                      all_time_steps, sorted_indexes, will_scatter, rng, find_nearest_grid_switch, fPtr); //DO EVERYTHING IN COMOV FRAME NOW (NEED TO MODIFY FUNCTION STILL, add support for determining which photons may be absorbed/scattered and ignoring photons absorbed)
-                        if (scatt_frame == 204)
+                                                                      all_time_steps, sorted_indexes, will_scatter, rng, find_nearest_grid_switch, fPtr);
+                        if (scatt_frame == 210)
                         {
                             //printf("*(all_time_steps+0) %e *(all_time_steps+71) %e *(all_time_steps+72) %e *(all_time_steps+73) %e\n *(will_scatter+0) %d *(will_scatter+71) %d *(will_scatter+72) %d *(will_scatter+73) %d ph_scatt_index %d this photons timestep %e\n", *(all_time_steps+0), *(all_time_steps+71), *(all_time_steps+72), *(all_time_steps+73),*(will_scatter+0) , *(will_scatter+71) , *(will_scatter+72) , *(will_scatter+73),  *(sorted_indexes+0), *(all_time_steps+*(sorted_indexes+0)));
                             exit(0);
