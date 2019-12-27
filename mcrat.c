@@ -849,7 +849,7 @@ int main(int argc, char **argv)
                         fprintf(fPtr, "Emitting Synchrotron Photons\n", array_num);
                         photonEmitSynch(&phPtr, &num_ph, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, 1, rng, RIKEN_SWITCH, fPtr);
                         
-                        printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e (phPtr)[72].p0 %e (phPtr)[73].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0, (phPtr)[72].p0, (phPtr)[73].p0);
+                        printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e (phPtr)[72].comv_p0 %e (phPtr)[73].comv_p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0, (phPtr)[72].comv_p0, (phPtr)[73].comv_p0);
                         
                         //need to reallocate memory for time_steps, sortd_index, will_scatter
                         tmp_double=realloc(all_time_steps, num_ph*sizeof(double));

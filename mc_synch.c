@@ -153,16 +153,16 @@ double synCrossSection(double el_dens, double T, double nu_ph, double p_el, doub
 
 double calcSynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_inj, char *min_or_max)
 {
-    double val=0;
+    double val=r_inj;
     if (strcmp(min_or_max, "min")==0)
     {
         //printf("IN MIN\nframe_scatt %e frame_inj %e fps %e r_inj %e C_LIGHT %e\n", frame_scatt, frame_inj, fps, r_inj, C_LIGHT);
-        val= r_inj- (C_LIGHT*(frame_scatt-frame_inj-1)/(2*fps));
+        val+= (C_LIGHT*(frame_scatt-frame_inj-1)/(2*fps));
     }
     else
     {
         //printf("IN MAX\n");
-        val=r_inj+ (C_LIGHT*(frame_scatt-frame_inj+1)/(2*fps));
+        val+= (C_LIGHT*(frame_scatt-frame_inj+1)/(2*fps));
     }
     
     //printf("Val %e\n", val);
@@ -280,10 +280,10 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
         
     }
     
-    fprintf(fPtr, "Emitting %d synchrotron photons in this frame\n", ph_tot);
+    fprintf(fPtr, "Emitting %d synchrotron photons between %e and %e in this frame\n", ph_tot, rmin, rmax);
     
     //allocate memory for that many photons and also allocate memory to hold comoving 4 momentum of each photon and the velocity of the fluid
-    ph_emit=malloc (ph_tot * sizeof (struct photon ));
+    //ph_emit=malloc (ph_tot * sizeof (struct photon ));
     p_comv=malloc(4*sizeof(double));
     boost=malloc(4*sizeof(double));
     l_boost=malloc(4*sizeof(double));
@@ -361,79 +361,30 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
                 lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
                 printf("Assigning values to struct\n");
                 
-                (ph_emit+ph_tot)->p0=(*(l_boost+0));
-                (ph_emit+ph_tot)->p1=(*(l_boost+1));
-                (ph_emit+ph_tot)->p2=(*(l_boost+2));
-                (ph_emit+ph_tot)->p3=(*(l_boost+3));
-                (ph_emit+ph_tot)->comv_p0=(*(p_comv+0));
-                (ph_emit+ph_tot)->comv_p1=(*(p_comv+1));
-                (ph_emit+ph_tot)->comv_p2=(*(p_comv+2));
-                (ph_emit+ph_tot)->comv_p3=(*(p_comv+3));
-                (ph_emit+ph_tot)->r0= (*(x+i))*cos(position_phi); //put photons @ center of box that they are supposed to be in with random phi
-                (ph_emit+ph_tot)->r1=(*(x+i))*sin(position_phi) ;
-                (ph_emit+ph_tot)->r2=(*(y+i)); //y coordinate in flash becomes z coordinate in MCRaT
-                (ph_emit+ph_tot)->s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
-                (ph_emit+ph_tot)->s1=0;
-                (ph_emit+ph_tot)->s2=0;
-                (ph_emit+ph_tot)->s3=0;
-                (ph_emit+ph_tot)->num_scatt=0;
-                (ph_emit+ph_tot)->weight=ph_weight_adjusted;
-                (ph_emit+ph_tot)->nearest_block_index=0;
+                (*ph_orig)[(*num_ph)+ph_tot].p0=(*(l_boost+0));
+                (*ph_orig)[(*num_ph)+ph_tot].p1=(*(l_boost+1));
+                (*ph_orig)[(*num_ph)+ph_tot].p2=(*(l_boost+2));
+                (*ph_orig)[(*num_ph)+ph_tot].p3=(*(l_boost+3));
+                (*ph_orig)[(*num_ph)+ph_tot].comv_p0=(*(p_comv+0));
+                (*ph_orig)[(*num_ph)+ph_tot].comv_p1=(*(p_comv+1));
+                (*ph_orig)[(*num_ph)+ph_tot].comv_p2=(*(p_comv+2));
+                (*ph_orig)[(*num_ph)+ph_tot].comv_p3=(*(p_comv+3));
+                (*ph_orig)[(*num_ph)+ph_tot].r0= (*(x+i))*cos(position_phi); //put photons @ center of box that they are supposed to be in with random phi
+                (*ph_orig)[(*num_ph)+ph_tot].r1=(*(x+i))*sin(position_phi) ;
+                (*ph_orig)[(*num_ph)+ph_tot].r2=(*(y+i)); //y coordinate in flash becomes z coordinate in MCRaT
+                (*ph_orig)[(*num_ph)+ph_tot].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
+                (*ph_orig)[(*num_ph)+ph_tot].s1=0;
+                (*ph_orig)[(*num_ph)+ph_tot].s2=0;
+                (*ph_orig)[(*num_ph)+ph_tot].s3=0;
+                (*ph_orig)[(*num_ph)+ph_tot].num_scatt=0;
+                (*ph_orig)[(*num_ph)+ph_tot].weight=ph_weight_adjusted;
+                (*ph_orig)[(*num_ph)+ph_tot].nearest_block_index=0;
                 //printf("%d\n",ph_tot);
                 ph_tot++;
             }
             k++;
         }
     }
-    
-    //printf("old num_ph %d", *num_ph);
-    
-    //need to realloc memory to hold the old photon info and the new emitted photon's info
-    tmp=realloc(*ph_orig, ((*num_ph)+ph_tot)* sizeof (struct photon ));
-    if (tmp != NULL)
-    {
-        /* everything ok */
-        *ph_orig = tmp;
-        /*
-        for (i=0;i<*num_ph;i++)
-        {
-            fprintf(fPtr, "i: %d after realloc freq %e\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST );
-        }
-         */
-    }
-    else
-    {
-        /* problems!!!! */
-        printf("Error with reserving space to hold old and new photons\n");
-        exit(0);
-    }
-    
-    //realloc should move original photons to new memory allocation therefore just need to fill in the most recent photn info
-    j=0; //used to keep track of emitted photons
-    for (i= *num_ph;i<(*num_ph+ph_tot);i++)
-    {
-        (*ph_orig)[i].p0=(ph_emit+j)->p0;
-        (*ph_orig)[i].p1=(ph_emit+j)->p1;
-        (*ph_orig)[i].p2=(ph_emit+j)->p2;
-        (*ph_orig)[i].p3=(ph_emit+j)->p3;
-        (*ph_orig)[i].comv_p0=(ph_emit+j)->comv_p0;
-        (*ph_orig)[i].comv_p1=(ph_emit+j)->comv_p1;
-        (*ph_orig)[i].comv_p2=(ph_emit+j)->comv_p2;
-        (*ph_orig)[i].comv_p3=(ph_emit+j)->comv_p3;
-        (*ph_orig)[i].r0= (ph_emit+j)->r0; //put photons @ center of box that they are supposed to be in with random phi
-        (*ph_orig)[i].r1=(ph_emit+j)->r1;
-        (*ph_orig)[i].r2=(ph_emit+j)->r2; //y coordinate in flash becomes z coordinate in MCRaT
-        (*ph_orig)[i].s0=(ph_emit+j)->s0; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
-        (*ph_orig)[i].s1=(ph_emit+j)->s1;
-        (*ph_orig)[i].s2=(ph_emit+j)->s2;
-        (*ph_orig)[i].s3=(ph_emit+j)->s3;
-        (*ph_orig)[i].num_scatt=(ph_emit+j)->num_scatt;
-        (*ph_orig)[i].weight=(ph_emit+j)->weight;
-        (*ph_orig)[i].nearest_block_index=0;
-        
-        j++;
-    }
-    
     
     *num_ph+=ph_tot; //update number of photons
     
@@ -443,7 +394,8 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
     
     
     //exit(0);
-    free(ph_dens); free(ph_emit);
+    free(ph_dens); free(p_comv); free(boost); free(l_boost);
+    //free(ph_emit);
     gsl_integration_workspace_free (w);
     return 0;
     
