@@ -142,7 +142,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
 }
 
 
-void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit, int frame,int frame_inj, char dir[200], int angle_rank, FILE *fPtr )
+void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit, int num_null_ph, int frame,int frame_inj, char dir[200], int angle_rank, FILE *fPtr )
 {
     //function to save the photons' positions and 4 momentum
     
@@ -154,7 +154,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
      //if the frame does exist then read information from the prewritten data and then add new data to it as extended chunk
      
      
-    int i=0, rank=1, net_num_ph=num_ph-num_ph_abs, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs : num_ph_emit-num_ph_abs ;
+    int i=0, rank=1, net_num_ph=num_ph-num_ph_abs-num_null_ph, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : num_ph_emit-num_ph_abs ;
     int num_thread=omp_get_num_threads();
     char mc_file[200]="", group[200]="", group_weight[200]="";
     double p0[net_num_ph], p1[net_num_ph], p2[net_num_ph], p3[net_num_ph] , r0[net_num_ph], r1[net_num_ph], r2[net_num_ph], num_scatt[net_num_ph], weight[weight_net_num_ph];
@@ -1448,7 +1448,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
 
     //fill in radius array and find in how many places r > injection radius
 //have single thread execute this while loop and then have inner loop be parallel
-    elem_factor=2;
+    elem_factor=1;
     r_count=0;
     while (r_count==0)
     {
@@ -2335,7 +2335,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 
                 //printf("Chosen el: p0 %e p1 %e p2 %e p3 %e\nph: p0 %e p1 %e p2 %e p3 %e\n", *(el_p+0), *(el_p+1), *(el_p+2), *(el_p+3), *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
                 
-                //synch_x_sect=synCrossSection(n_dens_tmp/M_P, n_temp_tmp, ph_p_comv[0]*C_LIGHT/PL_CONST, sqrt((el_p[0]*el_p[0]/(M_EL*M_EL*C_LIGHT*C_LIGHT))-1), epsilon_b); COMMENT OUT TO TEST REGULAR SCATTERING
+                synch_x_sect=synCrossSection(n_dens_tmp/M_P, n_temp_tmp, ph_p_comv[0]*C_LIGHT/PL_CONST, sqrt((el_p[0]*el_p[0]/(M_EL*M_EL*C_LIGHT*C_LIGHT))-1), epsilon_b);
                 //printf("i: %d flash_array_idx %d synch_x_sect %e freq %e temp %e el_dens %e\n", i, min_index, synch_x_sect, *(ph_p+0)*C_LIGHT/PL_CONST, n_temp_tmp, n_dens_tmp/M_P);
                 
                 if (synch_x_sect==0)
@@ -2373,7 +2373,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
          else
         {
             mfp=min_mfp;
-            fprintf(fPtr,"Photon %d In ELSE\n", i);
+            //fprintf(fPtr,"Photon %d In ELSE\n", i);
             //exit(0);
         }
         
@@ -3743,7 +3743,7 @@ double averagePhotonEnergy(struct photon *ph, int num_ph)
 
 void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg, double *r_avg  )
 {
-    int temp_max=0, temp_min=INT_MAX,  i=0, num_thread=omp_get_num_threads();
+    int temp_max=0, temp_min=DBL_MAX,  i=0, num_thread=omp_get_num_threads();
     double sum=0, avg_r_sum=0;
     
     //printf("Num threads: %d", num_thread);

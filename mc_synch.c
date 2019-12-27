@@ -170,9 +170,8 @@ double calcSynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_in
     return val;
 }
 
-int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,  double epsilon_b, gsl_rng *rand, int riken_switch, FILE *fPtr)
+int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,  double epsilon_b, gsl_rng *rand, int riken_switch, FILE *fPtr)
 {
-    int min_photons=0, block_cnt=0, i=0, j=0, k=0, *ph_dens=NULL, ph_tot=0;
     double rmin=0, rmax=0, max_photons=0.1*maximum_photons; //have 10% as default, can change later need to figure out how many photons across simulations I want emitted
     double ph_weight_adjusted=0, position_phi=0;
     double dimlesstheta=0, nu_c=0, el_dens=0, error=0, ph_dens_calc=0, max_jnu=0;
@@ -180,7 +179,9 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
     double fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, com_v_phi=0, com_v_theta=0;
     double *p_comv=NULL, *boost=NULL, *l_boost=NULL; //pointers to hold comov 4 monetum, the fluid vlocity, and the photon 4 momentum in the lab frame
     int status;
-    int num_thread=omp_get_num_threads();
+    int min_photons=0, block_cnt=0, i=0, j=0, k=0, null_ph_count=0, *ph_dens=NULL, ph_tot=0;
+    int *null_ph_indexes=NULL;
+    int num_thread=omp_get_num_threads(), count_null_indexes=0, idx=0;
     struct photon *ph_emit=NULL; //pointer to array of structs that will hold emitted photon info
     struct photon *tmp=NULL;
     
@@ -223,7 +224,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
         }
     }
     
-    fprintf(fPtr, "Block cnt %d\n", block_cnt);
+    //fprintf(fPtr, "Block cnt %d\n", block_cnt);
     
     //allocate memory to record density of photons for each block
     ph_dens=malloc(block_cnt * sizeof(int));
@@ -299,7 +300,15 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
     }
     
     //FIND OUT WHICH PHOTONS IN ARRAY ARE OLD/WERE ABSORBED AND IDENTIFY THIER INDEXES AND HOW MANY, dont subtract this from ph_tot @ the end, WILL NEED FOR PRINT PHOTONS
-
+    #pragma omp parallel for num_threads(num_thread) reduction(+:null_ph_count)
+    for (i=0;i<*num_ph;i++)
+    {
+        if ((*ph_orig)[i].weight == 0)
+        {
+            null_ph_count+=1;
+        }
+    }
+    *num_null_ph=null_ph_count;
     
     fprintf(fPtr, "Emitting %d synchrotron photons between %e and %e in this frame\n", ph_tot, rmin, rmax);
     
@@ -309,24 +318,69 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
     boost=malloc(4*sizeof(double));
     l_boost=malloc(4*sizeof(double));
     
-    //need to realloc memory to hold the old photon info and the new emitted photon's info
-    tmp=realloc(*ph_orig, ((*num_ph)+ph_tot)* sizeof (struct photon )); //may have to look into directly doubling number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
-    if (tmp != NULL)
+    if (null_ph_count < ph_tot)
     {
-        /* everything ok */
-        *ph_orig = tmp;
-        /*
-         for (i=0;i<*num_ph;i++)
-         {
-         fprintf(fPtr, "i: %d after realloc freq %e\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST );
-         }
-         */
+        //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
+        //need to realloc memory to hold the old photon info and the new emitted photon's info
+        fprintf(fPtr, "Allocating %d space\n", ((*num_ph)+ph_tot));
+        tmp=realloc(*ph_orig, ((*num_ph)+ph_tot)* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
+        if (tmp != NULL)
+        {
+            /* everything ok */
+            *ph_orig = tmp;
+            /*
+             for (i=0;i<*num_ph;i++)
+             {
+             fprintf(fPtr, "i: %d after realloc freq %e\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST );
+             }
+             */
+        }
+        else
+        {
+            /* problems!!!! */
+            printf("Error with reserving space to hold old and new photons\n");
+            exit(0);
+        }
+        
+        null_ph_count=ph_tot; // use this to set the photons recently allocated as null phtoons (this can help if we decide to directly double (or *1.5) number of photons each time we need to allocate more memory, then use factor*((*num_ph)+ph_tot)-(*num_ph)
+        null_ph_indexes=malloc(null_ph_count*sizeof(int));
+        j=0;
+        for (i=((*num_ph)+ph_tot)-1;i >= *num_ph;i--)
+        {
+            (*ph_orig)[i].weight=0;
+            (*ph_orig)[i].nearest_block_index=-1;
+            *(null_ph_indexes+j)=i; //save this information so we can use the same syntax for both cases in saving the emitted photon data
+            fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
+            j++;
+        }
+        count_null_indexes=ph_tot; //use this to count the number fo null photons we have actually created, (this can help if we decide to directly double (or *1.5) number of photons each time we need to allocate more memory, then use factor*((*num_ph)+ph_tot)-(*num_ph)
+        
+        fprintf(fPtr,"Val %d\n", (*(null_ph_indexes+count_null_indexes-1)));
+        *num_ph+=ph_tot; //update number of photons
     }
     else
     {
-        /* problems!!!! */
-        printf("Error with reserving space to hold old and new photons\n");
-        exit(0);
+        //otherwise need to find the indexes of these null photons to save the newly emitted photons in them, start searching from the end of the array to efficiently find them
+        //dont need to update the number of photons here
+        null_ph_indexes=malloc(null_ph_count*sizeof(int));
+        j=0;
+        for (i=(*num_ph)-1;i>=0;i--)
+        {
+            if ((*ph_orig)[i].weight == 0)
+            {
+                *(null_ph_indexes+j)=i;
+                j++;
+                fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
+                
+                if (j == null_ph_count)
+                {
+                    i=-1; //have found al the indexes and can exit the loop
+                }
+            }
+        }
+        
+        count_null_indexes=null_ph_count;
+        
     }
     
     //go through blocks and assign random energies/locations to proper number of photons
@@ -343,7 +397,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
             
             for(j=0;j<( *(ph_dens+k) ); j++ )
             {
-                printf("flash_array_idx: %d Temp %e, el_dens %e, B %e, nu_c %e, dimlesstheta %e\n",i, *(temp+i), el_dens, calcB(el_dens, *(temp+i), epsilon_b), nu_c, dimlesstheta);
+                //printf("flash_array_idx: %d Temp %e, el_dens %e, B %e, nu_c %e, dimlesstheta %e\n",i, *(temp+i), el_dens, calcB(el_dens, *(temp+i), epsilon_b), nu_c, dimlesstheta);
 
                 //have to get random frequency for the photon comoving frequency
                 y_dum=1; //initalize loop
@@ -359,7 +413,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
                     //printf("%lf,%lf,%e \n",fr_dum, y_dum, yfr_dum);
                     
                 }
-                printf("%lf\n ",fr_dum);
+                //printf("%lf\n ",fr_dum);
                 //exit(0);
                 position_phi=gsl_rng_uniform(rand)*2*M_PI;
                 com_v_phi=gsl_rng_uniform(rand)*2*M_PI;
@@ -382,33 +436,44 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
                 lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
                 printf("Assigning values to struct\n");
                 
-                (*ph_orig)[(*num_ph)+ph_tot].p0=(*(l_boost+0));
-                (*ph_orig)[(*num_ph)+ph_tot].p1=(*(l_boost+1));
-                (*ph_orig)[(*num_ph)+ph_tot].p2=(*(l_boost+2));
-                (*ph_orig)[(*num_ph)+ph_tot].p3=(*(l_boost+3));
-                (*ph_orig)[(*num_ph)+ph_tot].comv_p0=(*(p_comv+0));
-                (*ph_orig)[(*num_ph)+ph_tot].comv_p1=(*(p_comv+1));
-                (*ph_orig)[(*num_ph)+ph_tot].comv_p2=(*(p_comv+2));
-                (*ph_orig)[(*num_ph)+ph_tot].comv_p3=(*(p_comv+3));
-                (*ph_orig)[(*num_ph)+ph_tot].r0= (*(x+i))*cos(position_phi); //put photons @ center of box that they are supposed to be in with random phi
-                (*ph_orig)[(*num_ph)+ph_tot].r1=(*(x+i))*sin(position_phi) ;
-                (*ph_orig)[(*num_ph)+ph_tot].r2=(*(y+i)); //y coordinate in flash becomes z coordinate in MCRaT
-                (*ph_orig)[(*num_ph)+ph_tot].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
-                (*ph_orig)[(*num_ph)+ph_tot].s1=0;
-                (*ph_orig)[(*num_ph)+ph_tot].s2=0;
-                (*ph_orig)[(*num_ph)+ph_tot].s3=0;
-                (*ph_orig)[(*num_ph)+ph_tot].num_scatt=0;
-                (*ph_orig)[(*num_ph)+ph_tot].weight=ph_weight_adjusted;
-                (*ph_orig)[(*num_ph)+ph_tot].nearest_block_index=0;
-                (*ph_orig)[(*num_ph)+ph_tot].type='s';
+                idx=(*(null_ph_indexes+count_null_indexes-1));
+                fprintf(fPtr, "Placing photon in index %d\n", idx);
+                (*ph_orig)[idx].p0=(*(l_boost+0));
+                (*ph_orig)[idx].p1=(*(l_boost+1));
+                (*ph_orig)[idx].p2=(*(l_boost+2));
+                (*ph_orig)[idx].p3=(*(l_boost+3));
+                (*ph_orig)[idx].comv_p0=(*(p_comv+0));
+                (*ph_orig)[idx].comv_p1=(*(p_comv+1));
+                (*ph_orig)[idx].comv_p2=(*(p_comv+2));
+                (*ph_orig)[idx].comv_p3=(*(p_comv+3));
+                (*ph_orig)[idx].r0= (*(x+i))*cos(position_phi); //put photons @ center of box that they are supposed to be in with random phi
+                (*ph_orig)[idx].r1=(*(x+i))*sin(position_phi) ;
+                (*ph_orig)[idx].r2=(*(y+i)); //y coordinate in flash becomes z coordinate in MCRaT
+                (*ph_orig)[idx].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
+                (*ph_orig)[idx].s1=0;
+                (*ph_orig)[idx].s2=0;
+                (*ph_orig)[idx].s3=0;
+                (*ph_orig)[idx].num_scatt=0;
+                (*ph_orig)[idx].weight=ph_weight_adjusted;
+                (*ph_orig)[idx].nearest_block_index=0;
+                (*ph_orig)[idx].type='s';
                 //printf("%d\n",ph_tot);
-                ph_tot++;
+                ph_tot++; //count how many photons have been emitted
+                count_null_indexes--; //keep track fo the null photon indexes
+                
+                if ((count_null_indexes == 0) || (ph_tot == null_ph_count))
+                {
+                    //if count_null_indexes is 0, then all the null photon spaces are filled with emitted photons
+                    //if ph_tot is equal to what it used to be
+                    i=array_length;
+                    printf("Exiting Emitting loop\n");
+                }
             }
             k++;
         }
     }
     
-    *num_ph+=ph_tot; //update number of photons
+    
     
     printf("(*ph_orig)[0].p0 %e (*ph_orig)[71].p0 %e (*ph_orig)[72].p0 %e (*ph_orig)[73].p0 %e\n", (*ph_orig)[0].p0, (*ph_orig)[71].p0, (*ph_orig)[72].p0, (*ph_orig)[73].p0);
     printf("At End of function\n");
@@ -419,6 +484,11 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
         gsl_rng_free(rng[i]);
     }
     free(rng);
+    
+    if (null_ph_count > ph_tot)
+    {
+        free(null_ph_indexes);
+    }
     
     //exit(0);
     free(ph_dens); free(p_comv); free(boost); free(l_boost);
