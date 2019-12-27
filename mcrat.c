@@ -765,7 +765,7 @@ int main(int argc, char **argv)
                             //if using FLASH data for 2D
                             //put proper number at the end of the flash file
                             modifyFlashName(flash_file, flash_prefix, scatt_frame);
-                            phMinMax(phPtr, num_ph, &min_r, &max_r, fPtr);
+                            phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                             fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
                             fflush(fPtr);
                             
@@ -793,7 +793,7 @@ int main(int argc, char **argv)
                             
                             fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
                             fflush(fPtr);
-                            phMinMax(phPtr, num_ph, &min_r, &max_r, fPtr);
+                            phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                             readPlutoChombo(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                     &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr);
                             
@@ -801,7 +801,7 @@ int main(int argc, char **argv)
                         }
                         #else
                         {
-                            phMinMax(phPtr, num_ph, &min_r, &max_r, fPtr);
+                            phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                             //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
                             readHydro2D(FILEPATH, scatt_frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                         &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
@@ -813,7 +813,7 @@ int main(int argc, char **argv)
                     }
                     #else
                     {
-                        phMinMax(phPtr, num_ph, &min_r, &max_r, fPtr);
+                        phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                         fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                         fflush(fPtr);
                         
@@ -853,7 +853,7 @@ int main(int argc, char **argv)
                         //printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0);
                         
                         fprintf(fPtr, "Emitting Synchrotron Photons in frame %d\n", scatt_frame);
-                        num_ph_emit=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, 1, rng, RIKEN_SWITCH, 0, 0, fPtr);
+                        num_ph_emit=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, 1, rng, 0, 0, fPtr);
                         
                         //if (scatt_frame==203)
                         //{
