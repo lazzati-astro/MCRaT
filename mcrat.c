@@ -917,11 +917,11 @@ int main(int argc, char **argv)
 
                         num_photons_find_new_element+=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, 1, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, densPtr, tempPtr,\
                                                                       all_time_steps, sorted_indexes, will_scatter, rng, find_nearest_grid_switch, fPtr);
-                        if (scatt_frame == 210)
-                        {
+                        //if (scatt_frame == 210)
+                        //{
                             //printf("*(all_time_steps+0) %e *(all_time_steps+71) %e *(all_time_steps+72) %e *(all_time_steps+73) %e\n *(will_scatter+0) %d *(will_scatter+71) %d *(will_scatter+72) %d *(will_scatter+73) %d ph_scatt_index %d this photons timestep %e\n", *(all_time_steps+0), *(all_time_steps+71), *(all_time_steps+72), *(all_time_steps+73),*(will_scatter+0) , *(will_scatter+71) , *(will_scatter+72) , *(will_scatter+73),  *(sorted_indexes+0), *(all_time_steps+*(sorted_indexes+0)));
-                            exit(0);
-                        }
+                        //    exit(0);
+                        //}
                         
                         find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
 
