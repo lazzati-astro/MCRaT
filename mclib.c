@@ -3743,7 +3743,7 @@ double averagePhotonEnergy(struct photon *ph, int num_ph)
 
 void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg, double *r_avg  )
 {
-    int temp_max=0, temp_min=DBL_MAX,  i=0, num_thread=omp_get_num_threads();
+    int temp_max=0, temp_min=INT_MAX,  i=0, num_thread=omp_get_num_threads();
     double sum=0, avg_r_sum=0;
     
     //printf("Num threads: %d", num_thread);
