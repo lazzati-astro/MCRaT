@@ -34,4 +34,6 @@ double synCrossSection(double el_dens, double T, double nu_ph, double p_el, doub
 
 double calcSynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_inj, char *min_or_max);
 
-int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens,  double *vx, double *vy, double epsilon_b, gsl_rng *rand, int riken_switch, FILE *fPtr);
+int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,  double epsilon_b, gsl_rng *rand, int riken_switch, int inject_single_switch, int scatt_ph_index, double nu_c_scatt, FILE *fPtr);
+
+int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, double epsilon_b, double *temp, double *dens);
