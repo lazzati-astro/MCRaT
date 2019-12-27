@@ -176,7 +176,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     double ph_weight_adjusted=0, position_phi=0;
     double dimlesstheta=0, nu_c=0, el_dens=0, error=0, ph_dens_calc=0, max_jnu=0;
     double params[3];
-    double fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, com_v_phi=0, com_v_theta=0;
+    double fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, com_v_phi=0, com_v_theta=0, position_rand=0;
     double *p_comv=NULL, *boost=NULL, *l_boost=NULL; //pointers to hold comov 4 monetum, the fluid vlocity, and the photon 4 momentum in the lab frame
     int status;
     int min_photons=0, block_cnt=0, i=0, j=0, k=0, null_ph_count=0, *ph_dens=NULL, ph_tot=0;
@@ -449,9 +449,11 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                 (*ph_orig)[idx].comv_p1=(*(p_comv+1));
                 (*ph_orig)[idx].comv_p2=(*(p_comv+2));
                 (*ph_orig)[idx].comv_p3=(*(p_comv+3));
-                (*ph_orig)[idx].r0= (*(x+i))*cos(position_phi); //put photons @ center of box that they are supposed to be in with random phi
-                (*ph_orig)[idx].r1=(*(x+i))*sin(position_phi) ;
-                (*ph_orig)[idx].r2=(*(y+i)); //y coordinate in flash becomes z coordinate in MCRaT
+                position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
+                (*ph_orig)[idx].r0= (*(x+i)+position_rand)*cos(position_phi); //put photons randomly in the box with random phi
+                (*ph_orig)[idx].r1=(*(x+i)+position_rand)*sin(position_phi) ;
+                position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
+                (*ph_orig)[idx].r2=(*(y+i)+position_rand); //y coordinate in flash becomes z coordinate in MCRaT
                 (*ph_orig)[idx].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
                 (*ph_orig)[idx].s1=0;
                 (*ph_orig)[idx].s2=0;
