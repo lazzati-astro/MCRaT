@@ -171,7 +171,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
     
     fprintf(fPtr, "Allocated weight to be %d values large and other arrays to be %d\n",weight_net_num_ph, net_num_ph);
     
-    //save photon data into large arrays
+    //save photon data into large arrays, NEED TO KNOW HOW MANY NULL PHOTONS WE HAVE AKA SAVED SPACE THAT AREN'T ACTUALLY PHOTONS TO PROPERLY SAVE SPACE FOR ARRAYS ABOVE
     weight_net_num_ph=0; //used to keep track of weight values since it may not be the same as num_ph
     #pragma omp parallel for num_threads(num_thread) reduction(+:weight_net_num_ph)
     for (i=0;i<num_ph;i++)
@@ -3757,7 +3757,8 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
                 //printf("The new max is: %d\n", temp_max);
             }
             
-            if ((i==0) || (((ph+i)->num_scatt)<temp_min))
+            //if ((i==0) || (((ph+i)->num_scatt)<temp_min))
+            if (((ph+i)->num_scatt)<temp_min)
             {
                 temp_min=((ph+i)->num_scatt);
                 //printf("The new min is: %d\n", temp_min);

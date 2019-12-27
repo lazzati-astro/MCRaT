@@ -180,6 +180,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
     double fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, com_v_phi=0, com_v_theta=0;
     double *p_comv=NULL, *boost=NULL, *l_boost=NULL; //pointers to hold comov 4 monetum, the fluid vlocity, and the photon 4 momentum in the lab frame
     int status;
+    int num_thread=omp_get_num_threads();
     struct photon *ph_emit=NULL; //pointer to array of structs that will hold emitted photon info
     struct photon *tmp=NULL;
     
@@ -190,22 +191,39 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
     gsl_function F;
     F.function = &jnu_ph_spect;
     
+    //initialize gsl random number generator fo each thread
+    
+    const gsl_rng_type *rng_t;
+    gsl_rng **rng;
+    gsl_rng_env_setup();
+    rng_t = gsl_rng_ranlxs0;
+    
+    rng = (gsl_rng **) malloc((num_thread ) * sizeof(gsl_rng *));
+    rng[0]=rand;
+    
+    //#pragma omp parallel for num_threads(nt)
+    for(i=1;i<num_thread;i++)
+    {
+        rng[i] = gsl_rng_alloc (rng_t);
+        gsl_rng_set(rng[i],gsl_rng_get(rand));
+    }
+    
     rmin=calcSynchRLimits( frame_scatt, frame_inj, fps,  r_inj, "min");
     rmax=calcSynchRLimits( frame_scatt, frame_inj, fps,  r_inj, "max");
     
     //printf("rmin %e rmax %e, theta min/max: %e %e\n", rmin, rmax, theta_min, theta_max);
-    
+    #pragma omp parallel for num_threads(num_thread) reduction(+:block_cnt)
     for(i=0;i<array_length;i++)
     {
         
         //look at all boxes in width delta r=c/fps and within angles we are interested in NEED TO IMPLEMENT
         if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
         {
-            block_cnt++;
+            block_cnt+=1;
         }
     }
     
-    printf("Block cnt %d\n", block_cnt);
+    fprintf(fPtr, "Block cnt %d\n", block_cnt);
     
     //allocate memory to record density of photons for each block
     ph_dens=malloc(block_cnt * sizeof(int));
@@ -253,7 +271,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
                     exit(0);
                 }
                 
-                (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
+                (*(ph_dens+j))=gsl_ran_poisson(rng[omp_get_thread_num()],ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
                 
                 //printf("%d, %lf \n",*(ph_dens+j), ph_dens_calc);
                 
@@ -279,6 +297,9 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
         printf("dens: %d, photons: %d, adjusted weight: %e\n", *(ph_dens+(j-1)), ph_tot, ph_weight_adjusted);
         
     }
+    
+    //FIND OUT WHICH PHOTONS IN ARRAY ARE OLD/WERE ABSORBED AND IDENTIFY THIER INDEXES AND HOW MANY, dont subtract this from ph_tot @ the end, WILL NEED FOR PRINT PHOTONS
+
     
     fprintf(fPtr, "Emitting %d synchrotron photons between %e and %e in this frame\n", ph_tot, rmin, rmax);
     
@@ -307,8 +328,6 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
         printf("Error with reserving space to hold old and new photons\n");
         exit(0);
     }
-    
-    //FIND OUT WHICH PHOTONS IN ARRAY ARE OLD/WERE ABSORBED AND IDENTIFY THIER INDEXES AND HOW MANY, subtract this from ph_tot @ the end?
     
     //go through blocks and assign random energies/locations to proper number of photons
     ph_tot=0;
@@ -394,7 +413,12 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
     printf("(*ph_orig)[0].p0 %e (*ph_orig)[71].p0 %e (*ph_orig)[72].p0 %e (*ph_orig)[73].p0 %e\n", (*ph_orig)[0].p0, (*ph_orig)[71].p0, (*ph_orig)[72].p0, (*ph_orig)[73].p0);
     printf("At End of function\n");
     
-    
+    //free rand number generator
+    for (i=1;i<num_thread;i++)
+    {
+        gsl_rng_free(rng[i]);
+    }
+    free(rng);
     
     //exit(0);
     free(ph_dens); free(p_comv); free(boost); free(l_boost);
