@@ -1748,7 +1748,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                         //printf("%lf, %lf,%lf,%e \n",(*(temps+i)),fr_dum, y_dum, yfr_dum);
                         
                     }
-                    printf("i: %d freq:%lf\n ",ph_tot, fr_dum);
+                    //printf("i: %d freq:%lf\n ",ph_tot, fr_dum);
                    position_phi=gsl_rng_uniform(rand)*2*M_PI;
                    com_v_phi=gsl_rng_uniform(rand)*2*M_PI;
                    com_v_theta=acos((gsl_rng_uniform(rand)*2)-1);
@@ -2335,7 +2335,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 
                 //printf("Chosen el: p0 %e p1 %e p2 %e p3 %e\nph: p0 %e p1 %e p2 %e p3 %e\n", *(el_p+0), *(el_p+1), *(el_p+2), *(el_p+3), *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
                 
-                synch_x_sect=synCrossSection(n_dens_tmp/M_P, n_temp_tmp, ph_p_comv[0]*C_LIGHT/PL_CONST, sqrt((el_p[0]*el_p[0]/(M_EL*M_EL*C_LIGHT*C_LIGHT))-1), epsilon_b);
+                //synch_x_sect=synCrossSection(n_dens_tmp/M_P, n_temp_tmp, ph_p_comv[0]*C_LIGHT/PL_CONST, sqrt((el_p[0]*el_p[0]/(M_EL*M_EL*C_LIGHT*C_LIGHT))-1), epsilon_b); COMMENT OUT TO TEST REGULAR SCATTERING
                 //printf("i: %d flash_array_idx %d synch_x_sect %e freq %e temp %e el_dens %e\n", i, min_index, synch_x_sect, *(ph_p+0)*C_LIGHT/PL_CONST, n_temp_tmp, n_dens_tmp/M_P);
                 
                 if (synch_x_sect==0)
@@ -2947,8 +2947,8 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
         {
             updatePhotonPosition(ph, num_ph, scatt_time-old_scatt_time, fPtr);
         
-            fprintf(fPtr,"i: %d, Photon: %d, Delta t=%e\n", i, ph_index, scatt_time-old_scatt_time);
-            fflush(fPtr);
+            //fprintf(fPtr,"i: %d, Photon: %d, Delta t=%e\n", i, ph_index, scatt_time-old_scatt_time);
+            //fflush(fPtr);
             
            //if the photon should scatter then do so, will_scatter==1
            if (*(will_scatter+ph_index) != 0 )
