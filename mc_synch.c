@@ -172,7 +172,7 @@ double calcSynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_in
 
 int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,  double epsilon_b, gsl_rng *rand, int riken_switch, FILE *fPtr)
 {
-    int min_photons=0, block_cnt=0, i=0, j=0, k=0, l=0, *ph_dens=NULL, ph_tot=0;
+    int min_photons=0, block_cnt=0, i=0, j=0, k=0, *ph_dens=NULL, ph_tot=0;
     double rmin=0, rmax=0, max_photons=0.1*maximum_photons; //have 10% as default, can change later need to figure out how many photons across simulations I want emitted
     double ph_weight_adjusted=0, position_phi=0;
     double dimlesstheta=0, nu_c=0, el_dens=0, error=0, ph_dens_calc=0, max_jnu=0;
@@ -289,7 +289,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
     l_boost=malloc(4*sizeof(double));
     
     //need to realloc memory to hold the old photon info and the new emitted photon's info
-    tmp=realloc(*ph_orig, ((*num_ph)+ph_tot)* sizeof (struct photon ));
+    tmp=realloc(*ph_orig, ((*num_ph)+ph_tot)* sizeof (struct photon )); //may have to look into directly doubling number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
     if (tmp != NULL)
     {
         /* everything ok */
@@ -378,7 +378,8 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
                 (*ph_orig)[(*num_ph)+ph_tot].s3=0;
                 (*ph_orig)[(*num_ph)+ph_tot].num_scatt=0;
                 (*ph_orig)[(*num_ph)+ph_tot].weight=ph_weight_adjusted;
-                (*ph_orig)[(*num_ph)+ph_tot].nearest_block_index=0;
+                (*ph_orig)[(*num_ph)+ph_tot].nearest_block_index=-1;
+                (*ph_orig)[(*num_ph)+ph_tot].type='s';
                 //printf("%d\n",ph_tot);
                 ph_tot++;
             }
@@ -397,6 +398,6 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
     free(ph_dens); free(p_comv); free(boost); free(l_boost);
     //free(ph_emit);
     gsl_integration_workspace_free (w);
-    return 0;
+    return ph_tot;
     
 }

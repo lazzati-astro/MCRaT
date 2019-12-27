@@ -100,7 +100,7 @@ int main(int argc, char **argv)
     int frame=0, scatt_frame=0, frame_scatt_cnt=0, frame_abs_cnt=0, scatt_framestart=0, framestart=0;
     struct photon *phPtr=NULL; //pointer to array of photons 
     
-    int angle_count=0;
+    int angle_count=0, num_ph_emit=0;
     int num_angles=0, old_num_angle_procs=0; //old_num_angle_procs is to hold the old number of procs in each angle when cont sims, if  restarting sims this gets set to angle_procs
     int *frame_array=NULL, *proc_frame_array=NULL, *element_num=NULL, *sorted_indexes=NULL, *will_scatter=NULL, *tmp_int=NULL, proc_frame_size=0;
     double *thread_theta=NULL; //saves ranges of thetas for each thread to go through
@@ -842,12 +842,13 @@ int main(int argc, char **argv)
                         //printf("The result of read and decimate are arrays with %d elements\n", array_num);
                     
                     //emit synchrotron photons here
+                    num_ph_emit=0;
                     if (scatt_frame != scatt_framestart)
                     {
                         printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0);
                         
                         fprintf(fPtr, "Emitting Synchrotron Photons\n", array_num);
-                        photonEmitSynch(&phPtr, &num_ph, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, 1, rng, RIKEN_SWITCH, fPtr);
+                        num_ph_emit=photonEmitSynch(&phPtr, &num_ph, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, 1, rng, RIKEN_SWITCH, fPtr);
                         
                         printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e (phPtr)[72].comv_p0 %e (phPtr)[73].comv_p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0, (phPtr)[72].comv_p0, (phPtr)[73].comv_p0);
                         
@@ -961,7 +962,7 @@ int main(int argc, char **argv)
                     phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
                         
                     fprintf(fPtr,"The number of scatterings in this frame is: %d\n", frame_scatt_cnt);
-                    fprintf(fPtr,"The number of absorbed photons in this frame is: %d\n", frame_abs_cnt);
+                    fprintf(fPtr,"The number of photons absorbed in this frame is: %d\n", frame_abs_cnt);
                     fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                     fprintf(fPtr,"MCRaT had to refind the position of photons %d times in this frame.\n", num_photons_find_new_element);
                     fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scattering for a photon is: %d\n", max_scatt, min_scatt);
@@ -980,7 +981,7 @@ int main(int argc, char **argv)
                     if (save_chkpt_success==0)
                     {
                         //if we saved the checkpoint successfully also save the photons to the hdf5 file, else there may be something wrong with the file system
-                        printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, angle_id, fPtr);
+                        printPhotons(phPtr, num_ph, frame_abs_cnt, num_ph_emit, scatt_frame , frame, mc_dir, angle_id, fPtr); // (NEED TO MODIFY FUNCTION STILL TO IGNORE ABSORBED PHOTONS AND GET THIER INDEXES)
                     }
                     else
                     {

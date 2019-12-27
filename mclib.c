@@ -142,7 +142,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
 }
 
 
-void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200], int angle_rank,  FILE *fPtr )
+void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit, int frame,int frame_inj, char dir[200], int angle_rank, FILE *fPtr )
 {
     //function to save the photons' positions and 4 momentum
     
@@ -154,44 +154,47 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
      //if the frame does exist then read information from the prewritten data and then add new data to it as extended chunk
      
      
-    int i=0, rank=1;
+    int i=0, rank=1, net_num_ph=num_ph-num_ph_abs, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs : num_ph_emit-num_ph_abs ;
     int num_thread=omp_get_num_threads();
-    char mc_file[200]="", group[200]="";
-    double p0[num_ph], p1[num_ph], p2[num_ph], p3[num_ph] , r0[num_ph], r1[num_ph], r2[num_ph], num_scatt[num_ph], weight[num_ph];
-    double s0[num_ph], s1[num_ph], s2[num_ph], s3[num_ph], comv_p0[num_ph], comv_p1[num_ph], comv_p2[num_ph], comv_p3[num_ph];
-    hid_t  file, file_init, dspace, fspace, mspace, prop, group_id;
+    char mc_file[200]="", group[200]="", group_weight[200]="";
+    double p0[net_num_ph], p1[net_num_ph], p2[net_num_ph], p3[net_num_ph] , r0[net_num_ph], r1[net_num_ph], r2[net_num_ph], num_scatt[net_num_ph], weight[net_num_ph];
+    double s0[net_num_ph], s1[net_num_ph], s2[net_num_ph], s3[net_num_ph], comv_p0[net_num_ph], comv_p1[net_num_ph], comv_p2[net_num_ph], comv_p3[net_num_ph];
+    hid_t  file, file_init, dspace, dspace_weight, fspace, mspace, prop, group_id;
     hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_2, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3;
-    herr_t status, status_group;
-    hsize_t dims[1]={num_ph}, dims_old[1]={0}; //1 is the number of dimansions for the dataset, called rank
+    herr_t status, status_group, status_weight;
+    hsize_t dims[1]={net_num_ph}, dims_weight[1]={weight_net_num_ph}, dims_old[1]={0}; //1 is the number of dimansions for the dataset, called rank
+
+    
     hsize_t maxdims[1]={H5S_UNLIMITED};
     hsize_t      size[1];
     hsize_t      offset[1];
     
+    fprintf(fPtr, "Allocated weight to be %d values large and other arrays to be %d\n",weight_net_num_ph, net_num_ph);
+    
     //save photon data into large arrays
-    #pragma omp parallel for num_threads(num_thread)
+    weight_net_num_ph=0; //used to keep track of weight values since it may not be the same as num_ph
     for (i=0;i<num_ph;i++)
     {
-        p0[i]= ((ph+i)->p0);
-        p1[i]= ((ph+i)->p1);
-        p2[i]= ((ph+i)->p2);
-        p3[i]= ((ph+i)->p3);
-        comv_p0[i]= ((ph+i)->comv_p0);
-        comv_p1[i]= ((ph+i)->comv_p1);
-        comv_p2[i]= ((ph+i)->comv_p2);
-        comv_p3[i]= ((ph+i)->comv_p3);
-        r0[i]= ((ph+i)->r0);
-        r1[i]= ((ph+i)->r1);
-        r2[i]= ((ph+i)->r2);
-        s0[i]= ((ph+i)->s0);
-        s1[i]= ((ph+i)->s1);
-        s2[i]= ((ph+i)->s2);
-        s3[i]= ((ph+i)->s3);
-        num_scatt[i]= ((ph+i)->num_scatt);
-        if (frame==frame_inj) //if the frame is the same one that the photons were injected in, save the photon weights
+        if ((ph+i)->weight != 0)
         {
-            weight[i]= ((ph+i)->weight);
+            p0[i]= ((ph+i)->p0);
+            p1[i]= ((ph+i)->p1);
+            p2[i]= ((ph+i)->p2);
+            p3[i]= ((ph+i)->p3);
+            r0[i]= ((ph+i)->r0);
+            r1[i]= ((ph+i)->r1);
+            r2[i]= ((ph+i)->r2);
+            s0[i]= ((ph+i)->s0);
+            s1[i]= ((ph+i)->s1);
+            s2[i]= ((ph+i)->s2);
+            s3[i]= ((ph+i)->s3);
+            num_scatt[i]= ((ph+i)->num_scatt);
+            if ((frame==frame_inj) || ((num_ph_emit-num_ph_abs != 0) && ((ph+i)->type == 's'))) //if the frame is the same one that the photons were injected in, save the photon weights OR if there are synchrotron photons that havent been absorbed
+            {
+                weight[weight_net_num_ph]= ((ph+i)->weight);
+                weight_net_num_ph++;
+            }
         }
-        
     }
     
     
@@ -210,12 +213,14 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     {
         //the file exists, open it with read write 
         file=H5Fopen(mc_file, H5F_ACC_RDWR, H5P_DEFAULT);
-        //printf("In IF\n");
+        //fprintf(fPtr,"In IF\n");
         
         //see if the group exists
         status = H5Eset_auto(NULL, NULL, NULL);
         status_group = H5Gget_objinfo (file, group, 0, NULL);
         status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+        
+        
         
         /*
         fprintf(fPtr, group);
@@ -234,6 +239,13 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     if ((file_init>=0) || (status_group != 0) )
     {
         //printf("In IF\n");
+        //if the file exists, see if the weight exists
+        //snprintf(group_weight,sizeof(group),"/Weight",i );
+        status = H5Eset_auto(NULL, NULL, NULL);
+        status_weight = H5Gget_objinfo (file, "/Weight", 0, NULL);
+        status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+        
+        fprintf(fPtr,"Status of /Weight %d\n", status_weight);
         
         //the file has been newly created or if the group does not exist then  create the group for the frame
         group_id = H5Gcreate2(file, group, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -242,9 +254,13 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         /* Modify dataset creation properties, i.e. enable chunking  */
         prop = H5Pcreate (H5P_DATASET_CREATE);
         status = H5Pset_chunk (prop, rank, dims);
+        
+        status = H5Pset_chunk (prop, rank, dims_weight);
     
         /* Create the data space with unlimited dimensions. */
         dspace = H5Screate_simple (rank, dims, maxdims);
+        
+        dspace_weight=H5Screate_simple (rank, dims_weight, maxdims);
     
         /* Create a new dataset within the file using chunk creation properties.  */
         dset_p0 = H5Dcreate2 (group_id, "P0", H5T_NATIVE_DOUBLE, dspace,
@@ -305,11 +321,15 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         dset_num_scatt = H5Dcreate2 (group_id, "NS", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
                             
-        if (frame==frame_inj) //if the frame is the same one that the photons were injected in, save the photon weights
+        if ((frame==frame_inj) || (num_ph_emit-num_ph_abs != 0)) //if the frame is the same one that the photons were injected in, save the photon weights or if there are emitted photons that havent been absorbed
         {
-            dset_weight = H5Dcreate2 (file, "Weight", H5T_NATIVE_DOUBLE, dspace,
+            if (frame==frame_inj)
+            {
+                //if saving the injected photons weight dont have to worry about the major ph_weight thats not in a group
+                dset_weight = H5Dcreate2 (file, "Weight", H5T_NATIVE_DOUBLE, dspace_weight,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
-            dset_weight_2 = H5Dcreate2 (group_id, "Weight", H5T_NATIVE_DOUBLE, dspace,
+            }
+            dset_weight_2 = H5Dcreate2 (group_id, "Weight", H5T_NATIVE_DOUBLE, dspace_weight,
                             H5P_DEFAULT, prop, H5P_DEFAULT); //save the new injected photons' weights
         }
                          
@@ -372,15 +392,50 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                         H5P_DEFAULT, num_scatt);
         
-        if (frame==frame_inj)
+        if ((frame==frame_inj) || (num_ph_emit-num_ph_abs != 0))
         {
-            status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+            if (frame==frame_inj)
+            {
+                status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, weight);
+            }
             status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, weight);
         }
         
         status = H5Pclose (prop);
+        
+        if (status_weight>=0)
+        {
+            //the /Weight dataset exists and we need to do something different to save the emitted synch photons to the dataset
+            dset_weight = H5Dopen (file, "Weight", H5P_DEFAULT); //open dataset
+            
+            //get dimensions of array and save it
+            dspace = H5Dget_space (dset_weight);
+            
+            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+            
+            //extend the dataset
+            size[0] = dims_weight[0]+ dims_old[0];
+            status = H5Dset_extent (dset_weight, size);
+            
+            /* Select a hyperslab in extended portion of dataset  */
+            fspace = H5Dget_space (dset_weight);
+            offset[0] = dims_old[0];
+            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                          dims_weight, NULL);
+            
+            /* Define memory space */
+            mspace = H5Screate_simple (rank, dims_weight, NULL);
+            
+            /* Write the data to the extended portion of dataset  */
+            status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, mspace, fspace,
+                               H5P_DEFAULT, weight);
+            
+            status = H5Sclose (dspace);
+            status = H5Sclose (mspace);
+            status = H5Sclose (fspace);
+        }
     
     }
     else
@@ -666,7 +721,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
                             H5P_DEFAULT, num_scatt);
         
         
-        if (frame==frame_inj)
+        if ((frame==frame_inj) || (num_ph_emit-num_ph_abs != 0))
         {
             status = H5Sclose (dspace);
             status = H5Sclose (mspace);
@@ -696,7 +751,7 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
             status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, mspace, fspace,
                             H5P_DEFAULT, weight);
                             
-            //will have to create the weight dataset for the new set of phtons that have been injected
+            //will have to create the weight dataset for the new set of phtons that have been injected, although it may already be created since emitting photons now
              /* Modify dataset creation properties, i.e. enable chunking  */
             prop = H5Pcreate (H5P_DATASET_CREATE);
             status = H5Pset_chunk (prop, rank, dims);
@@ -740,9 +795,12 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     #endif
     
     status = H5Dclose (dset_num_scatt); 
-    if (frame==frame_inj)
+    if ((frame==frame_inj) || (num_ph_emit-num_ph_abs != 0))
     {
-        status = H5Dclose (dset_weight);
+        if ((frame==frame_inj) || (status_weight>=0))
+        {
+            status = H5Dclose (dset_weight);
+        }
         status = H5Dclose (dset_weight_2);
     }
     
@@ -750,7 +808,12 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
    status = H5Gclose(group_id);
     
     /* Terminate access to the file. */
-    status = H5Fclose(file);
+      status = H5Fclose(file);
+    
+    if (status_weight>=0)
+    {
+        exit(0);
+    }
 
 }
 
@@ -1697,6 +1760,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                 (*ph)[ph_tot].num_scatt=0;
                 (*ph)[ph_tot].weight=ph_weight_adjusted;
                 (*ph)[ph_tot].nearest_block_index=0;
+                (*ph)[ph_tot].type='i';
                 //printf("%d\n",ph_tot);
                 ph_tot++;
             }
@@ -2089,7 +2153,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         //if the location of the photon is less than the domain of the hydro simulation then do all of this, otherwise assing huge mfp value so no scattering occurs and the next frame is loaded
         // absorbed photons have ph_block_index=-1, therefore if this value is not less than 0, calulate the mfp properly but doesnt work when go to new frame and find new indexes (will change b/c will get rid of these photons when printing)
         //alternatively make decision based on 0 weight
-        if (((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x)) && ((ph+i)->weight != 0) ) //can use sorted index to see which photons have been absorbed efficiently before printing and get the indexes
+        if (((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x)) && ((ph+i)->nearest_block_index != -1) ) //can use sorted index to see which photons have been absorbed efficiently before printing and get the indexes
         {
             #if GEOMETRY == SPHERICAL
                 is_in_block=checkInBlock(ph_block_index,  ph_r,  ph_theta,  ph_z,  x,   y, z,  szx,  szy);
@@ -2220,7 +2284,10 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 ph_p_comv[2]=((ph+i)->comv_p2);
                 ph_p_comv[3]=((ph+i)->comv_p3);
                 
-                singleElectron(&el_p, n_temp_tmp, &ph_p_comv, rng[omp_get_thread_num()], fPtr); //get random electron
+                //printf("ph: p0 %e p1 %e p2 %e p3 %e\n",  *(ph_p_comv+0), *(ph_p_comv+1), *(ph_p_comv+2), *(ph_p_comv+3));
+
+                
+                singleElectron(&el_p[0], n_temp_tmp, &ph_p_comv[0], rng[omp_get_thread_num()], fPtr); //get random electron
                 //printf("after singleElectron n_temp_tmp %e from ptr %e n_dens_tmp %e from ptr %e\n", n_temp_tmp, (*(temp+min_index)), n_dens_tmp, (*(dens+min_index)));
                 
                 //printf("Chosen el: p0 %e p1 %e p2 %e p3 %e\nph: p0 %e p1 %e p2 %e p3 %e\n", *(el_p+0), *(el_p+1), *(el_p+2), *(el_p+3), *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
@@ -2652,6 +2719,8 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
     #pragma omp parallel for num_threads(num_thread) firstprivate(old_position, new_position, divide_p0)
     for (i=0;i<num_ph;i++)
     {
+        if ((ph+i)->weight != 0)
+        {
             old_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 ); //uncommented checks since they were not necessary anymore
             
             divide_p0=1.0/((ph+i)->p0);
@@ -2674,7 +2743,8 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
             	fprintf(fPtr, "PHOTON NUMBER %d DOES NOT HAVE I=1.\n", i);
             }
             
-            //printf("In update  function: %e, %e, %e, %e, %e, %e, %e\n",((ph+i)->r0), ((ph+i)->r1), ((ph+i)->r2), t, ((ph+i)->p1)/((ph+i)->p0), ((ph+i)->p2)/((ph+i)->p0), ((ph+i)->p3)/((ph+i)->p0) );  
+            //printf("In update  function: %e, %e, %e, %e, %e, %e, %e\n",((ph+i)->r0), ((ph+i)->r1), ((ph+i)->r2), t, ((ph+i)->p1)/((ph+i)->p0), ((ph+i)->p2)/((ph+i)->p0), ((ph+i)->p3)/((ph+i)->p0) );
+        }
     }
         
     //printf("In update  function: %e, %e, %e, %e\n",t, ((ph)->p1)/((ph)->p0), ((ph)->p2)/((ph)->p0), ((ph)->p3)/((ph)->p0) );    
@@ -3006,6 +3076,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                     ((ph+ph_index)->comv_p1)=(*(ph_p_comov+1));
                     ((ph+ph_index)->comv_p2)=(*(ph_p_comov+2));
                     ((ph+ph_index)->comv_p3)=(*(ph_p_comov+3));
+                    
                     //printf("Done assigning values to original struct\n");
         
                     //incremement that photons number of scatterings
@@ -3034,7 +3105,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
             // if the photon scatt_time > dt_max
             //have to adjust the time properly so that the time si now appropriate for the next frame
             scatt_time=dt_max;
-            updatePhotonPosition(ph, num_ph, scatt_time-old_scatt_time, fPtr);
+            updatePhotonPosition(ph, num_ph, scatt_time-old_scatt_time, fPtr); 
             event_did_occur=1; //set equal to 1 to get out of the loop b/c other subsequent photons will have scatt_time > dt_max
             
         }
@@ -3063,7 +3134,6 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr)
 {
     //generates an electron with random energy 
-    
     double factor=0, gamma=0;
     double y_dum=0, f_x_dum=0, x_dum=0, beta_x_dum=0, beta=0, phi=0, theta=0, ph_theta=0, ph_phi=0;
     gsl_matrix *rot= gsl_matrix_calloc (3, 3); //create matrix thats 3x3 to do rotation 
@@ -3633,20 +3703,22 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
     #pragma omp parallel for num_threads(num_thread) reduction(min:temp_min) reduction(max:temp_max) reduction(+:sum) reduction(+:avg_r_sum)
     for (i=0;i<ph_num;i++)
     {
-        sum+=((ph+i)->num_scatt);
-        avg_r_sum+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
-        
-        if (((ph+i)->num_scatt) > temp_max )
+        if ((ph+i)->weight != 0)
         {
-            temp_max=((ph+i)->num_scatt);
-            //printf("The new max is: %d\n", temp_max);
-        }
-        
-        //if ((i==0) || (((ph+i)->num_scatt)<temp_min))
-        if (((ph+i)->num_scatt)<temp_min)
-        {
-            temp_min=((ph+i)->num_scatt);
-            //printf("The new min is: %d\n", temp_min);
+            sum+=((ph+i)->num_scatt);
+            avg_r_sum+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
+            
+            if (((ph+i)->num_scatt) > temp_max )
+            {
+                temp_max=((ph+i)->num_scatt);
+                //printf("The new max is: %d\n", temp_max);
+            }
+            
+            if ((i==0) || (((ph+i)->num_scatt)<temp_min))
+            {
+                temp_min=((ph+i)->num_scatt);
+                //printf("The new min is: %d\n", temp_min);
+            }
         }
         
     }
