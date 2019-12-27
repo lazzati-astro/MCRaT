@@ -175,11 +175,12 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     double rmin=0, rmax=0, max_photons=0.1*maximum_photons; //have 10% as default, can change later need to figure out how many photons across simulations I want emitted
     double ph_weight_adjusted=0, position_phi=0;
     double dimlesstheta=0, nu_c=0, el_dens=0, error=0, ph_dens_calc=0, max_jnu=0;
+    double el_p[4], ph_p_comv[4];
     double params[3];
     double fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, com_v_phi=0, com_v_theta=0, position_rand=0;
     double *p_comv=NULL, *boost=NULL, *l_boost=NULL; //pointers to hold comov 4 monetum, the fluid vlocity, and the photon 4 momentum in the lab frame
     int status;
-    int min_photons=0, block_cnt=0, i=0, j=0, k=0, null_ph_count=0, *ph_dens=NULL, ph_tot=0;
+    int block_cnt=0, i=0, j=0, k=0, null_ph_count=0, *ph_dens=NULL, ph_tot=0, min_photons=1;
     int *null_ph_indexes=NULL;
     int num_thread=omp_get_num_threads(), count_null_indexes=0, idx=0;
     struct photon *ph_emit=NULL; //pointer to array of structs that will hold emitted photon info
@@ -244,10 +245,24 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                     F.params = &params;
                     
                     //printf("Integrating\n");
-                    status=gsl_integration_qags(&F, nu_c*1e-4, nu_c*1e2, 0, 1e-2, 10000, w, &ph_dens_calc, &error); //do this range b/c its ~4 order of magnitude difference between peak and lower limit and at high frequencies have exponential cut off therefore probability goes down very fast
-                    ph_dens_calc*=2*M_PI*(*(x+i))*pow(*(szx+i),2.0)/(fps*ph_weight_adjusted);
+                    //status=gsl_integration_qags(&F, nu_c*1e-4, nu_c*1e2, 0, 1e-2, 10000, w, &ph_dens_calc, &error); //do this range b/c its ~4 order of magnitude difference between peak and lower limit and at high frequencies have exponential cut off therefore probability goes down very fast
+                    //ph_dens_calc*=2*M_PI*(*(x+i))*pow(*(szx+i),2.0)/(fps*ph_weight_adjusted);
                     //printf ("error: %s\n", gsl_strerror (status));
-                    //printf("Temp %e, el_dens %e, B %e, nu_c %e, dimlesstheta %e, number of photons to emit %e, error %e, Intervals %zu\n",  *(temp+i), el_dens, calcB(el_dens, *(temp+i), epsilon_b), nu_c, dimlesstheta, ph_dens_calc, error, w->size);
+                    //Before integrated the photon number spectrum to get the number of photons to emit
+                    
+                    ph_p_comv[0]=nu_c*PL_CONST/C_LIGHT;
+                    ph_p_comv[1]=0;
+                    ph_p_comv[2]=0;
+                    ph_p_comv[3]=0; //dont care about these components of the 4 momentum
+                    
+                    //now assume steady state for thermal synchrotron radiation, emit number of photons as source function (j/absorption) at nu_c divided by h*nu_c
+                    singleElectron(&el_p[0], *(temp+i), &ph_p_comv[0], rand, fPtr); //get random electron, only care about its energy
+                    printf("Chosen el: p0 %e p1 %e p2 %e p3 %e\n", *(el_p+0), *(el_p+1), *(el_p+2), *(el_p+3));
+                    ph_dens_calc=jnu(nu_c, nu_c, dimlesstheta, el_dens)/(el_dens*synCrossSection(el_dens, *(temp+i), ph_p_comv[0]*C_LIGHT/PL_CONST, sqrt((el_p[0]*el_p[0]/(M_EL*M_EL*C_LIGHT*C_LIGHT))-1), epsilon_b)*(PL_CONST*nu_c));
+                    printf("ph_dens_calc init=%e\n", ph_dens_calc);
+                    ph_dens_calc*=2*M_PI*(*(x+i))*pow(*(szx+i),2.0)/(fps*ph_weight_adjusted);
+                    
+                    printf("Temp %e, el_dens %e, B %e, nu_c %e, dimlesstheta %e, number of photons to emit %e, error %e, Intervals %zu\n",  *(temp+i), el_dens, calcB(el_dens, *(temp+i), epsilon_b), nu_c, dimlesstheta, ph_dens_calc, error, w->size);
                     //exit(0);
                 }
                 else
@@ -258,7 +273,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                 
                 (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
                 
-                //printf("%d, %lf \n",*(ph_dens+j), ph_dens_calc);
+                printf("%d, %lf \n",*(ph_dens+j), ph_dens_calc);
                 
                 //sum up all the densities to get total number of photons
                 ph_tot+=(*(ph_dens+j));
@@ -295,7 +310,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     
     
     fprintf(fPtr, "Null photons %d\nEmitting %d synchrotron photons between %e and %e in this frame\n", null_ph_count, ph_tot, rmin, rmax);
-    
+    //exit(0);
     //allocate memory for that many photons and also allocate memory to hold comoving 4 momentum of each photon and the velocity of the fluid
     //ph_emit=malloc (ph_tot * sizeof (struct photon ));
     p_comv=malloc(4*sizeof(double));
@@ -414,6 +429,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                 //printf("flash_array_idx: %d Temp %e, el_dens %e, B %e, nu_c %e, dimlesstheta %e\n",i, *(temp+i), el_dens, calcB(el_dens, *(temp+i), epsilon_b), nu_c, dimlesstheta);
 
                 //have to get random frequency for the photon comoving frequency
+                /*
                 y_dum=1; //initalize loop
                 yfr_dum=0;
                 while (y_dum>yfr_dum)
@@ -427,6 +443,8 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                     //printf("%lf,%lf,%e \n",fr_dum, y_dum, yfr_dum);
                     
                 }
+                 */
+                fr_dum=nu_c; //set the frequency directly to the cyclotron frequency
                 //printf("%lf\n ",fr_dum);
                 //exit(0);
                 position_phi=gsl_rng_uniform(rand)*2*M_PI;
