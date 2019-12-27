@@ -81,8 +81,8 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
 
 int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy);
 
-int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y, double epsilon_b, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
-                                   double *temp, double *all_time_steps, int *sorted_indexes, int *will_scatter, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr);
+int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y, double epsilon_b, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
+                                   double *temp, double *all_time_steps,  int *sorted_indexes, int *will_scatter, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr);
                                    
 int compare (void *ar, const void *a, const void *b);
 

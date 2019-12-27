@@ -2005,7 +2005,7 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
     return return_val;
 }
 
-int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y, double epsilon_b, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
+int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y, double epsilon_b, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens,\
                                    double *temp, double *all_time_steps, int *sorted_indexes, int *will_scatter, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)
 {
     int i=0, min_index=0, ph_block_index=0;
@@ -2018,12 +2018,11 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     int num_thread=omp_get_num_threads();
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
     
-    int index=0;
+    int index=0, num_photons_find_new_element=0;
     double mfp=0,min_mfp=0, beta=0;
     double el_p[4];
     double ph_p_comv[4], ph_p[4], fluid_beta[3];
 
-    
     //initialize gsl random number generator fo each thread
     
         const gsl_rng_type *rng_t;
@@ -2046,7 +2045,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     //or just parallelize this part here
     
     min_mfp=1e12;
-    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p) private(i) shared(min_mfp )
+    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p, ph_p, fluid_beta) private(i) shared(min_mfp ) reduction(+:num_photons_find_new_element)
     for (i=0;i<num_ph; i++)
     {
         //printf("%d, %d,%e\n", i, ((ph+i)->nearest_block_index), ((ph+i)->weight));
@@ -2150,6 +2149,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                     ((ph+i)->comv_p2)=ph_p_comv[2];
                     ((ph+i)->comv_p3)=ph_p_comv[3];
                     
+                    num_photons_find_new_element+=1;
                 }
                 else
                 {
@@ -2158,7 +2158,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             
             }
             
-            //if min_index!= -1 do all this stuff, otherwise make sure photon doesnt scatter
+            //if min_index!= -1 (know which fluid element photon is in) do all this stuff, otherwise make sure photon doesnt scatter
             if (min_index != -1)
             {
                 //fprintf(fPtr,"Min Index: %d\n", min_index);
@@ -2298,11 +2298,17 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     //}
     //exit(0);
     
+    //print number of times we had to refind the index of the elemtn photons were located in
+    if (find_nearest_block_switch!=0)
+    {
+        num_photons_find_new_element=0; //force this to be 0 since we forced MCRaT to find the indexes for all the photons here
+    }
     
-    (*time_step)=*(all_time_steps+(*(sorted_indexes+0))); //dont need these and dont need to return index b/c photonEvent doesnt use this, but mcrat.c uses this info
-    index= *(sorted_indexes+0);//first element of sorted array
+    //fprintf(fPtr, "MCRat had to refind where %d photons were located in the grid\n", num_photons_find_new_element);
+    //(*time_step)=*(all_time_steps+(*(sorted_indexes+0))); //dont need to return index b/c photonEvent doesnt use this, but mcrat.c uses this info
+    //index= *(sorted_indexes+0);//first element of sorted array
     //free(el_p);free(ph_p_comv);
-    return index;
+    return num_photons_find_new_element;
     
 }
 
