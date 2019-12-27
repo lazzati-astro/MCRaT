@@ -146,7 +146,7 @@ double synCrossSection(double el_dens, double T, double nu_ph, double p_el, doub
     double nu_c=calcCyclotronFreq(B);
     double gamma_el=sqrt(p_el*p_el+1);
     
-    printf("calc gamma %e, temp %e\n", gamma_el, T);
+    //printf("calc gamma %e, temp %e\n", gamma_el, T);
     
     return (3.0*M_PI*M_PI/8.0)*(THOM_X_SECT/FINE_STRUCT)*(b_cr/B)*pow(nu_c/nu_ph, 2.0) * exp(-2*nu_ph*(gamma_el*log((gamma_el+1)/p_el)-1)/nu_c)* ((C(nu_ph, nu_c, gamma_el, p_el)/G(gamma_el, p_el))-(G_prime(gamma_el, p_el)/pow(G(gamma_el, p_el),2.0)));
 }
@@ -179,7 +179,8 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
     double params[3];
     double fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, com_v_phi=0, com_v_theta=0;
     int status;
-    struct photon *ph_emit=NULL, *tmp=NULL; //pointer to array of structs that will hold emitted photon info
+    struct photon *ph_emit=NULL; //pointer to array of structs that will hold emitted photon info
+    struct photon *tmp=NULL;
     
     printf("IN EMIT SYNCH FUNCTION\n");
     
@@ -361,16 +362,21 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
     //printf("old num_ph %d", *num_ph);
     
     //need to realloc memory to hold the old photon info and the new emitted photon's info
-    tmp=realloc(*ph_orig, (*num_ph+ph_tot)* sizeof (struct photon ));
-    if (tmp == NULL)
+    tmp=realloc(*ph_orig, ((*num_ph)+ph_tot)* sizeof (struct photon ));
+    if (tmp != NULL)
     {
-        /* problems!!!! */
-        printf("Error with reserving space to hold old and new photons\n");
+        /* everything ok */
+        *ph_orig = tmp;
+        for (i=0;i<*num_ph;i++)
+        {
+            fprintf(fPtr, "i: %d after realloc freq %e\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST );
+        }
     }
     else
     {
-        /* everything ok                                                                 */
-        *ph_orig = tmp;
+        /* problems!!!! */
+        printf("Error with reserving space to hold old and new photons\n");
+        exit(0);
     }
     
     //realloc should move original photons to new memory allocation therefore just need to fill in the most recent photn info

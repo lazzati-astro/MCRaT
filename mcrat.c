@@ -91,7 +91,7 @@ int main(int argc, char **argv)
     FILE *fPtr=NULL; //pointer to log file for each thread
     double *xPtr=NULL,  *yPtr=NULL,  *rPtr=NULL,  *thetaPtr=NULL,  *velxPtr=NULL,  *velyPtr=NULL,  *densPtr=NULL,  *presPtr=NULL,  *gammaPtr=NULL,  *dens_labPtr=NULL;
     double *szxPtr=NULL,*szyPtr=NULL, *tempPtr=NULL; //pointers to hold data from FLASH files
-    double *phiPtr=NULL, *velzPtr=NULL, *zPtr=NULL, *all_time_steps=NULL;
+    double *phiPtr=NULL, *velzPtr=NULL, *zPtr=NULL, *all_time_steps=NULL, *tmp_double=NULL;
     int num_ph=0, array_num=0, ph_scatt_index=0, max_scatt=0, min_scatt=0,i=0; //number of photons produced in injection algorithm, number of array elleemnts from reading FLASH file, index of photon whch does scattering, generic counter
     double dt_max=0, thescatt=0, accum_time=0; 
     double  gamma_infinity=0, time_now=0, time_step=0, avg_scatt=0,avg_r=0; //gamma_infinity not used?
@@ -102,7 +102,7 @@ int main(int argc, char **argv)
     
     int angle_count=0;
     int num_angles=0, old_num_angle_procs=0; //old_num_angle_procs is to hold the old number of procs in each angle when cont sims, if  restarting sims this gets set to angle_procs
-    int *frame_array=NULL, *proc_frame_array=NULL, *element_num=NULL, *sorted_indexes=NULL, proc_frame_size=0;
+    int *frame_array=NULL, *proc_frame_array=NULL, *element_num=NULL, *sorted_indexes=NULL, *will_scatter=NULL, *tmp_int=NULL, proc_frame_size=0;
     double *thread_theta=NULL; //saves ranges of thetas for each thread to go through
     double delta_theta=1;
     
@@ -719,9 +719,6 @@ int main(int argc, char **argv)
                     
                 }
                 
-                all_time_steps=malloc(num_ph*sizeof(double));
-                sorted_indexes=malloc(num_ph*sizeof(int));
-                
                 //scatter photons all the way thoughout the jet
                 //for a checkpoint implmentation, start from the last saved "scatt_frame" value eh start_frame=frame or start_frame=cont_frame
                 if (restrt=='r')
@@ -840,7 +837,42 @@ int main(int argc, char **argv)
                         
                         printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e (phPtr)[72].p0 %e (phPtr)[73].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0, (phPtr)[72].p0, (phPtr)[73].p0);
                         
+                        //need to reallocate memory for time_steps, sortd_index, will_scatter
+                        tmp_double=realloc(all_time_steps, num_ph*sizeof(double));
+                        if (tmp_double!=NULL)
+                        {
+                            all_time_steps=tmp_double;
+                        }
+                        else
+                        {
+                            printf("Error with realocating space to hold data about each photon's time step until an interaction occurs\n");
+                        }
+                        tmp_int=realloc(sorted_indexes, num_ph*sizeof(double));
+                        if (tmp_int!=NULL)
+                        {
+                            sorted_indexes=tmp_int;
+                        }
+                        else
+                        {
+                            printf("Error with realocating space to hold data about the order in which each photon would have an interaction\n");
+                        }
+                        tmp_int=realloc(will_scatter, num_ph*sizeof(double));
+                        if (tmp_int!=NULL)
+                        {
+                            will_scatter=tmp_int;
+                        }
+                        else
+                        {
+                            printf("Error with realocating space to hold data about the order in which each photon would have an interaction\n");
+                        }
                         
+                    }
+                    else
+                    {
+                        //if scattering in frame photos injected into just allocate memory
+                        all_time_steps=malloc(num_ph*sizeof(double));
+                        sorted_indexes=malloc(num_ph*sizeof(int));
+                        will_scatter=malloc(num_ph*sizeof(int));//determines if photons will scatter (1) or be absorbed (0)
                     }
                         
                     fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph);
@@ -858,11 +890,12 @@ int main(int argc, char **argv)
                         //and choose the photon with the smallest mfp and calculate the timestep
                         
 
-                        ph_scatt_index=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, 1, &time_step, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
-                                                                      all_time_steps, sorted_indexes, rng, find_nearest_grid_switch, fPtr);
+                        ph_scatt_index=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, 1, &time_step, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, densPtr, tempPtr,\
+                                                                      all_time_steps, sorted_indexes, will_scatter, rng, find_nearest_grid_switch, fPtr);
 
                         if (scatt_frame != scatt_framestart)
                         {
+                            printf("*(all_time_steps+0) %e *(all_time_steps+71) %e *(all_time_steps+72) %e *(all_time_steps+73) %e\n *(will_scatter+0) %d *(will_scatter+71) %d *(will_scatter+72) %d *(will_scatter+73) %d ph_scatt_index %d this photons timestep %e\n", *(all_time_steps+0), *(all_time_steps+71), *(all_time_steps+72), *(all_time_steps+73),*(will_scatter+0) , *(will_scatter+71) , *(will_scatter+72) , *(will_scatter+73),  ph_scatt_index, *(all_time_steps+ph_scatt_index));
                             exit(0);
                         }
                         
@@ -964,8 +997,8 @@ int main(int argc, char **argv)
                 phPtr=NULL;
                 free(all_time_steps);
                 all_time_steps=NULL;
-                free(sorted_indexes);
-                sorted_indexes=NULL;
+                free(sorted_indexes); free(will_scatter);
+                sorted_indexes=NULL; will_scatter=NULL;
             } 
             save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, 0, time_now, phPtr, last_frm, angle_id, old_num_angle_procs); //this is for processes using the old code that didnt restart efficiently
             fprintf(fPtr, "Process %d has completed the MC calculation.\n", angle_id);

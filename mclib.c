@@ -1642,7 +1642,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                         //printf("%lf, %lf,%lf,%e \n",(*(temps+i)),fr_dum, y_dum, yfr_dum);
                         
                     }
-                   //printf("%lf\n ",fr_dum);
+                    printf("i: %d freq:%lf\n ",ph_tot, fr_dum);
                    position_phi=gsl_rng_uniform(rand)*2*M_PI;
                    com_v_phi=gsl_rng_uniform(rand)*2*M_PI;
                    com_v_theta=acos((gsl_rng_uniform(rand)*2)-1);
@@ -2007,9 +2007,8 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
 }
 
 int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y, double epsilon_b, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
-                                   double *temp, double *all_time_steps, int *sorted_indexes, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)
+                                   double *temp, double *all_time_steps, int *sorted_indexes, int *will_scatter, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)
 {
-    
     int i=0, min_index=0, ph_block_index=0;
     double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, ph_r=0, ph_theta=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
@@ -2054,11 +2053,11 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         //printf("%d, %e,%e\n", i, ((ph+i)->r0), ((ph+i)->r1));
         if (find_nearest_block_switch==0)
         {
-            ph_block_index=(ph+i)->nearest_block_index; //if starting a new frame the number of indexes can change and cause a seg fault
+            ph_block_index=(ph+i)->nearest_block_index; //if starting a new frame the number of indexes can change and cause a seg fault here
         }
         else
         {
-            ph_block_index=0; //if starting a new frame set index=0 to avoid this issue
+            ph_block_index=0; // therefore if starting a new frame set index=0 to avoid this issue
         }
         
         //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
@@ -2089,7 +2088,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         
         //if the location of the photon is less than the domain of the hydro simulation then do all of this, otherwise assing huge mfp value so no scattering occurs and the next frame is loaded
-        if ((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x))
+        if (((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x)) || (ph_block_index<0) )//add switch for photon being absorbed here, absorbed photons have ph_block_index=-1
         {
             #if GEOMETRY == SPHERICAL
                 is_in_block=checkInBlock(ph_block_index,  ph_r,  ph_theta,  ph_z,  x,   y, z,  szx,  szy);
@@ -2168,6 +2167,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 (n_vx_tmp)= (*(velx+min_index));
                 (n_vy_tmp)= (*(vely+min_index));
                 (n_temp_tmp)= (*(temp+min_index));
+                
                 /*
                 //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
                 #if DIMENSIONS == 3
@@ -2214,12 +2214,30 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 *(ph_p+3)=((ph+i)->p3);
                 
                 singleElectron(el_p, n_temp_tmp, ph_p, rand, fPtr); //get random electron
-                printf("after singleElectron n_temp_tmp %e from ptr %e n_dens_tmp %e from ptr %e\n", n_temp_tmp, (*(temp+min_index)), n_dens_tmp, (*(dens+min_index)));
+                //printf("after singleElectron n_temp_tmp %e from ptr %e n_dens_tmp %e from ptr %e\n", n_temp_tmp, (*(temp+min_index)), n_dens_tmp, (*(dens+min_index)));
                 
                 printf("Chosen el: p0 %e p1 %e p2 %e p3 %e\nph: p0 %e p1 %e p2 %e p3 %e\n", *(el_p+0), *(el_p+1), *(el_p+2), *(el_p+3), *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
                 
                 synch_x_sect=synCrossSection(n_dens_tmp/M_P, n_temp_tmp, *(ph_p+0)*C_LIGHT/PL_CONST, sqrt(((*(el_p+0))*(*(el_p+0))/(M_EL*M_EL*C_LIGHT*C_LIGHT))-1), epsilon_b);
                 printf("i: %d flash_array_idx %d synch_x_sect %e freq %e temp %e el_dens %e\n", i, min_index, synch_x_sect, *(ph_p+0)*C_LIGHT/PL_CONST, n_temp_tmp, n_dens_tmp/M_P);
+                
+                if (synch_x_sect==0)
+                {
+                    *(will_scatter+i)=1; //this photon will scatter b/c probability of absorption=0
+                }
+                else
+                {
+                    if (gsl_rng_uniform_pos(rng[omp_get_thread_num()])>(THOM_X_SECT/(THOM_X_SECT+synch_x_sect)))
+                    {
+                        //this photon will be absorbed
+                        *(will_scatter+i)=0;
+                    }
+                    else
+                    {
+                        *(will_scatter+i)=1;
+                    }
+                    
+                }
                 
                 //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
                 rnd_tracker=0;
@@ -2791,6 +2809,8 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
     scatter_did_occur=0;
     //fprintf(fPtr,"In this function Num_ph %d\n", num_ph);
     //fflush(fPtr);
+    
+    //START SCATTERING FROM COMOV FRAME
     
     while (i<num_ph && scatter_did_occur==0 )
     {
