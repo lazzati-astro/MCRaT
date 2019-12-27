@@ -766,6 +766,20 @@ int main(int argc, char **argv)
                             
                             fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
                             fflush(fPtr);
+
+                            if (scatt_frame != scatt_framestart)
+                            {
+                                //NEED TO DETERMINE IF min_r or max_r is smaller/larger than the rmin/rmax in photonEmitSynch to properly emit photons in the range that the process is interested in
+                                printf("OLD: min_r %e max_r %e\n", min_r, max_r);
+                                double test=0;
+                                test=calcSynchRLimits( scatt_frame, frame, fps_modified,  inj_radius, "min");
+                                printf("TEST MIN: %e\n", test);
+                                min_r=(min_r < test) ? min_r : test ;
+                                test=calcSynchRLimits( scatt_frame, frame, fps_modified,  inj_radius, "max");
+                                printf("TEST MAX: %e\n", test);
+                                max_r=(max_r > test ) ? max_r : test ;
+                                printf("NEW: min_r %e max_r %e\n", min_r, max_r);
+                            }
                             
                             readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                     &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
@@ -833,7 +847,7 @@ int main(int argc, char **argv)
                         printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0);
                         
                         fprintf(fPtr, "Emitting Synchrotron Photons\n", array_num);
-                        photonEmitSynch(&phPtr, &num_ph, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, 1, rng, RIKEN_SWITCH, fPtr);
+                        photonEmitSynch(&phPtr, &num_ph, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, 1, rng, RIKEN_SWITCH, fPtr);
                         
                         printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e (phPtr)[72].p0 %e (phPtr)[73].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0, (phPtr)[72].p0, (phPtr)[73].p0);
                         

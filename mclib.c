@@ -1659,7 +1659,6 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                     *(boost+0)=-1*(*(vx+i))*cos(position_phi);
                     *(boost+1)=-1*(*(vx+i))*sin(position_phi);
                     *(boost+2)=-1*(*(vy+i));
-                    //printf("%lf, %lf, %lf\n", *(boost+0), *(boost+1), *(boost+2));
                     
                     //boost to lab frame
                     lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
@@ -2091,7 +2090,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         //if the location of the photon is less than the domain of the hydro simulation then do all of this, otherwise assing huge mfp value so no scattering occurs and the next frame is loaded
         // absorbed photons have ph_block_index=-1, therefore if this value is not less than 0, calulate the mfp properly but doesnt work when go to new frame and find new indexes (will change b/c will get rid of these photons when printing)
         //alternatively make decision based on 0 weight
-        if (((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x)) && ((ph+i)->weight != 0) )
+        if (((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x)) && ((ph+i)->weight != 0) ) //can use sorted index to see which photons have been absorbed efficiently before printing and get the indexes
         {
             #if GEOMETRY == SPHERICAL
                 is_in_block=checkInBlock(ph_block_index,  ph_r,  ph_theta,  ph_z,  x,   y, z,  szx,  szy);
@@ -2171,7 +2170,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 (n_vy_tmp)= (*(vely+min_index));
                 (n_temp_tmp)= (*(temp+min_index));
                 
-                /*
+
                 //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
                 #if DIMENSIONS == 3
                 {
@@ -2210,7 +2209,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                     beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)+pow((n_vz_tmp),2)),0.5);
                 }
                 #endif
-                 */ //DO EVERYTHING IN COMOV FRAME NOW
+
                 *(ph_p+0)=((ph+i)->p0);
                 *(ph_p+1)=((ph+i)->p1);
                 *(ph_p+2)=((ph+i)->p2);
@@ -2295,7 +2294,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     //exit(0);
     
     
-    (*time_step)=*(all_time_steps+(*(sorted_indexes+0))); //dont need these and dont need to return index
+    (*time_step)=*(all_time_steps+(*(sorted_indexes+0))); //dont need these and dont need to return index b/c photonEvent doesnt use this, but mcrat.c uses this info
     index= *(sorted_indexes+0);//first element of sorted array
     free(el_p);free(ph_p);
     return index;
@@ -2812,9 +2811,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
     event_did_occur=0;
     //fprintf(fPtr,"In this function Num_ph %d\n", num_ph);
     //fflush(fPtr);
-    
-    //START SCATTERING FROM COMOV FRAME
-    
+        
     while (i<num_ph && event_did_occur==0 )
     {
         ph_index=(*(sorted_indexes+i));
@@ -2912,8 +2909,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                 fprintf(fPtr, "ph_comov: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
                 fflush(fPtr);
                 */
-            
-            
+                        
                 //fprintf(fPtr, "Theta: %e Phi %e Lab: x_tilde: %e, %e, %e, y_tilde: %e %e %e\n", theta, phi, *(x_tilde+0), *(x_tilde+1), *(x_tilde+2), *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
             
                 //then rotate the stokes plane by some angle such that we are in the stokes coordinat eystsem after the lorentz boost
@@ -2979,6 +2975,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                     }
                     #endif
                 
+
                     if (((*(ph_p+0))*C_LIGHT/1.6e-9) > 1e4)
                     {
                         fprintf(fPtr,"Extremely High Photon Energy!!!!!!!!\n");

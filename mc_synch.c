@@ -170,14 +170,15 @@ double calcSynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_in
     return val;
 }
 
-int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens,  double epsilon_b, gsl_rng *rand, int riken_switch, FILE *fPtr)
+int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,  double epsilon_b, gsl_rng *rand, int riken_switch, FILE *fPtr)
 {
-    int min_photons=0, block_cnt=0, i=0, j=0, k=0, *ph_dens=NULL, ph_tot=0;
+    int min_photons=0, block_cnt=0, i=0, j=0, k=0, l=0, *ph_dens=NULL, ph_tot=0;
     double rmin=0, rmax=0, max_photons=0.1*maximum_photons; //have 10% as default, can change later need to figure out how many photons across simulations I want emitted
     double ph_weight_adjusted=0, position_phi=0;
     double dimlesstheta=0, nu_c=0, el_dens=0, error=0, ph_dens_calc=0, max_jnu=0;
     double params[3];
     double fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, com_v_phi=0, com_v_theta=0;
+    double *p_comv=NULL, *boost=NULL, *l_boost=NULL; //pointers to hold comov 4 monetum, the fluid vlocity, and the photon 4 momentum in the lab frame
     int status;
     struct photon *ph_emit=NULL; //pointer to array of structs that will hold emitted photon info
     struct photon *tmp=NULL;
@@ -283,7 +284,29 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
     
     //allocate memory for that many photons and also allocate memory to hold comoving 4 momentum of each photon and the velocity of the fluid
     ph_emit=malloc (ph_tot * sizeof (struct photon ));
-    //p_comv=malloc(4*sizeof(double));
+    p_comv=malloc(4*sizeof(double));
+    boost=malloc(4*sizeof(double));
+    l_boost=malloc(4*sizeof(double));
+    
+    //need to realloc memory to hold the old photon info and the new emitted photon's info
+    tmp=realloc(*ph_orig, ((*num_ph)+ph_tot)* sizeof (struct photon ));
+    if (tmp != NULL)
+    {
+        /* everything ok */
+        *ph_orig = tmp;
+        /*
+         for (i=0;i<*num_ph;i++)
+         {
+         fprintf(fPtr, "i: %d after realloc freq %e\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST );
+         }
+         */
+    }
+    else
+    {
+        /* problems!!!! */
+        printf("Error with reserving space to hold old and new photons\n");
+        exit(0);
+    }
     
     //go through blocks and assign random energies/locations to proper number of photons
     ph_tot=0;
@@ -323,25 +346,29 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
                 //printf("%lf, %lf, %lf\n", position_phi, com_v_phi, com_v_theta);
                 
                 //populate 4 momentum comoving array
-                //*(p_comv+0)=PL_CONST*fr_dum/C_LIGHT;
-                //*(p_comv+1)=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*cos(com_v_phi);
-                //*(p_comv+2)=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*sin(com_v_phi);
-                //*(p_comv+3)=(PL_CONST*fr_dum/C_LIGHT)*cos(com_v_theta);
+                *(p_comv+0)=PL_CONST*fr_dum/C_LIGHT;
+                *(p_comv+1)=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*cos(com_v_phi);
+                *(p_comv+2)=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*sin(com_v_phi);
+                *(p_comv+3)=(PL_CONST*fr_dum/C_LIGHT)*cos(com_v_theta);
                 
                 //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code... DO EVERYTHING IN COMOV FRAME NOW
-                //*(boost+0)=-1*(*(vx+i))*cos(position_phi);
-                //*(boost+1)=-1*(*(vx+i))*sin(position_phi);
-                //*(boost+2)=-1*(*(vy+i));
+                *(boost+0)=-1*(*(vx+i))*cos(position_phi);
+                *(boost+1)=-1*(*(vx+i))*sin(position_phi);
+                *(boost+2)=-1*(*(vy+i));
                 //printf("%lf, %lf, %lf\n", *(boost+0), *(boost+1), *(boost+2));
                 
                 //boost to lab frame
-                //lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
+                lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
                 printf("Assigning values to struct\n");
                 
-                (ph_emit+ph_tot)->p0=PL_CONST*fr_dum/C_LIGHT;
-                (ph_emit+ph_tot)->p1=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*cos(com_v_phi);
-                (ph_emit+ph_tot)->p2=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*sin(com_v_phi);
-                (ph_emit+ph_tot)->p3=(PL_CONST*fr_dum/C_LIGHT)*cos(com_v_theta);
+                (ph_emit+ph_tot)->p0=(*(l_boost+0));
+                (ph_emit+ph_tot)->p1=(*(l_boost+1));
+                (ph_emit+ph_tot)->p2=(*(l_boost+2));
+                (ph_emit+ph_tot)->p3=(*(l_boost+3));
+                (ph_emit+ph_tot)->comv_p0=(*(p_comv+0));
+                (ph_emit+ph_tot)->comv_p1=(*(p_comv+1));
+                (ph_emit+ph_tot)->comv_p2=(*(p_comv+2));
+                (ph_emit+ph_tot)->comv_p3=(*(p_comv+3));
                 (ph_emit+ph_tot)->r0= (*(x+i))*cos(position_phi); //put photons @ center of box that they are supposed to be in with random phi
                 (ph_emit+ph_tot)->r1=(*(x+i))*sin(position_phi) ;
                 (ph_emit+ph_tot)->r2=(*(y+i)); //y coordinate in flash becomes z coordinate in MCRaT
@@ -389,6 +416,10 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
         (*ph_orig)[i].p1=(ph_emit+j)->p1;
         (*ph_orig)[i].p2=(ph_emit+j)->p2;
         (*ph_orig)[i].p3=(ph_emit+j)->p3;
+        (*ph_orig)[i].comv_p0=(ph_emit+j)->comv_p0;
+        (*ph_orig)[i].comv_p1=(ph_emit+j)->comv_p1;
+        (*ph_orig)[i].comv_p2=(ph_emit+j)->comv_p2;
+        (*ph_orig)[i].comv_p3=(ph_emit+j)->comv_p3;
         (*ph_orig)[i].r0= (ph_emit+j)->r0; //put photons @ center of box that they are supposed to be in with random phi
         (*ph_orig)[i].r1=(ph_emit+j)->r1;
         (*ph_orig)[i].r2=(ph_emit+j)->r2; //y coordinate in flash becomes z coordinate in MCRaT
