@@ -96,11 +96,7 @@ int main(int argc, char **argv)
     double dt_max=0, thescatt=0, accum_time=0; 
     double  gamma_infinity=0, time_now=0, time_step=0, avg_scatt=0,avg_r=0; //gamma_infinity not used?
     double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0, ph_vzPtr=0;// *ph_cosanglePtr=NULL ;
-<<<<<<< HEAD
-    double min_r=0, max_r=0, min_theta=0, max_theta=0;
-=======
-    double min_r=0, max_r=0, nu_c_scatt=0;
->>>>>>> 435707e... Changing to emitting and absorbing seed photons.
+    double min_r=0, max_r=0, min_theta=0, max_theta=0, nu_c_scatt=0;
     int frame=0, scatt_frame=0, frame_scatt_cnt=0, frame_abs_cnt=0, scatt_framestart=0, framestart=0;
     struct photon *phPtr=NULL; //pointer to array of photons 
     
@@ -997,7 +993,7 @@ int main(int argc, char **argv)
                     if (scatt_frame != scatt_framestart)
                     {
                         //make sure the photons that shou;d be absorbed should be absorbed
-                        phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, 1, tempPtr, densPtr);
+                        phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, 1, tempPtr, densPtr, fPtr);
                         //exit(0);
                     }
                     
