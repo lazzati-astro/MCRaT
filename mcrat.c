@@ -97,7 +97,7 @@ int main(int argc, char **argv)
     double  gamma_infinity=0, time_now=0, time_step=0, avg_scatt=0,avg_r=0; //gamma_infinity not used?
     double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0, ph_vzPtr=0;// *ph_cosanglePtr=NULL ;
     double min_r=0, max_r=0, min_theta=0, max_theta=0;
-    int frame=0, scatt_frame=0, frame_scatt_cnt=0, scatt_framestart=0, framestart=0;
+    int frame=0, scatt_frame=0, frame_scatt_cnt=0, frame_abs_cnt=0, scatt_framestart=0, framestart=0;
     struct photon *phPtr=NULL; //pointer to array of photons 
     
     int angle_count=0;
@@ -879,6 +879,7 @@ int main(int argc, char **argv)
                     fflush(fPtr);
                     
                     frame_scatt_cnt=0;
+                    frame_abs_cnt=0;
                     find_nearest_grid_switch=1; // set to true so the function findNearestPropertiesAndMinMFP by default finds the index of the grid block closest to each photon since we just read in a file and the prior index is invalid
                     
                     while (time_now<((scatt_frame+increment_scatt)/fps))
@@ -896,7 +897,7 @@ int main(int argc, char **argv)
                         if (scatt_frame != scatt_framestart)
                         {
                             printf("*(all_time_steps+0) %e *(all_time_steps+71) %e *(all_time_steps+72) %e *(all_time_steps+73) %e\n *(will_scatter+0) %d *(will_scatter+71) %d *(will_scatter+72) %d *(will_scatter+73) %d ph_scatt_index %d this photons timestep %e\n", *(all_time_steps+0), *(all_time_steps+71), *(all_time_steps+72), *(all_time_steps+73),*(will_scatter+0) , *(will_scatter+71) , *(will_scatter+72) , *(will_scatter+73),  ph_scatt_index, *(all_time_steps+ph_scatt_index));
-                            exit(0);
+                            //exit(0);
                         }
                         
                         find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
@@ -915,7 +916,7 @@ int main(int argc, char **argv)
                             //scatter the photon
                             //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
-                            time_step=photonScatter( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, rng, fPtr );
+                            time_step=photonEvent( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, will_scatter, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );//DO EVERYTHING IN COMOV FRAME NOW (NEED TO MODIFY FUNCTION STILL)
                             time_now+=time_step;
                             
                             
@@ -948,6 +949,7 @@ int main(int argc, char **argv)
                     phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
                         
                     fprintf(fPtr,"The number of scatterings in this frame is: %d\n", frame_scatt_cnt);
+                    fprintf(fPtr,"The number of absorbed photons in this frame is: %d\n", frame_abs_cnt);
                     fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                     fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scattering for a photon is: %d\n", max_scatt, min_scatt);
                     fprintf(fPtr,"The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
