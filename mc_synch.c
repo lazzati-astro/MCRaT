@@ -192,22 +192,6 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     gsl_function F;
     F.function = &jnu_ph_spect;
     
-    //initialize gsl random number generator fo each thread
-    
-    const gsl_rng_type *rng_t;
-    gsl_rng **rng;
-    gsl_rng_env_setup();
-    rng_t = gsl_rng_ranlxs0;
-    
-    rng = (gsl_rng **) malloc((num_thread ) * sizeof(gsl_rng *));
-    rng[0]=rand;
-    
-    //#pragma omp parallel for num_threads(nt)
-    for(i=1;i<num_thread;i++)
-    {
-        rng[i] = gsl_rng_alloc (rng_t);
-        gsl_rng_set(rng[i],gsl_rng_get(rand));
-    }
     
     rmin=calcSynchRLimits( frame_scatt, frame_inj, fps,  r_inj, "min");
     rmax=calcSynchRLimits( frame_scatt, frame_inj, fps,  r_inj, "max");
@@ -272,7 +256,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                     exit(0);
                 }
                 
-                (*(ph_dens+j))=gsl_ran_poisson(rng[omp_get_thread_num()],ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
+                (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
                 
                 //printf("%d, %lf \n",*(ph_dens+j), ph_dens_calc);
                 
@@ -345,15 +329,33 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         null_ph_count=ph_tot; // use this to set the photons recently allocated as null phtoons (this can help if we decide to directly double (or *1.5) number of photons each time we need to allocate more memory, then use factor*((*num_ph)+ph_tot)-(*num_ph)
         null_ph_indexes=malloc(null_ph_count*sizeof(int));
         j=0;
-        for (i=((*num_ph)+ph_tot)-1;i >= *num_ph;i--)
+        for (i=0;i < ((*num_ph)+ph_tot);i++)
         {
-            (*ph_orig)[i].weight=0;
-            (*ph_orig)[i].nearest_block_index=-1;
-            *(null_ph_indexes+j)=i; //save this information so we can use the same syntax for both cases in saving the emitted photon data
-            fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
-            j++;
+            if (i >= *num_ph)
+            {
+                //preset values for the the newly created spots to hold the emitted phtoons in
+                (*ph_orig)[i].weight=0;
+                (*ph_orig)[i].nearest_block_index=-1;
+                *(null_ph_indexes+j)=i; //save this information so we can use the same syntax for both cases in saving the emitted photon data
+                fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
+                j++;
+            }
+            else
+            {
+                //for one fo the original photon see if there are any photons with non zero weights and the nearest_block_index==-1, change the nearest_block_index to 0
+                //this was an synch photon emitted in the last frame and has to have this value changes so it can be scattered/absorbed
+                if (((*ph_orig)[i].weight != 0) && ((*ph_orig)[i].nearest_block_index == -1))
+                {
+                    //if the photon weight isnt 0 and the nearest_block_index==-1 change the nearest_block_index to 0
+                    //this was an synch photon emitted in the last frame and has to have this value changes so it can be scattered/absorbed
+                    (*ph_orig)[i].nearest_block_index == 0;
+                    fprintf(fPtr, "Allowing photon %d to scatter/absorb now.\n", i);
+                }
+            }
         }
         count_null_indexes=ph_tot; //use this to count the number fo null photons we have actually created, (this can help if we decide to directly double (or *1.5) number of photons each time we need to allocate more memory, then use factor*((*num_ph)+ph_tot)-(*num_ph)
+        
+        //loop through the original set of photons to see if
         
         fprintf(fPtr,"Val %d\n", (*(null_ph_indexes+count_null_indexes-1)));
         *num_ph+=ph_tot; //update number of photons
@@ -367,17 +369,26 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         j=0;
         for (i=(*num_ph)-1;i>=0;i--)
         {
-            if ((*ph_orig)[i].weight == 0)
+            if (((*ph_orig)[i].weight != 0) && ((*ph_orig)[i].nearest_block_index == -1))
             {
+                //if the photon weight isnt 0 and the nearest_block_index==-1 change the nearest_block_index to 0
+                //this was an synch photon emitted in the last frame and has to have this value changes so it can be scattered/absorbed
+                (*ph_orig)[i].nearest_block_index == 0;
+                fprintf(fPtr, "Allowing photon %d to scatter/absorb now.\n", i);
+            }
+            else if ((*ph_orig)[i].weight == 0)
+            {
+                // if the weight is 0, this is a photons that has been absorbed and is now null
                 *(null_ph_indexes+j)=i;
                 j++;
                 fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
                 
-                if (j == null_ph_count)
-                {
-                    i=-1; //have found al the indexes and can exit the loop
-                }
+                //if (j == null_ph_count)
+                //{
+                //    i=-1; //have found al the indexes and can exit the loop, dont want to do this so we can do the first part of the if statement
+                //}
             }
+            
         }
         
         count_null_indexes=null_ph_count;
@@ -460,7 +471,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                 (*ph_orig)[idx].s3=0;
                 (*ph_orig)[idx].num_scatt=0;
                 (*ph_orig)[idx].weight=ph_weight_adjusted;
-                (*ph_orig)[idx].nearest_block_index=0;
+                (*ph_orig)[idx].nearest_block_index=-1; //make this -1 so these photons dont scatter or be absorbed in this frame (but make sure that it changes for the next frame so that can be scattered or absorbed)
                 (*ph_orig)[idx].type='s';
                 //printf("%d\n",ph_tot);
                 ph_tot++; //count how many photons have been emitted
@@ -483,12 +494,6 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     printf("(*ph_orig)[0].p0 %e (*ph_orig)[71].p0 %e (*ph_orig)[72].p0 %e (*ph_orig)[73].p0 %e\n", (*ph_orig)[0].p0, (*ph_orig)[71].p0, (*ph_orig)[72].p0, (*ph_orig)[73].p0);
     printf("At End of function\n");
     
-    //free rand number generator
-    for (i=1;i<num_thread;i++)
-    {
-        gsl_rng_free(rng[i]);
-    }
-    free(rng);
     
     if (null_ph_count > ph_tot)
     {
