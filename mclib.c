@@ -1519,8 +1519,6 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
         for (i=0;i<count;i++)
         {
             *(r_unprc+i)=pow((*(x_unprc+i))*(*(x_unprc+i))+(*(y_unprc+i))*(*(y_unprc+i)),0.5);
-            r_grid_inneredge = pow((*(x_unprc+i) - *(szx_unprc+i)/2.0) * ((*(x_unprc+i) - *(szx_unprc+i)/2.0))+(*(y_unprc+i) - *(szx_unprc+i)/2.0) * (*(y_unprc+i) - *(szx_unprc+i)/2.0),0.5);
-            r_grid_outeredge = pow((*(x_unprc+i) + *(szx_unprc+i)/2.0) * ((*(x_unprc+i) + *(szx_unprc+i)/2.0))+(*(y_unprc+i) + *(szx_unprc+i)/2.0) * (*(y_unprc+i) + *(szx_unprc+i)/2.0),0.5);
             
             if (ph_inj_switch==0)
             {
@@ -2350,7 +2348,6 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         
                 //save values
                 (n_dens_lab_tmp)= (*(dens_lab+min_index));
-                (n_dens_tmp)= (*(dens+min_index));
                 (n_vx_tmp)= (*(velx+min_index));
                 (n_vy_tmp)= (*(vely+min_index));
                 (n_temp_tmp)= (*(temp+min_index));

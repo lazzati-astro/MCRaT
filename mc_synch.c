@@ -28,6 +28,7 @@ This file is for the different functions for emitting and absorbing synchrotron 
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_histogram.h>
 #include <gsl/gsl_histogram2d.h>
+#include <gsl/gsl_integration.h>
 
 //#DEFINE CRITICAL_B FINE_STRUCT*sqrt(M_EL*C_LIGHT*C_LIGHT/pow(R_EL, 3))
 
@@ -199,7 +200,7 @@ double calcSynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_in
     return val;
 }
 
-int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,  double epsilon_b, gsl_rng *rand, int riken_switch, int inject_single_switch, int scatt_ph_index, FILE *fPtr)
+int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,  double epsilon_b, gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr)
 {
     double rmin=0, rmax=0, max_photons=0.1*maximum_photons; //have 10% as default, can change later need to figure out how many photons across simulations I want emitted
     double ph_weight_adjusted=0, position_phi=0;
@@ -268,9 +269,6 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                 //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
                 if ((*(r+i)+(*(szx+i))/2.0 >= rmin)  &&   (*(r+i)-(*(szx+i))/2.0  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
                 {
-                    if (riken_switch==0)
-                    {
-                        //using FLASH
                         //set parameters fro integration fo phtoons spectrum
                         el_dens= (*(dens+i))/M_P;
                         nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+i) , epsilon_b));
@@ -301,18 +299,20 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                         //printf("Integrating\n"); //instead integrating from 0 to nu_c
                         status=gsl_integration_qags(&F, 10, nu_c, 0, 1e-2, 10000, w, &ph_dens_calc, &error); //find number of low energy seed photons in the tail of the BB distribution
                         //printf ("error: %s\n", gsl_strerror (status));
-                        
+                    
+                    #if DIMENSIONS==2
+                        #if GEOMETRY == CARTESIAN
                         //printf("ph_dens_calc init=%e\n", ph_dens_calc);
-                        ph_dens_calc*=2*M_PI*(*(x+i))*pow(*(szx+i),2.0)/(fps*ph_weight_adjusted);
-                        
+                            ph_dens_calc*=2*M_PI*(*(x+i))*pow(*(szx+i),2.0)/(fps*ph_weight_adjusted);
+                        #elif GEOMETRY == SPHERICAL
+                            ph_dens_calc*=2*M_PI*pow(*(r+i),2.0)*sin(*(theta+i))*(*(szx+i))*(*(szy+i))/(fps*ph_weight_adjusted);
+                        #endif
                         //printf("Temp %e, el_dens %e, B %e, nu_c %e, dimlesstheta %e, number of photons to emit %e, error %e, Intervals %zu\n",  *(temp+i), el_dens, calcB(el_dens, *(temp+i), epsilon_b), nu_c, dimlesstheta, ph_dens_calc, error, w->size);
                         //exit(0);
-                    }
-                    else
-                    {
-                        printf("Emitting Photons with thermal synchrotron isn't available for non-FLASH non-2D hydro simulations.\n");
-                        exit(0);
-                    }
+                    #else
+                        #error Emitting photons with thermal synchrotron isnt available for non-2D hydro simulations.
+                    #endif
+
                     
                     (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
                     
