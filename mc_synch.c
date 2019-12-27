@@ -308,6 +308,8 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
         exit(0);
     }
     
+    //FIND OUT WHICH PHOTONS IN ARRAY ARE OLD/WERE ABSORBED AND IDENTIFY THIER INDEXES AND HOW MANY, subtract this from ph_tot @ the end?
+    
     //go through blocks and assign random energies/locations to proper number of photons
     ph_tot=0;
     for (i=0;i<array_length;i++)
@@ -378,7 +380,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, double r_inj, double p
                 (*ph_orig)[(*num_ph)+ph_tot].s3=0;
                 (*ph_orig)[(*num_ph)+ph_tot].num_scatt=0;
                 (*ph_orig)[(*num_ph)+ph_tot].weight=ph_weight_adjusted;
-                (*ph_orig)[(*num_ph)+ph_tot].nearest_block_index=-1;
+                (*ph_orig)[(*num_ph)+ph_tot].nearest_block_index=0;
                 (*ph_orig)[(*num_ph)+ph_tot].type='s';
                 //printf("%d\n",ph_tot);
                 ph_tot++;

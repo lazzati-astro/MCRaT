@@ -540,6 +540,7 @@ int main(int argc, char **argv)
                         }
                     }
                     printf("File count %d\n", file_count);
+                    file_count=0;
                     
                     if (file_count>0)
                     {
