@@ -2050,7 +2050,8 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
     for (i=0;i<num_ph; i++)
     {
-        //printf("%d, %e,%e\n", i, ((ph+i)->r0), ((ph+i)->r1));
+        printf("%d, %d,%e\n", i, ((ph+i)->nearest_block_index), ((ph+i)->weight));
+        
         if (find_nearest_block_switch==0)
         {
             ph_block_index=(ph+i)->nearest_block_index; //if starting a new frame the number of indexes can change and cause a seg fault here
@@ -2088,7 +2089,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         
         //if the location of the photon is less than the domain of the hydro simulation then do all of this, otherwise assing huge mfp value so no scattering occurs and the next frame is loaded
-        if (((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x)) || (ph_block_index<0) )//add switch for photon being absorbed here, absorbed photons have ph_block_index=-1
+        if (((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x)) && !(ph_block_index<0) )// absorbed photons have ph_block_index=-1, therefore if this value is not less than 0, calulate the mfp properly
         {
             #if GEOMETRY == SPHERICAL
                 is_in_block=checkInBlock(ph_block_index,  ph_r,  ph_theta,  ph_z,  x,   y, z,  szx,  szy);
@@ -2256,7 +2257,8 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
          else
         {
             mfp=min_mfp;
-            //printf("In ELSE\n");
+            printf("In ELSE\n");
+            //exit(0);
         }
         
         *(all_time_steps+i)=mfp/C_LIGHT;
@@ -3009,7 +3011,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                 //the photon will be absorbed
                 event_did_occur=1;
                 *frame_abs_cnt+=1;
-                //set weight=0 (to make sure it cant affect anything if it somehow gets saved) and set the nearest block index to -1
+                //set weight=0 (to make sure it cant affect anything if it somehow gets saved) and for us to knwo which photons have been absorbed
                 ((ph+ph_index)->weight)=0;
                 ((ph+ph_index)->nearest_block_index)=-1;
                 fprintf(fPtr, "In the absorption part of if-else.\n");
