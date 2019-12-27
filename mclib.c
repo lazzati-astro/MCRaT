@@ -3003,6 +3003,11 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                 *(ph_p+1)=((ph+ph_index)->p1);
                 *(ph_p+2)=((ph+ph_index)->p2);
                 *(ph_p+3)=((ph+ph_index)->p3);
+                
+                *(ph_p_comov+0)=((ph+ph_index)->comv_p0);
+                *(ph_p_comov+1)=((ph+ph_index)->comv_p1);
+                *(ph_p_comov+2)=((ph+ph_index)->comv_p2);
+                *(ph_p_comov+3)=((ph+ph_index)->comv_p3);
             
                 //fill in stokes parameters
                 *(s+0)=((ph+ph_index)->s0); //I ==1
@@ -3011,7 +3016,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                 *(s+3)=((ph+ph_index)->s3); //V/I
         
                 /*
-                fprintf(fPtr,"Unscattered Photon in Lab frame: %e, %e, %e,%e, %e, %e, %e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3), (ph->r0), (ph->r1), (ph->r2));
+                fprintf(fPtr,"Unscattered Photon in Lab frame: %e, %e, %e,%e, %e, %e, %e\nStokes params %e %e %e %e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3), (ph->r0), (ph->r1), (ph->r2), *(s+0), *(s+1), *(s+2), *(s+3));
                 fflush(fPtr);
                 fprintf(fPtr,"Fluid Beta: %e, %e, %e\n", *(fluid_beta+0),*(fluid_beta+1), *(fluid_beta+2));
                 fflush(fPtr);
@@ -3105,6 +3110,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                         fprintf(fPtr,"Extremely High Photon Energy!!!!!!!!\n");
                         fflush(fPtr);
                     }
+
                     //fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
                     //fprintf(fPtr, "Old: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
         
@@ -3126,8 +3132,6 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                     ((ph+ph_index)->num_scatt)+=1;
                     *frame_scatt_cnt+=1; //incrememnt total number of scatterings
                 
-                    //exit(0);
-
                 }
             }
             else
@@ -3138,7 +3142,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                 //set weight=0 (to make sure it cant affect anything if it somehow gets saved) and for us to knwo which photons have been absorbed
                 ((ph+ph_index)->weight)=0;
                 ((ph+ph_index)->nearest_block_index)=-1;
-                fprintf(fPtr, "In the absorption part of if-else.\n");
+                fprintf(fPtr, "Photon %d In the absorption part of if-else.\n", ph_index);
                 //exit(0);
             }
         
