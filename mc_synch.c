@@ -196,7 +196,7 @@ double calcSynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_in
     return val;
 }
 
-int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,  double epsilon_b, gsl_rng *rand, int riken_switch, int inject_single_switch, int scatt_ph_index, double nu_c_scatt, FILE *fPtr)
+int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,  double epsilon_b, gsl_rng *rand, int riken_switch, int inject_single_switch, int scatt_ph_index, FILE *fPtr)
 {
     double rmin=0, rmax=0, max_photons=0.1*maximum_photons; //have 10% as default, can change later need to figure out how many photons across simulations I want emitted
     double ph_weight_adjusted=0, position_phi=0;
@@ -557,11 +557,11 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                     (*ph_orig)[idx].comv_p1=(*(p_comv+1));
                     (*ph_orig)[idx].comv_p2=(*(p_comv+2));
                     (*ph_orig)[idx].comv_p3=(*(p_comv+3));
-                    position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
-                    (*ph_orig)[idx].r0= (*(x+i)+position_rand)*cos(position_phi); //put photons randomly in the box with random phi
-                    (*ph_orig)[idx].r1=(*(x+i)+position_rand)*sin(position_phi) ;
-                    position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
-                    (*ph_orig)[idx].r2=(*(y+i)+position_rand); //y coordinate in flash becomes z coordinate in MCRaT
+                    //position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
+                    (*ph_orig)[idx].r0= (*(x+i))*cos(position_phi); //put photons @center of the box with random phi
+                    (*ph_orig)[idx].r1=(*(x+i))*sin(position_phi) ;
+                    //position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
+                    (*ph_orig)[idx].r2=(*(y+i)); //y coordinate in flash becomes z coordinate in MCRaT
                     (*ph_orig)[idx].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
                     (*ph_orig)[idx].s1=0;
                     (*ph_orig)[idx].s2=0;
@@ -627,19 +627,27 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         (*ph_orig)[idx].comv_p1=(*(p_comv+1));
         (*ph_orig)[idx].comv_p2=(*(p_comv+2));
         (*ph_orig)[idx].comv_p3=(*(p_comv+3));
-        position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
-        (*ph_orig)[idx].r0= (*(x+i)+position_rand)*cos(position_phi); //put photons randomly in the box with random phi
-        (*ph_orig)[idx].r1=(*(x+i)+position_rand)*sin(position_phi) ;
-        position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
-        (*ph_orig)[idx].r2=(*(y+i)+position_rand); //y coordinate in flash becomes z coordinate in MCRaT
+        //position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
+        (*ph_orig)[idx].r0= (*(x+i))*cos(position_phi); //put photons at center of the box with random phi
+        (*ph_orig)[idx].r1=(*(x+i))*sin(position_phi) ;
+        //position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
+        (*ph_orig)[idx].r2=(*(y+i)); //y coordinate in flash becomes z coordinate in MCRaT
         (*ph_orig)[idx].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
         (*ph_orig)[idx].s1=0;
         (*ph_orig)[idx].s2=0;
         (*ph_orig)[idx].s3=0;
         (*ph_orig)[idx].num_scatt=0;
         (*ph_orig)[idx].weight=(*ph_orig)[scatt_ph_index].weight;
-        (*ph_orig)[idx].nearest_block_index=0; //these photons can be scattered
+        (*ph_orig)[idx].nearest_block_index=i; //these photons can be scattered
         (*ph_orig)[idx].type='s';
+        
+        //change position of scattered synchrotron photon to be random in the hydro grid
+        position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
+        (*ph_orig)[scatt_ph_index].r0=(*(x+i)+position_rand)*cos(position_phi);
+        (*ph_orig)[scatt_ph_index].r1=(*(x+i)+position_rand)*sin(position_phi);
+        position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0;
+        (*ph_orig)[scatt_ph_index].r2=(*(y+i)+position_rand);
+        
     }
     
     
@@ -664,25 +672,44 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
 
 int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, double epsilon_b, double *temp, double *dens)
 {
+    //still need to deal with below issue
+    //frame 213 where the absorption doesnt occur for all emitted photons and have some absorbed before/after unabsorbed photons, how to deal with this?
+    //can try to reorder the photons
     int i=0, abs_ph_count=0, num_thread=omp_get_num_threads();
     double el_dens=0, nu_c=0;
     
     #pragma omp parallel for num_threads(num_thread) firstprivate(el_dens, nu_c) reduction(+:abs_ph_count)
     for (i=0;i<*num_ph;i++)
     {
-        if ((*ph_orig)[i].weight != 0)
+        if (((*ph_orig)[i].weight != 0) && ((*ph_orig)[i].nearest_block_index != -1))
         {
             el_dens= (*(dens+(*ph_orig)[i].nearest_block_index))/M_P;
             nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+(*ph_orig)[i].nearest_block_index) , epsilon_b));
             printf("photon %d has frequency %e and nu_c %e with FLASH grid number %d\n", i, (*ph_orig)[i].comv_p0*C_LIGHT/PL_CONST, nu_c, (*ph_orig)[i].nearest_block_index);
-            if (((*ph_orig)[i].comv_p0*C_LIGHT/PL_CONST <= nu_c))
+            if (((*ph_orig)[i].comv_p0*C_LIGHT/PL_CONST <= nu_c) || ((*ph_orig)[i].type == 's'))
             {
                 //if the photon has a frequency less that nu_c, it should be absorbed and becomes a null photon
-                //preset values for the the newly created spots to hold the emitted phtoons in
+                //preset values for the the newly created spots to hold the emitted phtoons in;
+                
+                //if this is a synchrotron photons or photons that have been scattered that were once synch photons in this frame
                 printf("photon %d being absorbed\n", i);
-                (*ph_orig)[i].weight=0;
-                (*ph_orig)[i].nearest_block_index=-1;
-                abs_ph_count+=1;
+                if (((*ph_orig)[i].type != 'i') )
+                {
+                    (*ph_orig)[i].weight=0;
+                    (*ph_orig)[i].nearest_block_index=-1;
+                    abs_ph_count+=1;
+                }
+                else
+                {
+                    //have an injected photon or previous 'c' photon that has a frewicy that can be absorbed
+                    (*ph_orig)[i].p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been absorbed, this makes it still get saves in the hdf5 files
+                    (*ph_orig)[i].nearest_block_index=-1;
+                }
+            }
+            else
+            {
+                //if the phootn isnt going to be absorbed, see if its a 'c' photon thats survived and change it to an injected type
+                (*ph_orig)[i].type = 'i';
             }
         }
     }

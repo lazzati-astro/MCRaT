@@ -855,7 +855,7 @@ int main(int argc, char **argv)
                         printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0);
                         
                         fprintf(fPtr, "Emitting Synchrotron Photons in frame %d\n", scatt_frame);
-                        num_ph_emit=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, 1, rng, RIKEN_SWITCH, 0, 0, nu_c_scatt, fPtr);
+                        num_ph_emit=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, 1, rng, RIKEN_SWITCH, 0, 0, fPtr);
                         
                         if (scatt_frame==212)
                         {
@@ -926,14 +926,9 @@ int main(int argc, char **argv)
                         //and choose the photon with the smallest mfp and calculate the timestep
                         
 
-<<<<<<< HEAD
                         num_photons_find_new_element+=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, 1, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, densPtr, tempPtr,\
-                                                                      all_time_steps, sorted_indexes, will_scatter, rng, find_nearest_grid_switch, fPtr);
-=======
-                        num_photons_find_new_element+=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, 1, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
-                                                                      all_time_steps, sorted_indexes, rng, dim_switch, find_nearest_grid_switch, RIKEN_SWITCH, fPtr);
-                        
->>>>>>> 435707e... Changing to emitting and absorbing seed photons.
+                                                                      all_time_steps, sorted_indexes, rng, find_nearest_grid_switch, fPtr);
+
                         //if (scatt_frame == 210)
                         //{
                             //printf("*(all_time_steps+0) %e *(all_time_steps+71) %e *(all_time_steps+72) %e *(all_time_steps+73) %e\n *(will_scatter+0) %d *(will_scatter+71) %d *(will_scatter+72) %d *(will_scatter+73) %d ph_scatt_index %d this photons timestep %e\n", *(all_time_steps+0), *(all_time_steps+71), *(all_time_steps+72), *(all_time_steps+73),*(will_scatter+0) , *(will_scatter+71) , *(will_scatter+72) , *(will_scatter+73),  *(sorted_indexes+0), *(all_time_steps+*(sorted_indexes+0)));
@@ -956,21 +951,17 @@ int main(int argc, char **argv)
                             //scatter the photon
                             //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
-<<<<<<< HEAD
-                            time_step=photonEvent( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, will_scatter, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );
-=======
-                            time_step=photonEvent( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, &nu_c_scatt, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, dim_switch, fPtr );
->>>>>>> 435707e... Changing to emitting and absorbing seed photons.
+                            time_step=photonEvent( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );
                             time_now+=time_step;
                             
                             //see if the scattered phton was a seed photon, if so replenish the seed photon
                             if ((phPtr+ph_scatt_index)->type == 's')
                             {
-                                (phPtr+ph_scatt_index)->type = 'i';
+                                (phPtr+ph_scatt_index)->type = 'c'; //c for compton scattered synchrotron photon
                                 
                                 printf("Index %d\n", ph_scatt_index);
                                 printf("The previous scattered photon was a seed photon %c.\n", (phPtr+ph_scatt_index)->type);
-                                num_ph_emit+=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, 1, rng, RIKEN_SWITCH, 1, ph_scatt_index, nu_c_scatt, fPtr);
+                                num_ph_emit+=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, 1, rng, RIKEN_SWITCH, 1, ph_scatt_index, fPtr);
                                 fprintf(fPtr, " num_photon: %d\n",num_ph  );
                                 fflush(fPtr);
                                 
@@ -1030,7 +1021,6 @@ int main(int argc, char **argv)
 
                     save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id, old_num_angle_procs);
                     
-<<<<<<< HEAD
                     if (save_chkpt_success==0)
                     {
                         //if we saved the checkpoint successfully also save the photons to the hdf5 file, else there may be something wrong with the file system
@@ -1044,12 +1034,11 @@ int main(int argc, char **argv)
                         exit(1);
                     }
                     //exit(0);
-=======
+
                     if (scatt_frame != scatt_framestart)
                     {
                         //exit(0);
                     }
->>>>>>> 435707e... Changing to emitting and absorbing seed photons.
                     
                      //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
                     #if SIM_SWITCH == RIKEN && DIMENSIONS ==3

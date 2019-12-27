@@ -154,7 +154,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
      //if the frame does exist then read information from the prewritten data and then add new data to it as extended chunk
      
      
-    int i=0, rank=1, net_num_ph=num_ph-num_ph_abs-num_null_ph, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : num_ph_emit-num_ph_abs ; //can have more photons absorbed than emitted
+    int i=0, count=0, rank=1, net_num_ph=num_ph-num_ph_abs-num_null_ph, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : num_ph_emit-num_ph_abs ; //can have more photons absorbed than emitted
     int num_thread=omp_get_num_threads();
     char mc_file[200]="", group[200]="", group_weight[200]="";
     double p0[net_num_ph], p1[net_num_ph], p2[net_num_ph], p3[net_num_ph] , r0[net_num_ph], r1[net_num_ph], r2[net_num_ph], num_scatt[net_num_ph], weight[weight_net_num_ph];
@@ -172,29 +172,31 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
     fprintf(fPtr, "num_ph %d num_ph_abs %d num_null_ph %d num_ph_emit %d\nAllocated weight to be %d values large and other arrays to be %d\n",num_ph,num_ph_abs,num_null_ph,num_ph_emit, weight_net_num_ph, net_num_ph);
     
     //save photon data into large arrays, NEED TO KNOW HOW MANY NULL PHOTONS WE HAVE AKA SAVED SPACE THAT AREN'T ACTUALLY PHOTONS TO PROPERLY SAVE SPACE FOR ARRAYS ABOVE
-    weight_net_num_ph=0; //used to keep track of weight values since it may not be the same as num_ph
-    #pragma omp parallel for num_threads(num_thread) reduction(+:weight_net_num_ph)
+    weight_net_num_ph=0;
+    count=0;//used to keep track of weight values since it may not be the same as num_ph
+    //#pragma omp parallel for num_threads(num_thread) reduction(+:weight_net_num_ph)
     for (i=0;i<num_ph;i++)
     {
         if ((ph+i)->weight != 0)
         {
-            p0[i]= ((ph+i)->p0);
-            p1[i]= ((ph+i)->p1);
-            p2[i]= ((ph+i)->p2);
-            p3[i]= ((ph+i)->p3);
-            r0[i]= ((ph+i)->r0);
-            r1[i]= ((ph+i)->r1);
-            r2[i]= ((ph+i)->r2);
-            s0[i]= ((ph+i)->s0);
-            s1[i]= ((ph+i)->s1);
-            s2[i]= ((ph+i)->s2);
-            s3[i]= ((ph+i)->s3);
-            num_scatt[i]= ((ph+i)->num_scatt);
+            p0[count]= ((ph+i)->p0);
+            p1[count]= ((ph+i)->p1);
+            p2[count]= ((ph+i)->p2);
+            p3[count]= ((ph+i)->p3); 
+            r0[count]= ((ph+i)->r0);
+            r1[count]= ((ph+i)->r1);
+            r2[count]= ((ph+i)->r2);
+            s0[count]= ((ph+i)->s0);
+            s1[count]= ((ph+i)->s1);
+            s2[count]= ((ph+i)->s2);
+            s3[count]= ((ph+i)->s3);
+            num_scatt[count]= ((ph+i)->num_scatt);
             if ((frame==frame_inj) || ((num_ph_emit-num_ph_abs > 0) && ((ph+i)->type == 's'))) //if the frame is the same one that the photons were injected in, save the photon weights OR if there are synchrotron photons that havent been absorbed
             {
                 weight[weight_net_num_ph]= ((ph+i)->weight);
                 weight_net_num_ph++;
             }
+            count++;
         }
     }
     
@@ -2771,7 +2773,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
     #pragma omp parallel for num_threads(num_thread) firstprivate(old_position, new_position, divide_p0)
     for (i=0;i<num_ph;i++)
     {
-        if ((ph+i)->weight != 0)
+        if ((ph+i)->type != 's')
         {
             old_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 ); //uncommented checks since they were not necessary anymore
             
@@ -2925,7 +2927,7 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
 }
 
 
-double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *nu_c_scatt, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt, gsl_rng * rand, FILE *fPtr)
+double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt, gsl_rng * rand, FILE *fPtr)
 {
     //function to perform single photon scattering
     int  i=0, index=0, ph_index=0, event_did_occur=0; //variable event_did_occur is to keep track of wether a scattering or absorption actually occured or not,
@@ -3011,7 +3013,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                 if ((ph+ph_index)->type == 's')
                 {
                     printf("The scattering photon is a seed photon w/ comv freq %e Hz.\n", ((ph+ph_index)->comv_p0)*C_LIGHT/PL_CONST);
-                    *nu_c_scatt=((ph+ph_index)->comv_p0)*C_LIGHT/PL_CONST;
+                    //*nu_c_scatt=((ph+ph_index)->comv_p0)*C_LIGHT/PL_CONST;//dont need this anymore b/c the 's' photon doesnt move from its cell
                 
                 }
             
@@ -3148,6 +3150,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                     //incremement that photons number of scatterings
                     ((ph+ph_index)->num_scatt)+=1;
                     *frame_scatt_cnt+=1; //incrememnt total number of scatterings
+                    
                     
                     
                 
@@ -3755,8 +3758,11 @@ double averagePhotonEnergy(struct photon *ph, int num_ph)
     #pragma omp parallel for reduction(+:e_sum) reduction(+:w_sum)
     for (i=0;i<num_ph;i++)
     {
-        e_sum+=(((ph+i)->p0)*((ph+i)->weight));
-        w_sum+=((ph+i)->weight);
+        if (((ph+i)->weight != 0) && ((ph+i)->nearest_block_index != -1))
+        {
+            e_sum+=(((ph+i)->p0)*((ph+i)->weight));
+            w_sum+=((ph+i)->weight);
+        }
     }
     
     return (e_sum*C_LIGHT)/w_sum;
@@ -3771,7 +3777,7 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
     #pragma omp parallel for num_threads(num_thread) reduction(min:temp_min) reduction(max:temp_max) reduction(+:sum) reduction(+:avg_r_sum)
     for (i=0;i<ph_num;i++)
     {
-        if ((ph+i)->weight != 0)
+        if (((ph+i)->weight != 0) && ((ph+i)->nearest_block_index != -1))
         {
             sum+=((ph+i)->num_scatt);
             avg_r_sum+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);

@@ -34,7 +34,7 @@ extern const double R_EL;
 
 struct photon
 {
-    char type; //was the photon injected as blackbody, 'i', or was it emitted as synchrotron 's'
+    char type; //was the photon injected as blackbody or wien, 'i', or was it emitted as synchrotron 's', or 'c' is it was a synchrotron photon that was compton scattered
     double p0; //E/c, 4 momentum is in lab frame
     double p1; // p_x
     double p2; //p_y
@@ -100,7 +100,7 @@ void findXY(double *v_ph, double *vector, double *x, double *y);
 
 void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FILE *fPtr);
 
-double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *nu_c_scatt, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt, gsl_rng * rand, FILE *fPtr);
+double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt, gsl_rng * rand, FILE *fPtr);
 
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr);
 
