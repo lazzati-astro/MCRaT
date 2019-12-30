@@ -847,7 +847,8 @@ int main(int argc, char **argv)
                     
                     //emit synchrotron photons here
                     num_ph_emit=0;
-
+                    
+                    #if SYNCHROTRON_SWITCH == ON
                     if ((scatt_frame != scatt_framestart) || (restrt=='c')) //remember to revert back to !=
                     {
                         //printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0);
@@ -865,15 +866,13 @@ int main(int argc, char **argv)
                         
                     }
                     else
+                    #else
                     {
                         //if scattering in frame photos injected into just allocate memory
                         all_time_steps=malloc(num_ph*sizeof(double));
                         sorted_indexes=malloc(num_ph*sizeof(int));
                     }
-
-                    //if scattering in frame photos injected into just allocate memory
-                    all_time_steps=malloc(num_ph*sizeof(double));
-                    sorted_indexes=malloc(num_ph*sizeof(int));
+                    #endif
                     
                     fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph-num_null_ph);
                     fflush(fPtr);
@@ -925,6 +924,7 @@ int main(int argc, char **argv)
                             //}
                             
                             //see if the scattered phton was a seed photon, if so replenish the seed photon
+                            #if SYNCHROTRON_SWITCH == ON
                             if ((phPtr+ph_scatt_index)->type == 's')
                             {
                                 (phPtr+ph_scatt_index)->type = 'c'; //c for compton scattered synchrotron photon
@@ -939,7 +939,7 @@ int main(int argc, char **argv)
                                 fprintf(fPtr,"scatt_synch_num_ph Number: %d\n", scatt_synch_num_ph);
                                 //exit(0);
                             }
-                            
+                            #endif
                             
                             if ((frame_scatt_cnt%1000 == 0) && (frame_scatt_cnt != 0)) //modified this so it doesn't print when all photons get absorbed at first and frame_scatt_cnt=0
                             {
@@ -949,6 +949,7 @@ int main(int argc, char **argv)
                                 fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                                 fflush(fPtr);
                                 
+                                #if SYNCHROTRON_SWITCH == ON
                                 if (scatt_synch_num_ph>max_photons)
                                 {
                                     //if the number of synch photons that have been scattered is too high rebin them
@@ -956,6 +957,7 @@ int main(int argc, char **argv)
                                     
                                     //exit(0);
                                 }
+                                #endif
                                 
                             }
                             //exit(0);
@@ -973,6 +975,7 @@ int main(int argc, char **argv)
 
                     }
                     
+                    #if SYNCHROTRON_SWITCH == ON
                     if ((scatt_frame != scatt_framestart) || (restrt=='c')) //rememebr to change to != also at the other place in the code
                     {
                         if (scatt_synch_num_ph>max_photons)
@@ -1017,12 +1020,15 @@ int main(int argc, char **argv)
                         //    exit(0);
                         //}
                     }
+                    #endif
                     
                     //get scattering statistics
                     phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
                         
                     fprintf(fPtr,"The number of scatterings in this frame is: %d\n", frame_scatt_cnt);
-                    fprintf(fPtr,"The number of photons absorbed in this frame is: %d\n", frame_abs_cnt);
+                    #if SYNCHROTRON_SWITCH == ON
+                        fprintf(fPtr,"The number of photons absorbed in this frame is: %d\n", frame_abs_cnt);
+                    #endif
                     fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                     fprintf(fPtr,"MCRaT had to refind the position of photons %d times in this frame.\n", num_photons_find_new_element);
                     fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scattering for a photon is: %d\n", max_scatt, min_scatt);

@@ -46,6 +46,7 @@
 #define     DIMENSIONS              2
 #define     GEOMETRY                SPHERICAL
 #define     HYDRO_L_SCALE           1e9
+#define     SYNCHROTRON_SWITCH      ON
 
 #define     MCPAR                   "mc.par"
 
