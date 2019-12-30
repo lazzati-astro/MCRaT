@@ -25,11 +25,10 @@
  #define FILEROOT "rhd_jet_big_16OM_hdf5_plt_cnt_"
  #define MC_PATH "DIR_TEST/"
  
- #define THISRUN "Spherical"
- #define FILEPATH "/Volumes/DATA6TB/Collapsars/2D/HUGE_BOXES/CONSTANT/16OI/"
- //#define FILEPATH "/Users/Tylerparsotan//Documents/16OI_TEST/"
+#define SIMULATION_TYPE SPHERICAL
+ #define FILEPATH "/home/physics/parsotat/16OI/"
  #define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
- #define MC_PATH "TEST/"
+ #define MC_PATH "SKN_16OI_SPH/"
  
  #define THISRUN "Spherical"
  //#define THISRUN "Structured Spherical"
