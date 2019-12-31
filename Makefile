@@ -5,7 +5,7 @@ CC          = gcc-mp-9
 CFLAGS      = -Wall -g -fopenmp
 LIB         = -lz -lm -ldl -lgsl -lgslcblas -lm -lmpi
 
-DEPS = mclib.h mclib_3d.h mclib_pluto.h
+DEPS = mclib.h mclib_3d.h mclib_pluto.h mcrat_input.h
 OBJ = mcrat.o mclib.o mclib_3d.o mclib_pluto.o
 
 INCLUDE   = -I$(HDF_INSTALL)/include -I/usr/local/include/ -I/usr/include/ #-I/opt/local/lib/gcc8/gcc/x86_64-apple-darwin18/8.2.0/include-fixed/

@@ -4195,7 +4195,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
 void modifyFlashName(char flash_file[200], char prefix[200], int frame)
 {
     int lim1=0, lim2=0, lim3=0;
-    
+    char test[200]="" ;
     //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
     #if DIMENSIONS == 2
     {
@@ -4215,20 +4215,27 @@ void modifyFlashName(char flash_file[200], char prefix[200], int frame)
     
     if (frame<lim1)
     {
-        snprintf(flash_file,sizeof(flash_file), "%s%.3d%d",prefix,000,frame);
+        //snprintf(flash_file,sizeof(flash_file), "%s%.3d%d",prefix,000,frame); //FILEPATH,FILEROOT
+        snprintf(test,sizeof(test), "%s%s%.3d%d",FILEPATH,FILEROOT,000,frame);
     }
     else if (frame<lim2)
     {
-        snprintf(flash_file,sizeof(flash_file), "%s%.2d%d",prefix,00,frame);
+        //snprintf(flash_file,sizeof(flash_file), "%s%.2d%d",prefix,00,frame);
+        snprintf(test,sizeof(test), "%s%s%.2d%d",FILEPATH,FILEROOT,00,frame);
     }
     else if (frame<lim3)
     {
-        snprintf(flash_file,sizeof(flash_file), "%s%d%d",prefix,0,frame);
+        //snprintf(flash_file,sizeof(flash_file), "%s%d%d",prefix,0,frame);
+        snprintf(test,sizeof(test), "%s%s%d%d",FILEPATH,FILEROOT,0,frame);
+        
     }
     else
     {
-        snprintf(flash_file,sizeof(flash_file), "%s%d",prefix,frame);
+        //snprintf(flash_file,sizeof(flash_file), "%s%d",prefix,frame);
+        snprintf(test,sizeof(test), "%s%s%d",FILEPATH,FILEROOT,frame);
     }
+    strncpy(flash_file, test, sizeof(test));//had to do this workaround for some weird reason
+    //printf("test: %s\n", flash_file);
 }
 
 

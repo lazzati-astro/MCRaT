@@ -8,18 +8,24 @@
 
 
 //MODIFY C COMPILER DIRECTIVES BELOW THIS LINE
+
+#define SIMULATION_TYPE SCIENCE
+#define FILEPATH "/Volumes/LACIE_RAID/Collapsars/2D/HUGE_BOXES/CONSTANT/16OI/"
+#define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
+#define MC_PATH "16OI_SPHERICAL/"
+
 /*
 #define THISRUN "Science"
 #define FILEPATH "/Volumes/LACIE_RAID/Collapsars/2D/HUGE_BOXES/CONSTANT/16TI/"
 #define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
 #define MC_PATH "KN_CMC_16TI/"
-*/
+
  #define    SIMULATION_TYPE         SCIENCE
  #define    FILEPATH                "/Users/parsotat/Downloads/"
  #define    FILEROOT                "data."
  #define    MC_PATH                 "PLUTO_MCRAT/"
  
-/*
+
  #define THISRUN "Science"
  #define FILEPATH "/home/physics/parsotat/16OM/"
  #define FILEROOT "rhd_jet_big_16OM_hdf5_plt_cnt_"
@@ -40,11 +46,11 @@
 */
 
 
-#define     SIM_SWITCH              PLUTO_CHOMBO
-#define     STOKES_SWITCH           ON
+#define     SIM_SWITCH              FLASH
+#define     STOKES_SWITCH           OFF
 #define     COMV_SWITCH             OFF
 #define     DIMENSIONS              2
-#define     GEOMETRY                SPHERICAL
+#define     GEOMETRY                CARTESIAN
 #define     HYDRO_L_SCALE           1e9
 
 #define     MCPAR                   "mc.par"
