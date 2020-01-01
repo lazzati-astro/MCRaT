@@ -52,6 +52,7 @@
 #define     DIMENSIONS              2
 #define     GEOMETRY                CARTESIAN
 #define     HYDRO_L_SCALE           1e9
+#define     SYNCHROTRON_SWITCH      OFF
 
 #define     MCPAR                   "mc.par"
 
