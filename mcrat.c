@@ -900,7 +900,7 @@ int main(int argc, char **argv)
                         //and choose the photon with the smallest mfp and calculate the timestep
                         
 
-                        num_photons_find_new_element+=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, 1, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, densPtr, tempPtr,\
+                        num_photons_find_new_element+=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, 1, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
                                                                       all_time_steps, sorted_indexes, rng, find_nearest_grid_switch, fPtr);
 
                         //if (scatt_frame == 210)
