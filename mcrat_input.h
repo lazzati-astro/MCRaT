@@ -47,7 +47,7 @@
 
 
 #define     SIM_SWITCH              FLASH
-#define     STOKES_SWITCH           OFF
+#define     STOKES_SWITCH           ON
 #define     COMV_SWITCH             OFF
 #define     DIMENSIONS              2
 #define     GEOMETRY                CARTESIAN
