@@ -3151,19 +3151,6 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
         
                 //third we perform the scattering and save scattered photon 4 monetum in ph_p_comov @ end of function
                 event_did_occur=singleScatter(el_p_comov, ph_p_comov, s, rand, fPtr);
-                
-                //if (STOKES_SWITCH != 0)
-                #if STOKES_SWITCH == ON
-                {
-                    stokesRotation(negative_fluid_beta, (ph_p_comov+1), (ph_p+1), s, fPtr); //rotate to boost back to lab frame
-                    
-                    //save stokes parameters
-                    ((ph+ph_index)->s0)= *(s+0); //I ==1
-                    ((ph+ph_index)->s1)= *(s+1);
-                    ((ph+ph_index)->s2)= *(s+2);
-                    ((ph+ph_index)->s3)= *(s+3);
-                }
-                #endif
             
         
                 //fprintf(fPtr,"After Scattering, After Lorentz Boost to Comov frame: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
