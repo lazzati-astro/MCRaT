@@ -2867,7 +2867,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
             
             if ( (ph+i)->s0 != 1)
             {
-            	fprintf(fPtr, "PHOTON NUMBER %d DOES NOT HAVE I=1.\n", i);
+            	fprintf(fPtr, "PHOTON NUMBER %d DOES NOT HAVE I=1. Instead it is: %e\n", i, (ph+i)->s0);
             }
             
             //printf("In update  function: %e, %e, %e, %e, %e, %e, %e\n",((ph+i)->r0), ((ph+i)->r1), ((ph+i)->r2), t, ((ph+i)->p1)/((ph+i)->p0), ((ph+i)->p2)/((ph+i)->p0), ((ph+i)->p3)/((ph+i)->p0) );
