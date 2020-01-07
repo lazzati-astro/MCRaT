@@ -876,6 +876,11 @@ int main(int argc, char **argv)
                         
                     }
                     else
+                    {
+                        //if scattering in frame photos injected into just allocate memory
+                        all_time_steps=malloc(num_ph*sizeof(double));
+                        sorted_indexes=malloc(num_ph*sizeof(int));
+                    }
                     #else
                     {
                         //if scattering in frame photos injected into just allocate memory

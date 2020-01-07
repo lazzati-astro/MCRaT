@@ -4237,7 +4237,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     #endif
                     
                     dset_num_scatt = H5Dopen (group_id, "NS", H5P_DEFAULT);
-                    dset_weight = H5Dopen (group_id, "Weight", H5P_DEFAULT);
+                    dset_weight = H5Dopen (group_id, "Weight", H5P_DEFAULT); // have to account for this only being used for synchrotron emission switch being on
                 
                     //read the data in
                     status = H5Dread(dset_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p0+j));
