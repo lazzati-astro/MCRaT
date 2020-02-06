@@ -2867,7 +2867,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
             
             if ( (ph+i)->s0 != 1)
             {
-            	fprintf(fPtr, "PHOTON NUMBER %d DOES NOT HAVE I=1. Instead it is: %e\n", i, (ph+i)->s0);
+            //	fprintf(fPtr, "PHOTON NUMBER %d DOES NOT HAVE I=1. Instead it is: %e\n", i, (ph+i)->s0);
             }
             
             //printf("In update  function: %e, %e, %e, %e, %e, %e, %e\n",((ph+i)->r0), ((ph+i)->r1), ((ph+i)->r2), t, ((ph+i)->p1)/((ph+i)->p0), ((ph+i)->p2)/((ph+i)->p0), ((ph+i)->p3)/((ph+i)->p0) );
@@ -3085,7 +3085,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                 //printf("filling in 4 momentum in photonScatter for photon index %d\n", ph_index);
                 if ((ph+ph_index)->type == 's')
                 {
-                    printf("The scattering photon is a seed photon w/ comv freq %e Hz.\n", ((ph+ph_index)->comv_p0)*C_LIGHT/PL_CONST);
+                    //printf("The scattering photon is a seed photon w/ comv freq %e Hz.\n", ((ph+ph_index)->comv_p0)*C_LIGHT/PL_CONST);
                     //*nu_c_scatt=((ph+ph_index)->comv_p0)*C_LIGHT/PL_CONST;//dont need this anymore b/c the 's' photon doesnt move from its cell
                 
                 }
@@ -3894,7 +3894,7 @@ void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double
 
 void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array, FILE *fPtr)
 {
-    double  gamma_infinity=100, lumi=1e57, r00=1e8; //shopuld be 10^57
+    double  gamma_infinity=100, lumi=1e56, r00=1e8; //shopuld be 10^57
     double vel=0;
     int i=0;
     

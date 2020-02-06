@@ -200,6 +200,463 @@ double calcSynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_in
     return val;
 }
 
+int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_ph, int *num_ph_emit, int *scatt_synch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, gsl_rng * rand, FILE *fPtr)
+{
+    int i=0, j=0, count=0, count_c_ph=0, end_count=(*scatt_synch_num_ph), idx=0, num_thread=omp_get_num_threads();
+    int synch_comp_photon_count=0, synch_photon_count=0, num_avg=9, num_bins=(0.1)*max_photons; //some factor of the max number of photons that is specified in the mc.par file, num bins is also in test function
+    double avg_values[9]= { 0 }; //number of averages that'll be taken is given by num_avg in above line
+    double p0_min=DBL_MAX, p0_max=0, log_p0_min=0, log_p0_max=0;//look at p0 of photons not by frequency since its just nu=p0*C_LIGHT/PL_CONST
+    double rand1=0, rand2=0, phi=0, theta=0;
+    double min_range=0, max_range=0, energy=0;
+    //int *synch_comp_photon_idx=NULL; make this an array b/c had issue with deallocating this memory for some reason
+    int synch_comp_photon_idx[*scatt_synch_num_ph];
+    struct photon *rebin_ph=malloc(num_bins* sizeof (struct photon ));
+    int num_null_rebin_ph=0;
+    struct photon *tmp=NULL;
+    double *tmp_double=NULL;
+    int *tmp_int=NULL;
+    gsl_histogram * h = gsl_histogram_alloc (num_bins);
+    gsl_histogram2d * h_phi_theta = gsl_histogram2d_alloc (360, 180); //x is for phi goes from 0 to 2pi and y is for theta, goes from 0 to pi
+    gsl_histogram2d_set_ranges_uniform (h_phi_theta, 0.0, 360.0,0.0, 180.0); //set the ranges to be 1 degree wide
+    gsl_histogram2d_pdf * pdf_phi_theta = gsl_histogram2d_pdf_alloc (h_phi_theta->nx, h_phi_theta->ny);
+    
+    //calc min and max p0 and set the bins to be even within this interval
+    //save the frequencies of photons to a
+    //#pragma omp parallel for num_threads(num_thread) reduction(min:nu_min) reduction(max:nu_max)
+    //synch_comp_photon_idx=malloc((*scatt_synch_num_ph)*sizeof(int));
+    //if (synch_comp_photon_idx==NULL)
+    //{
+    //    printf("Error with allocating space to hold data for synch_comp_photon_idx\n");
+    //    exit(1);
+    //}
+    
+    
+    fprintf(fPtr, "In the rebin func; num_threads %d scatt_synch_num_ph %d\n", num_thread, (*scatt_synch_num_ph));
+    fflush(fPtr);
+    
+    /*
+    count=0;
+    for (i=0;i<*num_ph;i++)
+    {
+        fprintf(fPtr, "%d %c %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0 );
+        fflush(fPtr);
+        
+        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0))
+        {
+            count++;
+        }
+    }
+    fprintf(fPtr, "in rebin: count is: %d and scatt_synch_num_ph is %d\n", count, *scatt_synch_num_ph );
+    */
+    
+    count=0;
+    for (i=0;i<*num_ph;i++)
+    {
+        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0))
+        {
+            //see if the photon's nu is larger than nu_max or smaller than nu_min
+            if (((*ph_orig)[i].p0< p0_min))
+            {
+                //dont include any absorbed 'o' photons that have negative P0 values
+                p0_min= (*ph_orig)[i].p0;
+                //fprintf(fPtr, "new p0 min %e\n", (p0_min) );
+            }
+            
+            if ((*ph_orig)[i].p0> p0_max)
+            {
+                p0_max= (*ph_orig)[i].p0;
+                //fprintf(fPtr, "new p0 max %e\n", (p0_max) );
+            }
+            
+            // also save the index of these photons because they wil become null later on
+            //*(synch_comp_photon_idx+count)=i;
+            synch_comp_photon_idx[count]=i;
+            //fprintf(fPtr, "Save index %d\n", i );
+            count++;
+            
+            if ((*ph_orig)[i].type == 'c')
+            {
+                //keep track of the number of 'c' photons so we can know if the array needs to be increased in size, also take num_null_ph into account in doing this
+                count_c_ph+=1;
+            }
+        }
+        else if ((*ph_orig)[i].type == 's')
+        {
+            synch_photon_count++;
+        }
+    }
+    
+    fprintf(fPtr, "log p0 min, max: %e %e\n", log10(p0_min), log10(p0_max) );
+    
+    gsl_histogram_set_ranges_uniform (h, log10(p0_min), log10(p0_max*(1+1e-6)));
+    
+    //populate histogram for photons with nu that falss within the proper histogram bin
+    //may not need this loop, can just check if the photon nu falls within the bin edges and do averages etc within next loop
+    for (i=0;i<*num_ph;i++)
+    {
+        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0))
+        {
+            //gsl_histogram_accumulate (h, log10((*ph_orig)[i].p0), (*ph_orig)[i].weight);
+            gsl_histogram_increment (h, log10((*ph_orig)[i].p0));
+        }
+    }
+    
+    //for the photons that fall within a given nu bin, histogram thier theta and phi and choose a random number to sample from the distribution to get the new photons' 4 momentum, to parallelize this can put num+ph lop outside and cpunt loop inside and make avg_value array 2D with count index and other index being the average values
+    for (count=0;count<num_bins;count++)
+    {
+        
+        if (gsl_histogram_get(h, count) != 1)
+        {
+            for (j=0;j<num_avg;j++)
+            {
+                avg_values[j]=0;
+            }
+            
+            //loop over the number of photons
+            for (i=0;i<*num_ph;i++)
+            {
+                if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0))
+                {
+                    gsl_histogram_get_range(h, count, &min_range, &max_range);
+                    //if the photon nu falls in the count bin of the nu histogram then add it to the phi_theta 2d hist
+                    if ((log10((*ph_orig)[i].p0)< max_range  ) && (log10((*ph_orig)[i].p0)>=min_range))
+                    {
+                        gsl_histogram2d_increment(h_phi_theta, fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0), (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0)) );
+                        
+                        avg_values[0] += (*ph_orig)[i].r0*(*ph_orig)[i].weight; //used to calc weighted averages
+                        avg_values[1] += (*ph_orig)[i].r1*(*ph_orig)[i].weight;
+                        avg_values[2] += (*ph_orig)[i].r2*(*ph_orig)[i].weight;
+                        avg_values[3] += (*ph_orig)[i].s0*(*ph_orig)[i].weight;
+                        avg_values[4] += (*ph_orig)[i].s1*(*ph_orig)[i].weight;
+                        avg_values[5] += (*ph_orig)[i].s2*(*ph_orig)[i].weight;
+                        avg_values[6] += (*ph_orig)[i].s3*(*ph_orig)[i].weight;
+                        avg_values[7] += (*ph_orig)[i].num_scatt*(*ph_orig)[i].weight;
+                        avg_values[8] += (*ph_orig)[i].weight;
+                    }
+                }
+            }
+            
+            energy=pow(10,0.5*(max_range+min_range));
+            
+            //initiate pdf as the histogram of phi and theta
+            gsl_histogram2d_pdf_init (pdf_phi_theta, h_phi_theta);
+            
+            //get two random values
+            rand1=gsl_rng_uniform(rand);
+            rand2=gsl_rng_uniform(rand);
+            
+            //choose random phi and theta value
+            gsl_histogram2d_pdf_sample (pdf_phi_theta, rand1, rand2, &phi, &theta);//phi and theta are in degreesneed to convert into radians later
+            
+            (rebin_ph+count)->type = 'c';
+            
+            (rebin_ph+count)->p0=energy;
+            (rebin_ph+count)->p1=energy*sin(theta*M_PI/180)*cos(phi*M_PI/180);
+            (rebin_ph+count)->p2=energy*sin(theta*M_PI/180)*sin(phi*M_PI/180);
+            (rebin_ph+count)->p3=energy*cos(theta*M_PI/180);
+            (rebin_ph+count)->comv_p0=0;
+            (rebin_ph+count)->comv_p1=0;
+            (rebin_ph+count)->comv_p2=0;
+            (rebin_ph+count)->comv_p3=0;
+            (rebin_ph+count)->r0=avg_values[0]/avg_values[8];
+            (rebin_ph+count)->r1= avg_values[1]/avg_values[8];
+            (rebin_ph+count)->r2=avg_values[2]/avg_values[8];
+            (rebin_ph+count)->s0=avg_values[3]/avg_values[8]; // stokes parameterized are normalized such that I always =1
+            (rebin_ph+count)->s1=avg_values[4]/avg_values[8];
+            (rebin_ph+count)->s2=avg_values[5]/avg_values[8];
+            (rebin_ph+count)->s3=avg_values[6]/avg_values[8];
+            (rebin_ph+count)->num_scatt=avg_values[7]/avg_values[8];
+            (rebin_ph+count)->weight=avg_values[8];
+            (rebin_ph+count)->nearest_block_index=0; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
+            
+            
+            //gsl_histogram2d_fprintf (stdout, h_phi_theta, "%g", "%g");
+            //fprintf(fPtr, "Chosen phi: %e chosen theta: %e weight: %e\n\n", phi, theta, avg_values[8] );
+            //reset the histogram and the pdf
+            gsl_histogram2d_reset(pdf_phi_theta);
+            gsl_histogram_reset(h_phi_theta);
+        }
+        else if (gsl_histogram_get(h, count) == 1)
+        {
+            //for thr case of just 1 hoton being in the bin just set the rebinned photon to the one photons parameters
+            for (i=0;i<*num_ph;i++)
+            {
+                if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o'))&& ((*ph_orig)[i].p0 > 0))
+                {
+                    (rebin_ph+count)->p0=(*ph_orig)[i].p0;
+                    (rebin_ph+count)->p1=(*ph_orig)[i].p1;
+                    (rebin_ph+count)->p2=(*ph_orig)[i].p2;
+                    (rebin_ph+count)->p3=(*ph_orig)[i].p3;
+                    (rebin_ph+count)->comv_p0=(*ph_orig)[i].comv_p0;
+                    (rebin_ph+count)->comv_p1=(*ph_orig)[i].comv_p1;
+                    (rebin_ph+count)->comv_p2=(*ph_orig)[i].comv_p2;
+                    (rebin_ph+count)->comv_p3=(*ph_orig)[i].comv_p3;
+                    (rebin_ph+count)->r0=(*ph_orig)[i].r0;
+                    (rebin_ph+count)->r1= (*ph_orig)[i].r1;
+                    (rebin_ph+count)->r2=(*ph_orig)[i].r2; //y coordinate in flash becomes z coordinate in MCRaT
+                    (rebin_ph+count)->s0=(*ph_orig)[i].s0; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
+                    (rebin_ph+count)->s1=(*ph_orig)[i].s1;
+                    (rebin_ph+count)->s2=(*ph_orig)[i].s2;
+                    (rebin_ph+count)->s3=(*ph_orig)[i].s3;
+                    (rebin_ph+count)->num_scatt=(*ph_orig)[i].num_scatt;
+                    (rebin_ph+count)->weight=(*ph_orig)[i].weight;
+                    (rebin_ph+count)->nearest_block_index=(*ph_orig)[i].nearest_block_index; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
+                    
+                    i=*num_ph;
+                }
+            }
+            
+        }
+        
+        
+    }
+    
+    
+    //find indexes of old photons that will not become null photons
+    //if the photons are 'o' photons make them have p0=-1
+    //for the 'c' photons replace the first num_bins indexes with the new rebinned photons and replace the rest of the indexes with null values
+    //may need to expand the array of photons, shouldnt need to do this though
+    
+    //this is a default setting, see comment below where there was an else statement that had the failing line
+    //end_count=(scatt_synch_num_ph);
+    
+    if ((count_c_ph+(*num_null_ph))<num_bins)
+    {
+        //need to expand the array
+        //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
+        //need to realloc memory to hold the old photon info and the new emitted photon's info
+        fprintf(fPtr, "Rebin: Allocating %d space\n", ((*num_ph)+num_bins-count_c_ph+(*num_null_ph) ));
+        fflush(fPtr);
+        tmp=realloc(*ph_orig, ((*num_ph)+num_bins-count_c_ph-(*num_null_ph))* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
+        if (tmp != NULL)
+        {
+            /* everything ok */
+            *ph_orig = tmp;
+            /*
+             for (i=0;i<*num_ph;i++)
+             {
+             fprintf(fPtr, "i: %d after realloc freq %e\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST );
+             }
+             */
+        }
+        else
+        {
+            /* problems!!!! */
+            printf("Error with reserving space to hold old and new photons\n");
+            exit(0);
+        }
+        
+        //also expand memory of other arrays
+        tmp_double=realloc(*all_time_steps, ((*num_ph)+num_bins-count_c_ph-(*num_null_ph))*sizeof(double));
+        if (tmp_double!=NULL)
+        {
+            *all_time_steps=tmp_double;
+        }
+        else
+        {
+            printf("Error with reallocating space to hold data about each photon's time step until an interaction occurs\n");
+        }
+        
+        tmp_int=realloc(*sorted_indexes, ((*num_ph)+num_bins-count_c_ph-(*num_null_ph))*sizeof(int));
+        if (tmp_int!=NULL)
+        {
+            *sorted_indexes=tmp_int;
+        }
+        else
+        {
+            printf("Error with reallocating space to hold data about the order in which each photon would have an interaction\n");
+        }
+        //tmp_int=realloc(*synch_comp_photon_idx, ((*scatt_synch_num_ph)+num_bins-count_c_ph-(*num_null_ph))*sizeof(int));
+        //if (tmp_int!=NULL)
+        //{
+        //    *synch_comp_photon_idx=tmp_int;
+        //}
+        //else
+        //{
+        //    printf("Error with reallocating space to hold data about the order in which each photon would have an interaction\n");
+        //}
+        /*
+        net_ph=num_bins-count_c_ph+(*num_null_ph);
+        null_ph_count=ph_tot; // use this to set the photons recently allocated as null phtoons (this can help if we decide to directly double (or *1.5) number of photons each time we need to allocate more memory, then use factor*((*num_ph)+ph_tot)-(*num_ph)
+        null_ph_indexes=malloc((ph_tot+null_ph_count)*sizeof(int));
+        j=0;
+        for (i=((*num_ph)+net_ph)-1;i >=0 ;i--)
+        {
+            //fprintf(fPtr, "idx %d\n", i);
+            //fflush(fPtr);
+            if (((*ph_orig)[i].weight == 0)  || (i >= *num_ph))
+            {
+                //preset values for the the newly created spots to hold the emitted phtoons in
+                (*ph_orig)[i].weight=0;
+                (*ph_orig)[i].nearest_block_index=-1;
+                *(null_ph_indexes+j)=i; //save this information so we can use the same syntax for both cases in saving the emitted photon data
+                fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
+                fflush(fPtr);
+                j++;
+            }
+         
+        }
+        count_null_indexes=ph_tot; //use this to count the number fo null photons we have actually created, (this can help if we decide to directly double (or *1.5) number of photons each time we need to allocate more memory, then use factor*((*num_ph)+ph_tot)-(*num_ph)
+        
+        //loop through the original set of photons to see if
+        
+        fprintf(fPtr,"Val %d\n", (*(null_ph_indexes+count_null_indexes-1)));
+        *num_ph+=net_ph; //update number of photons
+        *num_null_ph=ph_tot-null_ph_count; //((*num_ph)+ph_tot)-(*num_ph)-ph_tot; //reserved space - emitted photons-original photons
+        fprintf(fPtr,"New Num PH %d\nNew null hum_ph %d\n", *num_ph, *num_null_ph);
+        fflush(fPtr);
+        */
+        *num_ph+=num_bins-count_c_ph-(*num_null_ph);
+        end_count=(*scatt_synch_num_ph)+num_bins-count_c_ph-(*num_null_ph);
+    }
+    //else dont knwo why this is failing try to put this before if, so it gets sets and only if the above if statement is true will end_count be modified
+    //{
+    //    end_count=(*scatt_synch_num_ph);
+    //}
+    
+    //go through and assign the rebinned photons to the 'c' phtoons and make all 'o' photons become "absorbed"
+    j=0;
+    count=0;
+    for (i=0;i<end_count;i++)
+    {
+        if (i<(*scatt_synch_num_ph))
+        {
+            //the photon idx can be found from the original array
+            //idx=(*(synch_comp_photon_idx+i));
+            idx=synch_comp_photon_idx[i];
+        }
+        else
+        {
+            idx=(*num_ph)+i;
+        }
+        
+        if ((*ph_orig)[idx].type == 'o')
+        {
+            //if the photon is a compton scatered synch photon from a past frame treat it as though it has been absorbed
+            (*ph_orig)[idx].p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been "absorbed", this makes it still get saves in the hdf5 files
+            (*ph_orig)[idx].nearest_block_index=-1;
+            (*ph_orig)[idx].weight=0; //now making the absorbed 'o' photons become null photons
+        }
+        else if ((*ph_orig)[idx].type == 'c')
+        {
+            if (count<num_bins)
+            {
+                //keep saving the rebinned photns
+                (*ph_orig)[idx].p0=(rebin_ph+count)->p0;
+                (*ph_orig)[idx].p1=(rebin_ph+count)->p1;
+                (*ph_orig)[idx].p2=(rebin_ph+count)->p2;
+                (*ph_orig)[idx].p3=(rebin_ph+count)->p3;
+                (*ph_orig)[idx].comv_p0=(rebin_ph+count)->comv_p0;
+                (*ph_orig)[idx].comv_p1=(rebin_ph+count)->comv_p1;
+                (*ph_orig)[idx].comv_p2=(rebin_ph+count)->comv_p2;
+                (*ph_orig)[idx].comv_p3=(rebin_ph+count)->comv_p3;
+                (*ph_orig)[idx].r0=(rebin_ph+count)->r0;
+                (*ph_orig)[idx].r1=(rebin_ph+count)->r1;
+                (*ph_orig)[idx].r2=(rebin_ph+count)->r2; //y coordinate in flash becomes z coordinate in MCRaT
+                (*ph_orig)[idx].s0=(rebin_ph+count)->s0; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
+                (*ph_orig)[idx].s1=(rebin_ph+count)->s1;
+                (*ph_orig)[idx].s2=(rebin_ph+count)->s2;
+                (*ph_orig)[idx].s3=(rebin_ph+count)->s3;
+                (*ph_orig)[idx].num_scatt=(rebin_ph+count)->num_scatt;
+                (*ph_orig)[idx].weight=(rebin_ph+count)->weight;
+                (*ph_orig)[idx].nearest_block_index=(rebin_ph+count)->nearest_block_index;
+                
+                
+                if ((rebin_ph+count)->weight==0)
+                {
+                    //if the bin had no photons in it, the rebinned photon is effectively null
+                    //j++;
+                    num_null_rebin_ph++;
+                }
+                
+                count++;
+                
+            }
+            else
+            {
+                //all rebinned photns have been saved so just treat the rest of the phootn array as null photons
+                (*ph_orig)[idx].weight=0;
+                (*ph_orig)[idx].nearest_block_index=-1;
+                //j++;
+            }
+            
+            
+        }
+        
+        //if ((*ph_orig)[idx].weight==0)
+        //{
+            //if the bin had no photons in it, the rebinned photon is effectively null
+        //    j++;
+        //}
+        
+    }
+    //fprintf(fPtr, "i count after first loop %d\n", idx+1);
+    //make sure we look at whole array of photons to see hwo many null photons we have
+    /*
+    for (i=idx+1;i < *num_ph; i++)
+    {
+        if ((*ph_orig)[i].weight==0)
+        {
+            //if the bin had no photons in it, the rebinned photon is effectively null
+            j++;
+            fprintf(fPtr, "i count in the if %d\n", i);
+        }
+        
+        //i++;
+    }
+     */
+    //fprintf(fPtr, "i count after second loop %d\n", i);
+    
+    int null_ph_count=0;
+    int null_ph_count_1=0;
+    //int null_ph_count_2=0;
+//#pragma omp parallel for num_threads(num_thread) reduction(+:null_ph_count)
+    for (i=0;i<*num_ph;i++)
+    {
+        if ((*ph_orig)[i].weight == 0)
+        {
+            null_ph_count++;
+            //fprintf(fPtr, "%d \n", null_ph_count);
+            
+        }
+        
+        if ((*ph_orig)[i].type == 'i')
+        {
+            null_ph_count_1++;
+        }
+        
+        //fprintf(fPtr, "%d %c %e %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0 );
+        
+    }
+    
+    //*num_ph_emit=0;
+    
+    //int temporary;
+    *scatt_synch_num_ph=num_bins-num_null_rebin_ph;
+    //temporary=num_bins+synch_photon_count-num_null_rebin_ph;
+    *num_ph_emit=num_bins+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
+    *num_null_ph=null_ph_count; //was using j before but i have no idea why its not counting correctly
+    
+    //testFunc(temporary,null_ph_count, num_bins+synch_photon_count-num_null_rebin_ph,  num_bins-num_null_rebin_ph);
+    //*(temporary+0)=null_ph_count;
+    //*(temporary+1)=num_bins+synch_photon_count-num_null_rebin_ph;
+    //*(temporary+2)=num_bins-num_null_rebin_ph;
+    
+    fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d num_null_rebin_ph: %d old scatt_synch_num_ph: %d new scatt_synch_num_ph: %d\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1, num_null_rebin_ph, *scatt_synch_num_ph, num_bins-num_null_rebin_ph  );
+    
+    fprintf(fPtr, "at end of rebin f(x)  %d,  %d, %d\n", null_ph_count, num_bins+synch_photon_count-num_null_rebin_ph, num_bins-num_null_rebin_ph);
+    fflush(fPtr);
+    
+    ////gsl_histogram_fprintf (stdout, h, "%g", "%g");
+    gsl_histogram_free (h);
+    gsl_histogram2d_pdf_free (pdf_phi_theta);
+    gsl_histogram2d_free (h_phi_theta);
+    free(rebin_ph);
+    //free( synch_comp_photon_idx);
+ 
+    return num_null_rebin_ph; //num_bins-num_null_rebin_ph;
+}
+
 int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,  double epsilon_b, gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr)
 {
     double rmin=0, rmax=0, max_photons=0.1*maximum_photons; //have 10% as default, can change later need to figure out how many photons across simulations I want emitted
@@ -218,9 +675,9 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     double *tmp_double=NULL;
     int *tmp_int=NULL;
     
-    fprintf(fPtr, "IN EMIT SYNCH FUNCTION; num_threads %d\n", num_thread);
-    fprintf(fPtr, "BEFORE Original number of photons: %d Null photons %d\n", (*num_ph), null_ph_count, ph_tot);
-    fflush(fPtr);
+    //fprintf(fPtr, "IN EMIT SYNCH FUNCTION; num_threads %d\n", num_thread);
+    //fprintf(fPtr, "BEFORE Original number of photons: %d Null photons %d\n", (*num_ph), null_ph_count, ph_tot);
+    //fflush(fPtr);
     
     gsl_integration_workspace *w = gsl_integration_workspace_alloc (10000);
     
@@ -359,8 +816,8 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     }
     
     
-    fprintf(fPtr, "Original number of photons: %d Null photons %d\nEmitting %d synchrotron photons between %e and %e in this frame with weight %e\n", (*num_ph), null_ph_count, ph_tot, rmin, rmax, ph_weight_adjusted);
-    fflush(fPtr);
+    //fprintf(fPtr, "Original number of photons: %d Null photons %d\nEmitting %d synchrotron photons between %e and %e in this frame with weight %e\n", (*num_ph), null_ph_count, ph_tot, rmin, rmax, ph_weight_adjusted);
+    //fflush(fPtr);
     //exit(0);
     //allocate memory for that many photons and also allocate memory to hold comoving 4 momentum of each photon and the velocity of the fluid
     //ph_emit=malloc (ph_tot * sizeof (struct photon ));
@@ -372,7 +829,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     {
         //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
         //need to realloc memory to hold the old photon info and the new emitted photon's info
-        fprintf(fPtr, "Allocating %d space\n", ((*num_ph)+ph_tot-null_ph_count));
+        //fprintf(fPtr, "Emit: Allocating %d space\n", ((*num_ph)+ph_tot-null_ph_count));
         tmp=realloc(*ph_orig, ((*num_ph)+ph_tot-null_ph_count)* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
         if (tmp != NULL)
         {
@@ -449,11 +906,11 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         
         //loop through the original set of photons to see if
         
-        fprintf(fPtr,"Val %d\n", (*(null_ph_indexes+count_null_indexes-1)));
+        //fprintf(fPtr,"Val %d\n", (*(null_ph_indexes+count_null_indexes-1)));
         *num_ph+=net_ph; //update number of photons
         *num_null_ph=ph_tot-null_ph_count; //((*num_ph)+ph_tot)-(*num_ph)-ph_tot; //reserved space - emitted photons-original photons
-        fprintf(fPtr,"New Num PH %d\nNew null hum_ph %d\n", *num_ph, *num_null_ph);
-        fflush(fPtr);
+        //fprintf(fPtr,"New Num PH %d\nNew null hum_ph %d\n", *num_ph, *num_null_ph);
+        //fflush(fPtr);
     }
     else
     {
@@ -551,10 +1008,10 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                     
                     //boost to lab frame
                     lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
-                    printf("Assigning values to struct\n");
+                    //printf("Assigning values to struct\n");
                     
                     idx=(*(null_ph_indexes+count_null_indexes-1));
-                    fprintf(fPtr, "Placing photon in index %d\n", idx);
+                    //fprintf(fPtr, "Placing photon in index %d\n", idx);
                     (*ph_orig)[idx].p0=(*(l_boost+0));
                     (*ph_orig)[idx].p1=(*(l_boost+1));
                     (*ph_orig)[idx].p2=(*(l_boost+2));
@@ -624,7 +1081,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         //boost to lab frame
         lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
         
-        fprintf(fPtr, "Placing photon in index %d\n", idx);
+        //fprintf(fPtr, "Placing photon in index %d\n", idx);
         (*ph_orig)[idx].p0=(*(l_boost+0));
         (*ph_orig)[idx].p1=(*(l_boost+1));
         (*ph_orig)[idx].p2=(*(l_boost+2));
@@ -705,7 +1162,7 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
                 //preset values for the the newly created spots to hold the emitted phtoons in;
                 
                 //if this is a synchrotron photons or photons that have been scattered that were once synch photons in this frame
-                fprintf(fPtr,"photon %d being absorbed\n", i);
+                //fprintf(fPtr,"photon %d being absorbed\n", i);
                 if (((*ph_orig)[i].type != 'i') && ((*ph_orig)[i].type != 'o') )
                 {
                     (*ph_orig)[i].weight=0;
@@ -826,7 +1283,7 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
         
         //fprintf(fPtr, "photon %d has lab frequency %e and weight %e with FLASH grid number %d\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST, (*ph_orig)[i].weight, (*ph_orig)[i].nearest_block_index);
     }
-    fprintf(fPtr, "In phAbsSynch func: abs_ph_count: %d synch_ph_count: %d scatt_synch_num_ph: %d\n", abs_ph_count, synch_ph_count, *scatt_synch_num_ph);
+    //fprintf(fPtr, "In phAbsSynch func: abs_ph_count: %d synch_ph_count: %d scatt_synch_num_ph: %d\n", abs_ph_count, synch_ph_count, *scatt_synch_num_ph);
     *num_abs_ph=abs_ph_count; //+synch_ph_count; dont need this
     
     while (count<*num_ph)
@@ -843,434 +1300,4 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
     return 0;
 }
 
-int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph, int *num_ph_emit, int *scatt_synch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, gsl_rng * rand, FILE *fPtr)
-{
-    int i=0, j=0, count=0, count_c_ph=0, end_count=0, idx=0, num_thread=omp_get_num_threads();
-    int synch_comp_photon_count=0, synch_photon_count=0, num_avg=9, num_bins=(0.1)*max_photons; //some factor of the max number of photons that is specified in the mc.par file
-    double avg_values[9]= { 0 }; //number of averages that'll be taken is given by num_avg in above line
-    double p0_min=DBL_MAX, p0_max=0, log_p0_min=0, log_p0_max=0;//look at p0 of photons not by frequency since its just nu=p0*C_LIGHT/PL_CONST
-    double rand1=0, rand2=0, phi=0, theta=0;
-    double min_range=0, max_range=0, energy=0;
-    //int *synch_comp_photon_idx=NULL; make this an array b/c had issue with deallocating this memory for some reason
-    int synch_comp_photon_idx[*scatt_synch_num_ph];
-    struct photon *rebin_ph=malloc(num_bins* sizeof (struct photon ));
-    int num_null_rebin_ph=0;
-    struct photon *tmp=NULL;
-    double *tmp_double=NULL;
-    int *tmp_int=NULL;
-    gsl_histogram * h = gsl_histogram_alloc (num_bins);
-    gsl_histogram2d * h_phi_theta = gsl_histogram2d_alloc (360, 180); //x is for phi goes from 0 to 2pi and y is for theta, goes from 0 to pi
-    gsl_histogram2d_set_ranges_uniform (h_phi_theta, 0.0, 360.0,0.0, 180.0); //set the ranges to be 1 degree wide
-    gsl_histogram2d_pdf * pdf_phi_theta = gsl_histogram2d_pdf_alloc (h_phi_theta->nx, h_phi_theta->ny);
-    
-    //calc min and max p0 and set the bins to be even within this interval
-    //save the frequencies of photons to a
-    //#pragma omp parallel for num_threads(num_thread) reduction(min:nu_min) reduction(max:nu_max)
-    //synch_comp_photon_idx=malloc((*scatt_synch_num_ph)*sizeof(int));
-    //if (synch_comp_photon_idx==NULL)
-    //{
-    //    printf("Error with allocating space to hold data for synch_comp_photon_idx\n");
-    //    exit(1);
-    //}
-    
-    
-    fprintf(fPtr, "In the rebin func; num_threads %d\n", num_thread);
-    fflush(fPtr);
-    
-    //for (i=0;i<*num_ph;i++)
-    //{
-    //    fprintf(fPtr, "%d %c %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0 );
-        //fflush(fPtr);
-    //}
-    
-    
-    count=0;
-    for (i=0;i<*num_ph;i++)
-    {
-        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0))
-        {
-            //see if the photon's nu is larger than nu_max or smaller than nu_min
-            if (((*ph_orig)[i].p0< p0_min))
-            {
-                //dont include any absorbed 'o' photons that have negative P0 values
-                p0_min= (*ph_orig)[i].p0;
-                //fprintf(fPtr, "new p0 min %e\n", (p0_min) );
-            }
-            
-            if ((*ph_orig)[i].p0> p0_max)
-            {
-                p0_max= (*ph_orig)[i].p0;
-                //fprintf(fPtr, "new p0 max %e\n", (p0_max) );
-            }
-            
-            // also save the index of these photons because they wil become null later on
-            //*(synch_comp_photon_idx+count)=i;
-            synch_comp_photon_idx[count]=i;
-            //fprintf(fPtr, "Save index %d\n", i );
-            count++;
-            
-            if ((*ph_orig)[i].type == 'c')
-            {
-                //keep track of the number of 'c' photons so we can know if the array needs to be increased in size, also take num_null_ph into account in doing this
-                count_c_ph+=1;
-            }
-        }
-        else if ((*ph_orig)[i].type == 's')
-        {
-            synch_photon_count++;
-        }
-    }
-    
-    fprintf(fPtr, "log p0 min, max: %e %e\n", log10(p0_min), log10(p0_max) );
-    
-    gsl_histogram_set_ranges_uniform (h, log10(p0_min), log10(p0_max*(1+1e-6)));
-    
-    //populate histogram for photons with nu that falss within the proper histogram bin
-    //may not need this loop, can just check if the photon nu falls within the bin edges and do averages etc within next loop
-    for (i=0;i<*num_ph;i++)
-    {
-        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0))
-        {
-            //gsl_histogram_accumulate (h, log10((*ph_orig)[i].p0), (*ph_orig)[i].weight);
-            gsl_histogram_increment (h, log10((*ph_orig)[i].p0));
-        }
-    }
-    
-    //for the photons that fall within a given nu bin, histogram thier theta and phi and choose a random number to sample from the distribution to get the new photons' 4 momentum, to parallelize this can put num+ph lop outside and cpunt loop inside and make avg_value array 2D with count index and other index being the average values
-    for (count=0;count<num_bins;count++)
-    {
-        
-        if (gsl_histogram_get(h, count) != 1)
-        {
-            for (j=0;j<num_avg;j++)
-            {
-                avg_values[j]=0;
-            }
-            
-            //loop over the number of photons
-            for (i=0;i<*num_ph;i++)
-            {
-                if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0))
-                {
-                    gsl_histogram_get_range(h, count, &min_range, &max_range);
-                    //if the photon nu falls in the count bin of the nu histogram then add it to the phi_theta 2d hist
-                    if ((log10((*ph_orig)[i].p0)< max_range  ) && (log10((*ph_orig)[i].p0)>=min_range))
-                    {
-                        gsl_histogram2d_increment(h_phi_theta, fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0), (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0)) );
-                        
-                        avg_values[0] += (*ph_orig)[i].r0*(*ph_orig)[i].weight; //used to calc weighted averages
-                        avg_values[1] += (*ph_orig)[i].r1*(*ph_orig)[i].weight;
-                        avg_values[2] += (*ph_orig)[i].r2*(*ph_orig)[i].weight;
-                        avg_values[3] += (*ph_orig)[i].s0*(*ph_orig)[i].weight;
-                        avg_values[4] += (*ph_orig)[i].s1*(*ph_orig)[i].weight;
-                        avg_values[5] += (*ph_orig)[i].s2*(*ph_orig)[i].weight;
-                        avg_values[6] += (*ph_orig)[i].s3*(*ph_orig)[i].weight;
-                        avg_values[7] += (*ph_orig)[i].num_scatt*(*ph_orig)[i].weight;
-                        avg_values[8] += (*ph_orig)[i].weight;
-                    }
-                }
-            }
-            
-            energy=pow(10,0.5*(max_range+min_range));
-            
-            //initiate pdf as the histogram of phi and theta
-            gsl_histogram2d_pdf_init (pdf_phi_theta, h_phi_theta);
-            
-            //get two random values
-            rand1=gsl_rng_uniform(rand);
-            rand2=gsl_rng_uniform(rand);
-            
-            //choose random phi and theta value
-            gsl_histogram2d_pdf_sample (pdf_phi_theta, rand1, rand2, &phi, &theta);//phi and theta are in degreesneed to convert into radians later
-            
-            (rebin_ph+count)->type = 'c';
-            
-            (rebin_ph+count)->p0=energy;
-            (rebin_ph+count)->p1=energy*sin(theta*M_PI/180)*cos(phi*M_PI/180);
-            (rebin_ph+count)->p2=energy*sin(theta*M_PI/180)*sin(phi*M_PI/180);
-            (rebin_ph+count)->p3=energy*cos(theta*M_PI/180);
-            (rebin_ph+count)->comv_p0=0;
-            (rebin_ph+count)->comv_p1=0;
-            (rebin_ph+count)->comv_p2=0;
-            (rebin_ph+count)->comv_p3=0;
-            (rebin_ph+count)->r0=avg_values[0]/avg_values[8];
-            (rebin_ph+count)->r1= avg_values[1]/avg_values[8] ;
-            (rebin_ph+count)->r2=avg_values[2]/avg_values[8];
-            (rebin_ph+count)->s0=avg_values[3]/avg_values[8]; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
-            (rebin_ph+count)->s1=avg_values[4]/avg_values[8];
-            (rebin_ph+count)->s2=avg_values[5]/avg_values[8];
-            (rebin_ph+count)->s3=avg_values[6]/avg_values[8];
-            (rebin_ph+count)->num_scatt=avg_values[7]/avg_values[8];
-            (rebin_ph+count)->weight=avg_values[8];
-            (rebin_ph+count)->nearest_block_index=0; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
-            
-            
-            //gsl_histogram2d_fprintf (stdout, h_phi_theta, "%g", "%g");
-            //fprintf(fPtr, "Chosen phi: %e chosen theta: %e weight: %e\n\n", phi, theta, avg_values[8] );
-            //reset the histogram and the pdf
-            gsl_histogram2d_reset(pdf_phi_theta);
-            gsl_histogram_reset(h_phi_theta);
-        }
-        else if (gsl_histogram_get(h, count) == 1)
-        {
-            //for thr case of just 1 hoton being in the bin just set the rebinned photon to the one photons parameters
-            for (i=0;i<*num_ph;i++)
-            {
-                if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o'))&& ((*ph_orig)[i].p0 > 0))
-                {
-                    (rebin_ph+count)->p0=(*ph_orig)[i].p0;
-                    (rebin_ph+count)->p1=(*ph_orig)[i].p1;
-                    (rebin_ph+count)->p2=(*ph_orig)[i].p2;
-                    (rebin_ph+count)->p3=(*ph_orig)[i].p3;
-                    (rebin_ph+count)->comv_p0=(*ph_orig)[i].comv_p0;
-                    (rebin_ph+count)->comv_p1=(*ph_orig)[i].comv_p1;
-                    (rebin_ph+count)->comv_p2=(*ph_orig)[i].comv_p2;
-                    (rebin_ph+count)->comv_p3=(*ph_orig)[i].comv_p3;
-                    (rebin_ph+count)->r0=(*ph_orig)[i].r0;
-                    (rebin_ph+count)->r1= (*ph_orig)[i].r1;
-                    (rebin_ph+count)->r2=(*ph_orig)[i].r2; //y coordinate in flash becomes z coordinate in MCRaT
-                    (rebin_ph+count)->s0=(*ph_orig)[i].s0; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
-                    (rebin_ph+count)->s1=(*ph_orig)[i].s1;
-                    (rebin_ph+count)->s2=(*ph_orig)[i].s2;
-                    (rebin_ph+count)->s3=(*ph_orig)[i].s3;
-                    (rebin_ph+count)->num_scatt=(*ph_orig)[i].num_scatt;
-                    (rebin_ph+count)->weight=(*ph_orig)[i].weight;
-                    (rebin_ph+count)->nearest_block_index=(*ph_orig)[i].nearest_block_index; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
-                    
-                    i=*num_ph;
-                }
-            }
-            
-        }
-        
-        
-    }
-    
-    //find indexes of old photons that will not become null photons
-    //if the photons are 'o' photons make them have p0=-1
-    //for the 'c' photons replace the first num_bins indexes with the new rebinned photons and replace the rest of the indexes with null values
-    //may need to expand the array of photons, shouldnt need to do this though
-    if ((count_c_ph+(*num_null_ph))<num_bins)
-    {
-        //need to expand the array
-        //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
-        //need to realloc memory to hold the old photon info and the new emitted photon's info
-        fprintf(fPtr, "Allocating %d space\n", ((*num_ph)+num_bins-count_c_ph+(*num_null_ph) ));
-        tmp=realloc(*ph_orig, ((*num_ph)+num_bins-count_c_ph-(*num_null_ph))* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
-        if (tmp != NULL)
-        {
-            /* everything ok */
-            *ph_orig = tmp;
-            /*
-             for (i=0;i<*num_ph;i++)
-             {
-             fprintf(fPtr, "i: %d after realloc freq %e\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST );
-             }
-             */
-        }
-        else
-        {
-            /* problems!!!! */
-            printf("Error with reserving space to hold old and new photons\n");
-            exit(0);
-        }
-        
-        //also expand memory of other arrays
-        tmp_double=realloc(*all_time_steps, ((*num_ph)+num_bins-count_c_ph-(*num_null_ph))*sizeof(double));
-        if (tmp_double!=NULL)
-        {
-            *all_time_steps=tmp_double;
-        }
-        else
-        {
-            printf("Error with reallocating space to hold data about each photon's time step until an interaction occurs\n");
-        }
-        
-        tmp_int=realloc(*sorted_indexes, ((*num_ph)+num_bins-count_c_ph-(*num_null_ph))*sizeof(int));
-        if (tmp_int!=NULL)
-        {
-            *sorted_indexes=tmp_int;
-        }
-        else
-        {
-            printf("Error with reallocating space to hold data about the order in which each photon would have an interaction\n");
-        }
-        //tmp_int=realloc(*synch_comp_photon_idx, ((*scatt_synch_num_ph)+num_bins-count_c_ph-(*num_null_ph))*sizeof(int));
-        //if (tmp_int!=NULL)
-        //{
-        //    *synch_comp_photon_idx=tmp_int;
-        //}
-        //else
-        //{
-        //    printf("Error with reallocating space to hold data about the order in which each photon would have an interaction\n");
-        //}
-        /*
-        net_ph=num_bins-count_c_ph+(*num_null_ph);
-        null_ph_count=ph_tot; // use this to set the photons recently allocated as null phtoons (this can help if we decide to directly double (or *1.5) number of photons each time we need to allocate more memory, then use factor*((*num_ph)+ph_tot)-(*num_ph)
-        null_ph_indexes=malloc((ph_tot+null_ph_count)*sizeof(int));
-        j=0;
-        for (i=((*num_ph)+net_ph)-1;i >=0 ;i--)
-        {
-            //fprintf(fPtr, "idx %d\n", i);
-            //fflush(fPtr);
-            if (((*ph_orig)[i].weight == 0)  || (i >= *num_ph))
-            {
-                //preset values for the the newly created spots to hold the emitted phtoons in
-                (*ph_orig)[i].weight=0;
-                (*ph_orig)[i].nearest_block_index=-1;
-                *(null_ph_indexes+j)=i; //save this information so we can use the same syntax for both cases in saving the emitted photon data
-                fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
-                fflush(fPtr);
-                j++;
-            }
-         
-        }
-        count_null_indexes=ph_tot; //use this to count the number fo null photons we have actually created, (this can help if we decide to directly double (or *1.5) number of photons each time we need to allocate more memory, then use factor*((*num_ph)+ph_tot)-(*num_ph)
-        
-        //loop through the original set of photons to see if
-        
-        fprintf(fPtr,"Val %d\n", (*(null_ph_indexes+count_null_indexes-1)));
-        *num_ph+=net_ph; //update number of photons
-        *num_null_ph=ph_tot-null_ph_count; //((*num_ph)+ph_tot)-(*num_ph)-ph_tot; //reserved space - emitted photons-original photons
-        fprintf(fPtr,"New Num PH %d\nNew null hum_ph %d\n", *num_ph, *num_null_ph);
-        fflush(fPtr);
-        */
-        *num_ph+=num_bins-count_c_ph-(*num_null_ph);
-        end_count=(*scatt_synch_num_ph)+num_bins-count_c_ph-(*num_null_ph);
-    }
-    else
-    {
-        end_count=(*scatt_synch_num_ph);
-    }
-    
-    //go through and assign the rebinned photons to the 'c' phtoons and make all 'o' photons become "absorbed"
-    j=0;
-    count=0;
-    for (i=0;i<end_count;i++)
-    {
-        if (i<(*scatt_synch_num_ph))
-        {
-            //the photon idx can be found from the original array
-            //idx=(*(synch_comp_photon_idx+i));
-            idx=synch_comp_photon_idx[i];
-        }
-        else
-        {
-            idx=(*num_ph)+i;
-        }
-        
-        if ((*ph_orig)[idx].type == 'o')
-        {
-            //if the photon is a compton scatered synch photon from a past frame treat it as though it has been absorbed
-            (*ph_orig)[idx].p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been "absorbed", this makes it still get saves in the hdf5 files
-            (*ph_orig)[idx].nearest_block_index=-1;
-            (*ph_orig)[idx].weight=0; //now making the absorbed 'o' photons become null photons
-        }
-        else if ((*ph_orig)[idx].type == 'c')
-        {
-            if (count<num_bins)
-            {
-                //keep saving the rebinned photns
-                (*ph_orig)[idx].p0=(rebin_ph+count)->p0;
-                (*ph_orig)[idx].p1=(rebin_ph+count)->p1;
-                (*ph_orig)[idx].p2=(rebin_ph+count)->p2;
-                (*ph_orig)[idx].p3=(rebin_ph+count)->p3;
-                (*ph_orig)[idx].comv_p0=(rebin_ph+count)->comv_p0;
-                (*ph_orig)[idx].comv_p1=(rebin_ph+count)->comv_p1;
-                (*ph_orig)[idx].comv_p2=(rebin_ph+count)->comv_p2;
-                (*ph_orig)[idx].comv_p3=(rebin_ph+count)->comv_p3;
-                (*ph_orig)[idx].r0=(rebin_ph+count)->r0;
-                (*ph_orig)[idx].r1=(rebin_ph+count)->r1;
-                (*ph_orig)[idx].r2=(rebin_ph+count)->r2; //y coordinate in flash becomes z coordinate in MCRaT
-                (*ph_orig)[idx].s0=(rebin_ph+count)->s0; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
-                (*ph_orig)[idx].s1=(rebin_ph+count)->s1;
-                (*ph_orig)[idx].s2=(rebin_ph+count)->s2;
-                (*ph_orig)[idx].s3=(rebin_ph+count)->s3;
-                (*ph_orig)[idx].num_scatt=(rebin_ph+count)->num_scatt;
-                (*ph_orig)[idx].weight=(rebin_ph+count)->weight;
-                (*ph_orig)[idx].nearest_block_index=(rebin_ph+count)->nearest_block_index;
-                
-                count++;
-                
-                if ((rebin_ph+count)->weight==0)
-                {
-                    //if the bin had no photons in it, the rebinned photon is effectively null
-                    //j++;
-                    num_null_rebin_ph++;
-                }
-                
-            }
-            else
-            {
-                //all rebinned photns have been saved so just treat the rest of the phootn array as null photons
-                (*ph_orig)[idx].weight=0;
-                (*ph_orig)[idx].nearest_block_index=-1;
-                //j++;
-            }
-            
-            
-        }
-        
-        //if ((*ph_orig)[idx].weight==0)
-        //{
-            //if the bin had no photons in it, the rebinned photon is effectively null
-        //    j++;
-        //}
-        
-    }
-    //fprintf(fPtr, "i count after first loop %d\n", idx+1);
-    //make sure we look at whole array of photons to see hwo many null photons we have
-    /*
-    for (i=idx+1;i < *num_ph; i++)
-    {
-        if ((*ph_orig)[i].weight==0)
-        {
-            //if the bin had no photons in it, the rebinned photon is effectively null
-            j++;
-            fprintf(fPtr, "i count in the if %d\n", i);
-        }
-        
-        //i++;
-    }
-     */
-    //fprintf(fPtr, "i count after second loop %d\n", i);
-    
-    int null_ph_count=0;
-    int null_ph_count_1=0;
-    int null_ph_count_2=0;
-//#pragma omp parallel for num_threads(num_thread) reduction(+:null_ph_count)
-    for (i=0;i<*num_ph;i++)
-    {
-        if ((*ph_orig)[i].weight == 0)
-        {
-            null_ph_count++;
-            //fprintf(fPtr, "%d \n", null_ph_count);
-            
-        }
-        
-        if ((*ph_orig)[i].type == 'i')
-        {
-            null_ph_count_1++;
-        }
-        
-        fprintf(fPtr, "%d %c %e %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0 );
-        
-    }
-    
-    *scatt_synch_num_ph=num_bins-num_null_rebin_ph;
-    *num_ph_emit=num_bins+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
-    *num_null_ph=null_ph_count; //was using j before but i have no idea why its not counting correctly
-    
-    
-    fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d num_null_rebin_ph: %d\n\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1, num_null_rebin_ph  );
-    
-    //gsl_histogram_fprintf (stdout, h, "%g", "%g");
-    gsl_histogram_free (h);
-    gsl_histogram2d_pdf_free (pdf_phi_theta);
-    gsl_histogram2d_free (h_phi_theta);
-    free(rebin_ph);
-    //free( synch_comp_photon_idx);
- 
-    return 0;
-}
 

@@ -107,6 +107,8 @@ int main(int argc, char **argv)
     double delta_theta=1;
     
     int myid, numprocs, angle_procs, angle_id, procs_per_angle;
+    int temporary[3]={0}, tempo=0;
+
     
    
    //new OpenMPI stuff
@@ -246,10 +248,11 @@ int main(int argc, char **argv)
             
             MPI_Barrier(angle_comm);
             MPI_Barrier(sub_world_comm);
-            if (angle_id==0)
-            {
-                printf("Angle_procs: %d 1st gather: %d, %d, %d\n", angle_procs, *(total_cont_procs_angle_Ptr), *(total_cont_procs_angle_Ptr+1), *(total_cont_procs_angle_Ptr+2));
-            }
+            
+            //if (angle_id==0)
+            //{
+            //    printf("Angle_procs: %d 1st gather: %d, %d, %d\n", angle_procs, *(total_cont_procs_angle_Ptr), *(total_cont_procs_angle_Ptr+1), *(total_cont_procs_angle_Ptr+2));
+            //}
             
             MPI_Reduce(&count_cont_procs, &total_cont_procs_angle, 1, MPI_INT, MPI_SUM, 0, angle_comm); //for each angle sum the number of procs to continue and pass it to the root for angle_comm
             
@@ -394,7 +397,7 @@ int main(int argc, char **argv)
             if (myid==numprocs-1)
             {
                 printf("Number of processes: %d\n", old_num_angle_procs);
-                printf("restarting process numbers for each angle range: %d, %d, %d\n", *(each_num_to_restart_per_anglePtr), *(each_num_to_restart_per_anglePtr+1), *(each_num_to_restart_per_anglePtr+2));
+                //printf("restarting process numbers for each angle range: %d, %d, %d\n", *(each_num_to_restart_per_anglePtr), *(each_num_to_restart_per_anglePtr+1), *(each_num_to_restart_per_anglePtr+2));
             }
         
             //assign proper number of processes to each angle range to con't sims and then reset angle_id to original value from when simulation was first started
@@ -818,7 +821,7 @@ int main(int argc, char **argv)
                             //fprintf(fPtr, "%d\n\n", array_num);
                         }
                         #endif
-                        fprintf(fPtr, "Number of Hydo Elements %d\n", array_num);
+                        //fprintf(fPtr, "Number of Hydo Elements %d\n", array_num);
         //exit(0);
                     }
                     #else
@@ -858,9 +861,16 @@ int main(int argc, char **argv)
                     //emit synchrotron photons here
                     num_ph_emit=0;
                     
+                    //by default want to allocat ememory for time_steps and sorted indexes to scatter
+                    all_time_steps=malloc(num_ph*sizeof(double));
+                    sorted_indexes=malloc(num_ph*sizeof(int));
+                    
                     #if SYNCHROTRON_SWITCH == ON
                     if ((scatt_frame != scatt_framestart) || (restrt=='c')) //remember to revert back to !=
                     {
+                        //if injecting synch photons, emit them if continuing simulation from a point where scatt_frame != scatt_framestart
+                        //if necessary, then add memory to then arrays allocated directly above
+                        
                         //printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0);
                         
                         fprintf(fPtr, "Emitting Synchrotron Photons in frame %d\n", scatt_frame);
@@ -875,6 +885,7 @@ int main(int argc, char **argv)
                         //printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e (phPtr)[72].comv_p0 %e (phPtr)[73].comv_p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0, (phPtr)[72].comv_p0, (phPtr)[73].comv_p0);
                         
                     }
+                    /*
                     else
                     {
                         //if scattering in frame photos injected into just allocate memory
@@ -887,6 +898,7 @@ int main(int argc, char **argv)
                         all_time_steps=malloc(num_ph*sizeof(double));
                         sorted_indexes=malloc(num_ph*sizeof(int));
                     }
+                     */
                     #endif
                     
                     fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph-num_null_ph);
@@ -951,7 +963,7 @@ int main(int argc, char **argv)
                                 //fflush(fPtr);
                                 
                                 scatt_synch_num_ph++;//keep track of the number of synch photons that have scattered for later in checking of we need to rebin them
-                                fprintf(fPtr,"scatt_synch_num_ph Number: %d\n", scatt_synch_num_ph);
+                                //fprintf(fPtr,"scatt_synch_num_ph Number: %d\n", scatt_synch_num_ph);
                                 //exit(0);
                             }
                             #endif
@@ -968,8 +980,12 @@ int main(int argc, char **argv)
                                 if (scatt_synch_num_ph>max_photons)
                                 {
                                     //if the number of synch photons that have been scattered is too high rebin them
-                                    rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_ph_emit, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, rng, fPtr);
                                     
+                                    //printf("num_ph_emit: %d\n", num_ph_emit);
+                                    rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_ph_emit, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, rng, fPtr);
+                                    //tempo=rebinSynchCompPhotons2(&num_ph, &phPtr, num_null_ph, num_ph_emit, scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, rng, fPtr);
+
+                                    //printf(fPtr, "scatt_synch_num_ph: %d\n", scatt_synch_num_ph);
                                     //exit(0);
                                 }
                                 #endif
@@ -998,8 +1014,7 @@ int main(int argc, char **argv)
                             //rebin the photons to ensure that we have a constant amount here
                             fprintf(fPtr, "Num_ph: %d\n", num_ph);
                             rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_ph_emit, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, rng, fPtr);
-                            fflush(fPtr);
-                            //exit(0);
+                          //exit(0);
                         }
                         else
                         {
