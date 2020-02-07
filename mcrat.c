@@ -504,7 +504,7 @@ int main(int argc, char **argv)
                 printf(">> mc.py:  Reading checkpoint\n");
                 //#pragma omp critical
                 
-                    readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs);
+                    scatt_synch_num_ph=readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs);
                 
                 /*
                 for (i=0;i<num_ph;i++)

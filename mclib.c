@@ -1061,12 +1061,13 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
     return success;
 }
 
-void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size )
+int readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size )
 {
     //function to read in data from checkpoint file
     FILE *fPtr=NULL;
     char checkptfile[200]="";
     int i=0;
+    int scatt_synch_num_ph=0;//count the number of scattered synchrotron photons from the previosu frame that were saved
     //int frame, scatt_frame, ph_num, i=0;
     struct photon *phHolder=NULL; //pointer to struct to hold data read in from checkpoint file
     
@@ -1113,6 +1114,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
             phHolder=malloc(sizeof(struct photon));
             (*ph)=malloc(sizeof(struct photon)*(*ph_num)); //allocate memory to hold photon data
             
+            
             for (i=0;i<(*ph_num);i++)
             {
                 fread(phHolder, sizeof(struct photon), 1, fPtr);
@@ -1137,9 +1139,17 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
                 (*ph)[i].weight=phHolder->weight;
                 (*ph)[i].nearest_block_index= phHolder->nearest_block_index;
                 (*ph)[i].type= phHolder->type;
+                
+                #if SYNCHROTRON_SWITCH == ON
+                    if (((*ph)[i].weight != 0) && (((*ph)[i].type == 'c') || ((*ph)[i].type == 'o')) && ((*ph)[i].p0 > 0))
+                    {
+                        scatt_synch_num_ph++;
+                    }
+                #endif
             }
             
             free(phHolder);
+            //printf("In readcheckpoint count=%d\n", count);
         }
         else
         {
@@ -1167,6 +1177,8 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
         *restart='r';
         
     }
+    
+    return scatt_synch_num_ph;
 }
 
 void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart)
