@@ -2291,6 +2291,14 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             #elif GEOMETRY == CARTESIAN
                 is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy);
             #endif
+            
+            //when rebinning photons can have comoving 4 momenta=0 and nearest_block_index=0 (and block 0 be the actual block the photon is in making it not refind the proper index and reclaulate the comoving 4 momenta) which can make counting synch scattered photons be thrown off, thus take care of this case by forcing the function to recalc things
+            #if SYNCHROTRON_SWITCH == ON
+                if ((ph_block_index==0) && ( ((ph+i)->comv_p0)+((ph+i)->comv_p1)+((ph+i)->comv_p2)+((ph+i)->comv_p3) == 0 ) )
+                {
+                    is_in_block=0; //say that photon is not in the block, force it to recompute things
+                }
+            #endif
         
             if (find_nearest_block_switch==0 && is_in_block)
             {
@@ -3125,13 +3133,14 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                 fprintf(fPtr,"Fluid Beta: %e, %e, %e\n", *(fluid_beta+0),*(fluid_beta+1), *(fluid_beta+2));
                 fflush(fPtr);
                 */
-        
+                
+                
                 //first we bring the photon to the fluid's comoving frame
                 //lorentzBoost(fluid_beta, ph_p, ph_p_comov, 'p', fPtr);
-                *(ph_p_comov+0)=((ph+ph_index)->comv_p0);
-                *(ph_p_comov+1)=((ph+ph_index)->comv_p1);
-                *(ph_p_comov+2)=((ph+ph_index)->comv_p2);
-                *(ph_p_comov+3)=((ph+ph_index)->comv_p3);
+                //*(ph_p_comov+0)=((ph+ph_index)->comv_p0);
+                //*(ph_p_comov+1)=((ph+ph_index)->comv_p1);
+                //*(ph_p_comov+2)=((ph+ph_index)->comv_p2);
+                //*(ph_p_comov+3)=((ph+ph_index)->comv_p3);
                 
                 /*
                 fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);

@@ -414,6 +414,7 @@ int main(int argc, char **argv)
                 printf("Myid: %d, Color: %d, Count %d, Num To Start Per Angle: %d\n", myid, color, count, (*(each_num_to_restart_per_anglePtr+j)));
             }
             
+            
             if (count!=numprocs)
             {
                 //if the number of processes needed to continue the simulation is different from the number of processes in the mpiexec call exit
@@ -963,8 +964,35 @@ int main(int argc, char **argv)
                                 //fflush(fPtr);
                                 
                                 scatt_synch_num_ph++;//keep track of the number of synch photons that have scattered for later in checking of we need to rebin them
-                                //fprintf(fPtr,"scatt_synch_num_ph Number: %d\n", scatt_synch_num_ph);
+                                //fprintf(fPtr,"photonEmitSynch: scatt_synch_num_ph Number: %d\n", scatt_synch_num_ph);
                                 //exit(0);
+                                /*
+                                int count_scatt_synch_num_ph=0;
+                                for (i=0;i<num_ph;i++)
+                                {
+                                    if ((scatt_synch_num_ph==93) || (scatt_synch_num_ph==94))
+                                    {
+                                    fprintf(fPtr, "%d for loop outside %d %c %e %e\n", scatt_synch_num_ph, i, (phPtr+i)->type, (phPtr+i)->weight, (phPtr+i)->p0 );
+                                    fflush(fPtr);
+                                    }
+                                    
+                                    if (((phPtr+i)->weight != 0) && (((phPtr+i)->type == 'c') || ((phPtr+i)->type == 'o')) && ((phPtr+i)->p0 > 0))
+                                    {
+                                        if ((scatt_synch_num_ph==93) || (scatt_synch_num_ph==94))
+                                        {
+                                        fprintf(fPtr, "%d for loop Inside %d %c %e %e\n", scatt_synch_num_ph, i, (phPtr+i)->type, (phPtr+i)->weight, (phPtr+i)->p0  );
+                                        fflush(fPtr);
+                                        }
+
+                                        count_scatt_synch_num_ph++;
+                                    }
+                                }
+                                
+                                if (count_scatt_synch_num_ph!=scatt_synch_num_ph)
+                                {
+                                    fprintf(fPtr, "In Main, the two are not equal!!!!\n");
+                                }
+                                 */
                             }
                             #endif
                             
@@ -985,7 +1013,7 @@ int main(int argc, char **argv)
                                     rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_ph_emit, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, rng, fPtr);
                                     //tempo=rebinSynchCompPhotons2(&num_ph, &phPtr, num_null_ph, num_ph_emit, scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, rng, fPtr);
 
-                                    //printf(fPtr, "scatt_synch_num_ph: %d\n", scatt_synch_num_ph);
+                                    //fprintf(fPtr, "rebinSynchCompPhotons: scatt_synch_num_ph: %d\n", scatt_synch_num_ph);
                                     //exit(0);
                                 }
                                 #endif

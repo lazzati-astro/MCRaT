@@ -238,8 +238,8 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     count=0;
     for (i=0;i<*num_ph;i++)
     {
-        fprintf(fPtr, "%d %c %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0 );
-        fflush(fPtr);
+        //fprintf(fPtr, "%d %c %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0 );
+        //fflush(fPtr);
         
         if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0))
         {
@@ -642,10 +642,24 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     //*(temporary+1)=num_bins+synch_photon_count-num_null_rebin_ph;
     //*(temporary+2)=num_bins-num_null_rebin_ph;
     
-    fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d num_null_rebin_ph: %d old scatt_synch_num_ph: %d new scatt_synch_num_ph: %d\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1, num_null_rebin_ph, *scatt_synch_num_ph, num_bins-num_null_rebin_ph  );
+    //fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d num_null_rebin_ph: %d old scatt_synch_num_ph: %d new scatt_synch_num_ph: %d\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1, num_null_rebin_ph, *scatt_synch_num_ph, num_bins-num_null_rebin_ph  );
     
-    fprintf(fPtr, "at end of rebin f(x)  %d,  %d, %d\n", null_ph_count, num_bins+synch_photon_count-num_null_rebin_ph, num_bins-num_null_rebin_ph);
-    fflush(fPtr);
+    //fprintf(fPtr, "at end of rebin f(x)  %d,  %d, %d\n", null_ph_count, num_bins+synch_photon_count-num_null_rebin_ph, num_bins-num_null_rebin_ph);
+    //fflush(fPtr);
+    /*
+    count=0;
+    for (i=0;i<*num_ph;i++)
+    {
+        //fprintf(fPtr, "%d %c %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0 );
+        //fflush(fPtr);
+        
+        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0))
+        {
+            count++;
+        }
+    }
+    fprintf(fPtr, "at end of rebin f(x): count is: %d and scatt_synch_num_ph is %d\n", count, *scatt_synch_num_ph );
+    */
     
     ////gsl_histogram_fprintf (stdout, h, "%g", "%g");
     gsl_histogram_free (h);
@@ -829,7 +843,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     {
         //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
         //need to realloc memory to hold the old photon info and the new emitted photon's info
-        //fprintf(fPtr, "Emit: Allocating %d space\n", ((*num_ph)+ph_tot-null_ph_count));
+        fprintf(fPtr, "Emit: Allocating %d space\n", ((*num_ph)+ph_tot-null_ph_count));
         tmp=realloc(*ph_orig, ((*num_ph)+ph_tot-null_ph_count)* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
         if (tmp != NULL)
         {
