@@ -195,10 +195,14 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             {
                 weight[weight_net_num_ph]= ((ph+i)->weight);
                 weight_net_num_ph++;
+                /* placed in savecheckpoint file
+                #if SYNCHROTRON_SWITCH == ON
                 if ((ph+i)->type == 'c')
                 {
                     (ph+i)->type = 'o'; //set this to be an old synchrotron scattered photon
                 }
+                #endif
+                 */
             }
             
             if ((frame==frame_last))
@@ -973,6 +977,12 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
             fflush(stdout);
             for(i=0;i<ph_num;i++)
             {
+                #if SYNCHROTRON_SWITCH == ON
+                if (((ph+i)->type == 'c') && ((ph+i)->weight != 0))
+                {
+                    (ph+i)->type = 'o'; //set this to be an old synchrotron scattered photon
+                }
+                #endif
                 fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
                 //fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
             }
@@ -1019,6 +1029,12 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
             fflush(stdout);
             for(i=0;i<ph_num;i++)
             {
+                #if SYNCHROTRON_SWITCH == ON
+                if (((ph+i)->type == 'c') && ((ph+i)->weight != 0))
+                {
+                    (ph+i)->type = 'o'; //set this to be an old synchrotron scattered photon
+                }
+                #endif
                 //fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
                 fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
             }
@@ -3845,7 +3861,9 @@ double averagePhotonEnergy(struct photon *ph, int num_ph)
     #pragma omp parallel for reduction(+:e_sum) reduction(+:w_sum)
     for (i=0;i<num_ph;i++)
     {
+        #if SYNCHROTRON_SWITCH == ON
         if (((ph+i)->weight != 0) && ((ph+i)->nearest_block_index != -1))
+        #endif
         {
             e_sum+=(((ph+i)->p0)*((ph+i)->weight));
             w_sum+=((ph+i)->weight);
@@ -3864,10 +3882,14 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
     #pragma omp parallel for num_threads(num_thread) reduction(min:temp_min) reduction(max:temp_max) reduction(+:sum) reduction(+:avg_r_sum)
     for (i=0;i<ph_num;i++)
     {
+        #if SYNCHROTRON_SWITCH == ON
         if (((ph+i)->weight != 0) && ((ph+i)->nearest_block_index != -1))
+        #endif
         {
             sum+=((ph+i)->num_scatt);
             avg_r_sum+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
+            
+            printf("%d %e %e %e\n", i, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2);
             
             if (((ph+i)->num_scatt) > temp_max )
             {
