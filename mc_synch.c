@@ -304,8 +304,8 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     //for the photons that fall within a given nu bin, histogram thier theta and phi and choose a random number to sample from the distribution to get the new photons' 4 momentum, to parallelize this can put num+ph lop outside and cpunt loop inside and make avg_value array 2D with count index and other index being the average values
     for (count=0;count<num_bins;count++)
     {
-        
-        if (gsl_histogram_get(h, count) != 1)
+
+        if (gsl_histogram_get(h, count) > 1)
         {
             for (j=0;j<num_avg;j++)
             {
@@ -406,6 +406,34 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
                 }
             }
             
+        }
+        else
+        {
+            fprintf(fPtr, "Rebinned Photon is a null photon because there are no photons in this energy bin.\n");
+            (rebin_ph+count)->type = 'c';
+            
+            gsl_histogram_get_range(h, count, &min_range, &max_range);
+            energy=pow(10,0.5*(max_range+min_range));
+            
+            (rebin_ph+count)->p0=energy;
+            (rebin_ph+count)->p1=0;
+            (rebin_ph+count)->p2=0;
+            (rebin_ph+count)->p3=0;
+            (rebin_ph+count)->comv_p0=0;
+            (rebin_ph+count)->comv_p1=0;
+            (rebin_ph+count)->comv_p2=0;
+            (rebin_ph+count)->comv_p3=0;
+            (rebin_ph+count)->r0=0;
+            (rebin_ph+count)->r1= 0;
+            (rebin_ph+count)->r2=0;
+            (rebin_ph+count)->s0=1; // stokes parameterized are normalized such that I always =1
+            (rebin_ph+count)->s1=0;
+            (rebin_ph+count)->s2=0;
+            (rebin_ph+count)->s3=0;
+            (rebin_ph+count)->num_scatt=0;
+            (rebin_ph+count)->weight=0;
+            (rebin_ph+count)->nearest_block_index=-1; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
+
         }
         
         

@@ -968,16 +968,16 @@ int main(int argc, char **argv)
                                 scatt_synch_num_ph++;//keep track of the number of synch photons that have scattered for later in checking of we need to rebin them
                                 //fprintf(fPtr,"photonEmitSynch: scatt_synch_num_ph Number: %d\n", scatt_synch_num_ph);
                                 //exit(0);
-                                
+                                /*
                                 int count_scatt_synch_num_ph=0;
                                 for (i=0;i<num_ph;i++)
                                 {
                                     //if ((scatt_synch_num_ph==93) || (scatt_synch_num_ph==94))
                                     {
-                                    fprintf(fPtr, "%d for loop outside %d %c %e %e %e\n", scatt_synch_num_ph, i, (phPtr+i)->type, (phPtr+i)->weight, (phPtr+i)->p0, (phPtr+i)->r0 );
-                                    fflush(fPtr);
+                                    //fprintf(fPtr, "%d for loop outside %d %c %e %e %e\n", scatt_synch_num_ph, i, (phPtr+i)->type, (phPtr+i)->weight, (phPtr+i)->p0, (phPtr+i)->r0 );
+                                    //fflush(fPtr);
                                     }
-                                    /*
+                                    
                                     if (((phPtr+i)->weight != 0) && (((phPtr+i)->type == 'c') || ((phPtr+i)->type == 'o')) && ((phPtr+i)->p0 > 0))
                                     {
                                         if ((scatt_synch_num_ph==93) || (scatt_synch_num_ph==94))
@@ -988,9 +988,9 @@ int main(int argc, char **argv)
 
                                         count_scatt_synch_num_ph++;
                                     }
-                                     */
+                                     
                                 }
-                                
+                                */
                                 //if (count_scatt_synch_num_ph!=scatt_synch_num_ph)
                                 //{
                                 //    fprintf(fPtr, "In Main, the two are not equal!!!!\n");

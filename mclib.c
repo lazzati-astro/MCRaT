@@ -1161,6 +1161,7 @@ int readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framesta
                     {
                         scatt_synch_num_ph++;
                     }
+                //printf("%d %c %e %e %e %e %e %e %e\n", i, (*ph)[i].type, (*ph)[i].r0, (*ph)[i].r1, (*ph)[i].r2, (*ph)[i].num_scatt, (*ph)[i].weight, (*ph)[i].p0, (*ph)[i].comv_p0);
                 #endif
             }
             
