@@ -3816,7 +3816,13 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
             }
             #else
             {
-                if (u!=0 && q!=0)
+                if (u==0 && q==0)
+                {
+                    phi_dum=gsl_rng_uniform(rand)*2*M_PI;
+                    phi_y_dum=-1; // this is to exit the while statement
+
+                }
+                else
                 {
                     //if we are considering polarization calulate the norm for the distributiion to be between 1 and 0
                     phi_max=abs(atan2(-u,q))/2.0;
@@ -3830,11 +3836,6 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
                     
                     //fprintf(fPtr,"phi_y_dum: %e, theta_dum: %e, mu: %e, f_theta_dum: %e, phi_dum: %e, f_phi_dum: %e, u: %e, q: %e\n", phi_y_dum, theta_dum, mu, f_theta_dum, phi_dum, f_phi_dum, u, q);
                     //fflush(fPtr);
-                }
-                else
-                {
-                    phi_dum=gsl_rng_uniform(rand)*2*M_PI;
-                    phi_y_dum=-1; // this is to exit the while statement
 
                 }
             }
