@@ -3090,6 +3090,12 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                 #endif
         
                 ph_phi=atan2(((ph+ph_index)->r1), (((ph+ph_index)->r0)));
+                
+                if (isnan((ph+ph_index)->r0) || isnan((ph+ph_index)->r1) || isnan((ph+ph_index)->r2))
+                {
+                    printf("Not a number\n");
+                }
+            
                 /*
                 fprintf(fPtr,"ph_phi=%e\n", ph_phi);
                 fflush(fPtr);
@@ -3864,7 +3870,7 @@ double averagePhotonEnergy(struct photon *ph, int num_ph)
     for (i=0;i<num_ph;i++)
     {
         #if SYNCHROTRON_SWITCH == ON
-        if (((ph+i)->weight != 0) && ((ph+i)->nearest_block_index != -1))
+        if (((ph+i)->weight != 0) && ((ph+i)->nearest_block_index != -1) && ((ph+i)->p0 != -1)) //dont want account for null or absorbed 'o' photons
         #endif
         {
             e_sum+=(((ph+i)->p0)*((ph+i)->weight));
@@ -3885,13 +3891,13 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
     for (i=0;i<ph_num;i++)
     {
         #if SYNCHROTRON_SWITCH == ON
-        if (((ph+i)->weight != 0) && ((ph+i)->nearest_block_index != -1))
+        if (((ph+i)->weight != 0) && ((ph+i)->nearest_block_index != -1) && ((ph+i)->p0 != -1)) //dont want account for null or absorbed 'o' photons
         #endif
         {
             sum+=((ph+i)->num_scatt);
             avg_r_sum+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
             
-            printf("%d %e %e %e\n", i, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2);
+            //printf("%d %e %e %e\n", i, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2);
             
             if (((ph+i)->num_scatt) > temp_max )
             {

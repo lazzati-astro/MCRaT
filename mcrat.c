@@ -947,11 +947,13 @@ int main(int argc, char **argv)
 
                             time_step=photonEvent( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );
                             time_now+=time_step;
-                            
-                            //if ((scatt_frame==203) && (frame==201))
-                            //{
-                            //    ph_scatt_index=90;
-                            //}
+                            /*
+                            if (ph_scatt_index==1183)
+                            {
+                                printf("HERE\n");
+                            }
+                            phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
+                            */
                             
                             //see if the scattered phton was a seed photon, if so replenish the seed photon
                             #if SYNCHROTRON_SWITCH == ON
@@ -999,12 +1001,16 @@ int main(int argc, char **argv)
                             }
                             #endif
                             
+                            //phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
+                            
                             if ((frame_scatt_cnt%1000 == 0) && (frame_scatt_cnt != 0)) //modified this so it doesn't print when all photons get absorbed at first and frame_scatt_cnt=0
                             {
+                                //phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
                                 fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
                                 fprintf(fPtr,"The local temp is: %e K\n", *(tempPtr + (phPtr+ph_scatt_index)->nearest_block_index) );
                                 fprintf(fPtr,"Average photon energy is: %e ergs\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 can then do (1.6e-9) to get keV
                                 fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
+                                //fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
                                 fflush(fPtr);
                                 
                                 #if SYNCHROTRON_SWITCH == ON
@@ -1020,7 +1026,11 @@ int main(int argc, char **argv)
                                     //exit(0);
                                 }
                                 #endif
-                                
+                                /*
+                                phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
+                                fprintf(fPtr,"After Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
+                                fflush(fPtr);
+                                */
                             }
                             //exit(0);
                         }
@@ -1044,8 +1054,17 @@ int main(int argc, char **argv)
                         {
                             //rebin the photons to ensure that we have a constant amount here
                             fprintf(fPtr, "Num_ph: %d\n", num_ph);
+                            /*
+                            fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
+                            fflush(fPtr);
+                            */
                             rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_ph_emit, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, rng, fPtr);
                           //exit(0);
+                            /*
+                            phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
+                            fprintf(fPtr,"After Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
+                            fflush(fPtr);
+                            */
                         }
                         else
                         {
@@ -1072,8 +1091,18 @@ int main(int argc, char **argv)
                              */
                         }
                         
+                        phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
+                        fprintf(fPtr,"Before Abs: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
+                        fflush(fPtr);
+
+                        
                         //make sure the photons that shou;d be absorbed should be absorbed
                         phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph, 1, tempPtr, densPtr, fPtr);
+                        
+                        phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
+                        fprintf(fPtr,"After Abs: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
+                        fflush(fPtr);
+
                         
                         //also make sure that i set scatt_synch_num_ph as the number of 'c' and 'o' photons, I do this in the above function
                         //if (scatt_frame > scatt_framestart+5)

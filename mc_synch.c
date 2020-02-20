@@ -203,8 +203,8 @@ double calcSynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_in
 int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_ph, int *num_ph_emit, int *scatt_synch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, gsl_rng * rand, FILE *fPtr)
 {
     int i=0, j=0, count=0, count_c_ph=0, end_count=(*scatt_synch_num_ph), idx=0, num_thread=omp_get_num_threads();
-    int synch_comp_photon_count=0, synch_photon_count=0, num_avg=9, num_bins=(0.1)*max_photons; //some factor of the max number of photons that is specified in the mc.par file, num bins is also in test function
-    double avg_values[9]= { 0 }; //number of averages that'll be taken is given by num_avg in above line
+    int synch_comp_photon_count=0, synch_photon_count=0, num_avg=11, num_bins=(0.1)*max_photons; //some factor of the max number of photons that is specified in the mc.par file, num bins is also in test function
+    double avg_values[11]={0}; //number of averages that'll be taken is given by num_avg in above line
     double p0_min=DBL_MAX, p0_max=0, log_p0_min=0, log_p0_max=0;//look at p0 of photons not by frequency since its just nu=p0*C_LIGHT/PL_CONST
     double rand1=0, rand2=0, phi=0, theta=0;
     double min_range=0, max_range=0, energy=0;
@@ -321,6 +321,13 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
                     //if the photon nu falls in the count bin of the nu histogram then add it to the phi_theta 2d hist
                     if ((log10((*ph_orig)[i].p0)< max_range  ) && (log10((*ph_orig)[i].p0)>=min_range))
                     {
+                        if (count==17)
+                        {
+                            fprintf(fPtr, "%d %c %e %e %e %e %e %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].p1, (*ph_orig)[i].p2, (*ph_orig)[i].p3, fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0),(180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))  );
+                            fflush(fPtr);
+                            
+                        }
+                        
                         gsl_histogram2d_increment(h_phi_theta, fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0), (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0)) );
                         
                         avg_values[0] += (*ph_orig)[i].r0*(*ph_orig)[i].weight; //used to calc weighted averages
@@ -332,6 +339,10 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
                         avg_values[6] += (*ph_orig)[i].s3*(*ph_orig)[i].weight;
                         avg_values[7] += (*ph_orig)[i].num_scatt*(*ph_orig)[i].weight;
                         avg_values[8] += (*ph_orig)[i].weight;
+                        
+                        //average theta and phi of photons
+                        avg_values[9] += fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0) *(*ph_orig)[i].weight;
+                        avg_values[10] += (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
                     }
                 }
             }
@@ -347,6 +358,9 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
             
             //choose random phi and theta value
             gsl_histogram2d_pdf_sample (pdf_phi_theta, rand1, rand2, &phi, &theta);//phi and theta are in degreesneed to convert into radians later
+            
+            phi=avg_values[9]/avg_values[8];
+            theta=avg_values[10]/avg_values[8];
             
             (rebin_ph+count)->type = 'c';
             
@@ -409,7 +423,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         }
         else
         {
-            fprintf(fPtr, "Rebinned Photon is a null photon because there are no photons in this energy bin.\n");
+            //fprintf(fPtr, "Rebinned Photon is a null photon because there are no photons in this energy bin.\n");
             (rebin_ph+count)->type = 'c';
             
             gsl_histogram_get_range(h, count, &min_range, &max_range);
@@ -557,7 +571,12 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         {
             idx=(*num_ph)+i;
         }
-        
+        /*
+        if (idx==1183)
+        {
+            printf("HERE IN REBIN\n");
+        }
+        */
         if ((*ph_orig)[idx].type == 'o')
         {
             //if the photon is a compton scatered synch photon from a past frame treat it as though it has been absorbed
@@ -652,7 +671,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         {
             null_ph_count_1++;
         }
-        
+                
         //fprintf(fPtr, "%d %c %e %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0 );
         
     }
@@ -851,7 +870,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     #pragma omp parallel for num_threads(num_thread) reduction(+:null_ph_count)
     for (i=0;i<*num_ph;i++)
     {
-        if ((*ph_orig)[i].weight == 0)
+        if (((*ph_orig)[i].weight == 0) && ((*ph_orig)[i].nearest_block_index == -1) && ((*ph_orig)[i].p0 != -1)) //if photons are null 'c' photons and not absorbed 'o' photons
         {
             null_ph_count+=1;
         }
@@ -871,7 +890,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     {
         //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
         //need to realloc memory to hold the old photon info and the new emitted photon's info
-        fprintf(fPtr, "Emit: Allocating %d space\n", ((*num_ph)+ph_tot-null_ph_count));
+        //fprintf(fPtr, "Emit: Allocating %d space\n", ((*num_ph)+ph_tot-null_ph_count));
         tmp=realloc(*ph_orig, ((*num_ph)+ph_tot-null_ph_count)* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
         if (tmp != NULL)
         {
@@ -919,7 +938,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         {
             //fprintf(fPtr, "idx %d\n", i);
             //fflush(fPtr);
-            if (((*ph_orig)[i].weight == 0)  || (i >= *num_ph))
+            if ((((*ph_orig)[i].weight == 0) && ((*ph_orig)[i].nearest_block_index == -1) && ((*ph_orig)[i].p0 != -1))  || (i >= *num_ph))
             {
                 //preset values for the the newly created spots to hold the emitted phtoons in
                 (*ph_orig)[i].weight=0;
@@ -972,7 +991,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
             }
             else
                 */
-            if ((*ph_orig)[i].weight == 0)
+            if (((*ph_orig)[i].weight == 0) && ((*ph_orig)[i].nearest_block_index == -1) && ((*ph_orig)[i].p0 != -1)) //if photons are null 'c' photons and not absorbed 'o' photons
             {
                 // if the weight is 0, this is a photons that has been absorbed and is now null
                 *(null_ph_indexes+j)=i;
