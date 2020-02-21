@@ -155,7 +155,9 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
      
      
     int i=0, count=0, rank=1, net_num_ph=num_ph-num_ph_abs-num_null_ph, weight_net_num_ph= num_ph-num_ph_abs-num_null_ph, global_weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : num_ph_emit-num_ph_abs ; //can have more photons absorbed than emitted, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : scatt_synch_num_ph
+    #if defined(_OPENMP)
     int num_thread=omp_get_num_threads();
+    #endif
     char mc_file[200]="", group[200]="", group_weight[200]="";
     double p0[net_num_ph], p1[net_num_ph], p2[net_num_ph], p3[net_num_ph] , r0[net_num_ph], r1[net_num_ph], r2[net_num_ph], num_scatt[net_num_ph], weight[weight_net_num_ph], global_weight[net_num_ph];
     double s0[net_num_ph], s1[net_num_ph], s2[net_num_ph], s3[net_num_ph], comv_p0[net_num_ph], comv_p1[net_num_ph], comv_p2[net_num_ph], comv_p3[net_num_ph];
@@ -1331,9 +1333,9 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     int  i,j,count,x1_count, y1_count, r_count, **node_buffer=NULL, num_nodes=0, elem_factor=0;
     double x1[8]={-7.0/16,-5.0/16,-3.0/16,-1.0/16,1.0/16,3.0/16,5.0/16,7.0/16};
     double ph_rmin=0, ph_rmax=0, ph_thetamin=0, ph_thetamax=0, r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0, track_min_r=DBL_MAX, track_max_r=0;
+        #if defined(_OPENMP)
     int num_thread=omp_get_num_threads();
-    
-    
+    #endif
     
 
     if (ph_inj_switch==0)
@@ -2219,14 +2221,16 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
 int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y, double epsilon_b, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
                                    double *temp, double *all_time_steps, int *sorted_indexes, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)
 {
-    int i=0, min_index=0, ph_block_index=0;
+    int i=0, min_index=0, ph_block_index=0, num_thread=1, thread_id=0;
     double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, ph_r=0, ph_theta=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
 
     double ph_v_norm=0, fl_v_norm=0, synch_x_sect=0;
     double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
     double rnd_tracker=0, n_dens_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
-    int num_thread=omp_get_num_threads();
+    #if defined(_OPENMP)
+    num_thread=omp_get_num_threads(); //default is one above if theres no openmp usage
+    #endif
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
     
     int index=0, num_photons_find_new_element=0;
@@ -2472,8 +2476,11 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 
                 //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
                 rnd_tracker=0;
-        
-                rnd_tracker=gsl_rng_uniform_pos(rng[omp_get_thread_num()]);
+                #if defined(_OPENMP)
+                thread_id=omp_get_thread_num();
+                #endif
+                
+                rnd_tracker=gsl_rng_uniform_pos(rng[thread_id]);
                 //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
         
                 //mfp=(-1)*log(rnd_tracker)*(M_P/((n_dens_tmp))/(THOM_X_SECT)); ///(1.0-beta*((n_cosangle)))) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths DO EVERYTHING IN COMOV FRAME NOW
@@ -2594,7 +2601,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     /*
      * THIS FUNCTION IS WRITTEN JUST FOR 2D SIMS AS OF NOW, not used
     */
-    int i=0, j=0, min_index=0, ph_block_index=0;
+    int i=0, j=0, min_index=0, ph_block_index=0, thread_id=0;
     int left_block_index=0, right_block_index=0, bottom_block_index=0, top_block_index=0, all_adjacent_block_indexes[4];
     double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, dist=0, left_dist_min=0, right_dist_min=0, top_dist_min=0, bottom_dist_min=0, dv=0, v=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
@@ -2818,8 +2825,11 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         #endif
         //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
         rnd_tracker=0;
+        #if defined(_OPENMP)
+        thread_id=omp_get_thread_num();
+        #endif
         
-        rnd_tracker=gsl_rng_uniform_pos(rng[omp_get_thread_num()]);
+        rnd_tracker=gsl_rng_uniform_pos(rng[thread_id]);
         
         mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths 
         
@@ -2876,7 +2886,10 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
 {
     //move photons by speed of light
  
-    int i=0, num_thread=omp_get_num_threads();
+    int i=0;
+    #if defined(_OPENMP)
+    int num_thread=omp_get_num_threads();
+    #endif
     double old_position=0, new_position=0, divide_p0=0;
     
     
@@ -3863,7 +3876,10 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
 double averagePhotonEnergy(struct photon *ph, int num_ph)
 {
     //to calculate weighted photon energy in ergs
-    int i=0, num_thread=omp_get_num_threads();
+    int i=0;
+    #if defined(_OPENMP)
+    int num_thread=omp_get_num_threads();
+    #endif
     double e_sum=0, w_sum=0;
     
     #pragma omp parallel for reduction(+:e_sum) reduction(+:w_sum)
@@ -3883,7 +3899,10 @@ double averagePhotonEnergy(struct photon *ph, int num_ph)
 
 void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg, double *r_avg  )
 {
-    int temp_max=0, temp_min=INT_MAX,  i=0, num_thread=omp_get_num_threads();
+    int temp_max=0, temp_min=INT_MAX,  i=0;
+    #if defined(_OPENMP)
+    int num_thread=omp_get_num_threads();
+    #endif
     double sum=0, avg_r_sum=0;
     
     //printf("Num threads: %d", num_thread);

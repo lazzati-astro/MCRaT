@@ -202,7 +202,10 @@ double calcSynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_in
 
 int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_ph, int *num_ph_emit, int *scatt_synch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, gsl_rng * rand, FILE *fPtr)
 {
-    int i=0, j=0, count=0, count_c_ph=0, end_count=(*scatt_synch_num_ph), idx=0, num_thread=omp_get_num_threads();
+    int i=0, j=0, count=0, count_c_ph=0, end_count=(*scatt_synch_num_ph), idx=0, num_thread=1;
+    #if defined(_OPENMP)
+    num_thread=omp_get_num_threads();
+    #endif
     int synch_comp_photon_count=0, synch_photon_count=0, num_avg=11, num_bins=(0.1)*max_photons; //some factor of the max number of photons that is specified in the mc.par file, num bins is also in test function
     double avg_values[11]={0}; //number of averages that'll be taken is given by num_avg in above line
     double p0_min=DBL_MAX, p0_max=0, log_p0_min=0, log_p0_max=0;//look at p0 of photons not by frequency since its just nu=p0*C_LIGHT/PL_CONST
@@ -730,7 +733,10 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     int status;
     int block_cnt=0, i=0, j=0, k=0, null_ph_count=0, *ph_dens=NULL, ph_tot=0, net_ph=0, min_photons=1;
     int *null_ph_indexes=NULL;
-    int num_thread=omp_get_num_threads(), count_null_indexes=0, idx=0;
+    #if defined(_OPENMP)
+    int num_thread=omp_get_num_threads();
+    #endif
+    int count_null_indexes=0, idx=0;
     struct photon *ph_emit=NULL; //pointer to array of structs that will hold emitted photon info
     struct photon *tmp=NULL;
     double *tmp_double=NULL;
@@ -1199,7 +1205,11 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
     //still need to deal with below issue
     //frame 213 where the absorption doesnt occur for all emitted photons and have some absorbed before/after unabsorbed photons, how to deal with this?
     //ph 97, neg lab nu in frame 210, from -1 * c/h
-    int i=0, count=0, abs_ph_count=0, synch_ph_count=0, num_thread=omp_get_num_threads();
+    int i=0, count=0, abs_ph_count=0, synch_ph_count=0, num_thread=1;
+    #if defined(_OPENMP)
+    num_thread=omp_get_num_threads();
+    #endif
+
     double el_dens=0, nu_c=0;
     //struct photon tmp_ph;//hold temporay photon to move its data
     

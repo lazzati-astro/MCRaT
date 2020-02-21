@@ -729,7 +729,10 @@ void photonInjection3D( struct photon **ph, int *ph_num, double r_inj, double ph
 void phMinMax(struct photon *ph, int ph_num, double *min, double *max, double *min_theta, double *max_theta, FILE *fPtr)
 {
     double temp_r_max=0, temp_r_min=DBL_MAX, temp_theta_max=0, temp_theta_min=DBL_MAX;
-    int i=0, num_thread=omp_get_num_threads();
+    int i=0;
+    #if defined(_OPENMP)
+    int num_thread=omp_get_num_threads();
+    #endif
     double ph_r=0, ph_theta=0;
     
 #pragma omp parallel for num_threads(num_thread) firstprivate(ph_r, ph_theta) reduction(min:temp_r_min) reduction(max:temp_r_max) reduction(min:temp_theta_min) reduction(max:temp_theta_max)
