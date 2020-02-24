@@ -1091,17 +1091,17 @@ int main(int argc, char **argv)
                              */
                         }
                         
-                        phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
-                        fprintf(fPtr,"Before Abs: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
-                        fflush(fPtr);
+                        //phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
+                        //fprintf(fPtr,"Before Abs: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
+                        //fflush(fPtr);
 
                         
                         //make sure the photons that shou;d be absorbed should be absorbed
                         phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph, 1, tempPtr, densPtr, fPtr);
                         
-                        phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
-                        fprintf(fPtr,"After Abs: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
-                        fflush(fPtr);
+                        //phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
+                        //fprintf(fPtr,"After Abs: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
+                        //fflush(fPtr);
 
                         
                         //also make sure that i set scatt_synch_num_ph as the number of 'c' and 'o' photons, I do this in the above function
@@ -1121,7 +1121,7 @@ int main(int argc, char **argv)
                     #endif
                     fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                     fprintf(fPtr,"MCRaT had to refind the position of photons %d times in this frame.\n", num_photons_find_new_element);
-                    fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scattering for a photon is: %d\n", max_scatt, min_scatt);
+                    fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scatterings for a photon is: %d\n", max_scatt, min_scatt);
                     fprintf(fPtr,"The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
                     
                     fflush(fPtr);

@@ -324,13 +324,14 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
                     //if the photon nu falls in the count bin of the nu histogram then add it to the phi_theta 2d hist
                     if ((log10((*ph_orig)[i].p0)< max_range  ) && (log10((*ph_orig)[i].p0)>=min_range))
                     {
+                        /*
                         if (count==17)
                         {
                             fprintf(fPtr, "%d %c %e %e %e %e %e %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].p1, (*ph_orig)[i].p2, (*ph_orig)[i].p3, fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0),(180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))  );
                             fflush(fPtr);
                             
                         }
-                        
+                        */
                         gsl_histogram2d_increment(h_phi_theta, fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0), (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0)) );
                         
                         avg_values[0] += (*ph_orig)[i].r0*(*ph_orig)[i].weight; //used to calc weighted averages

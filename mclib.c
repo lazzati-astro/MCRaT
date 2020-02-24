@@ -3899,14 +3899,14 @@ double averagePhotonEnergy(struct photon *ph, int num_ph)
 
 void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg, double *r_avg  )
 {
-    int temp_max=0, temp_min=INT_MAX,  i=0;
+    int temp_max=0, temp_min=INT_MAX,  i=0, count=0;
     #if defined(_OPENMP)
     int num_thread=omp_get_num_threads();
     #endif
     double sum=0, avg_r_sum=0;
     
     //printf("Num threads: %d", num_thread);
-    #pragma omp parallel for num_threads(num_thread) reduction(min:temp_min) reduction(max:temp_max) reduction(+:sum) reduction(+:avg_r_sum)
+#pragma omp parallel for num_threads(num_thread) reduction(min:temp_min) reduction(max:temp_max) reduction(+:sum) reduction(+:avg_r_sum) reduction(+:count)
     for (i=0;i<ph_num;i++)
     {
         #if SYNCHROTRON_SWITCH == ON
@@ -3916,7 +3916,7 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
             sum+=((ph+i)->num_scatt);
             avg_r_sum+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
             
-            //printf("%d %e %e %e\n", i, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2);
+            //printf("%d %c  %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt);
             
             if (((ph+i)->num_scatt) > temp_max )
             {
@@ -3930,14 +3930,15 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
                 temp_min=((ph+i)->num_scatt);
                 //printf("The new min is: %d\n", temp_min);
             }
+            count++;
         }
         
     }
     //printf("The  min outside the loop is: %d\n", temp_min);
     //exit(0);
     
-    *avg=sum/ph_num;
-    *r_avg=avg_r_sum/ph_num;
+    *avg=sum/count;
+    *r_avg=avg_r_sum/count;
     *max=temp_max;
     *min=temp_min;
     
