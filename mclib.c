@@ -205,6 +205,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                 }
                 #endif
                  */
+                fprintf(fPtr, "%d %c %e %e %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9);
             }
             
             if ((frame==frame_last))
@@ -214,6 +215,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             
             count++;
         }
+        printf("%d %c %e %e %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9);
     }
     
     
@@ -1068,6 +1070,17 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
             fwrite(&restart, sizeof(char), 1, fPtr);
             fwrite(&frame, sizeof(int), 1, fPtr);
             fwrite(&frame2, sizeof(int), 1, fPtr);
+            for(i=0;i<ph_num;i++)
+            {
+                #if SYNCHROTRON_SWITCH == ON
+                if (((ph+i)->type == 'c') && ((ph+i)->weight != 0))
+                {
+                    (ph+i)->type = 'o'; //set this to be an old synchrotron scattered photon
+                }
+                #endif
+                fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
+            }
+
             success=0;
         }
     }
@@ -1541,7 +1554,11 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
 
     //fill in radius array and find in how many places r > injection radius
 //have single thread execute this while loop and then have inner loop be parallel
-    elem_factor=0;
+    #if SYNCHROTRON_SWITCH == ON
+        elem_factor=2;
+    #elif
+        elem_factor=0;
+    #endif
     r_count=0;
     while (r_count==0)
     {
@@ -2909,13 +2926,13 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
             ((ph+i)->r2)+=((ph+i)->p3)*divide_p0*C_LIGHT*t;//update z
             
             new_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 );
-            
-            //if ((new_position-old_position)/t > C_LIGHT)
-            //{
-            //    fprintf(fPtr, "PHOTON NUMBER %d IS SUPERLUMINAL. ITS SPEED IS %e c.\n", i, ((new_position-old_position)/t)/C_LIGHT);
-            //}
-            
-            if ( (ph+i)->s0 != 1)
+            /*
+            if ((new_position-old_position)/t > C_LIGHT)
+            {
+                fprintf(fPtr, "PHOTON NUMBER %d IS SUPERLUMINAL. ITS SPEED IS %e c.\n", i, ((new_position-old_position)/t)/C_LIGHT);
+            }
+            */
+            //if ( (ph+i)->s0 != 1)
             {
             //	fprintf(fPtr, "PHOTON NUMBER %d DOES NOT HAVE I=1. Instead it is: %e\n", i, (ph+i)->s0);
             }
@@ -3886,7 +3903,7 @@ double averagePhotonEnergy(struct photon *ph, int num_ph)
     for (i=0;i<num_ph;i++)
     {
         #if SYNCHROTRON_SWITCH == ON
-        if (((ph+i)->weight != 0) && ((ph+i)->nearest_block_index != -1) && ((ph+i)->p0 != -1)) //dont want account for null or absorbed 'o' photons
+        if (((ph+i)->weight != 0)) //dont want account for null or absorbed 'o' photons
         #endif
         {
             e_sum+=(((ph+i)->p0)*((ph+i)->weight));
@@ -3897,20 +3914,20 @@ double averagePhotonEnergy(struct photon *ph, int num_ph)
     return (e_sum*C_LIGHT)/w_sum;
 }
 
-void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg, double *r_avg  )
+void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg, double *r_avg, FILE *fPtr  )
 {
-    int temp_max=0, temp_min=INT_MAX,  i=0, count=0;
+    int temp_max=0, temp_min=INT_MAX,  i=0, count=0, count_synch=0, count_comp=0, count_i=0;
     #if defined(_OPENMP)
     int num_thread=omp_get_num_threads();
     #endif
-    double sum=0, avg_r_sum=0;
+    double sum=0, avg_r_sum=0, avg_r_sum_synch=0, avg_r_sum_comp=0, avg_r_sum_inject=0;
     
     //printf("Num threads: %d", num_thread);
 #pragma omp parallel for num_threads(num_thread) reduction(min:temp_min) reduction(max:temp_max) reduction(+:sum) reduction(+:avg_r_sum) reduction(+:count)
     for (i=0;i<ph_num;i++)
     {
         #if SYNCHROTRON_SWITCH == ON
-        if (((ph+i)->weight != 0) && ((ph+i)->nearest_block_index != -1) && ((ph+i)->p0 != -1)) //dont want account for null or absorbed 'o' photons
+        if (((ph+i)->weight != 0)) //dont want account for null or absorbed 'o' photons
         #endif
         {
             sum+=((ph+i)->num_scatt);
@@ -3930,11 +3947,33 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
                 temp_min=((ph+i)->num_scatt);
                 //printf("The new min is: %d\n", temp_min);
             }
+            
+            if (((ph+i)->type) == 'i' )
+            {
+                avg_r_sum_inject+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
+                count_i++;
+            }
+                        
+            if ((((ph+i)->type) == 'c') || (((ph+i)->type) == 'o'))
+            {
+                avg_r_sum_comp+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
+                count_comp++;
+            }
+            
+            
             count++;
         }
         
+        if (((ph+i)->type) == 's' )
+        {
+            avg_r_sum_synch+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
+            count_synch++;
+        }
+
+        
     }
-    //printf("The  min outside the loop is: %d\n", temp_min);
+    fprintf(fPtr, "In this frame Avg r for i type: %e c and o type: %e and s type: %e\n", avg_r_sum_inject/count_i, avg_r_sum_comp/count_comp, avg_r_sum_synch/count_synch);
+    fflush(fPtr);
     //exit(0);
     
     *avg=sum/count;

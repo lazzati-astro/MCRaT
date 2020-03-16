@@ -112,7 +112,7 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
 
 double averagePhotonEnergy(struct photon *ph, int num_ph);
 
-void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg, double *r_avg  );
+void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg, double *r_avg, FILE *fPtr  );
 
 int saveCheckpoint(char dir[200], int frame,  int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph , int last_frame, int angle_rank, int angle_size);
 

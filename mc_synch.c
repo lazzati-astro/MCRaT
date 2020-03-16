@@ -47,6 +47,7 @@ double calcDimlessTheta(double temp)
 double calcB(double el_dens, double temp, double epsilon_b)
 {
     //calc the B field from assuming its some fraction of the matter energy density
+    //assume equipartition here
     return sqrt(8*M_PI*3*el_dens*K_B*temp/2);
 }
 
@@ -187,12 +188,14 @@ double calcSynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_in
     if (strcmp(min_or_max, "min")==0)
     {
         //printf("IN MIN\nframe_scatt %e frame_inj %e fps %e r_inj %e C_LIGHT %e\n", frame_scatt, frame_inj, fps, r_inj, C_LIGHT);
-        val+= (C_LIGHT*(frame_scatt-frame_inj-1)/(2*fps));
+        //val+= (C_LIGHT*(frame_scatt-frame_inj-1)/(2*fps)); this is wrong
+        val+=(C_LIGHT*(frame_scatt-frame_inj)/fps - 0.5*C_LIGHT/fps);
     }
     else
     {
         //printf("IN MAX\n");
-        val+= (C_LIGHT*(frame_scatt-frame_inj+1)/(2*fps));
+        //val+= (C_LIGHT*(frame_scatt-frame_inj+1)/(2*fps)); this is wrong
+        val+=(C_LIGHT*(frame_scatt-frame_inj)/fps + 0.5*C_LIGHT/fps);
     }
     
     //printf("Val %e\n", val);
@@ -206,8 +209,8 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     #if defined(_OPENMP)
     num_thread=omp_get_num_threads();
     #endif
-    int synch_comp_photon_count=0, synch_photon_count=0, num_avg=11, num_bins=(0.1)*max_photons; //some factor of the max number of photons that is specified in the mc.par file, num bins is also in test function
-    double avg_values[11]={0}; //number of averages that'll be taken is given by num_avg in above line
+    int synch_comp_photon_count=0, synch_photon_count=0, num_avg=12, num_bins=(0.1)*max_photons; //some factor of the max number of photons that is specified in the mc.par file, num bins is also in test function
+    double avg_values[12]={0}; //number of averages that'll be taken is given by num_avg in above line
     double p0_min=DBL_MAX, p0_max=0, log_p0_min=0, log_p0_max=0;//look at p0 of photons not by frequency since its just nu=p0*C_LIGHT/PL_CONST
     double rand1=0, rand2=0, phi=0, theta=0;
     double min_range=0, max_range=0, energy=0;
@@ -251,7 +254,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     }
     fprintf(fPtr, "in rebin: count is: %d and scatt_synch_num_ph is %d\n", count, *scatt_synch_num_ph );
     */
-    
+    int min_idx=0, max_idx=0;
     count=0;
     for (i=0;i<*num_ph;i++)
     {
@@ -262,12 +265,14 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
             {
                 //dont include any absorbed 'o' photons that have negative P0 values
                 p0_min= (*ph_orig)[i].p0;
+                min_idx=i;
                 //fprintf(fPtr, "new p0 min %e\n", (p0_min) );
             }
             
             if ((*ph_orig)[i].p0> p0_max)
             {
                 p0_max= (*ph_orig)[i].p0;
+                max_idx=i;
                 //fprintf(fPtr, "new p0 max %e\n", (p0_max) );
             }
             
@@ -289,7 +294,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         }
     }
     
-    fprintf(fPtr, "log p0 min, max: %e %e\n", log10(p0_min), log10(p0_max) );
+    fprintf(fPtr, "min, max: %e %e log p0 min, max: %e %e idx: %d %d\n", p0_min,p0_max , log10(p0_min), log10(p0_max), min_idx, max_idx );
     
     gsl_histogram_set_ranges_uniform (h, log10(p0_min), log10(p0_max*(1+1e-6)));
     
@@ -347,11 +352,14 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
                         //average theta and phi of photons
                         avg_values[9] += fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0) *(*ph_orig)[i].weight;
                         avg_values[10] += (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
+                        avg_values[11] +=(*ph_orig)[i].p0*(*ph_orig)[i].weight;
                     }
                 }
             }
             
-            energy=pow(10,0.5*(max_range+min_range));
+            fprintf(fPtr, "bin %e-%e has %e photons\n", min_range, max_range, gsl_histogram_get(h, count));
+            
+            energy=avg_values[11]/avg_values[8];//pow(10,0.5*(max_range+min_range));
             
             //initiate pdf as the histogram of phi and theta
             gsl_histogram2d_pdf_init (pdf_phi_theta, h_phi_theta);
@@ -386,6 +394,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
             (rebin_ph+count)->num_scatt=avg_values[7]/avg_values[8];
             (rebin_ph+count)->weight=avg_values[8];
             (rebin_ph+count)->nearest_block_index=0; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
+                    
             
             
             //gsl_histogram2d_fprintf (stdout, h_phi_theta, "%g", "%g");
@@ -396,6 +405,9 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         }
         else if (gsl_histogram_get(h, count) == 1)
         {
+            gsl_histogram_get_range(h, count, &min_range, &max_range);
+            fprintf(fPtr, "bin %e-%e has %e photons\n", min_range, max_range, 1.0);
+
             //for thr case of just 1 hoton being in the bin just set the rebinned photon to the one photons parameters
             for (i=0;i<*num_ph;i++)
             {
@@ -432,6 +444,9 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
             
             gsl_histogram_get_range(h, count, &min_range, &max_range);
             energy=pow(10,0.5*(max_range+min_range));
+            
+            fprintf(fPtr, "bin %e-%e has %e photons\n", min_range, max_range, 0.0);
+
             
             (rebin_ph+count)->p0=energy;
             (rebin_ph+count)->p1=0;
@@ -693,7 +708,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     //*(temporary+1)=num_bins+synch_photon_count-num_null_rebin_ph;
     //*(temporary+2)=num_bins-num_null_rebin_ph;
     
-    //fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d num_null_rebin_ph: %d old scatt_synch_num_ph: %d new scatt_synch_num_ph: %d\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1, num_null_rebin_ph, *scatt_synch_num_ph, num_bins-num_null_rebin_ph  );
+    fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d num_null_rebin_ph: %d old scatt_synch_num_ph: %d new scatt_synch_num_ph: %d\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1, num_null_rebin_ph, *scatt_synch_num_ph, num_bins-num_null_rebin_ph  );
     
     //fprintf(fPtr, "at end of rebin f(x)  %d,  %d, %d\n", null_ph_count, num_bins+synch_photon_count-num_null_rebin_ph, num_bins-num_null_rebin_ph);
     //fflush(fPtr);
@@ -866,6 +881,9 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
             
         }
         
+        fprintf(fPtr, "Emitting %d synch photons\n", ph_tot);
+        fflush(fPtr);
+        
     }
     else
     {
@@ -877,7 +895,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     #pragma omp parallel for num_threads(num_thread) reduction(+:null_ph_count)
     for (i=0;i<*num_ph;i++)
     {
-        if (((*ph_orig)[i].weight == 0) && ((*ph_orig)[i].nearest_block_index == -1) && ((*ph_orig)[i].p0 != -1)) //if photons are null 'c' photons and not absorbed 'o' photons
+        if (((*ph_orig)[i].weight == 0)) //if photons are null 'c' photons and not absorbed 'o' photons
         {
             null_ph_count+=1;
         }
@@ -898,6 +916,8 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
         //need to realloc memory to hold the old photon info and the new emitted photon's info
         //fprintf(fPtr, "Emit: Allocating %d space\n", ((*num_ph)+ph_tot-null_ph_count));
+        //fflush(fPtr);
+
         tmp=realloc(*ph_orig, ((*num_ph)+ph_tot-null_ph_count)* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
         if (tmp != NULL)
         {
@@ -945,7 +965,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         {
             //fprintf(fPtr, "idx %d\n", i);
             //fflush(fPtr);
-            if ((((*ph_orig)[i].weight == 0) && ((*ph_orig)[i].nearest_block_index == -1) && ((*ph_orig)[i].p0 != -1))  || (i >= *num_ph))
+            if (((*ph_orig)[i].weight == 0)   || (i >= *num_ph))
             {
                 //preset values for the the newly created spots to hold the emitted phtoons in
                 (*ph_orig)[i].weight=0;
@@ -998,7 +1018,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
             }
             else
                 */
-            if (((*ph_orig)[i].weight == 0) && ((*ph_orig)[i].nearest_block_index == -1) && ((*ph_orig)[i].p0 != -1)) //if photons are null 'c' photons and not absorbed 'o' photons
+            if ((*ph_orig)[i].weight == 0)  //if photons are null 'c' photons and not absorbed 'o' photons
             {
                 // if the weight is 0, this is a photons that has been absorbed and is now null
                 *(null_ph_indexes+j)=i;
@@ -1207,6 +1227,7 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
     //frame 213 where the absorption doesnt occur for all emitted photons and have some absorbed before/after unabsorbed photons, how to deal with this?
     //ph 97, neg lab nu in frame 210, from -1 * c/h
     int i=0, count=0, abs_ph_count=0, synch_ph_count=0, num_thread=1;
+    int other_count=0;
     #if defined(_OPENMP)
     num_thread=omp_get_num_threads();
     #endif
@@ -1253,6 +1274,8 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
                     (*ph_orig)[i].nearest_block_index=-1;
                     //also set the weight equal to 0 since we no longer care about saving it
                     (*ph_orig)[i].weight=0;
+                    abs_ph_count++;
+
                     
                     //replace the potantial null photon with this photon's data
                     /*
@@ -1352,23 +1375,36 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
                 count+=1;
             }
         }
-        
+                
         //fprintf(fPtr, "photon %d has lab frequency %e and weight %e with FLASH grid number %d\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST, (*ph_orig)[i].weight, (*ph_orig)[i].nearest_block_index);
     }
-    //fprintf(fPtr, "In phAbsSynch func: abs_ph_count: %d synch_ph_count: %d scatt_synch_num_ph: %d\n", abs_ph_count, synch_ph_count, *scatt_synch_num_ph);
+    fprintf(fPtr, "In phAbsSynch func: abs_ph_count: %d synch_ph_count: %d scatt_synch_num_ph: %d\n", abs_ph_count, synch_ph_count, *scatt_synch_num_ph);
     *num_abs_ph=abs_ph_count; //+synch_ph_count; dont need this
     
+    fprintf(fPtr, "In phAbsSynch func: count before_loop= %d\n", count);
+
     while (count<*num_ph)
     {
         //overwrite the last few photons to make sure that they are null photons
         (*ph_orig)[count].weight=0;
         (*ph_orig)[count].nearest_block_index=-1;
         //fprintf(fPtr, "photon %d has frequency %e and weight %e with FLASH grid number %d\n", count, (*ph_orig)[count].comv_p0*C_LIGHT/PL_CONST, (*ph_orig)[count].weight, (*ph_orig)[count].nearest_block_index);
-        fflush(fPtr);
+        //fflush(fPtr);
         
         count+=1;
     }
+    fprintf(fPtr, "In phAbsSynch func: count after loop= %d\n", count);
     
+    count=0;
+    for (i=0;i<*num_ph;i++)
+    {
+        if ((*ph_orig)[i].weight == 0)
+        {
+            count++;
+        }
+    }
+    fprintf(fPtr, "In phAbsSynch func: nulll_count= %d\n", count);
+    fflush(fPtr);
     return 0;
 }
 
