@@ -205,7 +205,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                 }
                 #endif
                  */
-                fprintf(fPtr, "%d %c %e %e %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9);
+                //fprintf(fPtr, "%d %c %e %e %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9);
             }
             
             if ((frame==frame_last))
@@ -215,7 +215,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             
             count++;
         }
-        printf("%d %c %e %e %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9);
+        //printf("%d %c %e %e %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9);
     }
     
     
@@ -941,6 +941,8 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
     
     
     snprintf(checkptfile,sizeof(checkptfile),"%s%s%d%s",dir,"mc_chkpt_", angle_rank,".dat" );
+    //snprintf(checkptfile,sizeof(checkptfile),"%s%s%d%s%d%s",dir,"mc_chkpt_", angle_rank, "_frame_", scatt_frame, ".dat" ); //look at frame 1341?
+
     
     if ((scatt_frame!=last_frame) && (scatt_frame != frame))
     {
@@ -1176,7 +1178,7 @@ int readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framesta
                     {
                         scatt_synch_num_ph++;
                     }
-                //printf("%d %c %e %e %e %e %e %e %e\n", i, (*ph)[i].type, (*ph)[i].r0, (*ph)[i].r1, (*ph)[i].r2, (*ph)[i].num_scatt, (*ph)[i].weight, (*ph)[i].p0, (*ph)[i].comv_p0);
+                //printf("%d %c %e %e %e %e %e %e %e\n", i, (*ph)[i].type, (*ph)[i].r0, (*ph)[i].r1, (*ph)[i].r2, (*ph)[i].num_scatt, (*ph)[i].weight, (*ph)[i].p0*C_LIGHT/1.6e-9, (*ph)[i].comv_p0);
                 #endif
             }
             

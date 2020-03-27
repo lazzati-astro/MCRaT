@@ -294,7 +294,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         }
     }
     
-    fprintf(fPtr, "min, max: %e %e log p0 min, max: %e %e idx: %d %d\n", p0_min,p0_max , log10(p0_min), log10(p0_max), min_idx, max_idx );
+    fprintf(fPtr, "min, max (keV): %e %e log p0 min, max: %e %e idx: %d %d\n", p0_min*C_LIGHT/1.6e-9,p0_max*C_LIGHT/1.6e-9 , log10(p0_min), log10(p0_max), min_idx, max_idx );
     
     gsl_histogram_set_ranges_uniform (h, log10(p0_min), log10(p0_max*(1+1e-6)));
     
@@ -357,7 +357,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
                 }
             }
             
-            fprintf(fPtr, "bin %e-%e has %e photons\n", min_range, max_range, gsl_histogram_get(h, count));
+            //fprintf(fPtr, "bin %e-%e has %e photons\n",pow(10, min_range)*C_LIGHT/1.6e-9, pow(10,max_range)*C_LIGHT/1.6e-9, gsl_histogram_get(h, count));
             
             energy=avg_values[11]/avg_values[8];//pow(10,0.5*(max_range+min_range));
             
@@ -406,33 +406,37 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         else if (gsl_histogram_get(h, count) == 1)
         {
             gsl_histogram_get_range(h, count, &min_range, &max_range);
-            fprintf(fPtr, "bin %e-%e has %e photons\n", min_range, max_range, 1.0);
+            //fprintf(fPtr, "bin %e-%e has %e photons\n", pow(10, min_range)*C_LIGHT/1.6e-9, pow(10,max_range)*C_LIGHT/1.6e-9, 1.0);
 
             //for thr case of just 1 hoton being in the bin just set the rebinned photon to the one photons parameters
             for (i=0;i<*num_ph;i++)
             {
                 if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o'))&& ((*ph_orig)[i].p0 > 0))
                 {
-                    (rebin_ph+count)->p0=(*ph_orig)[i].p0;
-                    (rebin_ph+count)->p1=(*ph_orig)[i].p1;
-                    (rebin_ph+count)->p2=(*ph_orig)[i].p2;
-                    (rebin_ph+count)->p3=(*ph_orig)[i].p3;
-                    (rebin_ph+count)->comv_p0=(*ph_orig)[i].comv_p0;
-                    (rebin_ph+count)->comv_p1=(*ph_orig)[i].comv_p1;
-                    (rebin_ph+count)->comv_p2=(*ph_orig)[i].comv_p2;
-                    (rebin_ph+count)->comv_p3=(*ph_orig)[i].comv_p3;
-                    (rebin_ph+count)->r0=(*ph_orig)[i].r0;
-                    (rebin_ph+count)->r1= (*ph_orig)[i].r1;
-                    (rebin_ph+count)->r2=(*ph_orig)[i].r2; //y coordinate in flash becomes z coordinate in MCRaT
-                    (rebin_ph+count)->s0=(*ph_orig)[i].s0; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
-                    (rebin_ph+count)->s1=(*ph_orig)[i].s1;
-                    (rebin_ph+count)->s2=(*ph_orig)[i].s2;
-                    (rebin_ph+count)->s3=(*ph_orig)[i].s3;
-                    (rebin_ph+count)->num_scatt=(*ph_orig)[i].num_scatt;
-                    (rebin_ph+count)->weight=(*ph_orig)[i].weight;
-                    (rebin_ph+count)->nearest_block_index=(*ph_orig)[i].nearest_block_index; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
-                    
-                    i=*num_ph;
+                    if ((log10((*ph_orig)[i].p0)< max_range  ) && (log10((*ph_orig)[i].p0)>=min_range))
+                    {
+                        (rebin_ph+count)->p0=(*ph_orig)[i].p0;
+                        (rebin_ph+count)->p1=(*ph_orig)[i].p1;
+                        (rebin_ph+count)->p2=(*ph_orig)[i].p2;
+                        (rebin_ph+count)->p3=(*ph_orig)[i].p3;
+                        (rebin_ph+count)->comv_p0=(*ph_orig)[i].comv_p0;
+                        (rebin_ph+count)->comv_p1=(*ph_orig)[i].comv_p1;
+                        (rebin_ph+count)->comv_p2=(*ph_orig)[i].comv_p2;
+                        (rebin_ph+count)->comv_p3=(*ph_orig)[i].comv_p3;
+                        (rebin_ph+count)->r0=(*ph_orig)[i].r0;
+                        (rebin_ph+count)->r1= (*ph_orig)[i].r1;
+                        (rebin_ph+count)->r2=(*ph_orig)[i].r2; //y coordinate in flash becomes z coordinate in MCRaT
+                        (rebin_ph+count)->s0=(*ph_orig)[i].s0; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
+                        (rebin_ph+count)->s1=(*ph_orig)[i].s1;
+                        (rebin_ph+count)->s2=(*ph_orig)[i].s2;
+                        (rebin_ph+count)->s3=(*ph_orig)[i].s3;
+                        (rebin_ph+count)->num_scatt=(*ph_orig)[i].num_scatt;
+                        (rebin_ph+count)->weight=(*ph_orig)[i].weight;
+                        (rebin_ph+count)->nearest_block_index=(*ph_orig)[i].nearest_block_index; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
+                        
+                        
+                        i=*num_ph;
+                    }
                 }
             }
             
@@ -445,7 +449,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
             gsl_histogram_get_range(h, count, &min_range, &max_range);
             energy=pow(10,0.5*(max_range+min_range));
             
-            fprintf(fPtr, "bin %e-%e has %e photons\n", min_range, max_range, 0.0);
+            //fprintf(fPtr, "bin %e-%e has %e photons\n", pow(10, min_range)*C_LIGHT/1.6e-9, pow(10,max_range)*C_LIGHT/1.6e-9, 0.0);
 
             
             (rebin_ph+count)->p0=energy;
@@ -578,6 +582,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     //go through and assign the rebinned photons to the 'c' phtoons and make all 'o' photons become "absorbed"
     j=0;
     count=0;
+    i=0;
     for (i=0;i<end_count;i++)
     {
         if (i<(*scatt_synch_num_ph))
@@ -596,6 +601,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
             printf("HERE IN REBIN\n");
         }
         */
+        /*
         if ((*ph_orig)[idx].type == 'o')
         {
             //if the photon is a compton scatered synch photon from a past frame treat it as though it has been absorbed
@@ -604,6 +610,8 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
             (*ph_orig)[idx].weight=0; //now making the absorbed 'o' photons become null photons
         }
         else if ((*ph_orig)[idx].type == 'c')
+         */
+        if (((*ph_orig)[idx].type == 'o') || ((*ph_orig)[idx].type == 'c'))
         {
             if (count<num_bins)
             {
@@ -626,6 +634,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
                 (*ph_orig)[idx].num_scatt=(rebin_ph+count)->num_scatt;
                 (*ph_orig)[idx].weight=(rebin_ph+count)->weight;
                 (*ph_orig)[idx].nearest_block_index=(rebin_ph+count)->nearest_block_index;
+                (*ph_orig)[idx].type = 'c';
                 
                 
                 if ((rebin_ph+count)->weight==0)
@@ -640,10 +649,21 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
             }
             else
             {
-                //all rebinned photns have been saved so just treat the rest of the phootn array as null photons
-                (*ph_orig)[idx].weight=0;
-                (*ph_orig)[idx].nearest_block_index=-1;
-                //j++;
+                if ((*ph_orig)[idx].type == 'o')
+                {
+                    //if the photon is a compton scatered synch photon from a past frame treat it as though it has been absorbed
+                    (*ph_orig)[idx].p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been "absorbed", this makes it still get saves in the hdf5 files
+                    (*ph_orig)[idx].nearest_block_index=-1;
+                    (*ph_orig)[idx].weight=0; //now making the absorbed 'o' photons become null photons
+
+                }
+                else
+                {
+                    //all rebinned photns have been saved so just treat the rest of the phootn array as null photons
+                    (*ph_orig)[idx].weight=0;
+                    (*ph_orig)[idx].nearest_block_index=-1;
+                    //j++;
+                }
             }
             
             
@@ -655,6 +675,15 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         //    j++;
         //}
         
+    }
+    
+    //make sure that all the rebinned photons have been saved
+    if (count<num_bins)
+    {
+        fprintf(fPtr, "There was an issue where MCRaT Was not able to save all of the rebinned photons\n");
+        printf("TThere was an issue where MCRaT Was not able to save all of the rebinned photons\n");
+        fflush(fPtr);
+        exit(1);
     }
     //fprintf(fPtr, "i count after first loop %d\n", idx+1);
     //make sure we look at whole array of photons to see hwo many null photons we have
@@ -673,10 +702,12 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
      */
     //fprintf(fPtr, "i count after second loop %d\n", i);
     
+    
+    
     int null_ph_count=0;
     int null_ph_count_1=0;
     //int null_ph_count_2=0;
-//#pragma omp parallel for num_threads(num_thread) reduction(+:null_ph_count)
+#pragma omp parallel for num_threads(num_thread) reduction(+:null_ph_count)
     for (i=0;i<*num_ph;i++)
     {
         if ((*ph_orig)[i].weight == 0)
@@ -685,12 +716,12 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
             //fprintf(fPtr, "%d \n", null_ph_count);
             
         }
-        
+        /*
         if ((*ph_orig)[i].type == 'i')
         {
             null_ph_count_1++;
         }
-                
+          */
         //fprintf(fPtr, "%d %c %e %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0 );
         
     }
@@ -708,7 +739,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     //*(temporary+1)=num_bins+synch_photon_count-num_null_rebin_ph;
     //*(temporary+2)=num_bins-num_null_rebin_ph;
     
-    fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d num_null_rebin_ph: %d old scatt_synch_num_ph: %d new scatt_synch_num_ph: %d\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1, num_null_rebin_ph, *scatt_synch_num_ph, num_bins-num_null_rebin_ph  );
+    //fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d num_null_rebin_ph: %d old scatt_synch_num_ph: %d new scatt_synch_num_ph: %d\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1, num_null_rebin_ph, *scatt_synch_num_ph, num_bins-num_null_rebin_ph  );
     
     //fprintf(fPtr, "at end of rebin f(x)  %d,  %d, %d\n", null_ph_count, num_bins+synch_photon_count-num_null_rebin_ph, num_bins-num_null_rebin_ph);
     //fflush(fPtr);
@@ -915,8 +946,8 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     {
         //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
         //need to realloc memory to hold the old photon info and the new emitted photon's info
-        //fprintf(fPtr, "Emit: Allocating %d space\n", ((*num_ph)+ph_tot-null_ph_count));
-        //fflush(fPtr);
+        fprintf(fPtr, "Emit: Allocating %d space\n", ((*num_ph)+ph_tot-null_ph_count));
+        fflush(fPtr);
 
         tmp=realloc(*ph_orig, ((*num_ph)+ph_tot-null_ph_count)* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
         if (tmp != NULL)
@@ -1376,12 +1407,12 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
             }
         }
                 
-        //fprintf(fPtr, "photon %d has lab frequency %e and weight %e with FLASH grid number %d\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST, (*ph_orig)[i].weight, (*ph_orig)[i].nearest_block_index);
+        //fprintf(fPtr, "photon %d has energy %e and weight %e with FLASH grid number %d\n", i, (*ph_orig)[i].p0*C_LIGHT/1.6e-9, (*ph_orig)[i].weight, (*ph_orig)[i].nearest_block_index);
     }
-    fprintf(fPtr, "In phAbsSynch func: abs_ph_count: %d synch_ph_count: %d scatt_synch_num_ph: %d\n", abs_ph_count, synch_ph_count, *scatt_synch_num_ph);
+    //fprintf(fPtr, "In phAbsSynch func: abs_ph_count: %d synch_ph_count: %d scatt_synch_num_ph: %d\n", abs_ph_count, synch_ph_count, *scatt_synch_num_ph);
     *num_abs_ph=abs_ph_count; //+synch_ph_count; dont need this
     
-    fprintf(fPtr, "In phAbsSynch func: count before_loop= %d\n", count);
+    //fprintf(fPtr, "In phAbsSynch func: count before_loop= %d\n", count);
 
     while (count<*num_ph)
     {
@@ -1393,8 +1424,8 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
         
         count+=1;
     }
-    fprintf(fPtr, "In phAbsSynch func: count after loop= %d\n", count);
-    
+    //fprintf(fPtr, "In phAbsSynch func: count after loop= %d\n", count);
+   /*
     count=0;
     for (i=0;i<*num_ph;i++)
     {
@@ -1405,6 +1436,7 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
     }
     fprintf(fPtr, "In phAbsSynch func: nulll_count= %d\n", count);
     fflush(fPtr);
+    */
     return 0;
 }
 

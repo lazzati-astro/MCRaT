@@ -1069,8 +1069,7 @@ int main(int argc, char **argv)
                         }
                         else
                         {
-                            fprintf(fPtr, "In Else:\n");
-                            //have to properly account for the number of null photns etc there are since we usually do that in the rebinSynchCompPhotons function
+                            fprintf(fPtr, "In Else: \n");// Now rebinning
                             /*
                             int null_ph_count=0;
                             for (i=0;i<num_ph;i++)
@@ -1085,8 +1084,31 @@ int main(int argc, char **argv)
                                     //null_ph_count_1++;
                                 }
                                 
-                                //fprintf(fPtr, "%d %c %e %e %e\n", i, (phPtr+i)->type, (phPtr+i)->weight, (phPtr+i)->p0, (phPtr+i)->s0 );
-                                //fflush(fPtr);
+                                printf( "%d %c %e %e %e\n", i, (phPtr+i)->type, (phPtr+i)->weight, (phPtr+i)->p0*C_LIGHT/1.6e-9, (phPtr+i)->s0 );
+                                fflush(fPtr);
+                             
+                            }
+                             */
+                             //printf(fPtr, "In Else: num_null_ph=%d\n", null_ph_count);
+                            //fflush(fPtr);
+                            
+                            //rebinSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_ph_emit, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, rng, fPtr);
+                            //have to properly account for the number of null photns etc there are since we usually do that in the rebinSynchCompPhotons function
+                            /*
+                            for (i=0;i<num_ph;i++)
+                            {
+                                if ((phPtr+i)->weight == 0)
+                                {
+                                    null_ph_count++;
+                                }
+                                
+                                //if ((phPtr+i)->type == 'i')
+                                {
+                                    //null_ph_count_1++;
+                                }
+                                
+                                fprintf(fPtr, "%d %c %e %e %e\n", i, (phPtr+i)->type, (phPtr+i)->weight, (phPtr+i)->p0, (phPtr+i)->s0 );
+                                fflush(fPtr);
                              
                             }
                              fprintf(fPtr, "In Else: num_null_ph=%d\n", null_ph_count);
