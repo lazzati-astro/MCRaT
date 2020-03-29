@@ -236,7 +236,7 @@ int main(int argc, char **argv)
             
             old_num_angle_procs=getOrigNumProcesses(&count_cont_procs,  &cont_proc_idsPtr, mc_dir, angle_id,  angle_procs,  last_frm);
             
-            //count_cont_procs=1;//just for testing purposes
+            count_cont_procs=1;//just for testing purposes
             
             if (old_num_angle_procs==-1)
             {
@@ -477,6 +477,9 @@ int main(int argc, char **argv)
     }
     
     //make vector to hold the frames we are injecting in, vector should have (frm2-frm0)/angle_procs slots, if fps is const
+    
+        angle_procs=1;//just for testing purposes
+    
         proc_frame_size=ceil((frm2-frm0)/ (float) angle_procs);
         frame_array=malloc(((frm2-frm0)+1)*sizeof(int));
         

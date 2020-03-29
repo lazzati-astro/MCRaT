@@ -490,9 +490,10 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         //need to expand the array
         //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
         //need to realloc memory to hold the old photon info and the new emitted photon's info
-        fprintf(fPtr, "Rebin: Allocating %d space\n", ((*num_ph)+num_bins-count_c_ph+(*num_null_ph) ));
+        //before was doing ((*num_ph)+num_bins-count_c_ph-(*num_null_ph) ) but instead did the beow since that creatd extr space for null photons to be filled in later on
+        fprintf(fPtr, "Rebin: Allocating %d space\n", ((*num_ph)+num_bins-count_c_ph+(*num_null_ph) )); //befoe was dong
         fflush(fPtr);
-        tmp=realloc(*ph_orig, ((*num_ph)+num_bins-count_c_ph-(*num_null_ph))* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
+        tmp=realloc(*ph_orig, ((*num_ph)+num_bins-count_c_ph+(*num_null_ph))* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
         if (tmp != NULL)
         {
             /* everything ok */
@@ -508,11 +509,14 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         {
             /* problems!!!! */
             printf("Error with reserving space to hold old and new photons\n");
-            exit(0);
+            exit(1);
         }
+        //fprintf(fPtr, "Rebin: Allocating %d space good in 1st realloc\n", ((*num_ph)+num_bins-count_c_ph+(*num_null_ph) ));
+        //fflush(fPtr);
+
         
         //also expand memory of other arrays
-        tmp_double=realloc(*all_time_steps, ((*num_ph)+num_bins-count_c_ph-(*num_null_ph))*sizeof(double));
+        tmp_double=realloc(*all_time_steps, ((*num_ph)+num_bins-count_c_ph+(*num_null_ph))*sizeof(double));
         if (tmp_double!=NULL)
         {
             *all_time_steps=tmp_double;
@@ -520,9 +524,15 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         else
         {
             printf("Error with reallocating space to hold data about each photon's time step until an interaction occurs\n");
+            exit(1);
+
         }
         
-        tmp_int=realloc(*sorted_indexes, ((*num_ph)+num_bins-count_c_ph-(*num_null_ph))*sizeof(int));
+        //fprintf(fPtr, "Rebin: Allocating %d space good in 2nd realloc\n", ((*num_ph)+num_bins-count_c_ph+(*num_null_ph) ));
+        //fflush(fPtr);
+
+        
+        tmp_int=realloc(*sorted_indexes, ((*num_ph)+num_bins-count_c_ph+(*num_null_ph))*sizeof(int));
         if (tmp_int!=NULL)
         {
             *sorted_indexes=tmp_int;
@@ -530,7 +540,12 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         else
         {
             printf("Error with reallocating space to hold data about the order in which each photon would have an interaction\n");
+            exit(1);
+
         }
+        //fprintf(fPtr, "Rebin: Allocating %d space good in 3rd realloc\n", ((*num_ph)+num_bins-count_c_ph+(*num_null_ph) ));
+        //fflush(fPtr);
+
         //tmp_int=realloc(*synch_comp_photon_idx, ((*scatt_synch_num_ph)+num_bins-count_c_ph-(*num_null_ph))*sizeof(int));
         //if (tmp_int!=NULL)
         //{
@@ -568,11 +583,12 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         fprintf(fPtr,"Val %d\n", (*(null_ph_indexes+count_null_indexes-1)));
         *num_ph+=net_ph; //update number of photons
         *num_null_ph=ph_tot-null_ph_count; //((*num_ph)+ph_tot)-(*num_ph)-ph_tot; //reserved space - emitted photons-original photons
-        fprintf(fPtr,"New Num PH %d\nNew null hum_ph %d\n", *num_ph, *num_null_ph);
+        fprintf(fPtr,"old Num PH %d\n", *num_ph);
         fflush(fPtr);
-        */
-        *num_ph+=num_bins-count_c_ph-(*num_null_ph);
-        end_count=(*scatt_synch_num_ph)+num_bins-count_c_ph-(*num_null_ph);
+         */
+        
+        *num_ph=( *num_ph)+(num_bins-count_c_ph+(*num_null_ph));
+        end_count=(*scatt_synch_num_ph)+num_bins-count_c_ph+(*num_null_ph);
     }
     //else dont knwo why this is failing try to put this before if, so it gets sets and only if the above if statement is true will end_count be modified
     //{
@@ -593,7 +609,9 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         }
         else
         {
-            idx=(*num_ph)+i;
+            //enter this if we realloc the arrays
+            //idx=(*num_ph)+i;
+            idx=i-(*scatt_synch_num_ph)+( *num_ph)-(num_bins-count_c_ph+(*num_null_ph));//go to the end of the old num_ph value and start setting things to null photons
         }
         /*
         if (idx==1183)
@@ -667,6 +685,14 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
             }
             
             
+        }
+        else if ((*ph_orig)[idx].type != 's')
+        {
+            //this is a realloc photon that has to be set to null
+            (*ph_orig)[idx].type = 'c';
+            (*ph_orig)[idx].weight=0;
+            (*ph_orig)[idx].nearest_block_index=-1;
+
         }
         
         //if ((*ph_orig)[idx].weight==0)
