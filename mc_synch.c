@@ -316,6 +316,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     
     fprintf(fPtr, "min, max (keV): %e %e log p0 min, max: %e %e idx: %d %d\n", p0_min*C_LIGHT/1.6e-9,p0_max*C_LIGHT/1.6e-9 , log10(p0_min), log10(p0_max), min_idx, max_idx );
     fprintf(fPtr, "min, max (theta in deg): %e %e\n", temp_theta_min*180/M_PI, temp_theta_max*180/M_PI );
+    fflush(fPtr);
 
     gsl_histogram_set_ranges_uniform (h, log10(p0_min), log10(p0_max*(1+1e-6)));
     
@@ -993,8 +994,8 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     {
         //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
         //need to realloc memory to hold the old photon info and the new emitted photon's info
-        fprintf(fPtr, "Emit: Allocating %d space\n", ((*num_ph)+ph_tot-null_ph_count));
-        fflush(fPtr);
+        //fprintf(fPtr, "Emit: Allocating %d space\n", ((*num_ph)+ph_tot-null_ph_count));
+        //fflush(fPtr);
 
         tmp=realloc(*ph_orig, ((*num_ph)+ph_tot-null_ph_count)* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
         if (tmp != NULL)
