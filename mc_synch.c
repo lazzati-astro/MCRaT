@@ -210,10 +210,12 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     num_thread=omp_get_num_threads();
     #endif
     int synch_comp_photon_count=0, synch_photon_count=0, num_avg=12, num_bins=(0.1)*max_photons; //some factor of the max number of photons that is specified in the mc.par file, num bins is also in test function
+    int num_bins_theta=10;//try just 10 bins, can also try to do adaptive binning with constant SNR
     double avg_values[12]={0}; //number of averages that'll be taken is given by num_avg in above line
     double p0_min=DBL_MAX, p0_max=0, log_p0_min=0, log_p0_max=0;//look at p0 of photons not by frequency since its just nu=p0*C_LIGHT/PL_CONST
     double rand1=0, rand2=0, phi=0, theta=0;
     double min_range=0, max_range=0, energy=0;
+    double ph_r=0, ph_theta=0, temp_theta_max=0, temp_theta_min=DBL_MAX;
     //int *synch_comp_photon_idx=NULL; make this an array b/c had issue with deallocating this memory for some reason
     int synch_comp_photon_idx[*scatt_synch_num_ph];
     struct photon *rebin_ph=malloc(num_bins* sizeof (struct photon ));
@@ -276,6 +278,24 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
                 //fprintf(fPtr, "new p0 max %e\n", (p0_max) );
             }
             
+            //look at min and max theta of photons
+            ph_r=pow(((*ph_orig)[i].r0)*((*ph_orig)[i].r0) + ((*ph_orig)[i].r1)*((*ph_orig)[i].r1) + ((*ph_orig)[i].r2)*((*ph_orig)[i].r2),0.5);
+            ph_theta=acos(((*ph_orig)[i].r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
+            
+            if (ph_theta > temp_theta_max )
+            {
+                temp_theta_max=ph_theta;
+                //fprintf(fPtr, "The new max is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_max, i, ((ph+i)->r0), (ph+i)->r1, (ph+i)->r2);
+            }
+            
+            //if ((i==0) || (ph_r<temp_r_min))
+            if (ph_theta<temp_theta_min)
+            {
+                temp_theta_min=ph_theta;
+                //fprintf(fPtr, "The new min is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_min, i, ((ph+i)->r0), (ph+i)->r1, (ph+i)->r2);
+            }
+
+            
             // also save the index of these photons because they wil become null later on
             //*(synch_comp_photon_idx+count)=i;
             synch_comp_photon_idx[count]=i;
@@ -295,7 +315,8 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     }
     
     fprintf(fPtr, "min, max (keV): %e %e log p0 min, max: %e %e idx: %d %d\n", p0_min*C_LIGHT/1.6e-9,p0_max*C_LIGHT/1.6e-9 , log10(p0_min), log10(p0_max), min_idx, max_idx );
-    
+    fprintf(fPtr, "min, max (theta in deg): %e %e\n", temp_theta_min*180/M_PI, temp_theta_max*180/M_PI );
+
     gsl_histogram_set_ranges_uniform (h, log10(p0_min), log10(p0_max*(1+1e-6)));
     
     //populate histogram for photons with nu that falss within the proper histogram bin
