@@ -34,7 +34,9 @@ double synCrossSection(double el_dens, double T, double nu_ph, double p_el, doub
 
 double calcSynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_inj, char *min_or_max);
 
-int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph, int *num_ph_emit, int *scatt_synch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, gsl_rng * rand, FILE *fPtr);
+int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph, int *num_ph_emit, int *scatt_synch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr);
+
+int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_ph, int *num_ph_emit, int *scatt_synch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr);
 
 int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,  double epsilon_b, gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr);
 
