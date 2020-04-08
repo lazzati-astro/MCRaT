@@ -1558,7 +1558,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
 //have single thread execute this while loop and then have inner loop be parallel
     #if SYNCHROTRON_SWITCH == ON
         elem_factor=2;
-    #elif
+    #else
         elem_factor=0;
     #endif
     r_count=0;
@@ -4300,8 +4300,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             comv_p0=malloc(j*sizeof(double));  comv_p1=malloc(j*sizeof(double));  comv_p2=malloc(j*sizeof(double));  comv_p3=malloc(j*sizeof(double));
             r0=malloc(j*sizeof(double));  r1=malloc(j*sizeof(double));  r2=malloc(j*sizeof(double));
             s0=malloc(j*sizeof(double));  s1=malloc(j*sizeof(double));  s2=malloc(j*sizeof(double));  s3=malloc(j*sizeof(double));
-            num_scatt=malloc(j*sizeof(double));
-            weight=malloc(j*sizeof(double));
+            num_scatt=malloc(j*sizeof(double)); weight=malloc(j*sizeof(double));
         
             j=0;
             for (k=0;k<numprocs;k++)
@@ -4349,8 +4348,11 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     #endif
                     
                     dset_num_scatt = H5Dopen (group_id, "NS", H5P_DEFAULT);
-                    dset_weight = H5Dopen (group_id, "Weight", H5P_DEFAULT); // have to account for this only being used for synchrotron emission switch being on
-                
+                    #if SYNCHROTRON_SWITCH == ON
+                    {
+                        dset_weight = H5Dopen (group_id, "Weight", H5P_DEFAULT); // have to account for this only being used for synchrotron emission switch being on
+                    }
+                    #endif
                     //read the data in
                     status = H5Dread(dset_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p0+j));
                     status = H5Dread(dset_p1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p1+j));
@@ -4382,7 +4384,12 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     #endif
                     
                     status = H5Dread(dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (num_scatt+j));
-                    status = H5Dread(dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (weight+j));
+                    
+                    #if SYNCHROTRON_SWITCH == ON
+                    {
+                        status = H5Dread(dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (weight+j));
+                    }
+                    #endif
                 
                     //get the number of points
                     dspace = H5Dget_space (dset_p0);
@@ -4408,7 +4415,13 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     }
                     #endif
                     
-                    status = H5Dclose (dset_num_scatt); status = H5Dclose (dset_weight);
+                    status = H5Dclose (dset_num_scatt);
+                    
+                    #if SYNCHROTRON_SWITCH == ON
+                    {
+                        status = H5Dclose (dset_weight);
+                    }
+                    #endif
 
                     status = H5Gclose(group_id);
                 }
@@ -4444,8 +4457,12 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             }
             #endif
             dset_num_scatt=H5Dcreate2(file_new, "NS", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            dset_weight=H5Dcreate2(file_new, "Weight", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
+            
+            #if SYNCHROTRON_SWITCH == ON
+            {
+                dset_weight=H5Dcreate2(file_new, "Weight", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            }
+            #endif
             
             //save the data in the new file
             status = H5Dwrite (dset_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
@@ -4506,9 +4523,13 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, num_scatt);
             
-            status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+            #if SYNCHROTRON_SWITCH == ON
+            {
+                status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                                H5P_DEFAULT, weight);
-        
+            }
+            #endif
+            
             status = H5Sclose (dspace);
             status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
             //if (COMV_SWITCH!=0)
@@ -4524,7 +4545,13 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                 status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
             }
             #endif
-            status = H5Dclose (dset_num_scatt); status = H5Dclose (dset_weight);
+            status = H5Dclose (dset_num_scatt);
+            
+            #if SYNCHROTRON_SWITCH == ON
+            {
+                status = H5Dclose (dset_weight);
+            }
+            #endif
 
             status = H5Fclose (file_new);
         

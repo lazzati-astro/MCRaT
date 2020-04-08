@@ -10,7 +10,8 @@
 //MODIFY C COMPILER DIRECTIVES BELOW THIS LINE
 
 #define SIMULATION_TYPE SPHERICAL_OUTFLOW
-#define FILEPATH "/Volumes/LACIE_RAID/Collapsars/2D/HUGE_BOXES/CONSTANT/16OI/"
+//#define FILEPATH "/Volumes/LACIE_RAID/Collapsars/2D/HUGE_BOXES/CONSTANT/16OI/"
+#define FILEPATH "/Users/Tylerparsotan/Documents/16OI_TEST/"
 #define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
 #define MC_PATH "16OI_SPHERICAL/"
 
@@ -48,11 +49,11 @@
 
 #define     SIM_SWITCH              FLASH
 #define     STOKES_SWITCH           ON
-#define     COMV_SWITCH             OFF
+#define     COMV_SWITCH             ON
 #define     DIMENSIONS              2
 #define     GEOMETRY                CARTESIAN
 #define     HYDRO_L_SCALE           1e9
-#define     SYNCHROTRON_SWITCH      ON
+#define     SYNCHROTRON_SWITCH      OFF
 
 
 #define     MCPAR                   "mc.par"
