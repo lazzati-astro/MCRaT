@@ -262,12 +262,12 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
     {
         //printf("In IF\n");
         //if the file exists, see if the weight exists
-        //snprintf(group_weight,sizeof(group),"/Weight",i );
+        //snprintf(group_weight,sizeof(group),"/PW",i );
         status = H5Eset_auto(NULL, NULL, NULL);
-        status_weight = H5Gget_objinfo (file, "/Weight", 0, NULL);
+        status_weight = H5Gget_objinfo (file, "/PW", 0, NULL);
         status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
         
-        fprintf(fPtr,"Status of /Weight %d\n", status_weight);
+        fprintf(fPtr,"Status of /PW %d\n", status_weight);
         
         //the file has been newly created or if the group does not exist then  create the group for the frame
         group_id = H5Gcreate2(file, group, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -354,14 +354,14 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                             
         if ((frame==frame_inj) || (scatt_synch_num_ph > 0)) //if the frame is the same one that the photons were injected in, save the photon weights or if there are emitted photons that havent been absorbed
         {
-            dset_weight_2 = H5Dcreate2 (group_id, "Weight", H5T_NATIVE_DOUBLE, dspace_weight,
+            dset_weight_2 = H5Dcreate2 (group_id, "PW", H5T_NATIVE_DOUBLE, dspace_weight,
                             H5P_DEFAULT, prop_weight, H5P_DEFAULT); //save the new injected photons' weights
         }
         
         if ((frame==frame_last))
         {
             //if saving the injected photons weight dont have to worry about the major ph_weight thats not in a group
-            dset_weight = H5Dcreate2 (file, "Weight", H5T_NATIVE_DOUBLE, dspace,
+            dset_weight = H5Dcreate2 (file, "PW", H5T_NATIVE_DOUBLE, dspace,
                                       H5P_DEFAULT, prop, H5P_DEFAULT);
         }
                          
@@ -445,8 +445,8 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
         /*
         if ((status_weight>=0) && (scatt_synch_num_ph > 0) && (frame==frame_last))
         {
-            //the /Weight dataset exists (b/c already created it in frame photons were injected in) and we need to do something different to save the emitted synch photons to the dataset
-            dset_weight = H5Dopen (file, "Weight", H5P_DEFAULT); //open dataset
+            //the /PW dataset exists (b/c already created it in frame photons were injected in) and we need to do something different to save the emitted synch photons to the dataset
+            dset_weight = H5Dopen (file, "PW", H5P_DEFAULT); //open dataset
             
             //get dimensions of array and save it
             dspace = H5Dget_space (dset_weight);
@@ -759,12 +759,12 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                             H5P_DEFAULT, num_scatt);
         
         //see if the weights group exists, if it does then we can extend it, otherwise we need to create it and write the new values to it
-        snprintf(group_weight,sizeof(group_weight),"Weight",i );
+        snprintf(group_weight,sizeof(group_weight),"PW",i );
         status = H5Eset_auto(NULL, NULL, NULL);
-        status_weight = H5Gget_objinfo (group_id, "Weight", 0, NULL);
+        status_weight = H5Gget_objinfo (group_id, "PW", 0, NULL);
         status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
         
-        fprintf(fPtr,"Status of /frame/Weight %d\n", status_weight);
+        fprintf(fPtr,"Status of /frame/PW %d\n", status_weight);
         
         //if (((frame==frame_inj) || (scatt_synch_num_ph > 0)) )
         {
@@ -777,7 +777,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             {
                 //make sure to append the newly injected/emitted photons from the most recent set of injected photons to the global weights
             
-                dset_weight = H5Dopen (file, "Weight", H5P_DEFAULT); //open dataset
+                dset_weight = H5Dopen (file, "PW", H5P_DEFAULT); //open dataset
         
                 //get dimensions of array and save it
                 dspace = H5Dget_space (dset_weight);
@@ -807,7 +807,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                 //will have to create the weight dataset for the new set of phtons that have been injected, although it may already be created since emitting photons now
                 //see if the group exists
                 status = H5Eset_auto(NULL, NULL, NULL);
-                status_weight_2 = H5Gget_objinfo (group_id, "/Weight", 0, NULL);
+                status_weight_2 = H5Gget_objinfo (group_id, "/PW", 0, NULL);
                 status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
                 
                 if (status_weight_2 < 0)
@@ -820,7 +820,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                     /* Create the data space with unlimited dimensions. */
                     dspace = H5Screate_simple (rank, dims, maxdims);
                     
-                    dset_weight_2 = H5Dcreate2 (group_id, "Weight", H5T_NATIVE_DOUBLE, dspace,
+                    dset_weight_2 = H5Dcreate2 (group_id, "PW", H5T_NATIVE_DOUBLE, dspace,
                                     H5P_DEFAULT, prop, H5P_DEFAULT); //save the new injected photons' weights
                     
                     status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
@@ -831,7 +831,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                 else
                 {
                     //it exists and need to modify it
-                    dset_weight_2 = H5Dopen (group_id, "Weight", H5P_DEFAULT); //open dataset
+                    dset_weight_2 = H5Dopen (group_id, "PW", H5P_DEFAULT); //open dataset
                     
                     //get dimensions of array and save it
                     dspace = H5Dget_space (dset_weight_2);
@@ -866,7 +866,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                 
                 dspace_weight=H5Screate_simple (rank, dims_weight, maxdims);
                 
-                dset_weight_2 = H5Dcreate2 (group_id, "Weight", H5T_NATIVE_DOUBLE, dspace_weight,
+                dset_weight_2 = H5Dcreate2 (group_id, "PW", H5T_NATIVE_DOUBLE, dspace_weight,
                                             H5P_DEFAULT, prop_weight, H5P_DEFAULT);
                 
                 status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
@@ -4203,7 +4203,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 13: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S2"); break;
                         case 14: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
                         case 15: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
-                        case 16: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "Weight"); break;
+                        case 16: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
                     }
                 }
                 //else if (STOKES_SWITCH!=0)
@@ -4223,7 +4223,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S2"); break;
                         case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
                         case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
-                        case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "Weight"); break;
+                        case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
                     }
                 }
                 //else if (COMV_SWITCH!=0)
@@ -4243,7 +4243,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
                         case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
                         case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
-                        case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "Weight"); break;
+                        case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
                     }
                 }
                 #else
@@ -4258,7 +4258,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 5: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
                         case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
                         case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
-                        case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "Weight"); break;
+                        case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
                     }
                 }
                 #endif
@@ -4353,11 +4353,11 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     
                     #if SYNCHROTRON_SWITCH == ON
                     {
-                        dset_weight = H5Dopen (group_id, "Weight", H5P_DEFAULT); // have to account for this only being used for synchrotron emission switch being on
+                        dset_weight = H5Dopen (group_id, "PW", H5P_DEFAULT); // have to account for this only being used for synchrotron emission switch being on
                     }
                     #else
                     {
-                        dset_weight = H5Dopen (file, "Weight", H5P_DEFAULT); //for non synch runs look at the global /Weight dataset
+                        dset_weight = H5Dopen (file, "PW", H5P_DEFAULT); //for non synch runs look at the global /PW dataset
                     }
                     #endif
                     
@@ -4460,7 +4460,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             #endif
             dset_num_scatt=H5Dcreate2(file_new, "NS", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             
-            dset_weight=H5Dcreate2(file_new, "Weight", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            dset_weight=H5Dcreate2(file_new, "PW", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             
             //save the data in the new file
             status = H5Dwrite (dset_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
@@ -4557,68 +4557,6 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
     }
         
     
-    /*
-    if (angle_id==0)
-    {
-        //merge photon weight files
-        snprintf(file_no_thread_num,sizeof(file_no_thread_num),"%s%s",dir,"mcdata_PW.h5" );
-        file_new = H5Fcreate (file_no_thread_num, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT); //just recreate the file b/c its easier
-        
-        //calculate total number of photons 
-        j=0;
-        for (k=0;k<numprocs;k++)
-        {
-            //for each process' file, find out how many elements and add up to find total number of elements needed in the data set for the frame number
-            snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dir,"mc_proc_", k, ".h5" );
-            
-            //open the file
-            file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
-            
-            //open the datatset
-            dset_weight = H5Dopen (file, "Weight", H5P_DEFAULT); //open dataset
-                
-            //get the number of points
-            dspace = H5Dget_space (dset_weight);
-            status=H5Sget_simple_extent_dims(dspace, dims, NULL); //save dimesnions in dims
-            j+=dims[0];//calculate the total number of photons to save to new hdf5 file
-                
-            status = H5Sclose (dspace);
-            status = H5Dclose (dset_weight);
-        }
-        status = H5Fclose(file);
-        
-        weight=malloc(j*sizeof(double));
-        j=0;
-        //open each data set and save it
-        for (k=0;k<numprocs;k++)
-        {
-            snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dir,"mc_proc_", k, ".h5" );
-            file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
-            dset_weight = H5Dopen (file, "Weight", H5P_DEFAULT);
-            status = H5Dread(dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (weight+j));
-            
-            dspace = H5Dget_space (dset_weight);
-            status=H5Sget_simple_extent_dims(dspace, dims, NULL); //save dimesnions in dims
-            j+=dims[0];//calculate the total number of photons to save to new hdf5 file
-            
-            status = H5Sclose (dspace);
-            status = H5Dclose (dset_weight);
-            status = H5Fclose(file);
-        }
-        
-        //save the dataset to the new file
-        dims[0]=j;
-        dspace = H5Screate_simple(1, dims, NULL);
-        dset_weight=H5Dcreate2(file_new, "Weight", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-        status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, weight);
-        
-        status = H5Sclose (dspace);
-        status = H5Dclose (dset_weight);
-        status = H5Fclose(file_new);
-        
-        free(weight);
-    }
-    */
     //exit(0);
     
 }
