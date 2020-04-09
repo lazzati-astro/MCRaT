@@ -467,7 +467,7 @@ int main(int argc, char **argv)
                         status_group = H5Gget_objinfo (file, group, 0, NULL);
                         status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
                         */
-                        snprintf(group,sizeof(group),"%d/Weight",l );  
+                        snprintf(group,sizeof(group),"%d/PW",l );
                         status = H5Eset_auto(NULL, NULL, NULL);
                         status_group = H5Gget_objinfo (file, group, 0, NULL);
                         status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
@@ -480,7 +480,7 @@ int main(int argc, char **argv)
                         //read in the number of injected photons first
                         snprintf(group,sizeof(group),"%d",l );
                         group_id = H5Gopen2(file, group, H5P_DEFAULT);
-                        dset_weight = H5Dopen (group_id, "Weight", H5P_DEFAULT); 
+                        dset_weight = H5Dopen (group_id, "PW", H5P_DEFAULT);
                         dspace = H5Dget_space (dset_weight);
                         status=H5Sget_simple_extent_dims(dspace, dims, NULL); //save dimesnions in dims
                         j=dims[0];//calculate the total number of photons to save to new hdf5 file
@@ -1272,7 +1272,7 @@ int main(int argc, char **argv)
                 if (file>=0)
                 {
                     //if the file exists, see if the frame exists
-                    snprintf(group,sizeof(group),"%d/Weight",i );
+                    snprintf(group,sizeof(group),"%d/PW",i );
                     status = H5Eset_auto(NULL, NULL, NULL);
                     status_group = H5Gget_objinfo (file, group, 0, NULL);
                     status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
@@ -1286,7 +1286,7 @@ int main(int argc, char **argv)
                     //read dataset and then 
                      snprintf(group,sizeof(group),"%d",i );
                     group_id = H5Gopen2(file, group, H5P_DEFAULT);
-                    dset_weight = H5Dopen (group_id, "Weight", H5P_DEFAULT); //open dataset
+                    dset_weight = H5Dopen (group_id, "PW", H5P_DEFAULT); //open dataset
                     
                     //get the number of points
                     dspace = H5Dget_space (dset_weight);
@@ -1342,7 +1342,7 @@ int main(int argc, char **argv)
                     status = H5Pset_chunk (plist_id_data, 1, dims);
                     dspace = H5Screate_simple (1, dims, maxdims);
                         
-                    dset_weight=H5Dcreate(file_id, "Weight", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                    dset_weight=H5Dcreate(file_id, "PW", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
                     H5Pclose(plist_id_data);
                     H5Sclose(dspace);
                         
@@ -1366,7 +1366,7 @@ int main(int argc, char **argv)
                     plist_id_data = H5Pcreate (H5P_DATASET_XFER);
                     H5Pset_dxpl_mpio (plist_id_data, H5FD_MPIO_COLLECTIVE);
                         
-                    dset_weight = H5Dopen (file_id, "Weight", H5P_DEFAULT); //open dataset
+                    dset_weight = H5Dopen (file_id, "PW", H5P_DEFAULT); //open dataset
                     dspace = H5Dget_space (dset_weight);
                     status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
                         
