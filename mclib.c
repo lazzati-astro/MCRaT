@@ -4100,19 +4100,17 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
     //#pragma omp parallel for num_threads(num_thread) firstprivate( filename_k, file_no_thread_num, cmd,mcdata_type,num_files, increment ) private(i,j,k)
     // i < last frame because calculation before this function gives last_frame as the first frame of the next process set of frames to merge files for
     
-    //if ((COMV_SWITCH!=0) && (STOKES_SWITCH!=0))
     #if COMV_SWITCH == ON && STOKES_SWITCH == ON
     {
-        num_types=16;//both switches on, want to save comv and stokes
+        num_types=17;//both switches on, want to save comv and stokes
     }
-    //else if ((COMV_SWITCH!=0) || (STOKES_SWITCH!=0))
     #elif COMV_SWITCH == ON || STOKES_SWITCH == ON
     {
-        num_types=12;//either switch acivated, just subtract 4 datasets
+        num_types=13;//either switch acivated, just subtract 4 datasets
     }
     #else
     {
-        num_types=8;//just save lab 4 momentum, position and num_scatt
+        num_types=9;//just save lab 4 momentum, position and num_scatt
     }
     #endif
     
