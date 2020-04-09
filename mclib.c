@@ -4180,7 +4180,6 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             
             for (k=0;k<num_types;k++)
             {
-                //if ((COMV_SWITCH!=0) && (STOKES_SWITCH!=0))
                 #if COMV_SWITCH == ON && STOKES_SWITCH == ON
                 {
                     switch (k)
@@ -4204,7 +4203,6 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 16: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
                     }
                 }
-                //else if (STOKES_SWITCH!=0)
                 #elif STOKES_SWITCH == ON && COMV_SWITCH == OFF
                 {
                     switch (k)
@@ -4224,7 +4222,6 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
                     }
                 }
-                //else if (COMV_SWITCH!=0)
                 #elif STOKES_SWITCH == OFF && COMV_SWITCH == ON
                 {
                     switch (k)
