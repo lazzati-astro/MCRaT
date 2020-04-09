@@ -4414,11 +4414,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     
                     status = H5Dclose (dset_num_scatt);
                     
-                    //#if SYNCHROTRON_SWITCH == ON
-                    {
-                        status = H5Dclose (dset_weight);
-                    }
-                    //#endif
+                    status = H5Dclose (dset_weight);
 
                     status = H5Gclose(group_id);
                 }
@@ -4432,7 +4428,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             dset_p1=H5Dcreate2(file_new, "P1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_p2=H5Dcreate2(file_new, "P2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_p3=H5Dcreate2(file_new, "P3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            //if (COMV_SWITCH!=0)
+
             #if COMV_SWITCH == ON
             {
                 dset_comv_p0=H5Dcreate2(file_new, "COMV_P0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -4441,10 +4437,11 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                 dset_comv_p3=H5Dcreate2(file_new, "COMV_P3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             }
             #endif
+            
             dset_r0=H5Dcreate2(file_new, "R0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_r1=H5Dcreate2(file_new, "R1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_r2=H5Dcreate2(file_new, "R2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            //if (STOKES_SWITCH!=0)
+            
             #if STOKES_SWITCH == ON
             {
                 dset_s0=H5Dcreate2(file_new, "S0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -4453,6 +4450,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                 dset_s3=H5Dcreate2(file_new, "S3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             }
             #endif
+            
             dset_num_scatt=H5Dcreate2(file_new, "NS", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             
             dset_weight=H5Dcreate2(file_new, "PW", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -4519,14 +4517,15 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             
             status = H5Sclose (dspace);
             status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
-            //if (COMV_SWITCH!=0)
+            
             #if COMV_SWITCH == ON
             {
                 status = H5Dclose (dset_comv_p0); status = H5Dclose (dset_comv_p1); status = H5Dclose (dset_comv_p2); status = H5Dclose (dset_comv_p3);
             }
             #endif
+            
             status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
-            //if (STOKES_SWITCH!=0)
+            
             #if STOKES_SWITCH == ON
             {
                 status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);

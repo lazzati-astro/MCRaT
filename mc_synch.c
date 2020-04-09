@@ -991,9 +991,9 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                         //if the photon nu falls in the count bin of the nu histogram then add it to the phi_theta 2d hist
                         if ((log10((*ph_orig)[i].p0)< max_range  ) && (log10((*ph_orig)[i].p0)>=min_range) && (ph_theta < max_range_theta) && (ph_theta >= min_range_theta))
                         {
-                            avg_values[0] += (*ph_orig)[i].r0*(*ph_orig)[i].weight; //used to calc weighted averages
-                            avg_values[1] += (*ph_orig)[i].r1*(*ph_orig)[i].weight;
-                            avg_values[2] += (*ph_orig)[i].r2*(*ph_orig)[i].weight;
+                            avg_values[0] += ph_r*(*ph_orig)[i].weight;//(*ph_orig)[i].r0*(*ph_orig)[i].weight; //used to calc weighted averages, now doing r, theta and phi averages in space
+                            avg_values[1] += ph_theta*(*ph_orig)[i].weight;//(*ph_orig)[i].r1*(*ph_orig)[i].weight;
+                            avg_values[2] += (*ph_orig)[i].r2*(*ph_orig)[i].weight; //this will be replaced with random phi angle between 0 and 2*pi
                             avg_values[3] += (*ph_orig)[i].s0*(*ph_orig)[i].weight;
                             avg_values[4] += (*ph_orig)[i].s1*(*ph_orig)[i].weight;
                             avg_values[5] += (*ph_orig)[i].s2*(*ph_orig)[i].weight;
@@ -1008,8 +1008,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                         }
                     }
                 }
-                
-                //fprintf(fPtr, "bin %e-%e has %e photons\n",pow(10, min_range)*C_LIGHT/1.6e-9, pow(10,max_range)*C_LIGHT/1.6e-9, gsl_histogram_get(h, count));
+                                               
                 
                 energy=avg_values[11]/avg_values[8];//pow(10,0.5*(max_range+min_range));
                 
@@ -1027,9 +1026,11 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 (rebin_ph+count)->comv_p1=0;
                 (rebin_ph+count)->comv_p2=0;
                 (rebin_ph+count)->comv_p3=0;
-                (rebin_ph+count)->r0=avg_values[0]/avg_values[8];
-                (rebin_ph+count)->r1= avg_values[1]/avg_values[8];
-                (rebin_ph+count)->r2=avg_values[2]/avg_values[8];
+                
+                rand1=gsl_rng_uniform(rand)*2*M_PI;
+                (rebin_ph+count)->r0= (avg_values[0]/avg_values[8])*sin(avg_values[1]/avg_values[8])*cos(rand1); //avg_values[0]/avg_values[8]; now do avg r * avg theta * random phi
+                (rebin_ph+count)->r1= (avg_values[0]/avg_values[8])*sin(avg_values[1]/avg_values[8])*sin(rand1); //avg_values[1]/avg_values[8];
+                (rebin_ph+count)->r2= (avg_values[0]/avg_values[8])*cos(avg_values[1]/avg_values[8]); //avg_values[2]/avg_values[8];
                 (rebin_ph+count)->s0=avg_values[3]/avg_values[8]; // stokes parameterized are normalized such that I always =1
                 (rebin_ph+count)->s1=avg_values[4]/avg_values[8];
                 (rebin_ph+count)->s2=avg_values[5]/avg_values[8];
@@ -1037,8 +1038,13 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 (rebin_ph+count)->num_scatt=avg_values[7]/avg_values[8];
                 (rebin_ph+count)->weight=avg_values[8];
                 (rebin_ph+count)->nearest_block_index=0; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
-                    
                 
+                //ph_r=pow(((rebin_ph+count)->r0)*((rebin_ph+count)->r0) + ((rebin_ph+count)->r1)*((rebin_ph+count)->r1) + ((rebin_ph+count)->r2)*((rebin_ph+count)->r2),0.5);
+                //ph_theta=acos(((rebin_ph+count)->r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
+
+                //fprintf(fPtr, "bin %e-%e, %e-%e has %e photons: Theta of averages photon is: %e\n",pow(10, min_range)*C_LIGHT/1.6e-9, pow(10,max_range)*C_LIGHT/1.6e-9, min_range_theta, max_range_theta, gsl_histogram2d_get(h_energy_theta, count_x, count_y), ph_theta);
+                //fflush(fPtr);
+                                
             }
             else if (gsl_histogram2d_get(h_energy_theta, count_x, count_y) == 1)
             {
@@ -1115,6 +1121,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
             
         }
     }
+    
     
     if ((count_c_ph+(*num_null_ph))<num_bins*num_bins_theta)
     {

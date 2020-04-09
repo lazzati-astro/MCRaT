@@ -55,15 +55,15 @@ int main(int argc, char **argv)
     
     #if COMV_SWITCH == ON && STOKES_SWITCH == ON
     {
-        num_types=16;//both switches on, want to save comv and stokes
+        num_types=17;//both switches on, want to save comv and stokes
     }
     #elif COMV_SWITCH == ON || STOKES_SWITCH == ON
     {
-        num_types=12;//either switch acivated, just subtract 4 datasets
+        num_types=13;//either switch acivated, just subtract 4 datasets
     }
     #else
     {
-        num_types=8;//just save lab 4 momentum, position and num_scatt
+        num_types=9;//just save lab 4 momentum, position and num_scatt
     }
     #endif
 
@@ -338,6 +338,7 @@ int main(int argc, char **argv)
                         case 13: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S2"); break;
                         case 14: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
                         case 15: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                        case 16: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
                     }
                 }
                 #elif STOKES_SWITCH == ON && COMV_SWITCH == OFF
@@ -356,6 +357,7 @@ int main(int argc, char **argv)
                         case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S2"); break;
                         case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
                         case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                        case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
                     }
                 }
                 #elif STOKES_SWITCH == OFF && COMV_SWITCH == ON
@@ -374,6 +376,7 @@ int main(int argc, char **argv)
                         case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
                         case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
                         case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                        case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
                     }
                 }
                 #else
@@ -388,6 +391,7 @@ int main(int argc, char **argv)
                         case 5: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
                         case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
                         case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                        case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
                     }
                 }
                 #endif
@@ -524,6 +528,16 @@ int main(int argc, char **argv)
                         
                         dset_num_scatt = H5Dopen (group_id, "NS", H5P_DEFAULT);
                         
+                        #if SYNCHROTRON_SWITCH == ON
+                        {
+                            dset_weight = H5Dopen (group_id, "PW", H5P_DEFAULT);
+                        }
+                        #else
+                        {
+                            dset_weight = H5Dopen (file, "PW", H5P_DEFAULT);//for non synch runs look at the global /PW dataset
+                        }
+                        #endif
+                        
                         //malloc memory
                         p0_p=malloc(j*sizeof(double));  p1_p=malloc(j*sizeof(double));  p2_p=malloc(j*sizeof(double));  p3_p=malloc(j*sizeof(double));
                         
@@ -542,6 +556,8 @@ int main(int argc, char **argv)
                         #endif
                         
                         num_scatt_p=malloc(j*sizeof(double));
+                        
+                        weight_p=malloc(j*sizeof(double));
                         
                         //printf("start: %d, j: %d\n", *(photon_injection_count+k), dims[0]);
                         
@@ -638,7 +654,12 @@ int main(int argc, char **argv)
                         dspace = H5Dget_space(dset_num_scatt);
                         status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         status = H5Dread(dset_num_scatt, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (num_scatt_p));
-                        status = H5Sclose (dspace); status = H5Dclose (dset_num_scatt); 
+                        status = H5Sclose (dspace); status = H5Dclose (dset_num_scatt);
+                        
+                        dspace = H5Dget_space(dset_weight);
+                        status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        status = H5Dread(dset_weight, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (weight_p));
+                        status = H5Sclose (dspace); status = H5Dclose (dset_weight);
                         
                         status = H5Sclose (mspace);
                         status = H5Gclose(group_id);
@@ -665,7 +686,9 @@ int main(int argc, char **argv)
                         }
                         #endif
                         
-                        num_scatt_p=malloc(j*sizeof(double)); 
+                        num_scatt_p=malloc(j*sizeof(double));
+                        
+                        weight_p=malloc(j*sizeof(double));
                     }
                     
                     //find total number of photons
@@ -711,7 +734,9 @@ int main(int argc, char **argv)
                     }
                     #endif
                     
-                    num_scatt=malloc(all_photons*sizeof(double)); 
+                    num_scatt=malloc(all_photons*sizeof(double));
+                    
+                    weight=malloc(all_photons*sizeof(double));
                     
                     
                     //save data in correct order to p0, s0, r0, etc. in order of angle 
@@ -745,6 +770,8 @@ int main(int argc, char **argv)
                     #endif
                     
                     MPI_Allgatherv(num_scatt_p, dims[0], MPI_DOUBLE, num_scatt, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
+                    
+                    MPI_Allgatherv(weight_p, dims[0], MPI_DOUBLE, weight, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
                     
                     /*
                     if (subdir_id==0)
