@@ -435,7 +435,11 @@ int main(int argc, char **argv)
             }
             
             //order data based on which processes injected photons 1st
+            #if SYNCHROTRON_SWITCH == ON
+            l=i;
+            #else
             for (l=small_frm;l<frm+1;l++)
+            #endif
             {
                 //printf("\n\n %d\n\n",l);
                 //read the data in from each process in a given subdir, use max_num_procs_per_dir in case one directory used more processes than the others and deal with it in code
@@ -464,35 +468,46 @@ int main(int argc, char **argv)
                 
                     if (file>=0)
                     {
-                        //see if the frame exists
-                        /*
-                        snprintf(group,sizeof(group),"%d",i );
-                        status = H5Eset_auto(NULL, NULL, NULL);
-                        status_group = H5Gget_objinfo (file, group, 0, NULL);
-                        status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
-                        */
-                        snprintf(group,sizeof(group),"%d/PW",l );
-                        status = H5Eset_auto(NULL, NULL, NULL);
-                        status_group = H5Gget_objinfo (file, group, 0, NULL);
-                        status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                        {
+
+                            //see if the frame exists
+                            /*
+                            snprintf(group,sizeof(group),"%d",i );
+                            status = H5Eset_auto(NULL, NULL, NULL);
+                            status_group = H5Gget_objinfo (file, group, 0, NULL);
+                            status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                            */
+                            snprintf(group,sizeof(group),"%d/PW",l );
+                            status = H5Eset_auto(NULL, NULL, NULL);
+                            status_group = H5Gget_objinfo (file, group, 0, NULL);
+                            status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                        }
+
                     }
                 
             
                     //if it does open it and read in the size
+                    //#if SYNCHROTRON_SWITCH == ON
+                    //if (status_group >= 0 && file>=0 && l>=i)
+                    //#else
                     if (status_group >= 0 && file>=0)
+                    //#endif
                     {
-                        //read in the number of injected photons first
-                        snprintf(group,sizeof(group),"%d",l );
-                        group_id = H5Gopen2(file, group, H5P_DEFAULT);
-                        dset_weight = H5Dopen (group_id, "PW", H5P_DEFAULT);
-                        dspace = H5Dget_space (dset_weight);
-                        status=H5Sget_simple_extent_dims(dspace, dims, NULL); //save dimesnions in dims
-                        j=dims[0];//calculate the total number of photons to save to new hdf5 file
-                        status = H5Sclose (dspace);
-                        status = H5Dclose (dset_weight);
-                        status = H5Gclose(group_id);
-                        //printf("Num of ph: %d\n", j);
-                        
+                            //read in the number of injected photons first
+                            #if SYNCHROTRON_SWITCH == ON
+                                snprintf(group,sizeof(group),"%d",i );
+                            #else
+                                snprintf(group,sizeof(group),"%d",l );
+                            #endif
+                            group_id = H5Gopen2(file, group, H5P_DEFAULT);
+                            dset_weight = H5Dopen (group_id, "PW", H5P_DEFAULT);
+                            dspace = H5Dget_space (dset_weight);
+                            status=H5Sget_simple_extent_dims(dspace, dims, NULL); //save dimesnions in dims
+                            j=dims[0];//calculate the total number of photons to save to new hdf5 file
+                            status = H5Sclose (dspace);
+                            status = H5Dclose (dset_weight);
+                            status = H5Gclose(group_id);
+                            //printf("Num of ph: %d\n", j);
                         
                         snprintf(group,sizeof(group),"%d",i ); 
                     
@@ -559,9 +574,17 @@ int main(int argc, char **argv)
                         
                         weight_p=malloc(j*sizeof(double));
                         
-                        //printf("start: %d, j: %d\n", *(photon_injection_count+k), dims[0]);
+                        //printf("file %d frame: %d, process  %d start: %d, j: %d\n", i, l, k, *(photon_injection_count+k), dims[0]);
                         
-                        offset[0]=*(photon_injection_count+k);
+                        #if SYNCHROTRON_SWITCH == ON
+                        {
+                            offset[0]=0;
+                        }
+                        #else
+                        {
+                            offset[0]=*(photon_injection_count+k);
+                        }
+                        #endif
                         
                         //have to read in the data from *(photon_injection_count+k) to *(photon_injection_count+k)+j
                         mspace = H5Screate_simple (1, dims, NULL);
@@ -656,15 +679,27 @@ int main(int argc, char **argv)
                         status = H5Dread(dset_num_scatt, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (num_scatt_p));
                         status = H5Sclose (dspace); status = H5Dclose (dset_num_scatt);
                         
+                        //printf("Before Weight read\n");
                         dspace = H5Dget_space(dset_weight);
                         status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         status = H5Dread(dset_weight, H5T_NATIVE_DOUBLE, mspace, dspace, H5P_DEFAULT, (weight_p));
                         status = H5Sclose (dspace); status = H5Dclose (dset_weight);
+                        //printf("After Weight read\n");
                         
                         status = H5Sclose (mspace);
                         status = H5Gclose(group_id);
                         
-                        *(photon_injection_count+k)+=j;
+                        
+                        
+                        //#if SYNCHROTRON_SWITCH == ON
+                        //{
+                        //    *(photon_injection_count+k)+=0;
+                        //}
+                        //#else
+                        {
+                            *(photon_injection_count+k)+=j;
+                        }
+                        //#endif
                     }
                     else
                     {
@@ -714,7 +749,7 @@ int main(int argc, char **argv)
         
                     //if (subdir_id==0)
                     //{
-                     //   printf("Frame: %d Total photons %d\n", i, all_photons);
+                    //    printf("Frame: %d Total photons %d\n", i, all_photons);
                     //}
                     
                     //now allocate enough ememory for all_photons in the mpi files from proc 0 initially 
@@ -786,7 +821,11 @@ int main(int argc, char **argv)
                     
                     dims[0]=all_photons;
                     //if ((k==0)  && (all_photons>0))
+                    #if SYNCHROTRON_SWITCH == ON
+                    if ((l==i) && (k==0) && (all_photons>0))
+                    #else
                     if ((l==small_frm)  && (all_photons>0))
+                    #endif
                     {
                         //printf("IN THE IF STATEMENT\n");
                         //set up new dataset
@@ -826,9 +865,10 @@ int main(int argc, char **argv)
                         #endif
                         
                         dset_num_scatt=H5Dcreate2(file_id, "NS", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
-                         
                         
-                        
+                        dset_weight=H5Dcreate2(file_id, "PW", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+
+                                                 
                         H5Pclose(plist_id_data);
                         H5Sclose(dspace);
                         
@@ -927,6 +967,12 @@ int main(int argc, char **argv)
                         status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, num_scatt);
                         H5Sclose(dspace);
                         
+                        dspace = H5Dget_space(dset_weight);
+                        status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, weight);
+                        H5Sclose(dspace);
+
+                        
                         status = H5Dclose (dset_p0); 
                         status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
                         
@@ -946,12 +992,18 @@ int main(int argc, char **argv)
                         
                         status = H5Dclose (dset_num_scatt);
                         
+                        status = H5Dclose (dset_weight);
+                        
                         H5Pclose(plist_id_data);
                         
                     }
+                    #if SYNCHROTRON_SWITCH == ON
+                    else
+                    #else
                     else if ((l>small_frm) && (all_photons>0))
+                    #endif
                     {
-                        //printf("IN THE ELSE IF STATEMENT\n");
+                        //printf("IN THE ELSE IF STATEMENT\n"); if ((k>0)  && (all_photons>0))
                         plist_id_data = H5Pcreate (H5P_DATASET_XFER);
                         H5Pset_dxpl_mpio (plist_id_data, H5FD_MPIO_COLLECTIVE);
                         
@@ -1206,6 +1258,23 @@ int main(int argc, char **argv)
                         status = H5Sclose (fspace);
                         status = H5Dclose (dset_num_scatt);
                         
+                        //printf("Before weight write\n");
+                        dset_weight = H5Dopen (file_id, "PW", H5P_DEFAULT); //open dataset
+                        dspace = H5Dget_space (dset_weight);
+                        status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                        size[0] = dims[0]+ dims_old[0];
+                        status = H5Dset_extent (dset_weight, size);
+                        fspace = H5Dget_space (dset_weight);
+                        offset[0] = dims_old[0];
+                        status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                        mspace = H5Screate_simple (1, dims, NULL);
+                        status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, mspace, fspace, plist_id_data, weight);
+                        status = H5Sclose (dspace);
+                        status = H5Sclose (mspace);
+                        status = H5Sclose (fspace);
+                        status = H5Dclose (dset_weight);
+                        //printf("After weight write\n");
+                        
                         
                         H5Pclose(plist_id_data);
                         
@@ -1236,6 +1305,8 @@ int main(int argc, char **argv)
                     
                     free(num_scatt_p);
                     
+                    free(weight_p);
+                    
                     free(p0);free(p1); free(p2);free(p3);
                     
                     #if COMV_SWITCH == ON
@@ -1254,6 +1325,7 @@ int main(int argc, char **argv)
                     
                     free(num_scatt);
                     
+                    free(weight);
                     //exit(0);
                 }
             
@@ -1270,7 +1342,7 @@ int main(int argc, char **argv)
         
     }
     
-    
+    /*
     if (index==0)
     {
         plist_id_file = H5Pcreate(H5P_FILE_ACCESS);
@@ -1426,7 +1498,7 @@ int main(int argc, char **argv)
         free(weight_p); free(weight);
         H5Fclose(file_id);
     }
-    
+    */
     
     MPI_Finalize();
     
