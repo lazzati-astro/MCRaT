@@ -13,7 +13,7 @@
 //#define FILEPATH "/Volumes/LACIE_RAID/Collapsars/2D/HUGE_BOXES/CONSTANT/16OI/"
 #define FILEPATH "/Users/Tylerparsotan/Documents/16OI_TEST/"
 #define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
-#define MC_PATH "16OI_SPHERICAL/"
+#define MC_PATH "SKN_16OI_SPHERICAL/"
 
 /*
 #define THISRUN "Science"
@@ -53,7 +53,7 @@
 #define     DIMENSIONS              2
 #define     GEOMETRY                CARTESIAN
 #define     HYDRO_L_SCALE           1e9
-#define     SYNCHROTRON_SWITCH      OFF
+#define     SYNCHROTRON_SWITCH      ON
 
 
 #define     MCPAR                   "mc.par"

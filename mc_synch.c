@@ -240,8 +240,8 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     //}
     
     
-    fprintf(fPtr, "In the rebin func; num_threads %d scatt_synch_num_ph %d\n", num_thread, (*scatt_synch_num_ph));
-    fflush(fPtr);
+    fprintf(fPtr, "In the rebin func; num_threads %d scatt_synch_num_ph %d, num_ph %d\n", num_thread, (*scatt_synch_num_ph), *num_ph);
+    fflush(fPtr); //try to see if all the photons are being set to some value at the end of this function when allocating things
     
     /*
     count=0;
@@ -862,7 +862,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     double *tmp_double=NULL;
     int *tmp_int=NULL;
 
-    fprintf(fPtr, "In the Rebin func; num_threads %d scatt_synch_num_ph %d\n", num_thread, (*scatt_synch_num_ph));
+    fprintf(fPtr, "In the rebin func; num_threads %d scatt_synch_num_ph %d, num_ph %d\n", num_thread, (*scatt_synch_num_ph), *num_ph);
     fflush(fPtr);
     
     int min_idx=0, max_idx=0;
@@ -932,6 +932,13 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     fprintf(fPtr, "Rebin: min, max (theta in deg): %e %e number of bins %d count: %d\n", temp_theta_min*180/M_PI, temp_theta_max*180/M_PI, num_bins_theta, count );
     fflush(fPtr);
     
+    if (count != end_count)
+    {
+        end_count=count; //need this for some reason idk why end_count gets off by 1 compared to what it should be
+        fprintf(fPtr, "Rebin: not equal to end_count therefore resetting count to be: %d\n", count );
+        fflush(fPtr);
+    }
+    
     if (num_bins_theta*num_bins>=max_photons)
     {
         fprintf(fPtr, "The number of rebinned photons, %d, is larger than max_photons %d nd will not rebin efficiently. Adjust the parameters such that the number of bins in theta and energy are less than the number of photons that will lead to rebinning.\n",  num_bins_theta*num_bins, max_photons);
@@ -943,12 +950,15 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
 
         
     struct photon *rebin_ph=malloc(num_bins*num_bins_theta* sizeof (struct photon ));
+    struct photon *synch_ph=malloc(synch_photon_count* sizeof (struct photon ));
+    int synch_photon_idx[synch_photon_count];
     
     gsl_histogram2d * h_energy_theta = gsl_histogram2d_alloc (num_bins, num_bins_theta); //x is for energy  and y is for spatial theta, goes from 0 to pi
     gsl_histogram2d_set_ranges_uniform (h_energy_theta, log10(p0_min), log10(p0_max*(1+1e-6)), temp_theta_min, temp_theta_max+dtheta_bin);
 
     //populate histogram for photons with nu that falss within the proper histogram bin
     //may not need this loop, can just check if the photon nu falls within the bin edges and do averages etc within next loop
+    count=0;
     for (i=0;i<*num_ph;i++)
     {
         if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0))
@@ -960,6 +970,32 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
             gsl_histogram2d_increment(h_energy_theta, log10((*ph_orig)[i].p0), ph_theta);
 
         }
+        
+        if ((*ph_orig)[i].type == 's')
+        {
+            //save the sych photons here because they may get written over later and corrupted
+            (synch_ph+count)->p0=(*ph_orig)[i].p0;
+            (synch_ph+count)->p1=(*ph_orig)[i].p1;
+            (synch_ph+count)->p2=(*ph_orig)[i].p2;
+            (synch_ph+count)->p3=(*ph_orig)[i].p3;
+            (synch_ph+count)->comv_p0=(*ph_orig)[i].comv_p0;
+            (synch_ph+count)->comv_p1=(*ph_orig)[i].comv_p1;
+            (synch_ph+count)->comv_p2=(*ph_orig)[i].comv_p2;
+            (synch_ph+count)->comv_p3=(*ph_orig)[i].comv_p3;
+            (synch_ph+count)->r0=(*ph_orig)[i].r0;
+            (synch_ph+count)->r1= (*ph_orig)[i].r1;
+            (synch_ph+count)->r2=(*ph_orig)[i].r2; //y coordinate in flash becomes z coordinate in MCRaT
+            (synch_ph+count)->s0=(*ph_orig)[i].s0; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
+            (synch_ph+count)->s1=(*ph_orig)[i].s1;
+            (synch_ph+count)->s2=(*ph_orig)[i].s2;
+            (synch_ph+count)->s3=(*ph_orig)[i].s3;
+            (synch_ph+count)->num_scatt=(*ph_orig)[i].num_scatt;
+            (synch_ph+count)->weight=(*ph_orig)[i].weight;
+            (synch_ph+count)->nearest_block_index=(*ph_orig)[i].nearest_block_index; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
+            synch_photon_idx[count]=i;
+            count++;
+        }
+
     }
     
     //gsl_histogram2d_fprintf(fPtr, h_energy_theta, "%g", "%g");
@@ -1227,6 +1263,46 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
         
         *num_ph=( *num_ph)+(num_bins*num_bins_theta-count_c_ph+(*num_null_ph));
         end_count=(*scatt_synch_num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph);
+        
+        //go through all the phtons and ID where the synchrotron ones are and reset them to what they were originally
+        
+        for (i=0;i<*num_ph;i++)
+        {
+            fprintf(fPtr, "%d %c %e %e %e %d\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0, (*ph_orig)[i].nearest_block_index );
+
+        }
+         
+        count=0;
+        for (i=0;i<synch_photon_count;i++)
+        {
+            //if ((*ph_orig)[i].type == 's')
+            {
+                idx=synch_photon_idx[i];
+                (*ph_orig)[idx].p0=(synch_ph+count)->p0;
+                (*ph_orig)[idx].p1=(synch_ph+count)->p1;
+                (*ph_orig)[idx].p2=(synch_ph+count)->p2;
+                (*ph_orig)[idx].p3=(synch_ph+count)->p3;
+                (*ph_orig)[idx].comv_p0=(synch_ph+count)->comv_p0;
+                (*ph_orig)[idx].comv_p1=(synch_ph+count)->comv_p1;
+                (*ph_orig)[idx].comv_p2=(synch_ph+count)->comv_p2;
+                (*ph_orig)[idx].comv_p3=(synch_ph+count)->comv_p3;
+                (*ph_orig)[idx].r0=(synch_ph+count)->r0;
+                (*ph_orig)[idx].r1=(synch_ph+count)->r1;
+                (*ph_orig)[idx].r2=(synch_ph+count)->r2; //y coordinate in flash becomes z coordinate in MCRaT
+                (*ph_orig)[idx].s0=(synch_ph+count)->s0; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
+                (*ph_orig)[idx].s1=(synch_ph+count)->s1;
+                (*ph_orig)[idx].s2=(synch_ph+count)->s2;
+                (*ph_orig)[idx].s3=(synch_ph+count)->s3;
+                (*ph_orig)[idx].num_scatt=(synch_ph+count)->num_scatt;
+                (*ph_orig)[idx].weight=(synch_ph+count)->weight;
+                (*ph_orig)[idx].nearest_block_index=(synch_ph+count)->nearest_block_index;
+                //(*ph_orig)[idx].type = 's';
+                
+                count++;
+            }
+        }
+        
+        
     }
     
     //go through and assign the rebinned photons to the 'c' phtoons and make all 'o' photons become "absorbed"
@@ -1334,7 +1410,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     
     int null_ph_count=0;
     int null_ph_count_1=0;
-    /*
+    
     //int null_ph_count_2=0;
 #pragma omp parallel for num_threads(num_thread) reduction(+:null_ph_count)
     for (i=0;i<*num_ph;i++)
@@ -1351,10 +1427,11 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
         //    null_ph_count_1++;
         //}
           
-        //fprintf(fPtr, "%d %c %e %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0 );
-        
+        //fprintf(fPtr, "%d %c %e %e %e %d\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0, (*ph_orig)[i].nearest_block_index );
+        printf( "%d %c %e %e %e %d\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0, (*ph_orig)[i].nearest_block_index );
+
     }
-    */
+    
     *scatt_synch_num_ph=num_bins*num_bins_theta-num_null_rebin_ph;
     *num_ph_emit=num_bins*num_bins_theta+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
     *num_null_ph=j; //was using j before but i have no idea why its not counting correctly
@@ -1367,6 +1444,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     
     gsl_histogram2d_free (h_energy_theta);
     free(rebin_ph);
+    free(synch_ph);
     
     return num_null_rebin_ph;
 }
