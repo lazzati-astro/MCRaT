@@ -857,7 +857,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     //int *synch_comp_photon_idx=NULL; make this an array b/c had issue with deallocating this memory for some reason
     int synch_comp_photon_idx[*scatt_synch_num_ph];
     //struct photon *rebin_ph=malloc(num_bins* sizeof (struct photon ));
-    int num_null_rebin_ph=0;
+    int num_null_rebin_ph=0, num_in_bin=0;
     struct photon *tmp=NULL;
     double *tmp_double=NULL;
     int *tmp_int=NULL;
@@ -1008,8 +1008,12 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
             gsl_histogram2d_get_xrange(h_energy_theta, count_x, &min_range, &max_range);
             gsl_histogram2d_get_yrange(h_energy_theta, count_y, &min_range_theta, &max_range_theta);
             
-            if (gsl_histogram2d_get(h_energy_theta, count_x, count_y) > 1)
+            num_in_bin=gsl_histogram2d_get(h_energy_theta, count_x, count_y);
+            
+            if (num_in_bin > 1)
             {
+                
+                rand1=gsl_rng_uniform(rand)*num_in_bin;//random photon to choose theta and phi of 4 mometum for rebinned photon
                 
                 for (j=0;j<num_avg;j++)
                 {
@@ -1017,6 +1021,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 }
                 
                 //loop over the number of photons
+                j=0; //to compare to rand1 for choosing the photon
                 for (i=0;i<*num_ph;i++)
                 {
                     if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0))
@@ -1037,10 +1042,18 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                             avg_values[7] += (*ph_orig)[i].num_scatt*(*ph_orig)[i].weight;
                             avg_values[8] += (*ph_orig)[i].weight;
                             
-                            //average theta and phi of photons
-                            avg_values[9] += fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0) *(*ph_orig)[i].weight;
-                            avg_values[10] += (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
+                            //get theta and phi of random photon
+                            if (j == (int) rand1 )
+                            {
+                                //avg_values[9] += fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0) *(*ph_orig)[i].weight;
+                                //avg_values[10] += (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
+                                avg_values[9] = fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0) *(*ph_orig)[i].weight;
+                                avg_values[10] = (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
+                            }
+                            
                             avg_values[11] +=(*ph_orig)[i].p0*(*ph_orig)[i].weight;
+                            
+                            j++;
                         }
                     }
                 }
@@ -1049,8 +1062,8 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 energy=avg_values[11]/avg_values[8];//pow(10,0.5*(max_range+min_range));
                 
                 
-                phi=avg_values[9]/avg_values[8];
-                theta=avg_values[10]/avg_values[8];
+                phi=avg_values[9];///avg_values[8];
+                theta=avg_values[10];///avg_values[8];
                 
                 (rebin_ph+count)->type = 'c';
                 
@@ -1082,7 +1095,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 //fflush(fPtr);
                                 
             }
-            else if (gsl_histogram2d_get(h_energy_theta, count_x, count_y) == 1)
+            else if (num_in_bin == 1)
             {
                 //fprintf(fPtr, "bin %e-%e has %e photons\n", pow(10, min_range)*C_LIGHT/1.6e-9, pow(10,max_range)*C_LIGHT/1.6e-9, 1.0);
 
