@@ -309,7 +309,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
                 count_c_ph+=1;
             }
         }
-        else if ((*ph_orig)[i].type == 's')
+        else if (((*ph_orig)[i].type == 's') && ((*ph_orig)[i].weight != 0))
         {
             synch_photon_count++;
         }
@@ -917,7 +917,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 count_c_ph+=1;
             }
         }
-        else if ((*ph_orig)[i].type == 's')
+        else if (((*ph_orig)[i].type == 's') && ((*ph_orig)[i].weight != 0))
         {
             synch_photon_count++;
         }
@@ -971,7 +971,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
 
         }
         
-        if ((*ph_orig)[i].type == 's')
+        if (((*ph_orig)[i].type == 's') && ((*ph_orig)[i].weight != 0))
         {
             //save the sych photons here because they may get written over later and corrupted
             (synch_ph+count)->p0=(*ph_orig)[i].p0;
@@ -1991,6 +1991,7 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
                     if ((*ph_orig)[i].type == 's')
                     {
                         synch_ph_count++;
+                        //(*ph_orig)[i].type == 'c';
                     }
                 }
                 else
