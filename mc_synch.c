@@ -1060,12 +1060,12 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                             avg_values[8] += (*ph_orig)[i].weight;
                             
                             //get theta and phi of random photon
-                            if (j == (int) rand1 )
+                            //if (j == (int) rand1 )
                             {
-                                //avg_values[9] += fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0) *(*ph_orig)[i].weight;
-                                //avg_values[10] += (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
-                                avg_values[9] = fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0) *(*ph_orig)[i].weight;
-                                avg_values[10] = (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
+                                avg_values[9] += fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0) *(*ph_orig)[i].weight;
+                                avg_values[10] += (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
+                                //avg_values[9] = fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0) *(*ph_orig)[i].weight;
+                                //avg_values[10] = (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
                             }
                             
                             avg_values[11] +=(*ph_orig)[i].p0*(*ph_orig)[i].weight;
@@ -1079,8 +1079,8 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 energy=avg_values[11]/avg_values[8];//pow(10,0.5*(max_range+min_range));
                 
                 
-                phi=avg_values[9];///avg_values[8];
-                theta=avg_values[10];///avg_values[8];
+                phi=avg_values[9]/avg_values[8];
+                theta=avg_values[10]/avg_values[8];
                 
                 (rebin_ph+count)->type = 'c';
                 
