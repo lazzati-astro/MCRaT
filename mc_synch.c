@@ -842,7 +842,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
 
 int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_ph, int *num_ph_emit, int *scatt_synch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
 {
-    int i=0, j=0, k=0, count=0, count_x=0, count_y=0, count_c_ph=0, end_count=(*scatt_synch_num_ph), idx=0, num_thread=1;
+    int i=0, j=0, k=0, count=0, count_x=0, count_y=0, count_c_ph=0, count_saved_ph=0, end_count=(*scatt_synch_num_ph), idx=0, num_thread=1;
     #if defined(_OPENMP)
     num_thread=omp_get_num_threads();
     #endif
@@ -855,7 +855,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     double min_range=0, max_range=0, min_range_theta=0, max_range_theta=0, energy=0;
     double ph_r=0, ph_theta=0, temp_theta_max=0, temp_theta_min=DBL_MAX;
     //int *synch_comp_photon_idx=NULL; make this an array b/c had issue with deallocating this memory for some reason
-    int synch_comp_photon_idx[*scatt_synch_num_ph];
+    //int synch_comp_photon_idx[*scatt_synch_num_ph];
     //struct photon *rebin_ph=malloc(num_bins* sizeof (struct photon ));
     int num_null_rebin_ph=0, num_in_bin=0;
     struct photon *tmp=NULL;
@@ -906,12 +906,11 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
 
             
             // also save the index of these photons because they wil become null later on
-            //*(synch_comp_photon_idx+count)=i;
-            synch_comp_photon_idx[count]=i;
+            //synch_comp_photon_idx[count]=i;
             //fprintf(fPtr, "Save index %d\n", i );
             count++;
             
-            if ((*ph_orig)[i].type == 'c')
+            //if ((*ph_orig)[i].type == 'c') over writing both 'c' and 'o' photons
             {
                 //keep track of the number of 'c' photons so we can know if the array needs to be increased in size, also take num_null_ph into account in doing this
                 count_c_ph+=1;
@@ -930,6 +929,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
             }
 
         }
+        
     }
     
     //see if the min injected photon energy is smaller than the max 'c' or 'o' photon energy
@@ -937,7 +937,28 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     if (p0_min_injected<p0_max)
     {
         p0_max=p0_min_injected;
+        fprintf(fPtr, "The maximum histogram energy bin is the lowest injected photon energy.\n");
+        fflush(fPtr);
+
     }
+    
+    //modify photon max for the histgram to include the highest energy photon
+    p0_max*=(1+1e-6);
+
+    
+    //count the number fo photons that will be rebinned w/ energies under the proper p0_max
+    count_x=0;
+    for (i=0;i<*num_ph;i++)
+    {
+        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0) && ((*ph_orig)[i].p0 < p0_max))
+        {
+            count_x++;
+        }
+    }
+    int synch_comp_photon_idx[count_x+(*num_null_ph)];
+    end_count=count_x+(*num_null_ph);
+    count_c_ph=count_x+(*num_null_ph);
+
     
     
     //temp_theta_min=floor(temp_theta_min*180/M_PI)*M_PI/180;
@@ -948,12 +969,15 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     fprintf(fPtr, "Rebin: min, max (theta in deg): %e %e number of bins %d count: %d\n", temp_theta_min*180/M_PI, temp_theta_max*180/M_PI, num_bins_theta, count );
     fflush(fPtr);
     
+    /*
     if (count != end_count)
     {
         end_count=count; //need this for some reason idk why end_count gets off by 1 compared to what it should be
         fprintf(fPtr, "Rebin: not equal to end_count therefore resetting count to be: %d\n", count );
         fflush(fPtr);
     }
+     shuld have solved this with inclusion of conditions of photon type=='s' and weight>0
+    */
     
     if (num_bins_theta*num_bins>=max_photons)
     {
@@ -968,23 +992,33 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     struct photon *rebin_ph=malloc(num_bins*num_bins_theta* sizeof (struct photon ));
     struct photon *synch_ph=malloc(synch_photon_count* sizeof (struct photon ));
     int synch_photon_idx[synch_photon_count];
-    
+        
     gsl_histogram2d * h_energy_theta = gsl_histogram2d_alloc (num_bins, num_bins_theta); //x is for energy  and y is for spatial theta, goes from 0 to pi
-    gsl_histogram2d_set_ranges_uniform (h_energy_theta, log10(p0_min), log10(p0_max*(1+1e-6)), temp_theta_min, temp_theta_max+dtheta_bin);
+    gsl_histogram2d_set_ranges_uniform (h_energy_theta, log10(p0_min), log10(p0_max), temp_theta_min, temp_theta_max+dtheta_bin);
 
     //populate histogram for photons with nu that falss within the proper histogram bin
     //may not need this loop, can just check if the photon nu falls within the bin edges and do averages etc within next loop
-    count=0;
+    count=0; count_saved_ph=0;
     for (i=0;i<*num_ph;i++)
     {
-        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0))
+        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0) && ((*ph_orig)[i].p0 < p0_max))
         {
             
             ph_r=pow(((*ph_orig)[i].r0)*((*ph_orig)[i].r0) + ((*ph_orig)[i].r1)*((*ph_orig)[i].r1) + ((*ph_orig)[i].r2)*((*ph_orig)[i].r2),0.5);
             ph_theta=acos(((*ph_orig)[i].r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
             
             gsl_histogram2d_increment(h_energy_theta, log10((*ph_orig)[i].p0), ph_theta);
+            
+            //save the index when only rebinning to lowest energy of injected photons
+            synch_comp_photon_idx[count_saved_ph]=i;
+            count_saved_ph++;
 
+        }
+        else if ((*ph_orig)[i].weight == 0)
+        {
+            //get the index of the null photon
+            synch_comp_photon_idx[count_saved_ph]=i;
+            count_saved_ph++;
         }
         /*
         else if (((*ph_orig)[i].type == 's') && ((*ph_orig)[i].weight != 0))
@@ -1049,9 +1083,9 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                         //if the photon nu falls in the count bin of the nu histogram then add it to the phi_theta 2d hist
                         if ((log10((*ph_orig)[i].p0)< max_range  ) && (log10((*ph_orig)[i].p0)>=min_range) && (ph_theta < max_range_theta) && (ph_theta >= min_range_theta))
                         {
-                            avg_values[0] += ph_r*(*ph_orig)[i].weight;//(*ph_orig)[i].r0*(*ph_orig)[i].weight; //used to calc weighted averages, now doing r, theta and phi averages in space
-                            avg_values[1] += ph_theta*(*ph_orig)[i].weight;//(*ph_orig)[i].r1*(*ph_orig)[i].weight;
-                            avg_values[2] += (*ph_orig)[i].r2*(*ph_orig)[i].weight; //this will be replaced with random phi angle between 0 and 2*pi
+                            //avg_values[0] += ph_r*(*ph_orig)[i].weight;//(*ph_orig)[i].r0*(*ph_orig)[i].weight; //used to calc weighted averages, now doing r, theta and phi averages in space
+                            //avg_values[1] += ph_theta*(*ph_orig)[i].weight;//(*ph_orig)[i].r1*(*ph_orig)[i].weight;
+                            //avg_values[2] += (*ph_orig)[i].r2*(*ph_orig)[i].weight; //this will be replaced with random phi angle between 0 and 2*pi
                             avg_values[3] += (*ph_orig)[i].s0*(*ph_orig)[i].weight;
                             avg_values[4] += (*ph_orig)[i].s1*(*ph_orig)[i].weight;
                             avg_values[5] += (*ph_orig)[i].s2*(*ph_orig)[i].weight;
@@ -1060,12 +1094,18 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                             avg_values[8] += (*ph_orig)[i].weight;
                             
                             //get theta and phi of random photon
-                            //if (j == (int) rand1 )
+                            if (j == (int) rand1 )
                             {
-                                avg_values[9] += fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0) *(*ph_orig)[i].weight;
-                                avg_values[10] += (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
-                                //avg_values[9] = fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0) *(*ph_orig)[i].weight;
-                                //avg_values[10] = (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
+                                //avg_values[9] += fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0) *(*ph_orig)[i].weight;
+                                //avg_values[10] += (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
+                                avg_values[9] = fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0);// *(*ph_orig)[i].weight;
+                                avg_values[10] = (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0));//*(*ph_orig)[i].weight;
+                                
+                                //also get its position
+                                avg_values[0] = (*ph_orig)[i].r0;//*(*ph_orig)[i].weight; //used to calc weighted averages, now doing r, theta and phi averages in space
+                                avg_values[1] = (*ph_orig)[i].r1;//*(*ph_orig)[i].weight;
+                                avg_values[2] = (*ph_orig)[i].r2;//(*ph_orig)[i].weight; //this will be replaced with random phi angle between 0 and 2*pi
+
                             }
                             
                             avg_values[11] +=(*ph_orig)[i].p0*(*ph_orig)[i].weight;
@@ -1079,8 +1119,8 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 energy=avg_values[11]/avg_values[8];//pow(10,0.5*(max_range+min_range));
                 
                 
-                phi=avg_values[9]/avg_values[8];
-                theta=avg_values[10]/avg_values[8];
+                phi=avg_values[9];///avg_values[8];
+                theta=avg_values[10];///avg_values[8];
                 
                 (rebin_ph+count)->type = 'c';
                 
@@ -1093,10 +1133,13 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 (rebin_ph+count)->comv_p2=0;
                 (rebin_ph+count)->comv_p3=0;
                 
-                rand1=gsl_rng_uniform(rand)*2*M_PI;
-                (rebin_ph+count)->r0= (avg_values[0]/avg_values[8])*sin(avg_values[1]/avg_values[8])*cos(rand1); //avg_values[0]/avg_values[8]; now do avg r * avg theta * random phi
-                (rebin_ph+count)->r1= (avg_values[0]/avg_values[8])*sin(avg_values[1]/avg_values[8])*sin(rand1); //avg_values[1]/avg_values[8];
-                (rebin_ph+count)->r2= (avg_values[0]/avg_values[8])*cos(avg_values[1]/avg_values[8]); //avg_values[2]/avg_values[8];
+                //also just save the random photons position to the rebinned photon
+                //rand1=gsl_rng_uniform(rand)*2*M_PI;
+                (rebin_ph+count)->r0= avg_values[0]; //(avg_values[0]/avg_values[8])*sin(avg_values[1]/avg_values[8])*cos(rand1); //avg_values[0]/avg_values[8]; now do avg r * avg theta * random phi
+                (rebin_ph+count)->r1= avg_values[1];//(avg_values[0]/avg_values[8])*sin(avg_values[1]/avg_values[8])*sin(rand1); //avg_values[1]/avg_values[8];
+                (rebin_ph+count)->r2= avg_values[2];//(avg_values[0]/avg_values[8])*cos(avg_values[1]/avg_values[8]); //avg_values[2]/avg_values[8];
+                
+                
                 (rebin_ph+count)->s0=avg_values[3]/avg_values[8]; // stokes parameterized are normalized such that I always =1
                 (rebin_ph+count)->s1=avg_values[4]/avg_values[8];
                 (rebin_ph+count)->s2=avg_values[5]/avg_values[8];
@@ -1340,7 +1383,8 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     i=0;
     for (i=0;i<end_count;i++)
     {
-        if (i<(*scatt_synch_num_ph))
+        //if (i<(*scatt_synch_num_ph))
+        if (i<count_saved_ph)
         {
             //the photon idx can be found from the original array
             //idx=(*(synch_comp_photon_idx+i));
@@ -1349,11 +1393,12 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
         else
         {
             //enter this if we realloc the arrays
-            //idx=(*num_ph)+i;
-            idx=i-(*scatt_synch_num_ph)+( *num_ph)-(num_bins*num_bins_theta-count_c_ph+(*num_null_ph));//go to the end of the old num_ph value and start setting things to null photons
+            //idx=i-(*scatt_synch_num_ph)+( *num_ph)-(num_bins*num_bins_theta-count_c_ph+(*num_null_ph));//go to the end of the old num_ph value and start setting things to null photons
+            idx=i-(count_saved_ph)+( *num_ph)-(num_bins*num_bins_theta-count_c_ph+(*num_null_ph));//go to the end of the old num_ph value and start setting things to null photons
+
         }
 
-        if (((*ph_orig)[idx].type == 'o') || ((*ph_orig)[idx].type == 'c'))
+        if ((((*ph_orig)[idx].type == 'o') || ((*ph_orig)[idx].type == 'c')) )//&& ((*ph_orig)[idx].p0<p0_max)
         {
             if (count<num_bins*num_bins_theta)
             {
@@ -1411,7 +1456,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
             
             
         }
-        else if ((*ph_orig)[idx].type != 's')
+        else if (((*ph_orig)[idx].type != 's') ) //|| (((*ph_orig)[idx].type != 'o') || ((*ph_orig)[idx].type != 'c'))
         {
             //this is a realloc photon that has to be set to null
             (*ph_orig)[idx].type = 'c';
@@ -1463,7 +1508,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     */
     *scatt_synch_num_ph=num_bins*num_bins_theta-num_null_rebin_ph;
     *num_ph_emit=num_bins*num_bins_theta+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
-    *num_null_ph=j; //was using j before but i have no idea why its not counting correctly
+    *num_null_ph=j; //was using j before
         
     fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d num_null_rebin_ph: %d old scatt_synch_num_ph: %d new scatt_synch_num_ph: %d\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1, num_null_rebin_ph, *scatt_synch_num_ph, num_bins*num_bins_theta-num_null_rebin_ph  );
     fflush(fPtr);
