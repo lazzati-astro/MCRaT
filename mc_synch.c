@@ -842,7 +842,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
 
 int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_ph, int *num_ph_emit, int *scatt_synch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
 {
-    int i=0, j=0, k=0, count=0, count_x=0, count_y=0, count_c_ph=0, count_saved_ph=0, end_count=(*scatt_synch_num_ph), idx=0, num_thread=1;
+    int i=0, j=0, k=0, count=0, count_x=0, count_y=0, count_c_ph=0, end_count=(*scatt_synch_num_ph), idx=0, num_thread=1;
     #if defined(_OPENMP)
     num_thread=omp_get_num_threads();
     #endif
@@ -855,7 +855,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     double min_range=0, max_range=0, min_range_theta=0, max_range_theta=0, energy=0;
     double ph_r=0, ph_theta=0, temp_theta_max=0, temp_theta_min=DBL_MAX;
     //int *synch_comp_photon_idx=NULL; make this an array b/c had issue with deallocating this memory for some reason
-    //int synch_comp_photon_idx[*scatt_synch_num_ph];
+    int synch_comp_photon_idx[*scatt_synch_num_ph];
     //struct photon *rebin_ph=malloc(num_bins* sizeof (struct photon ));
     int num_null_rebin_ph=0, num_in_bin=0;
     struct photon *tmp=NULL;
@@ -906,11 +906,12 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
 
             
             // also save the index of these photons because they wil become null later on
-            //synch_comp_photon_idx[count]=i;
+            //*(synch_comp_photon_idx+count)=i;
+            synch_comp_photon_idx[count]=i;
             //fprintf(fPtr, "Save index %d\n", i );
             count++;
             
-            //if ((*ph_orig)[i].type == 'c') over writing both 'c' and 'o' photons
+            if ((*ph_orig)[i].type == 'c')
             {
                 //keep track of the number of 'c' photons so we can know if the array needs to be increased in size, also take num_null_ph into account in doing this
                 count_c_ph+=1;
@@ -921,11 +922,6 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
             synch_photon_count++;
         }
     }
-    count_x=count;
-    int synch_comp_photon_idx[count_x+(*num_null_ph)];
-    end_count=count_x+(*num_null_ph);
-    count_c_ph=count_x+(*num_null_ph);
-
     
     
     //temp_theta_min=floor(temp_theta_min*180/M_PI)*M_PI/180;
@@ -936,15 +932,12 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     fprintf(fPtr, "Rebin: min, max (theta in deg): %e %e number of bins %d count: %d\n", temp_theta_min*180/M_PI, temp_theta_max*180/M_PI, num_bins_theta, count );
     fflush(fPtr);
     
-    /*
     if (count != end_count)
     {
         end_count=count; //need this for some reason idk why end_count gets off by 1 compared to what it should be
         fprintf(fPtr, "Rebin: not equal to end_count therefore resetting count to be: %d\n", count );
         fflush(fPtr);
     }
-     shuld have solved this with inclusion of conditions of photon type=='s' and weight>0
-    */
     
     if (num_bins_theta*num_bins>=max_photons)
     {
@@ -959,36 +952,26 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     struct photon *rebin_ph=malloc(num_bins*num_bins_theta* sizeof (struct photon ));
     struct photon *synch_ph=malloc(synch_photon_count* sizeof (struct photon ));
     int synch_photon_idx[synch_photon_count];
-        
+    
     gsl_histogram2d * h_energy_theta = gsl_histogram2d_alloc (num_bins, num_bins_theta); //x is for energy  and y is for spatial theta, goes from 0 to pi
-    gsl_histogram2d_set_ranges_uniform (h_energy_theta, log10(p0_min), log10(p0_max), temp_theta_min, temp_theta_max+dtheta_bin);
+    gsl_histogram2d_set_ranges_uniform (h_energy_theta, log10(p0_min), log10(p0_max*(1+1e-6)), temp_theta_min, temp_theta_max+dtheta_bin);
 
     //populate histogram for photons with nu that falss within the proper histogram bin
     //may not need this loop, can just check if the photon nu falls within the bin edges and do averages etc within next loop
-    count=0; count_saved_ph=0;
+    count=0;
     for (i=0;i<*num_ph;i++)
     {
-        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0) && ((*ph_orig)[i].p0 < p0_max))
+        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0))
         {
             
             ph_r=pow(((*ph_orig)[i].r0)*((*ph_orig)[i].r0) + ((*ph_orig)[i].r1)*((*ph_orig)[i].r1) + ((*ph_orig)[i].r2)*((*ph_orig)[i].r2),0.5);
             ph_theta=acos(((*ph_orig)[i].r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
             
             gsl_histogram2d_increment(h_energy_theta, log10((*ph_orig)[i].p0), ph_theta);
-            
-            //save the index when only rebinning to lowest energy of injected photons
-            synch_comp_photon_idx[count_saved_ph]=i;
-            count_saved_ph++;
 
         }
-        else if ((*ph_orig)[i].weight == 0)
-        {
-            //get the index of the null photon
-            synch_comp_photon_idx[count_saved_ph]=i;
-            count_saved_ph++;
-        }
         /*
-        else if (((*ph_orig)[i].type == 's') && ((*ph_orig)[i].weight != 0))
+        if (((*ph_orig)[i].type == 's') && ((*ph_orig)[i].weight != 0))
         {
             //save the sych photons here because they may get written over later and corrupted
             (synch_ph+count)->p0=(*ph_orig)[i].p0;
@@ -1013,7 +996,6 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
             count++;
         }
          */
-
     }
     
     //gsl_histogram2d_fprintf(fPtr, h_energy_theta, "%g", "%g");
@@ -1105,8 +1087,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 (rebin_ph+count)->r0= avg_values[0]; //(avg_values[0]/avg_values[8])*sin(avg_values[1]/avg_values[8])*cos(rand1); //avg_values[0]/avg_values[8]; now do avg r * avg theta * random phi
                 (rebin_ph+count)->r1= avg_values[1];//(avg_values[0]/avg_values[8])*sin(avg_values[1]/avg_values[8])*sin(rand1); //avg_values[1]/avg_values[8];
                 (rebin_ph+count)->r2= avg_values[2];//(avg_values[0]/avg_values[8])*cos(avg_values[1]/avg_values[8]); //avg_values[2]/avg_values[8];
-                
-                
+
                 (rebin_ph+count)->s0=avg_values[3]/avg_values[8]; // stokes parameterized are normalized such that I always =1
                 (rebin_ph+count)->s1=avg_values[4]/avg_values[8];
                 (rebin_ph+count)->s2=avg_values[5]/avg_values[8];
@@ -1199,13 +1180,13 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     }
     
     
-    if ((count_saved_ph)<num_bins*num_bins_theta)
+    if ((count_c_ph+(*num_null_ph))<num_bins*num_bins_theta)
     {
         //need to expand the array
         //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
         //need to realloc memory to hold the old photon info and the new emitted photon's info
         //before was doing ((*num_ph)+num_bins-count_c_ph-(*num_null_ph) ) but instead did the beow since that creatd extr space for null photons to be filled in later on
-        fprintf(fPtr, "Rebin: Allocating %d space\n", ((*num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph) )); //allocating more space than needed by *num_null_ph amount
+        fprintf(fPtr, "Rebin: Allocating %d space\n", ((*num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph) )); //befoe was dong
         fflush(fPtr);
         tmp=realloc(*ph_orig, ((*num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph))* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
         if (tmp != NULL)
@@ -1341,8 +1322,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 count++;
             }
         }
-         */
-        
+        */
         
     }
     
@@ -1352,8 +1332,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     i=0;
     for (i=0;i<end_count;i++)
     {
-        //if (i<(*scatt_synch_num_ph))
-        if (i<count_saved_ph)
+        if (i<(*scatt_synch_num_ph))
         {
             //the photon idx can be found from the original array
             //idx=(*(synch_comp_photon_idx+i));
@@ -1362,12 +1341,11 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
         else
         {
             //enter this if we realloc the arrays
-            //idx=i-(*scatt_synch_num_ph)+( *num_ph)-(num_bins*num_bins_theta-count_c_ph+(*num_null_ph));//go to the end of the old num_ph value and start setting things to null photons
-            idx=i-(count_saved_ph)+( *num_ph)-(num_bins*num_bins_theta-count_c_ph+(*num_null_ph));//go to the end of the old num_ph value and start setting things to null photons
-
+            //idx=(*num_ph)+i;
+            idx=i-(*scatt_synch_num_ph)+( *num_ph)-(num_bins*num_bins_theta-count_c_ph+(*num_null_ph));//go to the end of the old num_ph value and start setting things to null photons
         }
 
-        if ((((*ph_orig)[idx].type == 'o') || ((*ph_orig)[idx].type == 'c')) )//&& ((*ph_orig)[idx].p0<p0_max)
+        if (((*ph_orig)[idx].type == 'o') || ((*ph_orig)[idx].type == 'c'))
         {
             if (count<num_bins*num_bins_theta)
             {
@@ -1425,7 +1403,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
             
             
         }
-        else if (((*ph_orig)[idx].type != 's') ) //|| (((*ph_orig)[idx].type != 'o') || ((*ph_orig)[idx].type != 'c'))
+        else if ((*ph_orig)[idx].type != 's')
         {
             //this is a realloc photon that has to be set to null
             (*ph_orig)[idx].type = 'c';
@@ -1478,7 +1456,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     
     *scatt_synch_num_ph=num_bins*num_bins_theta-num_null_rebin_ph;
     *num_ph_emit=num_bins*num_bins_theta+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
-    *num_null_ph=j; //was using j before
+    *num_null_ph=j; //was using j before but i have no idea why its not counting correctly
         
     fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d num_null_rebin_ph: %d old scatt_synch_num_ph: %d new scatt_synch_num_ph: %d\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1, num_null_rebin_ph, *scatt_synch_num_ph, num_bins*num_bins_theta-num_null_rebin_ph  );
     fflush(fPtr);
