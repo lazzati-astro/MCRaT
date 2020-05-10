@@ -53,7 +53,7 @@ double calcB(double el_dens, double temp, double epsilon_b)
 
 double n_el_MJ(double el_dens, double dimlesstheta, double gamma)
 {
-    //function to calulate the number density of electrons using the maxwell juttner distribution 
+    //function to calulate the number density of electrons using the maxwell juttner distribution
     return el_dens*gamma*sqrt(gamma*gamma-1)*exp(-gamma/dimlesstheta)/(dimlesstheta*gsl_sf_bessel_Kn(2, 1.0/dimlesstheta));
 }
 
@@ -850,7 +850,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     double dtheta_bin=0.5*M_PI/180; //the size of the bin that we want to produce for spatial binning in theta
     int num_bins_theta=(thread_theta_max-thread_theta_min)/dtheta_bin;//try this many bins such that we have 0.5 degree resolution, can also try to do adaptive binning with constant SNR
     double avg_values[12]={0}; //number of averages that'll be taken is given by num_avg in above line
-    double p0_min=DBL_MAX, p0_max=0, p0_min_injected=DBL_MAX, log_p0_min=0, log_p0_max=0;//look at p0 of photons not by frequency since its just nu=p0*C_LIGHT/PL_CONST
+    double p0_min=DBL_MAX, p0_max=0, log_p0_min=0, log_p0_max=0;//look at p0 of photons not by frequency since its just nu=p0*C_LIGHT/PL_CONST
     double rand1=0, rand2=0, phi=0, theta=0;
     double min_range=0, max_range=0, min_range_theta=0, max_range_theta=0, energy=0;
     double ph_r=0, ph_theta=0, temp_theta_max=0, temp_theta_min=DBL_MAX;
@@ -920,41 +920,8 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
         {
             synch_photon_count++;
         }
-        else if ((*ph_orig)[i].type == 'i')
-        {
-            if ((*ph_orig)[i].p0 < p0_min_injected)
-            {
-                p0_min_injected = (*ph_orig)[i].p0;
-                //fprintf(fPtr, "new p0 max %e\n", (p0_max) );
-            }
-
-        }
-        
     }
-    
-    //see if the min injected photon energy is smaller than the max 'c' or 'o' photon energy
-    //try to look at rebinning phons only up to the lowest energy of the injected photons' energy
-    if (p0_min_injected<p0_max)
-    {
-        p0_max=p0_min_injected;
-        fprintf(fPtr, "The maximum histogram energy bin is the lowest injected photon energy.\n");
-        fflush(fPtr);
-
-    }
-    
-    //modify photon max for the histgram to include the highest energy photon
-    p0_max*=(1+1e-6);
-
-    
-    //count the number fo photons that will be rebinned w/ energies under the proper p0_max
-    count_x=0;
-    for (i=0;i<*num_ph;i++)
-    {
-        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == 'c') || ((*ph_orig)[i].type == 'o')) && ((*ph_orig)[i].p0 > 0) && ((*ph_orig)[i].p0 < p0_max))
-        {
-            count_x++;
-        }
-    }
+    count_x=count;
     int synch_comp_photon_idx[count_x+(*num_null_ph)];
     end_count=count_x+(*num_null_ph);
     count_c_ph=count_x+(*num_null_ph);
@@ -1226,17 +1193,19 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
 
             }
             
+            
+            
         }
     }
     
     
-    if ((count_c_ph+(*num_null_ph))<num_bins*num_bins_theta)
+    if ((count_saved_ph)<num_bins*num_bins_theta)
     {
         //need to expand the array
         //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
         //need to realloc memory to hold the old photon info and the new emitted photon's info
         //before was doing ((*num_ph)+num_bins-count_c_ph-(*num_null_ph) ) but instead did the beow since that creatd extr space for null photons to be filled in later on
-        fprintf(fPtr, "Rebin: Allocating %d space\n", ((*num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph) )); //befoe was dong
+        fprintf(fPtr, "Rebin: Allocating %d space\n", ((*num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph) )); //allocating more space than needed by *num_null_ph amount
         fflush(fPtr);
         tmp=realloc(*ph_orig, ((*num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph))* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
         if (tmp != NULL)
@@ -1342,8 +1311,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
             fprintf(fPtr, "%d %c %e %e %e %d\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0, (*ph_orig)[i].nearest_block_index );
 
         }
-         */
-        /*
+         
         count=0;
         for (i=0;i<synch_photon_count;i++)
         {
@@ -1373,7 +1341,8 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 count++;
             }
         }
-        */
+         */
+        
         
     }
     
@@ -1506,6 +1475,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
 
     }
     */
+    
     *scatt_synch_num_ph=num_bins*num_bins_theta-num_null_rebin_ph;
     *num_ph_emit=num_bins*num_bins_theta+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
     *num_null_ph=j; //was using j before
