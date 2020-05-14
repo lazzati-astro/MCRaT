@@ -61,6 +61,21 @@ struct photon
 #include "mclib_pluto.h"
 #include "mc_synch.h"
 
+//take care of synchrotron defaults here
+#ifdef SYNCHROTRON_SWITCH
+
+    //if the percentage of max photon that will be used to create the energy bins isnt defined, define it to be 10%
+    #ifndef SYNCHROTRON_REBIN_E_PERC
+        #define SYNCHROTRON_REBIN_E_PERC 0.1
+    #endif
+
+    //if the angle bins that the rebinned synch photons isnt defined use 0.5 degree increments by default
+    #ifndef SYNCHROTRON_REBIN_ANG
+        #define SYNCHROTRON_REBIN_ANG 0.5
+    #endif
+
+#endif
+
 void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit, int num_null_ph, int scatt_synch_num_ph, int frame,int frame_inj, int frame_last, char dir[200], int angle_rank, FILE *fPtr );
 
 void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large,\
