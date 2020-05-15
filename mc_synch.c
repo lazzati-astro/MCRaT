@@ -1896,7 +1896,6 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     //printf("At End of function\n");
     
     
-    if (null_ph_count > ph_tot)
     {
         free(null_ph_indexes);
     }
