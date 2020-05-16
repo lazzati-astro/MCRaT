@@ -1548,6 +1548,9 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                     
                     //printf("%d, %lf \n",*(ph_dens+j), ph_dens_calc);
                     
+                    //modify the number of photons injected here
+                    (*(ph_dens+j))=(*(ph_dens+j))/5;
+                    
                     //sum up all the densities to get total number of photons
                     ph_tot+=(*(ph_dens+j));
                     
@@ -1570,6 +1573,8 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
             //fprintf(fPtr, "dens: %d, photons: %d, adjusted weight: %e\n", *(ph_dens+(j-1)), ph_tot, ph_weight_adjusted);
             
         }
+        
+        
         
         fprintf(fPtr, "Emitting %d synch photons\n", ph_tot);
         fflush(fPtr);
