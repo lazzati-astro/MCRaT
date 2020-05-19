@@ -948,8 +948,8 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
 
         
     struct photon *rebin_ph=malloc(num_bins*num_bins_theta* sizeof (struct photon ));
-    //struct photon *synch_ph=malloc(synch_photon_count* sizeof (struct photon ));
-    //int synch_photon_idx[synch_photon_count];
+    struct photon *synch_ph=malloc(synch_photon_count* sizeof (struct photon ));
+    int synch_photon_idx[synch_photon_count];
     
     gsl_histogram2d * h_energy_theta = gsl_histogram2d_alloc (num_bins, num_bins_theta); //x is for energy  and y is for spatial theta, goes from 0 to pi
     gsl_histogram2d_set_ranges_uniform (h_energy_theta, log10(p0_min), log10(p0_max*(1+1e-6)), temp_theta_min, temp_theta_max+dtheta_bin);
@@ -968,7 +968,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
             gsl_histogram2d_increment(h_energy_theta, log10((*ph_orig)[i].p0), ph_theta);
 
         }
-        /*
+        
         if (((*ph_orig)[i].type == 's') && ((*ph_orig)[i].weight != 0))
         {
             //save the sych photons here because they may get written over later and corrupted
@@ -993,7 +993,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
             synch_photon_idx[count]=i;
             count++;
         }
-         */
+         
     }
     
     //gsl_histogram2d_fprintf(fPtr, h_energy_theta, "%g", "%g");
@@ -1249,7 +1249,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
             fprintf(fPtr, "%d %c %e %e %e %d\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0, (*ph_orig)[i].nearest_block_index );
 
         }
-         
+         */
         count=0;
         for (i=0;i<synch_photon_count;i++)
         {
@@ -1279,7 +1279,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 count++;
             }
         }
-        */
+        
         
     }
     
@@ -1421,7 +1421,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     
     gsl_histogram2d_free (h_energy_theta);
     free(rebin_ph);
-    //free(synch_ph);
+    free(synch_ph);
     
     return num_null_rebin_ph;
 }
