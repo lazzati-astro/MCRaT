@@ -11,6 +11,10 @@
 \author{Tyler Parsotan}
 \date{}
 \usepackage{tabularx}
+\usepackage{natbib}
+\usepackage{subfig}
+\usepackage{graphicx}
+\bibliographystyle{apj.bst}
 \begin{document}
 \maketitle
 
@@ -224,6 +228,7 @@ MCRaT has to make some assumptions about the output of the RHD simulation. These
 \begin{itemize}
 \item[1.] The velocity in the RHD simulation is normalized by the speed of light, $c$ 
 \item[2.] The pressure is normalized by $c^2$
+\item[3.] The density is normalized by $1$
 \end{itemize}
 
 \subsection{Algorithm}
@@ -275,9 +280,9 @@ Each MCRaT MPI process outputs 3 files. These files are named \texttt{mc\_proc\_
 
 The \texttt{mc\_chkpt\_$i$.dat} file is a binary file that contains the data from the MPI process that allows it to continue the simulation if MCRaT gets interrupted for any reason. This information is: the MPI process' range of hydro frames to inject photons into, the frame that the current set of photons were injected in, the frame in which the photons were recently scattered in, the current time of the MCRaT simulation, the number of photons that the code is keeping track of, and the \texttt{photon} data structure for each photon in the simulation.
 
-The \texttt{mc\_proc\_$i$.h5} file is a HDF5 file that contains all the data for the photons that the $i^\mathrm{th}$ MPI process injects and propagates through the hydro simulation. The data is organized by the hydro simulation frame which constitutes a HDF5 group. Within the group, there are the following datasets, depending on if \texttt{STOKES\_SWITCH} or \texttt{COMV\_SWITCH} id set to 1 or 0.
+The \texttt{mc\_proc\_$i$.h5} file is a HDF5 file that contains all the data for the photons that the $i^\mathrm{th}$ MPI process injects and propagates through the hydro simulation. The data is organized by the hydro simulation frame which constitutes a HDF5 group. Within the group, there are the following datasets, depending on if \texttt{STOKES\_SWITCH} or \texttt{COMV\_SWITCH} id set to ON or OFF.
 \begin{itemize}
-\item Weight - The photon weight for any photons that were injected into the frame. If there were no photons injected, then this data set does not exist.
+\item PW - The photon weight for any photons that were injected into the frame. If there were no photons injected, then this data set does not exist.
 \item P0 - the energy of the photons
 \item P1 - the magnitude of the photons' 4-momentum in the x direction
 \item P2 - the magnitude of the photons' 4-momentum in the y direction 
@@ -301,12 +306,12 @@ These data sets include information for all of the photons after they were scatt
  \dirtree{%
  .1 \texttt{mc\_proc\_0.h5}.
   .2 200.
-  .3 Weights.
+  .3 PW.
   .3 P0.
   .3 $\colon$.
   .3 NS.
  .2 201.
-   .3 Weights.
+   .3 PW.
    .3 P0.
    .3 $\colon$.
    .3 NS.
@@ -317,13 +322,13 @@ These data sets include information for all of the photons after they were scatt
  } 
  \end{figure}
  
-where all the datasets in group 200 would have only $n_{0}$ elements, where $n_{0}$ is the number of photons first injected into hydro frame 200. If we let $n_{1}$ be the number of photons injected in frame 201, the dataset Weight in group 201 will have $n_{1}$ elements while the rest of the datasets will have $n_{0}$ elements, corresponding to the information for the photons first injected in frame 200 that are propagated through frame 201, \textit{followed by} $n_{1}$ elements for the newly injected photons in frame 201. 
+\newpage where all the datasets in group 200 would have only $n_{0}$ elements, where $n_{0}$ is the number of photons first injected into hydro frame 200. If we let $n_{1}$ be the number of photons injected in frame 201, the dataset PW in group 201 will have $n_{1}$ elements while the rest of the datasets will have $n_{0}$ elements, corresponding to the information for the photons first injected in frame 200 that are propagated through frame 201, \textit{followed by} $n_{1}$ elements for the newly injected photons in frame 201. 
 
 The last file produced by the MCRaT MPI processes are named \texttt{mc\_output\_$i$.log}. These are files that output the progress of the given process, allowing the user to keep track of how far along MCRaT is in the radiation transfer simulation and how much more work the code has left to complete. This file contains the number of scatterings that the code completes in increments of 1000 scatterings as well as the average photon energy in units of ergs, the comoving temperature, in Kelvin, of the hydro fluid element that was used in the most recent scattering, and the most recent time step for a photon to scatter and the current time in the simulation. When all the scatterings are completed for a given frame, the code prints out the average cumulative number of scatterings that each photon has undergone, as well as the the maximum and minimum number of scatterings for the photons.The code also prints out the average radius of the MCRaT photons, the simulation time and the frames left to inject photons into and the last hydro simulation frame.
 
 When the MCRaT MPI process has completed the Monte Carlo scattering portion of the code it will print: ``Process $i$ has completed the MC calculation.'' where $i$ is the ID of the MPI process. When all of the MPI processes are complete with the Monte Carlo scattering they will collectively produce the \texttt{mcdata\_$f$.h5} files which contain the merged data from each MPI process within a given angle range.
 
-These \texttt{mcdata\_$f$.h5} files are formatted in the same way that the HDF5 groups are formatted in the \texttt{mc\_proc\_$i$.h5} files. The only exception is that there is no \texttt{Weight} dataset. All of the photon weights are saved to a file named \texttt{mcdata\_PW.h5} which has the weight do each of the photons in their chronological order of injection.
+These \texttt{mcdata\_$f$.h5} files are formatted in the same way that the HDF5 groups are formatted in the \texttt{mc\_proc\_$i$.h5} files. The only exception is that there is a \texttt{PW} dataset with the weight of the photons being in the chronological order of photon injection.
 
 \subsection{Post-processing Algorithm}
 When the user has completed running MCRaT for each angle range that they are interested in, the data for every simulated photon gets merged into a new directory called \texttt{ALL\_DATA}. the MERGE code that is included with the download of MCRaT uses parallel HDF5 I/O to speed up this post-processing. 
@@ -371,7 +376,88 @@ After the 4-momenta are set, the photons are boosted into the lab frame using th
 \subsection{Scattering Photons} \label{scatt}
 
 \subsection{Polarization}\label{pol}
+The Stokes parameters are a vector, $S=(I, Q, U, V)$ that holds information about the polarization of electromagnetic radiation. $I$ is the intensity of the electromagnetic radiation, $Q$ and $U$ describe the orientation of the polarization ellipse, and $V$ describes the ratio of the principal axis of the polarization ellipse \citep{Rybiki_Lightman}. {We follow the convention set by \cite{McMaster:1961aa} and  \cite{lundman2014polarization}
+where $Q=+1$ is oriented with the y-axis of the Stokes plane and $Q=-1$ is oriented with the x-axis of the Stokes plane. The $+U$ axis is rotated $45^\circ$ clockwise with respect to the $+Q$ axis and the  $-U$ axis is rotated $45^\circ$ clockwise with respect to the $-Q$ axis. }Furthermore, we normalize the Stokes parameters such that $I=1$ at all times giving us $s=(1, Q/I, U/I, V/I)=(1,q,u,v)$. In our simulations, we only consider linear polarization which means that we ignore any contribution by $v$. This is appropriate since we assume that electron spins, which directly affect $v$, are isotropically distributed.
+
+In MCRaT all photons are initialized to have no polarization; thus, we set $s=(1,0,0,0)$. Each photon becomes $100$\% polarized from the very first scattering that it undergoes, which does not bias our results. 
+
+In order to deal with polarization, we follow the prescription given by \cite{lundman2014polarization}. We lorentz boost the photons' four momenta from the lab frame to the fluid frame, then from the fluid frame to the electron rest frame. In the electron frame we conduct our scattering using the full Klein Nishina (KN) cross section and then scatter the Stokes parameters using Fanno's Matrix. Afterwards, we deboost the photons from the electron rest frame and the fluid rest frame back to the lab frame. 
+
+{In the lab frame, the Stokes plane is oriented such that the $+Q$ axis is pointing in the $-\hat{\phi}$ direction and the $-Q$ axis is pointing in the $-\hat{\theta}$ direction. The $+U$ axis is rotated $45^\circ$ clockwise with respect to the $+Q$ axis and the  $-U$ axis is rotated $45^\circ$ clockwise with respect to the $-Q$ axis. $\chi$ is measures clockwise from the $+Q$ axis towards the $+U$ axis. $\hat{\phi}$ and $\hat{\theta}$ are the orthonormal azimuthal and polar unit vectors in a spherical coordinate system where the radial unit vector is parallel to the photon's momentum vector.} 
+
+Each boost to another reference frame entails rotating the Stokes plane using the Muller rotation matrix \citep{McMaster:1961aa} given by
+\begin{equation}
+\mathbf{M}[\phi]=\left(\begin{array}{cccc}{1} & {0} & {0} & {0} \\ {0} & {\cos 2 \phi} & {-\sin 2 \phi} & {0} \\ {0} & {\sin 2 \phi} & {\cos 2 \phi} & {0} \\ {0} & {0} & {0} & {1}\end{array}\right)
+\end{equation}
+where the angle of rotation, $\phi$, corresponds to the rotation that orients the y-axis of the Stokes plane perpendicular to the photon three momentum and the velocity vector of the frame that the photon will be boosted into. The equation for $\phi$ is given in Appendix B of \cite{lundman2014polarization}. After each boost, we rotate the Stokes plane again to ensure that the y-axis of the Stokes plane is perpendicular to the plane formed by the reference frame's z-axis and the photon's three momentum.
+
+We use the KN cross section to determine if the photon scatters. The photons gets scattered if $\xi \le \sigma_{\mathrm{KN}}/\sigma_{\mathrm{T}}$, where $\xi$ is a random uniformly distributed number between 0 and 1, $\sigma_{\mathrm{KN}}$, is the KN cross section given by \cite{Rybiki_Lightman}, and $\sigma_{\mathrm{T}}$ is the Thomson cross section. If $\xi \le \sigma_{\mathrm{KN}}/\sigma_{\mathrm{T}}$ then we sample the differential KN cross section to determine the angles, $\theta_{\mathrm{sc}}$ and $\phi_{\mathrm{sc}}$, that the photon will be scattered into. The differential cross section given by \cite{lundman2014polarization} is
+\begin{multline}
+\frac{\mathrm{d} \sigma_{\mathrm{KN}}}{\mathrm{d} \Omega} (\theta_{\mathrm{sc}}, \phi_{\mathrm{sc}}) =\frac{r_{0}^{2}}{2}\left(\frac{\epsilon}{\epsilon_{0}}\right)^{2} \times \\
+\left\{\frac{\epsilon_{0}}{\epsilon}+\frac{\epsilon}{\epsilon_{0}} - \sin ^{2} \theta_{\mathrm{sc}}\left(1- q \cos 2 \phi_{\mathrm{sc}}+u \sin 2 \phi_{\mathrm{sc}}\right)\right\} \label{KN_diff_cross_section}
+\end{multline}
+where $r_{0}$ is the classical electron radius, $\epsilon_{0}$ is the incoming photon energy scaled by the electron rest mass, and $\epsilon=\epsilon_{0}/(1+\epsilon_{0}[1-\cos \theta_{\mathrm{sc}}])$, is the scattered photons energy. The outgoing photon's $\theta_{\mathrm{sc}}$ is acquired by rejection sampling the differential cross section integrated over $\phi_{\mathrm{sc}}$ following the method outlined by \cite{sample_kn_theta} for maximum efficiency. We acquire $\phi_{\mathrm{sc}}$ by choosing a random uniformly distributed value between [0, 2$\pi$] when $q=u=0$, otherwise we apply a rejection sampling method to the differential KN cross section. {The case of $q=u=0$ removes the KN cross section's  dependence on $\phi_{\mathrm{sc}}$, which allows us to choose a value between [0, 2$\pi$].}
+
+We outline our method of sampling Equation \ref{KN_diff_cross_section} to acquire $\phi_{\mathrm{sc}}$ when the incoming photon is polarized. The azimuthal angle that gives the maximum of the KN differential cross section, $\phi_{\mathrm{m}}$, can be solved as
+\begin{equation}
+\phi_{\mathrm{m}}=\frac{1}{2} | \arctan \big( \frac{-u}{q} \big) |
+\end{equation}
+We then plug $\phi_{\mathrm{m}}$ and the previously acquired $\theta_{\mathrm{sc}}$ into the KN differential cross section to get the normalization for the rejection sampling method, $\frac{\mathrm{d} \sigma_{\mathrm{KN}}}{\mathrm{d} \Omega} (\theta_{\mathrm{sc}}, \phi_{\mathrm{m}})$. We proceed as follows:
+\begin{itemize}
+\item[(1)] Draw a random number $\xi$ uniformly distributed between 0 and 1
+\item[(2)] Draw a random $\phi_{\mathrm{sc}}$ uniformly distributed between 0 and $2\pi$
+\item[(3)] Calculate $\frac{\mathrm{d} \sigma_{\mathrm{KN}}}{\mathrm{d} \Omega} (\theta_{\mathrm{sc}}, \phi_{\mathrm{sc}})$
+\item[(4)] Determine if $\xi \le  [\frac{\mathrm{d} \sigma_{\mathrm{KN}}}{\mathrm{d} \Omega} (\theta_{\mathrm{sc}}, \phi_{\mathrm{sc}})][\frac{\mathrm{d} \sigma_{\mathrm{KN}}}{\mathrm{d} \Omega} (\theta_{\mathrm{sc}}, \phi_{\mathrm{m}})]^{-1}$
+\item[(5)] If the above condition is met, accept the value of $\phi_{\mathrm{sc}}$, otherwise repeat the sampling
+\end{itemize}  
+
+Once the scattering is completed, we conduct the scattering of the Stokes parameters. First, we use the Muller matrix to rotate the Stokes plane such that the Stokes plane's y-axis is perpendicular to the plane formed by the incoming and outgoing photon three momenta \citep{McMaster:1961aa, lundman2014polarization}. Then, we use Fanno's matrix, $T[\theta_{\mathrm{sc}},\epsilon_{0}, \epsilon]$, \citep{McMaster:1961aa} to determine the resulting polarization, $\tilde{s}=T[\theta_{\mathrm{sc}},\epsilon_{0}, \epsilon]s$. Fanno's matrix is 
+\begin{equation}
+T[\theta_{\mathrm{sc}},\epsilon_{0}, \epsilon]=  \left(\begin{array}{lll}{1+\cos ^{2} \theta_{\mathrm{sc}}+\left(\epsilon_{0}-\epsilon \right)\left(1-\cos \theta_{\mathrm{sc}}\right)} & {\sin ^{2} \theta_{\mathrm{sc}}} & {0} \\ {\sin ^{2} \theta_{\mathrm{sc}}} & {1+\cos ^{2} \theta_{\mathrm{sc}}} & {0} \\ {0} & {0} & {2 \cos \theta_{\mathrm{sc}}}\end{array}\right)
+\end{equation}
+where, similar to \cite{krawczynski2011polarization},  we have excluded the factors in front since they cancel out when we normalize the scattered Stokes parameters by $I$ as mentioned above. We have also excluded the fourth row and column of the matrix since we only consider linear polarization. 
+
+{We reproduce \citeauthor{depaola2003new}'s  (\citeyear{depaola2003new}) result, as shown in Figure \ref{depaola_comparison},  which verifies the sampling algorithm of the differential KN cross section. Figure  \ref{depaola_comparison} shows the resulting modulation curve when our Klein Nishina (KN) cross section is monte carlo sampled in black. The analytic profile of the cross section as a function of $\phi_\mathrm{sc}$ calculated by \cite{depaola2003new} is shown as the solid blue line. They sample the KN cross section for a photon beam with 100\% polarization along the $+Q$ direction, with an energy of 100 keV and $85^\circ<\theta_\mathrm{sc}<90^\circ$. Accounting for the differences in the positive stokes parameters in the convention used, we are able to use our method of sampling the stokes parameter to acquire the proper distribution.
 
 
+Additionally, reproducing \citeauthor{krawczynski2011polarization}'s  (\citeyear{krawczynski2011polarization}) results, in Figure \ref{kraw_comparison}, tests the Lorentz transform portion of MCRaT.} \cite{krawczynski2011polarization} scattered a beam of photons, 100\% polarized along the $+Q$ axis with frequency $\omega=10^{12}$ Hz, with a beam of electrons moving at a Lorentz factor of $\gamma=100$. Following their setup, we produce distributions of the resulting lab frame which we show in Figure \ref{kraw_comparison}. These distributions are identical, with the exception of normalization, to the distribution acquired by \cite{krawczynski2011polarization} in their Figure 6. The difference in the signs of $Q$ and $U$ in our distribution with respect to \citeauthor{krawczynski2011polarization}'s (\citeyear{krawczynski2011polarization}) Figure 6 is due to the differences in the orientation of the $+Q$ and $+U$ axis of the Stokes plane.
 
+\begin{figure}[h!]
+ \centering
+ \includegraphics[]{phi_sampling_depaola}
+ \caption{Plot of the distributed $\phi_\mathrm{sc}$ from sampling the Klein Nishina cross section as is outlined in Section \ref{mcrat} compared to the analytic cross section acquired by \cite{depaola2003new}. The distribution is shown in black and the analytic profile is shown by the blue curve.}
+ \label{depaola_comparison}
+ \end{figure}
+
+\begin{figure}[]
+ \centering
+ \subfloat{
+ \includegraphics[width=0.5\textwidth]{kraw_test_i} %{0.5\textwidth} %{\label{kraw_i}}
+ }
+ \subfloat{
+ \includegraphics[width=0.5\textwidth]{kraw_test_q} %{0.5\textwidth} %{\label{kraw_q}}
+ } \\
+ \subfloat{
+  \includegraphics[width=0.5\textwidth]{kraw_test_u} %{0.5\textwidth} %{\label{kraw_u}}
+  }
+ \caption{The distribution of the stokes parameters as a function of the scattered photon's $\theta$ and $\phi$ values. These distributions are morphologically similar to the distribution acquired by \cite{krawczynski2011polarization} in thier Figure 6.  }
+ \label{kraw_comparison}
+ \end{figure}
+
+In order to test the code globally, we reproduce the results of \cite{lundman2014polarization}. To do so, we imposed the analytic jet structure provided by \cite{lundman2014polarization} on the same simulation frames that we will use in Section \ref{results}. This is similar to \cite{MCRaT} simulating a variety of outflows by imposing an analytic solution onto hydrodynamic simulation files. {The domain of this simulation is $2.5 \times 10^{13}$ cm along the direction of the jet and $5 \times 10^{12}$ cm along the x axis.} We used $\sim 6 \times 10^5$ photons to conduct our code validation for a wide structured jet with $\theta_{\mathrm{j}}=0.1$ radians ($\sim 5.7^\circ$), $\Gamma_0=100$ and $L=3 \times 10^{50}$ erg/s. This is the same case exhibited in \citeauthor{lundman2014polarization}'s (\citeyear{lundman2014polarization}) wide jet with the exception of the value of $L$ that we use, which was chosen to maximize the number of photons that reached the photosphere before they approached the edge of the domain of the hydrodynamic simulation. {There are two major differences between the simulation conducted by \cite{lundman2014polarization} and the MCRaT simulation: 1) MCRaT uses the full Klein Nishina Cross section to determine if photons scatter while \citeauthor{lundman2014polarization}'s (\citeyear{lundman2014polarization}) simulation  uses the Thomson cross section and 2) The photons in MCRaT are not permitted to immediately escape to infinity if the randomly drawn optical depth is small enough while photons in  \citeauthor{lundman2014polarization}'s (\citeyear{lundman2014polarization}) simulation are allowed to do so. }
+
+\begin{figure}
+\centering
+\includegraphics[width=\linewidth]{comp_lundman_p_4_thetaj_1e-01.pdf}
+\caption{A comparison between the polarization acquired by \cite{lundman2014polarization} for a structured jet with $\theta_{\mathrm{j}}=0.1$ radians $\Gamma_0=100$ and $L=3 \times 10^{50}$ erg/s, shown by the {red} dashed line, and the MCRaT acquired polarization shown by the black points with $1\sigma$ error bars. The dashed grey line denotes $\Pi=0\%$ for reference. We find agreement until  $\theta_{\mathrm{v}}/\theta_{\mathrm{j}} \approx 1.6$ ($\theta_{\mathrm{v}} \approx 9^\circ$) where the MCRaT photons are no longer decoupled from the flow by the time they reach the edge of the simulation domain. }
+\label{fig:complundmanp4thetaj1}
+\end{figure}
+
+In Figure \ref{fig:complundmanp4thetaj1} we show the results of our validation. The polarization acquired by \cite{lundman2014polarization} is shown as the red dotted line, the black points with $1\sigma$ error bars show the polarization acquired by MCRaT, and the grey dotted line shows $\Pi=0\%$ for reference. In addition to finding that the Stokes $u$ parameter vanishes ($\sum u \approx 0$), which is expected for an axis symmetric jet \citep{ito_polarization, lundman2014polarization}, we find that MCRaT is able to recover \citeauthor{lundman2014polarization}'s (\citeyear{lundman2014polarization}) polarization profile relatively well. {We are also able to recover the change in the sign of the stokes Q parameter at $\theta_{\mathrm{v}}/\theta_{\mathrm{j}} \sim 1.2$ that \cite{lundman2014polarization} find in their results.
+The MCRaT result is slightly lower than the polarization acquired by \cite{lundman2014polarization} due to the fact that the analytic jet profile is mapped onto a discretized grid; this has the effect of decreasing the gradients in the jet profile that would contribute to a larger polarization. 
+Furthermore, \citeauthor{lundman2014polarization}'s (\citeyear{lundman2014polarization}) polarization profile contains a minimum of 200 photons in each angle bin, while the results of the MCRaT validation contain at least $\sim 10000$ photons in each angle bin, increasing the general precision of the MCRaT results. }
+
+For $\theta_{\mathrm{v}}/\theta_{\mathrm{j}} \gtrsim 1.6$ ($\theta_{\mathrm{v}} \approx 9^\circ$) the MCRaT polarization begins to decrease again, coming into strain with what is expected. This is due to the fact that the simulation files that we impose the analytic jet equations onto have a finite domain. Even when the photons reach the edge of the domain ($2.5 \times 10^{13}$ cm) at $\theta_{\mathrm{v}} \gtrsim 9^\circ$, they haven't fully decoupled from the photosphere (which would be located at $r\sim 1\times 10^{14}$ cm \citep{lundman2014polarization}) thus decreasing the detected polarization. 
+
+\bibliography{references}
 \end{document}

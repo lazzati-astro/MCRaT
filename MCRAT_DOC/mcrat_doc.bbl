@@ -1,0 +1,34 @@
+\begin{thebibliography}{}
+\expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
+
+\bibitem[{Depaola(2003)}]{depaola2003new}
+Depaola, G. 2003, Nuclear Instruments and Methods in Physics Research Section
+  A: Accelerators, Spectrometers, Detectors and Associated Equipment, 512, 619
+
+\bibitem[{Ito {et~al.}(2014)Ito, Nagataki, Matsumoto, Lee, Tolstov, Mao,
+  Dainotti, \& Mizuta}]{ito_polarization}
+Ito, H., Nagataki, S., Matsumoto, J., {et~al.} 2014, The Astrophysical Journal,
+  789, 159
+
+\bibitem[{Krawczynski(2011)}]{krawczynski2011polarization}
+Krawczynski, H. 2011, The Astrophysical Journal, 744, 30
+
+\bibitem[{Lazzati(2016)}]{MCRaT}
+Lazzati, D. 2016, The Astrophysical Journal, 829, 76
+
+\bibitem[{Lundman {et~al.}(2014)Lundman, Pe'er, \&
+  Ryde}]{lundman2014polarization}
+Lundman, C., Pe'er, A., \& Ryde, F. 2014, Monthly Notices of the Royal
+  Astronomical Society, 440, 3292
+
+\bibitem[{Mathews(2013)}]{sample_kn_theta}
+Mathews, K. 2013, Nuclear Science and Engineering, 173, 207
+
+\bibitem[{McMaster(1961)}]{McMaster:1961aa}
+McMaster, W.~H. 1961, Reviews of Modern Physics, 33, 8
+
+\bibitem[{{Rybicki} \& {Lightman}(1979)}]{Rybiki_Lightman}
+{Rybicki}, G.~B., \& {Lightman}, A.~P. 1979, {Radiative processes in
+  astrophysics}
+
+\end{thebibliography}

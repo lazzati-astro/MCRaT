@@ -1,0 +1,49 @@
+This is BibTeX, Version 0.99d (TeX Live 2018)
+Capacity: max_strings=100000, hash_size=100000, hash_prime=85009
+The top-level auxiliary file: mcrat_doc.aux
+The style file: /Users/Tylerparsotan/Documents/LATEX/apj.bst.bst
+Database file #1: references.bib
+Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
+Warning--empty publisher in Rybiki_Lightman
+You've used 8 entries,
+            3085 wiz_defined-function locations,
+            692 strings with 5865 characters,
+and the built_in function-call counts, 3201 in all, are:
+= -- 275
+> -- 170
+< -- 6
++ -- 60
+- -- 56
+* -- 230
+:= -- 615
+add.period$ -- 8
+call.type$ -- 8
+change.case$ -- 50
+chr.to.int$ -- 8
+cite$ -- 9
+duplicate$ -- 142
+empty$ -- 229
+format.name$ -- 66
+if$ -- 639
+int.to.chr$ -- 1
+int.to.str$ -- 0
+missing$ -- 8
+newline$ -- 28
+num.names$ -- 32
+pop$ -- 48
+preamble$ -- 1
+purify$ -- 50
+quote$ -- 0
+skip$ -- 128
+stack$ -- 0
+substring$ -- 151
+swap$ -- 0
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 69
+warning$ -- 1
+while$ -- 31
+width$ -- 0
+write$ -- 82
+(There was 1 warning)
