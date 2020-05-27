@@ -19,4 +19,4 @@
 \contentsline {section}{\numberline {4}Physics Included in MCRaT}{16}{section.4}
 \contentsline {subsection}{\numberline {4.1}Injecting Photons}{16}{subsection.4.1}
 \contentsline {subsection}{\numberline {4.2}Scattering Photons}{17}{subsection.4.2}
-\contentsline {subsection}{\numberline {4.3}Polarization}{17}{subsection.4.3}
+\contentsline {subsection}{\numberline {4.3}Polarization}{19}{subsection.4.3}

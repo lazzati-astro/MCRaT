@@ -34,26 +34,26 @@
 \@writefile{toc}{\contentsline {section}{\numberline {3}The MCRaT Code}{10}{section.3}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Assumptions about the RHD Simulation}{10}{subsection.3.1}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Algorithm}{10}{subsection.3.2}}
+\newlabel{algorithm}{{3.2}{10}{Algorithm}{subsection.3.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Output}{13}{subsection.3.3}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Post-processing Algorithm}{15}{subsection.3.4}}
 \@writefile{toc}{\contentsline {section}{\numberline {4}Physics Included in MCRaT}{16}{section.4}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Injecting Photons}{16}{subsection.4.1}}
 \newlabel{inj}{{4.1}{16}{Injecting Photons}{subsection.4.1}{}}
 \newlabel{n_density}{{1}{16}{Injecting Photons}{equation.4.1}{}}
-\citation{Rybiki_Lightman}
-\citation{McMaster:1961aa}
-\citation{lundman2014polarization}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Scattering Photons}{17}{subsection.4.2}}
 \newlabel{scatt}{{4.2}{17}{Scattering Photons}{subsection.4.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Polarization}{17}{subsection.4.3}}
-\newlabel{pol}{{4.3}{17}{Polarization}{subsection.4.3}{}}
-\citation{lundman2014polarization}
-\citation{McMaster:1961aa}
-\citation{lundman2014polarization}
-\citation{Rybiki_Lightman}
 \citation{lundman2014polarization}
 \citation{sample_kn_theta}
-\newlabel{KN_diff_cross_section}{{4}{18}{Polarization}{equation.4.4}{}}
+\newlabel{KN_diff_cross_section_scatt}{{3}{18}{Scattering Photons}{equation.4.3}{}}
+\citation{Rybiki_Lightman}
+\citation{McMaster:1961aa}
+\citation{lundman2014polarization}
+\citation{lundman2014polarization}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Polarization}{19}{subsection.4.3}}
+\newlabel{pol}{{4.3}{19}{Polarization}{subsection.4.3}{}}
+\citation{McMaster:1961aa}
+\citation{lundman2014polarization}
 \citation{McMaster:1961aa,lundman2014polarization}
 \citation{McMaster:1961aa}
 \citation{krawczynski2011polarization}
@@ -80,11 +80,11 @@
 \citation{lundman2014polarization}
 \citation{lundman2014polarization}
 \citation{lundman2014polarization}
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Plot of the distributed $\phi _\mathrm  {sc}$ from sampling the Klein Nishina cross section as is outlined in Section \ref  {mcrat} compared to the analytic cross section acquired by \cite  {depaola2003new}. The distribution is shown in black and the analytic profile is shown by the blue curve.\relax }}{20}{figure.caption.6}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Plot of the distributed $\phi _\mathrm  {sc}$ from sampling the Klein Nishina cross section as is outlined in Section \ref  {mcrat} compared to the analytic cross section acquired by \cite  {depaola2003new}. The distribution is shown in black and the analytic profile is shown by the blue curve.\relax }}{21}{figure.caption.6}}
 \providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
-\newlabel{depaola_comparison}{{1}{20}{Plot of the distributed $\phi _\mathrm {sc}$ from sampling the Klein Nishina cross section as is outlined in Section \ref {mcrat} compared to the analytic cross section acquired by \cite {depaola2003new}. The distribution is shown in black and the analytic profile is shown by the blue curve.\relax }{figure.caption.6}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces The distribution of the stokes parameters as a function of the scattered photon's $\theta $ and $\phi $ values. These distributions are morphologically similar to the distribution acquired by \cite  {krawczynski2011polarization} in thier Figure 6. \relax }}{21}{figure.caption.7}}
-\newlabel{kraw_comparison}{{2}{21}{The distribution of the stokes parameters as a function of the scattered photon's $\theta $ and $\phi $ values. These distributions are morphologically similar to the distribution acquired by \cite {krawczynski2011polarization} in thier Figure 6. \relax }{figure.caption.7}{}}
+\newlabel{depaola_comparison}{{1}{21}{Plot of the distributed $\phi _\mathrm {sc}$ from sampling the Klein Nishina cross section as is outlined in Section \ref {mcrat} compared to the analytic cross section acquired by \cite {depaola2003new}. The distribution is shown in black and the analytic profile is shown by the blue curve.\relax }{figure.caption.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces The distribution of the stokes parameters as a function of the scattered photon's $\theta $ and $\phi $ values. These distributions are morphologically similar to the distribution acquired by \cite  {krawczynski2011polarization} in thier Figure 6. \relax }}{22}{figure.caption.7}}
+\newlabel{kraw_comparison}{{2}{22}{The distribution of the stokes parameters as a function of the scattered photon's $\theta $ and $\phi $ values. These distributions are morphologically similar to the distribution acquired by \cite {krawczynski2011polarization} in thier Figure 6. \relax }{figure.caption.7}{}}
 \citation{lundman2014polarization}
 \citation{lundman2014polarization}
 \citation{lundman2014polarization}
@@ -95,8 +95,8 @@
 \citation{lundman2014polarization}
 \citation{lundman2014polarization}
 \citation{lundman2014polarization}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces A comparison between the polarization acquired by \cite  {lundman2014polarization} for a structured jet with $\theta _{\mathrm  {j}}=0.1$ radians $\Gamma _0=100$ and $L=3 \times 10^{50}$ erg/s, shown by the {red} dashed line, and the MCRaT acquired polarization shown by the black points with $1\sigma $ error bars. The dashed grey line denotes $\Pi =0\%$ for reference. We find agreement until $\theta _{\mathrm  {v}}/\theta _{\mathrm  {j}} \approx 1.6$ ($\theta _{\mathrm  {v}} \approx 9^\circ $) where the MCRaT photons are no longer decoupled from the flow by the time they reach the edge of the simulation domain. \relax }}{22}{figure.caption.8}}
-\newlabel{fig:complundmanp4thetaj1}{{3}{22}{A comparison between the polarization acquired by \cite {lundman2014polarization} for a structured jet with $\theta _{\mathrm {j}}=0.1$ radians $\Gamma _0=100$ and $L=3 \times 10^{50}$ erg/s, shown by the {red} dashed line, and the MCRaT acquired polarization shown by the black points with $1\sigma $ error bars. The dashed grey line denotes $\Pi =0\%$ for reference. We find agreement until $\theta _{\mathrm {v}}/\theta _{\mathrm {j}} \approx 1.6$ ($\theta _{\mathrm {v}} \approx 9^\circ $) where the MCRaT photons are no longer decoupled from the flow by the time they reach the edge of the simulation domain. \relax }{figure.caption.8}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces A comparison between the polarization acquired by \cite  {lundman2014polarization} for a structured jet with $\theta _{\mathrm  {j}}=0.1$ radians $\Gamma _0=100$ and $L=3 \times 10^{50}$ erg/s, shown by the {red} dashed line, and the MCRaT acquired polarization shown by the black points with $1\sigma $ error bars. The dashed grey line denotes $\Pi =0\%$ for reference. We find agreement until $\theta _{\mathrm  {v}}/\theta _{\mathrm  {j}} \approx 1.6$ ($\theta _{\mathrm  {v}} \approx 9^\circ $) where the MCRaT photons are no longer decoupled from the flow by the time they reach the edge of the simulation domain. \relax }}{23}{figure.caption.8}}
+\newlabel{fig:complundmanp4thetaj1}{{3}{23}{A comparison between the polarization acquired by \cite {lundman2014polarization} for a structured jet with $\theta _{\mathrm {j}}=0.1$ radians $\Gamma _0=100$ and $L=3 \times 10^{50}$ erg/s, shown by the {red} dashed line, and the MCRaT acquired polarization shown by the black points with $1\sigma $ error bars. The dashed grey line denotes $\Pi =0\%$ for reference. We find agreement until $\theta _{\mathrm {v}}/\theta _{\mathrm {j}} \approx 1.6$ ($\theta _{\mathrm {v}} \approx 9^\circ $) where the MCRaT photons are no longer decoupled from the flow by the time they reach the edge of the simulation domain. \relax }{figure.caption.8}{}}
 \citation{lundman2014polarization}
 \bibdata{references}
 \bibcite{depaola2003new}{{1}{2003}{{Depaola}}{{}}}
