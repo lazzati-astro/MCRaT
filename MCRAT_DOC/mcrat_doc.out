@@ -12,7 +12,7 @@
 \BOOKMARK [2][-]{subsection.2.9}{Using Hybrid-Parellelization}{section.2}% 12
 \BOOKMARK [2][-]{subsection.2.10}{Post-Processing MCRaT Data}{section.2}% 13
 \BOOKMARK [1][-]{section.3}{The MCRaT Code}{}% 14
-\BOOKMARK [2][-]{subsection.3.1}{Assumptions about the RHD Simulation}{section.3}% 15
+\BOOKMARK [2][-]{subsection.3.1}{Assumptions about the Hydro Simulation}{section.3}% 15
 \BOOKMARK [2][-]{subsection.3.2}{Algorithm}{section.3}% 16
 \BOOKMARK [2][-]{subsection.3.3}{Output}{section.3}% 17
 \BOOKMARK [2][-]{subsection.3.4}{Post-processing Algorithm}{section.3}% 18

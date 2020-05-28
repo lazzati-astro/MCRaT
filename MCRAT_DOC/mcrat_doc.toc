@@ -12,10 +12,10 @@
 \contentsline {subsection}{\numberline {2.9}Using Hybrid-Parellelization}{9}{subsection.2.9}
 \contentsline {subsection}{\numberline {2.10}Post-Processing MCRaT Data}{9}{subsection.2.10}
 \contentsline {section}{\numberline {3}The MCRaT Code}{10}{section.3}
-\contentsline {subsection}{\numberline {3.1}Assumptions about the RHD Simulation}{10}{subsection.3.1}
+\contentsline {subsection}{\numberline {3.1}Assumptions about the Hydro Simulation}{10}{subsection.3.1}
 \contentsline {subsection}{\numberline {3.2}Algorithm}{10}{subsection.3.2}
 \contentsline {subsection}{\numberline {3.3}Output}{13}{subsection.3.3}
-\contentsline {subsection}{\numberline {3.4}Post-processing Algorithm}{15}{subsection.3.4}
+\contentsline {subsection}{\numberline {3.4}Post-processing Algorithm}{16}{subsection.3.4}
 \contentsline {section}{\numberline {4}Physics Included in MCRaT}{16}{section.4}
 \contentsline {subsection}{\numberline {4.1}Injecting Photons}{16}{subsection.4.1}
 \contentsline {subsection}{\numberline {4.2}Scattering Photons}{17}{subsection.4.2}
