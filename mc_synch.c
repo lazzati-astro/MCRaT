@@ -44,11 +44,16 @@ double calcDimlessTheta(double temp)
     return K_B*temp/(M_EL*C_LIGHT*C_LIGHT);
 }
 
-double calcB(double el_dens, double temp, double epsilon_b)
+double calcB(double el_dens, double temp)
 {
     //calc the B field from assuming its some fraction of the matter energy density
     //assume equipartition here
-    return sqrt(8*M_PI*3*el_dens*K_B*temp/2);
+    #if B_FIELD_CALC == INTERNAL_E
+        return sqrt(8*M_PI*3*el_dens*K_B*temp/2);
+    #else
+        //otherwise calculate B from the total energy
+        return sqrt(8*M_PI*EPSILON_B*(el_dens*M_P*C_LIGHT*C_LIGHT+4*A_RAD*temp*temp*temp*temp/3));
+    #endif
 }
 
 double n_el_MJ(double el_dens, double dimlesstheta, double gamma)
@@ -170,10 +175,10 @@ double G_prime(double gamma_el, double p_el)
     return (3*gamma_el-(3*pow(gamma_el,2)-1)*log((gamma_el+1)/p_el))/G(gamma_el, p_el);
 }
 
-double synCrossSection(double el_dens, double T, double nu_ph, double p_el, double epsilon_b)
+double synCrossSection(double el_dens, double T, double nu_ph, double p_el)
 {
     double b_cr=FINE_STRUCT*sqrt(M_EL*C_LIGHT*C_LIGHT/pow(R_EL,3.0));
-    double B=calcB(el_dens, T, epsilon_b);
+    double B=calcB(el_dens, T);
     double nu_c=calcCyclotronFreq(B);
     double gamma_el=sqrt(p_el*p_el+1);
     
@@ -1427,7 +1432,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
 }
 
 
-int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,  double epsilon_b, gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr)
+int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,   gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr)
 {
     double rmin=0, rmax=0, max_photons=0.1*maximum_photons; //have 10% as default, can change later need to figure out how many photons across simulations I want emitted
     double ph_weight_adjusted=0, position_phi=0;
@@ -1501,7 +1506,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                 {
                         //set parameters fro integration fo phtoons spectrum
                         el_dens= (*(dens+i))/M_P;
-                        nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+i) , epsilon_b));
+                        nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+i)));
                         dimlesstheta=calcDimlessTheta( *(temp+i));
                         //printf("Temp %e, el_dens %e, B %e, nu_c %e, dimlesstheta %e\n",*(temp+i), el_dens, calcB(el_dens, *(temp+i), epsilon_b), nu_c, dimlesstheta);
 
@@ -1549,7 +1554,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                     //printf("%d, %lf \n",*(ph_dens+j), ph_dens_calc);
                     
                     //modify the number of photons injected here
-                    (*(ph_dens+j))=(*(ph_dens+j))/5;
+                    //(*(ph_dens+j))=(*(ph_dens+j))/5;
                     
                     //sum up all the densities to get total number of photons
                     ph_tot+=(*(ph_dens+j));
@@ -1745,7 +1750,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
             {
                 
                 el_dens= (*(dens+i))/M_P;
-                nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+i) , epsilon_b));
+                nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+i)));
                 dimlesstheta=calcDimlessTheta( *(temp+i));
                 max_jnu=2*jnu(nu_c/10, nu_c, dimlesstheta, el_dens);
                 
@@ -1840,7 +1845,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         i=(*ph_orig)[scatt_ph_index].nearest_block_index;
         
         el_dens= (*(dens+i))/M_P;
-        nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+i) , epsilon_b));
+        nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+i)));
         
         fr_dum=nu_c; //_scatt; //set the frequency directly to the cyclotron frequency
         //fprintf(fPtr, "%lf %d\n ",fr_dum, (*ph_orig)[scatt_ph_index].nearest_block_index);
@@ -1915,7 +1920,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     
 }
 
-int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_synch_num_ph, double epsilon_b, double *temp, double *dens, FILE *fPtr)
+int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_synch_num_ph, double *temp, double *dens, FILE *fPtr)
 {
     //still need to deal with below issue
     //frame 213 where the absorption doesnt occur for all emitted photons and have some absorbed before/after unabsorbed photons, how to deal with this?
@@ -1941,7 +1946,7 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
             // if the photon isnt a null photon already, see if it should be absorbed
             
             el_dens= (*(dens+(*ph_orig)[i].nearest_block_index))/M_P;
-            nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+(*ph_orig)[i].nearest_block_index) , epsilon_b));
+            nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+(*ph_orig)[i].nearest_block_index)));
             //printf("photon %d has lab nu %e comv frequency %e and nu_c %e with FLASH grid number %d\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST, (*ph_orig)[i].comv_p0*C_LIGHT/PL_CONST, nu_c, (*ph_orig)[i].nearest_block_index);
             if (((*ph_orig)[i].comv_p0*C_LIGHT/PL_CONST <= nu_c) || ((*ph_orig)[i].type == 's'))
             {

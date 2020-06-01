@@ -881,7 +881,7 @@ int main(int argc, char **argv)
                         
                         fprintf(fPtr, "Emitting Synchrotron Photons in frame %d\n", scatt_frame);
                         phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
-                        num_ph_emit=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, 1, rng, 0, 0, fPtr);
+                        num_ph_emit=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 0, 0, fPtr);
                         
                         //if (scatt_frame==203)
                         //{
@@ -967,7 +967,7 @@ int main(int argc, char **argv)
                                 
                                 //fprintf(fPtr, "num_null_ph %d\n", num_null_ph);
                                 //printf("The previous scattered photon was a seed photon %c.\n", (phPtr+ph_scatt_index)->type);
-                                num_ph_emit+=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, 1, rng, 1, ph_scatt_index, fPtr);
+                                num_ph_emit+=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 1, ph_scatt_index, fPtr);
                                 //fprintf(fPtr, " num_photon: %d\n",num_ph  );
                                 //fflush(fPtr);
                                 
@@ -1128,7 +1128,7 @@ int main(int argc, char **argv)
 
                         
                         //make sure the photons that shou;d be absorbed should be absorbed
-                        phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph,  1, tempPtr, densPtr, fPtr);
+                        phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph, tempPtr, densPtr, fPtr);
                         
                         //phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
                         //fprintf(fPtr,"After Abs: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);

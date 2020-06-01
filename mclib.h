@@ -1,21 +1,25 @@
 //define on and off for switches
-#define ON 1
+#define ON  1
 #define OFF 0
 
 //define the codes for the different types of hydro simulations that we can use
-#define FLASH 0
-#define PLUTO_CHOMBO 1
-#define RIKEN 2 //need to replace this when done testing, just keeping it in the background for now and minimize its effect
+#define FLASH           0
+#define PLUTO_CHOMBO    1
+#define RIKEN           2 //need to replace this when done testing, just keeping it in the background for now and minimize its effect
 
 //define types of simulations that can be run
-#define SCIENCE 0
-#define CYLINDRICAL_OUTFLOW 1
-#define SPHERICAL_OUTFLOW 2
-#define STRUCTURED_SPHERICAL_OUTFLOW 3
+#define SCIENCE                         0
+#define CYLINDRICAL_OUTFLOW             1
+#define SPHERICAL_OUTFLOW               2
+#define STRUCTURED_SPHERICAL_OUTFLOW    3
 
 //define the geometries that we can handle
 #define CARTESIAN 0
 #define SPHERICAL 1
+
+//define the types of things that we can assume for the thermal synchrotron emission and how we calculate the B field
+#define INTERNAL_E  0
+#define TOTAL_E     1
 
 
 extern const double C_LIGHT;
@@ -72,6 +76,21 @@ struct photon
     //if the angle bins that the rebinned synch photons isnt defined use 0.5 degree increments by default
     #ifndef SYNCHROTRON_REBIN_ANG
         #define SYNCHROTRON_REBIN_ANG 0.5
+    #endif
+
+    //if the user hasnt defined anything for how to calculate the B field, assume that they want it calculated from the internal energy
+    #ifndef B_FIELD_CALC
+        #define B_FIELD_CALC INTERNAL_E
+    #else
+        //it is defined therefore see if TOTAL_E is what has been set
+        #if B_FIELD_CALC == TOTAL_E
+            //see if epsilon_b has been set
+            #ifndef EPSILON_B
+                //if not set it to be 0.5 by default
+                #DEFINE EPSILON_B 0.5
+            #endif
+        #endif
+
     #endif
 
 #endif
