@@ -880,6 +880,14 @@ int main(int argc, char **argv)
                         //printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0);
                         
                         fprintf(fPtr, "Emitting Synchrotron Photons in frame %d\n", scatt_frame);
+                        
+                        #if B_FIELD_CALC == INTERNAL_E
+                            fprintf(fPtr, "Calculating the magnetic field using internal energy.\n", scatt_frame);
+                        #else
+                            //otherwise calculate B from the total energy
+                            fprintf(fPtr, "Calculating the magnetic field using the total energy and epsilon_B is set to $lf.\n", EPSILON_B);
+                        #endif
+                        
                         phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
                         num_ph_emit=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 0, 0, fPtr);
                         
