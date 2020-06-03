@@ -68,7 +68,7 @@ struct photon
 //take care of synchrotron defaults here
 #ifdef SYNCHROTRON_SWITCH
 
-    //if the percentage of max photon that will be used to create the energy bins isnt defined, define it to be 10%
+    //if the percentage of max photon that will be used to create the energy bins isnt defined, define it to be 10%, also applies to emiting synch photons
     #ifndef SYNCHROTRON_REBIN_E_PERC
         #define SYNCHROTRON_REBIN_E_PERC 0.1
     #endif

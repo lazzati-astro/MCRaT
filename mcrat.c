@@ -885,7 +885,7 @@ int main(int argc, char **argv)
                             fprintf(fPtr, "Calculating the magnetic field using internal energy.\n", scatt_frame);
                         #else
                             //otherwise calculate B from the total energy
-                            fprintf(fPtr, "Calculating the magnetic field using the total energy and epsilon_B is set to $lf.\n", EPSILON_B);
+                            fprintf(fPtr, "Calculating the magnetic field using the total energy and epsilon_B is set to %lf.\n", EPSILON_B);
                         #endif
                         
                         phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
