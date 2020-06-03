@@ -7,9 +7,10 @@ MCRaT injects photons in a FLASH simulation and individually propagates and comp
 Currently, MCRaT works with FLASH hydrodynamic simulations and PLUTO AMR simulations, with both 2D spherical (r, ![equation](https://latex.codecogs.com/gif.latex?%5Ctheta)) and 2D cartesian ((x,y) and (r,z)).
 <!-- for tex: https://stackoverflow.com/questions/35498525/latex-rendering-in-readme-md-on-github -->
 
-MCRaT is also able to emit and absorb synchrotron photons and keep track of them as the photons and outflow propagates. 
+MCRaT is also able to emit and absorb thermal synchrotron photons and keep track of them as the photons, and the outflow, propagates. 
 
 The code was initially written in python by Dr. Davide Lazzati as a proof of concept. The code was then translated into C by Tyler Parsotan and made to use the OpenMP, MPI, HDF5, and GNU Scientific libraries. MCRaT is highly parallelized and is easy to set up and use.
 
+There are also python files with documented functions to process the MCRaT output located at: [https://github.com/parsotat/ProcessMCRaT].
 
-
+In using MCRaT and the ProcessMCRaT codes, we ask that you cite the following papers: Lazzati (2016); Parsotan & Lazzati (2018); Parsotan et al. (2018).

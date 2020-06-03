@@ -28,6 +28,9 @@ MCRaT injects photons into a hydro simulation, using the FLASH or the PLUTO code
 
 The code was initially written in python by Dr.\ Davide Lazzati as a proof of concept. The code was then translated into C by Tyler Parsotan and made to use the OpenMP, MPI, HDF5, and GNU Scientific libraries. MCRaT is highly parallelized and is easy to set up and use.
 
+There are also python files with documented functions to process the MCRaT output located at: \url{https://github.com/parsotat/ProcessMCRaT}.
+
+In using MCRaT and the ProcessMCRaT codes, we ask that you cite the following papers: \cite{MCRaT, parsotan_mcrat, parsotan_var}.
 
 \section{Getting Started}
 This section describes how to get the MCRaT code as well as the required libraries necessary to compile MCRaT. This section will also cover the necessary steps to run the compiled MCRaT code. 
@@ -229,6 +232,7 @@ MCRaT has to make some assumptions about the output of the hydro simulation. The
 \item[1.] The velocity in the hydro simulation is normalized by the speed of light, $c$ 
 \item[2.] The pressure is normalized by $c^2$
 \item[3.] The density is normalized by $1$
+\item[4.] The pressure is radiation dominated. As such, we can calculate the temperature using $p=\frac{1}{3}aT^4$, where $a$ is the radiation density constant.
 \end{itemize}
 
 \subsection{Algorithm}\label{algorithm}
@@ -482,6 +486,10 @@ The MCRaT result is slightly lower than the polarization acquired by \cite{lundm
 Furthermore, \citeauthor{lundman2014polarization}'s (\citeyear{lundman2014polarization}) polarization profile contains a minimum of 200 photons in each angle bin, while the results of the MCRaT validation contain at least $\sim 10000$ photons in each angle bin, increasing the general precision of the MCRaT results. }
 
 For $\theta_{\mathrm{v}}/\theta_{\mathrm{j}} \gtrsim 1.6$ ($\theta_{\mathrm{v}} \approx 9^\circ$) the MCRaT polarization begins to decrease again, coming into strain with what is expected. This is due to the fact that the simulation files that we impose the analytic jet equations onto have a finite domain. Even when the photons reach the edge of the domain ($2.5 \times 10^{13}$ cm) at $\theta_{\mathrm{v}} \gtrsim 9^\circ$, they haven't fully decoupled from the photosphere (which would be located at $r\sim 1\times 10^{14}$ cm \citep{lundman2014polarization}) thus decreasing the detected polarization. 
+
+\subsection{Thermal Synchrotron Radiation}\label{synch}
+\subsubsection{Emitting Thermal Synchrotron Photons}
+
 
 \bibliography{references}
 \end{document}
