@@ -11,6 +11,6 @@ MCRaT is also able to emit and absorb thermal synchrotron photons and keep track
 
 The code was initially written in python by Dr. Davide Lazzati as a proof of concept. The code was then translated into C by Tyler Parsotan and made to use the OpenMP, MPI, HDF5, and GNU Scientific libraries. MCRaT is highly parallelized and is easy to set up and use.
 
-There are also python files with documented functions to process the MCRaT output located at: [https://github.com/parsotat/ProcessMCRaT].
+There are also python files with documented functions to process the MCRaT output located at: https://github.com/parsotat/ProcessMCRaT.
 
 In using MCRaT and the ProcessMCRaT codes, we ask that you cite the following papers: Lazzati (2016); Parsotan & Lazzati (2018); Parsotan et al. (2018).

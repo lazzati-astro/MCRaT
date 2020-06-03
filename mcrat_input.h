@@ -46,7 +46,6 @@
  #define MC_PATH "KN_CMC_16TI_SPHERICAL/"
 */
 
-
 #define     SIM_SWITCH              FLASH
 #define     STOKES_SWITCH           ON
 #define     COMV_SWITCH             ON

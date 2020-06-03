@@ -92,8 +92,42 @@ struct photon
         #endif
 
     #endif
+#else
+    //if its not defined set it to be off by default
+    #define SYNCHROTRON_SWITCH OFF
 
 #endif
+
+//take care of stokes switch and comv_switch defaults too
+#ifndef STOKES_SWITCH
+    #define STOKES_SWITCH   OFF
+#endif
+
+#ifndef COMV_SWITCH
+    #define COMV_SWITCH   OFF
+#endif
+
+//throw errors during compilation if other switches are not defined
+#ifndef SIM_SWITCH
+#error Need to define simulation type in mcrat_input.h file using SIM_SWITCH
+#endif
+
+#ifndef DIMENSIONS
+#error Need to define simulation dimensions in mcrat_input.h file using DIMENSIONS (shuld be set to two for this version of MCRaT)
+#endif
+
+#ifndef GEOMETRY
+#error Need to define simulation geometry in mcrat_input.h file using GEOMETRY
+#endif
+
+#ifndef HYDRO_L_SCALE
+#error Need to define simulation length scaling in mcrat_input.h file using HYDRO_L_SCALE
+#endif
+
+#ifndef MCPAR
+#error Need to define name of MCRaT parameter file in mcrat_input.h file using MCPAR (it is typically called mc.par, see e.g. the MCRaT manual)
+#endif
+
 
 void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit, int num_null_ph, int scatt_synch_num_ph, int frame,int frame_inj, int frame_last, char dir[200], int angle_rank, FILE *fPtr );
 

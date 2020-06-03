@@ -342,7 +342,7 @@ The code takes the MPI processes and distributes them evenly among the MCRaT pro
 These processes open the \texttt{mc\_proc\_$i$.h5} files and tally how many photons will be merged to produce the final \texttt{mcdata\_$f$.h5} file in the \texttt{ALL\_DATA} directory. Using this information, the code constantly ensures that any files created by MERGE files that were created, before the code was terminated for any reason, are not corrupted; thus the MERGE code can be stopped and started again without worrying about corrupting data. The code iterates over the photons injected from first to last in the MCRaT simulation, by reading the data from the \texttt{mc\_proc\_$i$.h5} files. These photon data are then collectively appended to the final \texttt{mcdata\_$f$.h5} file. 
 
 \section{Physics Included in MCRaT}
-This section describes the physics of the MCRaT code injecting photons and scattering them through the hydro simulation.  
+This section describes the physics of the MCRaT code injecting photons and scattering them through the hydro simulation. We also go into the physics of emitting thermal synchrotron photons into the outflow and how we rebin these photons to ensure that the number of photons doesn't increase without bound.
 
 \subsection{Injecting Photons} \label{inj}
 The code selects HD fluid elements at a given radius and calculates the expected number of photons in each element as
