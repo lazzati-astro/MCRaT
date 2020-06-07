@@ -52,7 +52,7 @@ Once the required libraries have been installed, the current MCRaT code can be d
 The Makefile has to be configured for a variety of specifics related to the user's system. The \texttt{CC} option in the makefile can be changed to the user's compiler of choice such as gcc or icc. The \texttt{HDF\_INSTALL} line is set to the directory that the HDF5 library is installed in. The \texttt{EXTLIB} line is set to the directories of any external libraries that the user may have. For example, if the GSL library cannot be found by the compiler, the user can put the directory of the library in this line of the Makefile in order to properly compile MCRaT. The \texttt{CFLAGS} feeds any compiler options to the compiler such as optimizations, and the switch to compile MCRaT with OpenMP capabilities, which is necessary to exploiting the hybrid parallelization available in the code. If the user is using gcc, the \texttt{-fopenmp} does not need to be changed, however, if the user is using icc, \texttt{-fopenmp} needs to be changed to \texttt{-qopenmp}. The \texttt{INCLUDE} line can be changed to include any \texttt{include/} directories to help the compiler, and the same for the \texttt{LIBSHDF} in relation to any shared libraries. The \texttt{LIB}, \texttt{DEPS}, and \texttt{OBJ} lines should not need to be changed. Once the lines in the Makefile appropriately reflect the users configurations, typing \texttt{make} and \texttt{make MERGE} should properly compile the MCRaT code as well as its post-processing code, \texttt{MERGE}.
 
 \subsection{The mcrat\_input.h file}
-Once compilation is successful, the user will need to decide where MCRaT's output will go. The user needs to make a directory within the directory that contains the hydro simulation frames. This subdirectory is where the parameter file for MCRaT must be placed. This is the same directory in which MCRaT will do all of its work, including making its own directories and output files within the aforementioned directories. Once this directory is created, the user must modify the \texttt{mcrat\_inputs.h} file in order for the code to know where to find all the hydro files and the MCRaT parameter file. The constant \texttt{FILEPATH} should be modified with the directory of the flash simulation files while the constant \texttt{FILEROOT} should contain the name of the hydro simulation files without any frame numbers. The constant \texttt{MC\_PATH} should be the name of the directory, located within the \texttt{FILEPATH} directory, that holds the MCRaT parameter file named \texttt{mc.par}. An example file structure, with the values for each variable in MCRaT, is shown below: \\
+Once compilation is successful, the user will need to decide where MCRaT's output will go. The user needs to make a directory within the directory that contains the hydro simulation frames. This subdirectory is where the parameter file for MCRaT must be placed. This is the same directory in which MCRaT will do all of its work, including making its own directories and output files within the aforementioned directories. Once this directory is created, the user must modify the \texttt{mcrat\_input.h} file in order for the code to know where to find all the hydro files and the MCRaT parameter file. The constant \texttt{FILEPATH} should be modified with the directory of the flash simulation files while the constant \texttt{FILEROOT} should contain the name of the hydro simulation files without any frame numbers. The constant \texttt{MC\_PATH} should be the name of the directory, located within the \texttt{FILEPATH} directory, that holds the MCRaT parameter file named \texttt{mc.par}. An example file structure, with the values for each variable in MCRaT, is shown below: \\
 \begin{figure}[h!]
 \dirtree{%
 .1 /dir/to/hydro/simulation/ (\texttt{FILEPATH}).
@@ -66,7 +66,10 @@ The other variable that can be changed in MCRaT is \texttt{SIMULATION\_TYPE} whi
 
 Additionally, there are a number of switches that the user can specify to the program to tell it whether they want to consider the effects of polarization, with the \texttt{STOKES\_SWITCH}, and one that specifies whether the user wants MCRaT to save the comoving 4 momenta of each photon, with the \texttt{COMV\_SWITCH}. These switches can be set to \texttt{OFF}, which means do not save the comoving 4 momenta and/or save and consider the effects of polarization, or they can be set to \texttt{ON}, which tells the program to consider polarization and/or save the stokes parameter associated with each photon or save each photon's 4 momentum.
 
-The \texttt{SIM\_SWITCH} tells MCRaT what hydro simulation is being used. The options are \texttt{FLASH} and \texttt{PLUTO\_CHOMBO}, for the FLASH hydrodynamic code and the PLUTO hydro code with CHOMBO AMR. The switch \texttt{DIM\_SWITCH} tells MCRaT the dimensionality of the hydro simulation that is used. This switch can be set to \texttt{2}, for 2D, or \texttt{3}, for 3D. The 3D feature is still in development so the switch should be set to \texttt{2} for now. The geometry can also be specified through the \texttt{GEOMETRY} define statement. The options are \texttt{SPHERICAL} and \texttt{CARTESIAN}; however, since MCRaT only supports 2D, the supported spherical coordinate system is $(r, \theta)$ and the supported \texttt{CARTESIAN} system is $(x,y)$ and $(r,z)$ in cylindrical coordinates. The length scale of the hydro simulation also has to be specified by setting the value of \texttt{HYDRO\_L\_SCALE} to the normalization that is used in the hydro simulation.
+The \texttt{SIM\_SWITCH} tells MCRaT what hydro simulation is being used. The options are \texttt{FLASH} and \texttt{PLUTO\_CHOMBO}, for the FLASH hydrodynamic code and the PLUTO hydro code with CHOMBO AMR respectively. The switch \texttt{DIM\_SWITCH} tells MCRaT the dimensionality of the hydro simulation that is used. This switch can be set to \texttt{2}, for 2D, or \texttt{3}, for 3D. The 3D feature is still in development so the switch should be set to \texttt{2} for now. The geometry can also be specified through the \texttt{GEOMETRY} define statement. The options are \texttt{SPHERICAL} and \texttt{CARTESIAN}; however, since MCRaT only supports 2D, the supported spherical coordinate system is $(r, \theta)$ and the supported \texttt{CARTESIAN} system is $(x,y)$ and $(r,z)$ in cylindrical coordinates. The length scale of the hydro simulation also has to be specified by setting the value of \texttt{HYDRO\_L\_SCALE} to the normalization that is used in the hydro simulation.
+
+In order to enable the consideration of thermal synchrotron photons in the MCRaT simulation the \texttt{SYNCHROTRON\_SWITCH} needs to be set to \texttt{ON}, otherwise this switch should be set to \texttt{OFF}. If it is set to be \texttt{ON}, the user needs to define other variables. One variable that needs to be defined is \texttt{SYNCHROTRON\_REBIN\_E\_PERC} which provides MCRaT with an upper limit for the number of synchrotron photons to emit. This quantity is calculated as the percentage of the maximum number of photons the user wants injected (see line 17 of the example mc.par file in section \ref{mc.par}). If \texttt{SYNCHROTRON\_REBIN\_E\_PERC} is set to 0.5 and the value of the 17$^\textrm{th}$ line is 3000, the the upper limit for the number of synchrotron emitted photons is 1500. This variable also defines the number of energy bins that MCRaT will create when it rebins the synchrotron photons, thus in the aforementioned example, the number of energy bins that the photons will be rebinned into is 1500 as well. MCRaT will also rebin the photons into spatial bins and the size of these bins are specified using the \texttt{SYNCHROTRON\_REBIN\_ANG} variable. In considering synchrotron emission, the user needs to specify how the magnetic field is calculated. This is done through the \texttt{B\_FIELD\_CALC} switch which can be set to \texttt{INTERNAL\_E}, where the magnetic energy density is set equal to the internal energy of the outflow, or \texttt{TOTAL\_E}, where the magnetic field is calculated from the total energy of the outflow. If \texttt{B\_FIELD\_CALC} is set to \texttt{TOTAL\_E}, the user needs to set the \texttt{EPSILON\_B} switch, which represents the fraction of the total outflow energy that is in the magnetic field. More information about the implementation of thermal synchrotron emission in the algorithm of the code can be found in section \ref{algorithm}. More information regarding the physics of the implementation of thermal synchrotron emission and absorption can be found in section \ref{synch}. 
+
 
 The parameters that can be set and the appropriate values that each parameter can be set as are as follows:
 \begin{figure}[h!]
@@ -86,9 +89,9 @@ MC\_PATH & ``dir\_with\_MCRaT\_parameter\_file/'' \\
 \hline 
 SIM\_SWITCH & FLASH, PLUTO\_CHOMBO \\ 
 \hline 
-STOKES\_SWITCH & ON, OFF \\ 
+STOKES\_SWITCH & ON, OFF (Defaults to OFF) \\ 
 \hline 
-COMV\_SWITCH & ON, OFF \\ 
+COMV\_SWITCH & ON, OFF (Defaults to OFF)\\ 
 \hline 
 DIMENSIONS & 2 \\ 
 \hline 
@@ -98,6 +101,22 @@ HYDRO\_L\_SCALE & $(-\infty, +\infty)$ \\
 \hline 
 MCPAR & ``mcpar\_filename.par'' \\ 
 \hline 
+SYNCHROTRON\_SWITCH & ON, OFF (Defaults to OFF)\\
+\hline 
+\hline
+If SYNCHROTRON\_SWITCH is ON: & \\
+\hline
+SYNCHROTRON\_REBIN\_E\_PERC & (0.0, 1.0] \\
+\hline
+SYNCHROTRON\_REBIN\_ANG &  $(-\infty, +\infty)$ \\
+\hline
+B\_FIELD\_CALC & INTERNAL\_E (Default)\newline TOTAL\_E \\
+\hline
+\hline
+If B\_FIELD\_CALC is TOTAL\_E: & \\
+\hline
+EPSILON\_B & (0.0, 1.0] \\
+\hline
 \end{tabular} 
 %\end{table}
 
@@ -252,7 +271,7 @@ p^\mu_i=\frac{h\nu_i}{c}\begin{pmatrix}
 \end{pmatrix}
 \]
 
-After the 4-momenta are set, the photons are boosted into the lab (observer) frame using the velocity of the fluid element that the photons are located within. The lab frame 4-momenta are saved to each photon's \texttt{photon} data structure, as well as the photon's position and weight. The number of scatterings is initialized to 0 and the stokes parameters are initialized to 0 except for s0 which is set to 1.
+After the 4-momenta are set, the photons are boosted into the lab (observer) frame using the velocity of the fluid element that the photons are located within. The lab frame 4-momenta are saved to each photon's \texttt{photon} data structure, as well as the photon's position and weight. The number of scatterings is initialized to 0 and the stokes parameters are initialized to 0 except for s0 which is set to 1. These photons are also denoted as type 'i', since they are the original injected photons.
 
 Once the photons have been injected into the simulation and their 4-momenta have been determined, the scattering process through the hydrodynamic (HD) simulation occurs. MCRaT reads in a HD simulation frame, starting from the frame in which the photons were initially injected into up until the last HD simulation frame available, and determines which HD fluid elements each photon is in. MCRaT then calculates the scattering path length of each photon. In order to reduce memory and optimize the code, MCRaT determines the minimum and maximum radii of the photons, $R_\mathrm{min}$ and $R_\mathrm{max}$ respectively, and selects a slab of hydro fluid elements with radii, $r_i$ such that 
 \[
@@ -276,7 +295,13 @@ While this loop is occurring, the photons in the simulation are being propagated
 
 Once the time limit for the next hydro fluid frame is reached, MCRaT saves all the photons' information in the \texttt{photon} data structure into the HDF5 file under a group with the same HD frame number that the photons were being scattered in. Once the data is written, a checkpoint file is saved for MCRaT to be able to continue the simulation if it were interrupted. Then, the next simulation frame is loaded and the process of determining photons' time to scatter, actual probability of scattering and resulting scattered 4-momenta until the next HD simulation frame time is reached. This repeats until the last HD simulation frame is reached. 
 
-If the MPI process has more photons to inject, then the process of injecting the photons into the next frame and propagating those photons through the hydro simulation repeats. If all of the MPI processes have finished injecting and propagating photons for the hydro simulation frames assigned to them, the code combines all of the photons' data from each MPI process into \texttt{mcdata\_$i$.h5} files where $i$ is the hydro simulation frame number. The output is covered in the next section.
+If the user is taking thermal synchrotron photons under consideration, then the thermal synchrotron photons are emitted into the flow in the frame after the initial set of photons are injected into the flow. The emission is done in the comoving frame of the flow. The number of photons emitted is calculated and iterated over in the same manner as the injection of photons. In the thermal synchrotron case the number of photons emitted in the $i^\mathrm{th}$ fluid element is calculated by integrating the low energy tail of the blackbody spectrum divided by $h\nu$, corresponding to the temperature of that fluid element, from 10 Hz to the cyclotron frequency of that cell. Another difference is that the total number of photons is limited by the \texttt{SYNCHROTRON\_REBIN\_E\_PERC} switch times the value of the 17$^\textrm{th}$ line in the \texttt{MCPAR} file. The last major difference is that the emitted synchrotron photons are set to have the energy corresponding to the cyclotron frequency of the $i^\mathrm{th}$ fluid element that they are placed in.
+
+These synchrotron photons are placed at the center of their corresponding fluid elements. If, when MCRaT is calculating the scattering path length of each photon, one of these synchrotron photons is determined to scatter, it is placed at a random position within its cell, then another synchrotron photon is created to replace it in the pool of photons at the center of the fluid element. After, the scattering process occurs.
+
+In order to keep the number of photons manageable, MCRaT checks the number of scattered synchrotron photons every 1000 scatterings. If the number is smaller than the 17$^\textrm{th}$ line in the \texttt{MCPAR} file (the maximum number of photons the user wants injected in each frame) then nothing happens, but if the number if larger then MCRaT rebins the photons. The rebinning is done in energy and in space with the number of energy bins, $N_e$, calculated as \texttt{SYNCHROTRON\_REBIN\_E\_PERC}$\times N_\mathrm{max}$, where \texttt{SYNCHROTRON\_REBIN\_E\_PERC} is a switch that the user sets in the \texttt{mcrat\_input.h} file and $N_\mathrm{max}$ is the value of the 17$^\textrm{th}$ line in the \texttt{MCPAR} file. The number of spatial bins, $N_s$, is calculated as $\Delta \theta/$\texttt{SYNCHROTRON\_REBIN\_ANG}, where $\Delta \theta/$ is the angular difference between the largest photon location in theta and the smallest photon location in theta and \texttt{SYNCHROTRON\_REBIN\_ANG} is is a switch that the user sets in the \texttt{mcrat\_input.h} file. $\Delta \theta/$ will most likely be the range of angles that the photons are injected into so that use can anticipate this value a priori. If $N_e\times N_s>N_\mathrm{max}$, then MCRaT will throw an error pointing this out. Otherwise the rebinning occurs by averaging photons' values within a given energy and spatial bin. The scattering and general steps of MCRaT continues and iterates until the time for the next hydro fluid frame is reached. Before the photons are saved, any photons that have energies that are smaller than the energy corresponding to the thermal synchrotron energy of the cell they are located in gets absorbed and becomes a null photon. 
+
+If the MPI process has more photons to inject, then the process of injecting/emitting the photons into the next frame and propagating those photons through the hydro simulation repeats. If all of the MPI processes have finished injecting and propagating photons for the hydro simulation frames assigned to them, the code combines all of the photons' data from each MPI process into \texttt{mcdata\_$i$.h5} files where $i$ is the hydro simulation frame number. The output is covered in the next section.
 
 \subsection{Output} 
 
@@ -489,6 +514,11 @@ For $\theta_{\mathrm{v}}/\theta_{\mathrm{j}} \gtrsim 1.6$ ($\theta_{\mathrm{v}} 
 
 \subsection{Thermal Synchrotron Radiation}\label{synch}
 \subsubsection{Emitting Thermal Synchrotron Photons}
+The emission of the thermal synchrotron photons is similar to injecting photons into the outflow.
+
+\subsubsection{Rebinning The Scattered Thermal Synchrotron Photons}
+
+\subsubsection{Absorption of Thermal Synchrotron Photons}
 
 
 \bibliography{references}

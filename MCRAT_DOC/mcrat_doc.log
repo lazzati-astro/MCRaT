@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex 2018.8.22)  3 JUN 2020 12:56
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex 2018.8.22)  4 JUN 2020 16:36
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -477,74 +477,91 @@ r-iza-tion, with the \OT1/cmtt/m/n/12 STOKES[]SWITCH\OT1/cmr/m/n/12 ,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 107--108
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 126--127
 
  []
 
-
-Overfull \hbox (17.62482pt too wide) in paragraph at lines 129--130
+[4]
+Overfull \hbox (17.62482pt too wide) in paragraph at lines 148--149
 [][] 
  []
 
-[4] [5] [6] [7]
-Overfull \hbox (4.22931pt too wide) in paragraph at lines 192--193
+[5] [6] [7] [8]
+Overfull \hbox (4.22931pt too wide) in paragraph at lines 211--212
 \OT1/cmtt/m/n/12 dir[]with[]MCRaT[]parameter[]file/angle[]dir/mc[]output[]* |gr
 ep "completed" |wc -l
  []
 
-[8]
-Underfull \hbox (badness 10000) in paragraph at lines 211--212
+[9]
+Underfull \hbox (badness 10000) in paragraph at lines 230--231
 
  []
 
-[9] [10] [11] [12]
-Overfull \hbox (31.56396pt too wide) in paragraph at lines 283--284
+[10] [11] [12] [13]
+Overfull \hbox (11.33185pt too wide) in paragraph at lines 302--303
+\OT1/cmr/m/n/12 the \OT1/cmtt/m/n/12 MCPAR \OT1/cmr/m/n/12 file. The num-ber of
+ spa-tial bins, $\OML/cmm/m/it/12 N[]$\OT1/cmr/m/n/12 , is cal-cu-lated as $^^A
+\OML/cmm/m/it/12 ^^R=$\OT1/cmtt/m/n/12 SYNCHROTRON[]REBIN[]ANG\OT1/cmr/m/n/12 ,
+
+ []
+
+[14]
+Overfull \hbox (31.56396pt too wide) in paragraph at lines 308--309
 \OT1/cmr/m/n/12 Each MCRaT MPI pro-cess out-puts 3 files. These files are named
  \OT1/cmtt/m/n/12 mc[]proc[]$\OML/cmm/m/it/12 i$\OT1/cmtt/m/n/12 .h5\OT1/cmr/m/
 n/12 , \OT1/cmtt/m/n/12 mc[]chkpt[]$\OML/cmm/m/it/12 i$\OT1/cmtt/m/n/12 .dat\OT
 1/cmr/m/n/12 ,
  []
 
-[13]
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-[14] [15] [16] [17] [18] [19] [20]
-<phi_sampling_depaola.pdf, id=301, 462.52798pt x 346.89601pt>
+[15] [16] [17] [18] [19] [20] [21]
+<phi_sampling_depaola.pdf, id=305, 462.52798pt x 346.89601pt>
 File: phi_sampling_depaola.pdf Graphic file (type pdf)
 <use phi_sampling_depaola.pdf>
-Package pdftex.def Info: phi_sampling_depaola.pdf  used on input line 455.
+Package pdftex.def Info: phi_sampling_depaola.pdf  used on input line 480.
 (pdftex.def)             Requested size: 462.52684pt x 346.89516pt.
 
-Overfull \hbox (9.55894pt too wide) in paragraph at lines 455--456
+Overfull \hbox (9.55894pt too wide) in paragraph at lines 480--481
  [][] 
  []
 
 
-LaTeX Warning: No positions in optional float specifier.
-               Default added (so using `tbp') on input line 460.
+LaTeX Warning: `!h' float specifier changed to `!ht'.
 
-<kraw_test_i.pdf, id=306, 372.9132pt x 281.56392pt>
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `tbp') on input line 485.
+
+<kraw_test_i.pdf, id=310, 372.9132pt x 281.56392pt>
 File: kraw_test_i.pdf Graphic file (type pdf)
 <use kraw_test_i.pdf>
-Package pdftex.def Info: kraw_test_i.pdf  used on input line 464.
+Package pdftex.def Info: kraw_test_i.pdf  used on input line 489.
 (pdftex.def)             Requested size: 226.48395pt x 171.00616pt.
-<kraw_test_q.pdf, id=307, 372.9132pt x 281.56392pt>
+<kraw_test_q.pdf, id=311, 372.9132pt x 281.56392pt>
 File: kraw_test_q.pdf Graphic file (type pdf)
 <use kraw_test_q.pdf>
-Package pdftex.def Info: kraw_test_q.pdf  used on input line 467.
+Package pdftex.def Info: kraw_test_q.pdf  used on input line 492.
 (pdftex.def)             Requested size: 226.48395pt x 171.00616pt.
 
-Overfull \hbox (15.6665pt too wide) in paragraph at lines 464--467
+Overfull \hbox (15.6665pt too wide) in paragraph at lines 489--492
  [][][][] 
  []
 
-<kraw_test_u.pdf, id=308, 372.9132pt x 281.56392pt>
+<kraw_test_u.pdf, id=312, 372.9132pt x 281.56392pt>
 File: kraw_test_u.pdf Graphic file (type pdf)
 <use kraw_test_u.pdf>
-Package pdftex.def Info: kraw_test_u.pdf  used on input line 470.
+Package pdftex.def Info: kraw_test_u.pdf  used on input line 495.
 (pdftex.def)             Requested size: 226.48395pt x 171.00616pt.
-[21 <./phi_sampling_depaola.pdf>] [22 <./kraw_test_i.pdf> <./kraw_test_q.pdf
+[22]
+<comp_lundman_p_4_thetaj_1e-01.pdf, id=341, 418.30151pt x 318.3733pt>
+File: comp_lundman_p_4_thetaj_1e-01.pdf Graphic file (type pdf)
+<use comp_lundman_p_4_thetaj_1e-01.pdf>
+Package pdftex.def Info: comp_lundman_p_4_thetaj_1e-01.pdf  used on input line 
+504.
+(pdftex.def)             Requested size: 452.9679pt x 344.77077pt.
+ [23 <./phi_sampling_depaola.pdf>] [24 <./kraw_test_i.pdf> <./kraw_test_q.pdf
 
 pdfTeX warning: /Library/TeX/texbin/pdflatex (file ./kraw_test_q.pdf): PDF incl
 usion: multiple pdfs with page group included in a single page
@@ -552,33 +569,33 @@ usion: multiple pdfs with page group included in a single page
 
 pdfTeX warning: /Library/TeX/texbin/pdflatex (file ./kraw_test_u.pdf): PDF incl
 usion: multiple pdfs with page group included in a single page
->]
-<comp_lundman_p_4_thetaj_1e-01.pdf, id=467, 418.30151pt x 318.3733pt>
-File: comp_lundman_p_4_thetaj_1e-01.pdf Graphic file (type pdf)
-<use comp_lundman_p_4_thetaj_1e-01.pdf>
-Package pdftex.def Info: comp_lundman_p_4_thetaj_1e-01.pdf  used on input line 
-479.
-(pdftex.def)             Requested size: 452.9679pt x 344.77077pt.
- [23 <./comp_lundman_p_4_thetaj_1e-01.pdf>] (./mcrat_doc.bbl)
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 495.
- [24]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 495.
+>] [25 <./comp_lundman_p_4_thetaj_1e-01.pdf>] (./mcrat_doc.bbl)
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 523.
+ [26]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 523.
 
 (./mcrat_doc.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 495.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 495.
-Package rerunfilecheck Info: File `mcrat_doc.out' has not changed.
-(rerunfilecheck)             Checksum: 5D5C060F9513F28A0B2A1059B77AD84E;1676.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 495.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 523.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 523.
+
+
+Package rerunfilecheck Warning: File `mcrat_doc.out' has changed.
+(rerunfilecheck)                Rerun to get outlines right
+(rerunfilecheck)                or use package `bookmark'.
+
+Package rerunfilecheck Info: Checksums for `mcrat_doc.out':
+(rerunfilecheck)             Before: 5D5C060F9513F28A0B2A1059B77AD84E;1676
+(rerunfilecheck)             After:  261191764C2684188E16636E9148751C;1787.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 523.
  ) 
 Here is how much of TeX's memory you used:
- 8264 strings out of 492642
- 123232 string characters out of 6129384
- 237049 words of memory out of 5000000
+ 8267 strings out of 492642
+ 123265 string characters out of 6129384
+ 236049 words of memory out of 5000000
  11971 multiletter control sequences out of 15000+600000
  13540 words of font info for 52 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 44i,12n,43p,1938b,342s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 44i,12n,43p,2086b,382s stack positions out of 5000i,500n,10000p,200000b,80000s
 </usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb
 ></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb>
 </usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb><
@@ -593,10 +610,10 @@ ive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texliv
 e/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/local/texlive
 /2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb></usr/local/texlive/
 2018/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb>
-Output written on mcrat_doc.pdf (24 pages, 333720 bytes).
+Output written on mcrat_doc.pdf (26 pages, 341027 bytes).
 PDF statistics:
- 594 PDF objects out of 1000 (max. 8388607)
- 433 compressed objects within 5 object streams
- 78 named destinations out of 1000 (max. 500000)
+ 608 PDF objects out of 1000 (max. 8388607)
+ 445 compressed objects within 5 object streams
+ 81 named destinations out of 1000 (max. 500000)
  218 words of extra memory for PDF output out of 10000 (max. 10000000)
 

@@ -38,6 +38,18 @@ double calcCyclotronFreq(double magnetic_field)
     return CHARGE_EL*magnetic_field/(2*M_PI*M_EL*C_LIGHT);
 }
 
+double calcEB(double magnetic_field)
+{
+    //helper function to compare to vurm 2013
+    return PL_CONST*calcCyclotronFreq(magnetic_field);
+}
+
+double calcBoundaryE(double magnetic_field, double temp)
+{
+    //helper function to compare to vurm 2013
+    return 14*pow(M_EL*C_LIGHT*C_LIGHT, 1.0/10.0)*pow(calcEB(magnetic_field), 9.0/10.0)*pow(calcDimlessTheta(temp), 3.0/10.0);
+}
+
 double calcDimlessTheta(double temp)
 {
     //temp has to be in kelvin
@@ -1508,6 +1520,9 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                         el_dens= (*(dens+i))/M_P;
                         nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+i)));
                         dimlesstheta=calcDimlessTheta( *(temp+i));
+                        fprintf(fPtr, "B field is: %e at r=%e\n", calcB(el_dens,*(temp+i)), *(r+i));
+                        fflush(fPtr);
+
                         //printf("Temp %e, el_dens %e, B %e, nu_c %e, dimlesstheta %e\n",*(temp+i), el_dens, calcB(el_dens, *(temp+i), epsilon_b), nu_c, dimlesstheta);
 
                         params[0] = *(temp+i); //nu_c;

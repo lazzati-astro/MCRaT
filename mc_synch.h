@@ -4,6 +4,10 @@ This header file is for the different functions for emitting and absorbing synch
 
 double calcCyclotronFreq(double magnetic_field);
 
+double calcEB(double magnetic_field);
+
+double calcBoundaryE(double magnetic_field, double temp);
+
 double calcDimlessTheta(double temp);
 
 double calcB(double el_dens, double temp);

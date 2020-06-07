@@ -113,7 +113,7 @@ struct photon
 #endif
 
 #ifndef DIMENSIONS
-#error Need to define simulation dimensions in mcrat_input.h file using DIMENSIONS (shuld be set to two for this version of MCRaT)
+#error Need to define simulation dimensions in mcrat_input.h file using DIMENSIONS (should be set to two for this version of MCRaT)
 #endif
 
 #ifndef GEOMETRY
