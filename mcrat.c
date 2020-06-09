@@ -96,7 +96,7 @@ int main(int argc, char **argv)
     double dt_max=0, thescatt=0, accum_time=0; 
     double  gamma_infinity=0, time_now=0, time_step=0, avg_scatt=0,avg_r=0; //gamma_infinity not used?
     double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0, ph_vzPtr=0;// *ph_cosanglePtr=NULL ;
-    double min_r=0, max_r=0, min_theta=0, max_theta=0, nu_c_scatt=0;
+    double min_r=0, max_r=0, min_theta=0, max_theta=0, nu_c_scatt=0, n_comptonized=0;
     int frame=0, scatt_frame=0, frame_scatt_cnt=0, frame_abs_cnt=0, scatt_framestart=0, framestart=0;
     struct photon *phPtr=NULL; //pointer to array of photons 
     
@@ -923,6 +923,8 @@ int main(int argc, char **argv)
                     frame_abs_cnt=0;
                     find_nearest_grid_switch=1; // set to true so the function findNearestPropertiesAndMinMFP by default finds the index of the grid block closest to each photon since we just read in a file and the prior index is invalid
                     num_photons_find_new_element=0;
+                    
+                    n_comptonized=0;
                     while (time_now<((scatt_frame+increment_scatt)/fps))
                     {
                         //if simulation time is less than the simulation time of the next frame, keep scattering in this frame
@@ -971,6 +973,7 @@ int main(int argc, char **argv)
                             #if SYNCHROTRON_SWITCH == ON
                             if ((phPtr+ph_scatt_index)->type == 's')
                             {
+                                n_comptonized+=(phPtr+ph_scatt_index)->weight;
                                 (phPtr+ph_scatt_index)->type = 'c'; //c for compton scattered synchrotron photon
                                 
                                 //fprintf(fPtr, "num_null_ph %d\n", num_null_ph);
@@ -1078,9 +1081,10 @@ int main(int argc, char **argv)
                             fflush(fPtr);
                             */
                         }
-                        else
-                        {
-                            fprintf(fPtr, "In Else: \n");// Now rebinning
+                        
+                        //else
+                        //{
+                        //    fprintf(fPtr, "In Else: \n");// Now rebinning
                             /*
                             int null_ph_count=0;
                             for (i=0;i<num_ph;i++)
@@ -1128,7 +1132,7 @@ int main(int argc, char **argv)
                             //num_null_ph=null_ph_count;
                             //exit(0);
                              
-                        }
+                        //}
                         
                         //phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
                         //fprintf(fPtr,"Before Abs: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
@@ -1136,7 +1140,7 @@ int main(int argc, char **argv)
 
                         
                         //make sure the photons that shou;d be absorbed should be absorbed
-                        phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph, tempPtr, densPtr, fPtr);
+                        n_comptonized-=phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph, tempPtr, densPtr, fPtr);
                         
                         //phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
                         //fprintf(fPtr,"After Abs: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
@@ -1169,8 +1173,10 @@ int main(int argc, char **argv)
                     fflush(fPtr);
                 
                     fprintf(fPtr, " mc_dir: %s\nframe %d\nfrm2: %d\nscatt_frame: %d\n num_photon: %d\ntime_now: %e\nlast_frame: %d\n", mc_dir, frame, frm2, scatt_frame, num_ph, time_now, last_frm  );
+                    
+                    fprintf(fPtr,"n_comptonized in this frame is: %e\n ", n_comptonized);
                     fflush(fPtr);
-
+                    
                     save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id, old_num_angle_procs);
                     
                     if (save_chkpt_success==0)

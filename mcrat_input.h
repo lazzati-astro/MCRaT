@@ -53,6 +53,8 @@
 #define     GEOMETRY                CARTESIAN
 #define     HYDRO_L_SCALE           1e9
 #define     SYNCHROTRON_SWITCH      ON
+#define     B_FIELD_CALC            TOTAL_E
+#define     EPSILON_B               0.5
 
 #define     MCPAR                   "mc.par"
 

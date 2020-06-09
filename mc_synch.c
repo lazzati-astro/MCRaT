@@ -168,7 +168,7 @@ double blackbody_ph_spect(double nu, void *p)
     
     //printf("Nu %e nu_c %e dimlesstheta %e el_dens %e VAL %e\n", nu, nu_c, dimlesstheta, el_dens, jnu(nu, nu_c, dimlesstheta, el_dens)/(PL_CONST*nu));
     
-    return (PL_CONST*nu * pow((nu/C_LIGHT),2.0))/(exp(PL_CONST*nu/(K_B*temp))-1)/(PL_CONST*nu);
+    return (8*M_PI*nu*nu)/(exp(PL_CONST*nu/(K_B*temp))-1)/(C_LIGHT*C_LIGHT*C_LIGHT);
 }
 
 //the functions here are to calculate the total absorption cross section from Ghisellini+ 1991
@@ -1463,7 +1463,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     struct photon *ph_emit=NULL; //pointer to array of structs that will hold emitted photon info
     struct photon *tmp=NULL;
     double *tmp_double=NULL;
-    int *tmp_int=NULL;
+    int *tmp_int=NULL, n_pool=0;
     
     //fprintf(fPtr, "IN EMIT SYNCH FUNCTION; num_threads %d\n", num_thread);
     //fprintf(fPtr, "BEFORE Original number of photons: %d Null photons %d\n", (*num_ph), null_ph_count, ph_tot);
@@ -1596,7 +1596,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         
         
         
-        fprintf(fPtr, "Emitting %d synch photons\n", ph_tot);
+        fprintf(fPtr, "Emitting %d synch photons with weight %e\n", ph_tot,ph_weight_adjusted );
         fflush(fPtr);
         
     }
@@ -1935,7 +1935,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     
 }
 
-int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_synch_num_ph, double *temp, double *dens, FILE *fPtr)
+double phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_synch_num_ph, double *temp, double *dens, FILE *fPtr)
 {
     //still need to deal with below issue
     //frame 213 where the absorption doesnt occur for all emitted photons and have some absorbed before/after unabsorbed photons, how to deal with this?
@@ -1946,7 +1946,7 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
     num_thread=omp_get_num_threads();
     #endif
 
-    double el_dens=0, nu_c=0;
+    double el_dens=0, nu_c=0, abs_count=0;
     //struct photon tmp_ph;//hold temporay photon to move its data
     
     fprintf(fPtr, "In phAbsSynch func begin: abs_ph_count: %d synch_ph_count: %d scatt_synch_num_ph: %d num_threads: %d\n", abs_ph_count, synch_ph_count, *scatt_synch_num_ph, num_thread);
@@ -1985,6 +1985,7 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
                 else
                 {
                     //have an injected photon or 'o' (previous 'c' photon) that has a nu that can be absorbed
+                    abs_count+=(*ph_orig)[i].weight;
                     (*ph_orig)[i].p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been absorbed, this makes it still get saves in the hdf5 files
                     (*ph_orig)[i].nearest_block_index=-1;
                     //also set the weight equal to 0 since we no longer care about saving it
@@ -2121,7 +2122,7 @@ int phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt
     fprintf(fPtr, "In phAbsSynch func: nulll_count= %d\n", count);
     fflush(fPtr);
     */
-    return 0;
+    return abs_count;
 }
 
 
