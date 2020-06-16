@@ -23,3 +23,4 @@
 \contentsline {subsection}{\numberline {4.4}Thermal Synchrotron Radiation}{26}{subsection.4.4}
 \contentsline {subsubsection}{\numberline {4.4.1}Emitting Thermal Synchrotron Photons}{26}{subsubsection.4.4.1}
 \contentsline {subsubsection}{\numberline {4.4.2}Rebinning The Scattered Thermal Synchrotron Photons}{26}{subsubsection.4.4.2}
+\contentsline {subsubsection}{\numberline {4.4.3}Absorption of Thermal Synchrotron Photons}{26}{subsubsection.4.4.3}

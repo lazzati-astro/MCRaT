@@ -158,11 +158,11 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
     #if defined(_OPENMP)
     int num_thread=omp_get_num_threads();
     #endif
-    char mc_file[200]="", group[200]="", group_weight[200]="";
+    char mc_file[200]="", group[200]="", group_weight[200]="", *ph_type=NULL;
     double p0[net_num_ph], p1[net_num_ph], p2[net_num_ph], p3[net_num_ph] , r0[net_num_ph], r1[net_num_ph], r2[net_num_ph], num_scatt[net_num_ph], weight[weight_net_num_ph], global_weight[net_num_ph];
     double s0[net_num_ph], s1[net_num_ph], s2[net_num_ph], s3[net_num_ph], comv_p0[net_num_ph], comv_p1[net_num_ph], comv_p2[net_num_ph], comv_p3[net_num_ph];
     hid_t  file, file_init, dspace, dspace_weight, dspace_global_weight, fspace, mspace, prop, prop_weight, prop_global_weight, group_id;
-    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_2, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3;
+    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_2, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_ph_type;
     herr_t status, status_group, status_weight, status_weight_2;
     hsize_t dims[1]={net_num_ph}, dims_weight[1]={weight_net_num_ph}, dims_old[1]={0}; //1 is the number of dimansions for the dataset, called rank
 
@@ -172,6 +172,8 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
     hsize_t      offset[1];
     
     fprintf(fPtr, "num_ph %d num_ph_abs %d num_null_ph %d num_ph_emit %d\nAllocated weight to be %d values large and other arrays to be %d\n",num_ph,num_ph_abs,num_null_ph,num_ph_emit, weight_net_num_ph, net_num_ph);
+    
+    ph_type=malloc((net_num_ph)*sizeof(char));
     
     //save photon data into large arrays, NEED TO KNOW HOW MANY NULL PHOTONS WE HAVE AKA SAVED SPACE THAT AREN'T ACTUALLY PHOTONS TO PROPERLY SAVE SPACE FOR ARRAYS ABOVE
     weight_net_num_ph=0;
@@ -213,9 +215,12 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
                 global_weight[count]=((ph+i)->weight);
             }
             
+            *(ph_type+count)=(ph+i)->type;
+            //printf("%d %c %e %e %e %e %e %e %e %e %c\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9, *(ph_type+count));
+            
             count++;
         }
-        //printf("%d %c %e %e %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9);
+        
     }
     
     
@@ -349,6 +354,13 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
         }
         #endif
         
+        #if SAVE_TYPE == ON
+        {
+            dset_ph_type = H5Dcreate2 (group_id, "PT", H5T_NATIVE_CHAR, dspace,
+                                       H5P_DEFAULT, prop, H5P_DEFAULT);
+        }
+        #endif
+        
         dset_num_scatt = H5Dcreate2 (group_id, "NS", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
                             
@@ -421,6 +433,14 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
         }
         #endif
         
+        #if SAVE_TYPE == ON
+        {
+            status = H5Dwrite (dset_ph_type, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL,
+                            H5P_DEFAULT, ph_type);
+        }
+        #endif
+
+        
         status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                         H5P_DEFAULT, num_scatt);
         
@@ -435,10 +455,10 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
         
         if ((frame==frame_last))
         {
-            printf("Before write\n");
+            //printf("Before write\n");
             status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                                H5P_DEFAULT, global_weight);
-            printf("After write\n");
+            //printf("After write\n");
         }
         
         status = H5Pclose (prop);
@@ -745,6 +765,27 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
         }
         #endif
         
+        #if SAVE_TYPE == ON
+        {
+            dset_ph_type = H5Dopen (group_id, "PT", H5P_DEFAULT); //open dataset
+            dspace = H5Dget_space (dset_ph_type);
+            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+            size[0] = dims[0]+ dims_old[0];
+            status = H5Dset_extent (dset_ph_type, size);
+            fspace = H5Dget_space (dset_ph_type);
+            offset[0] = dims_old[0];
+            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                      dims, NULL);
+            mspace = H5Screate_simple (rank, dims, NULL);
+            status = H5Dwrite (dset_ph_type, H5T_NATIVE_CHAR, mspace, fspace,
+                                H5P_DEFAULT, ph_type);
+            status = H5Sclose (dspace);
+            status = H5Sclose (mspace);
+            status = H5Sclose (fspace);
+        }
+        #endif
+
+        
         dset_num_scatt = H5Dopen (group_id, "NS", H5P_DEFAULT); //open dataset
         dspace = H5Dget_space (dset_num_scatt);
         status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
@@ -888,6 +929,8 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
     
     
     /* Close resources */
+    
+    free(ph_type);
     //status = H5Sclose (dspace);
     status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
     //if (COMV_SWITCH!=0)
@@ -901,6 +944,12 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
     #if STOKES_SWITCH == ON
     {
         status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
+    }
+    #endif
+    
+    #if SAVE_TYPE == ON
+    {
+        status = H5Dclose (dset_ph_type);
     }
     #endif
     
@@ -4007,6 +4056,7 @@ void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double
 void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array, FILE *fPtr)
 {
     double  gamma_infinity=100, lumi=1e56, r00=1e8; //shopuld be 10^57
+    //double  gamma_infinity=5, lumi=1e52, r00=1e8; //shopuld be 10^57
     double vel=0;
     int i=0;
     
@@ -4087,14 +4137,14 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
 {
     //function to merge files in mcdir produced by various threads
     double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *comv_p0=NULL, *comv_p1=NULL, *comv_p2=NULL, *comv_p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;
-    int i=0, j=0, k=0, isNotCorrupted=0, num_types=12;
+    int i=0, j=0, k=0, isNotCorrupted=0, num_types=9; //just save lab 4 momentum, position and num_scatt by default
     int increment=1;
     char filename_k[2000]="", file_no_thread_num[2000]="", cmd[2000]="", mcdata_type[20]="";
-    char group[200]="";
+    char group[200]="", *ph_type=NULL;
     hid_t  file, file_new, group_id, dspace;
     hsize_t dims[1]={0};
     herr_t status, status_group;
-    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_frame;
+    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_frame, dset_ph_type;
    
     //printf("Merging files in %s\n", dir); 
     //#pragma omp parallel for num_threads(num_thread) firstprivate( filename_k, file_no_thread_num, cmd,mcdata_type,num_files, increment ) private(i,j,k)
@@ -4114,6 +4164,11 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
     }
     #endif
     
+    #if SAVE_TYPE == ON
+    {
+        num_types+=1;
+    }
+    #endif
     
     
     for (i=start_frame;i<last_frame;i=i+increment)
@@ -4180,7 +4235,8 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             
             for (k=0;k<num_types;k++)
             {
-                #if COMV_SWITCH == ON && STOKES_SWITCH == ON
+                
+               #if COMV_SWITCH == ON && STOKES_SWITCH == ON
                 {
                     switch (k)
                     {
@@ -4201,6 +4257,11 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 14: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
                         case 15: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                         case 16: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
+                        #if SAVE_TYPES == ON
+                        {
+                            case 17: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PT"); break;
+                        }
+                        #endif
                     }
                 }
                 #elif STOKES_SWITCH == ON && COMV_SWITCH == OFF
@@ -4220,6 +4281,11 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
                         case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                         case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
+                        #if SAVE_TYPES == ON
+                        {
+                            case 13: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PT"); break;
+                        }
+                        #endif
                     }
                 }
                 #elif STOKES_SWITCH == OFF && COMV_SWITCH == ON
@@ -4239,6 +4305,11 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
                         case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                         case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
+                        #if SAVE_TYPES == ON
+                        {
+                            case 13: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PT"); break;
+                        }
+                        #endif
                     }
                 }
                 #else
@@ -4254,6 +4325,11 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
                         case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                         case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
+                        #if SAVE_TYPES == ON
+                        {
+                            case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PT"); break;
+                        }
+                        #endif
                     }
                 }
                 #endif
@@ -4300,6 +4376,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             r0=malloc(j*sizeof(double));  r1=malloc(j*sizeof(double));  r2=malloc(j*sizeof(double));
             s0=malloc(j*sizeof(double));  s1=malloc(j*sizeof(double));  s2=malloc(j*sizeof(double));  s3=malloc(j*sizeof(double));
             num_scatt=malloc(j*sizeof(double)); weight=malloc(j*sizeof(double));
+            ph_type=malloc((j)*sizeof(char));
         
             j=0;
             for (k=0;k<numprocs;k++)
@@ -4356,6 +4433,13 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     }
                     #endif
                     
+                    #if SAVE_TYPE == ON
+                    {
+                        dset_ph_type = H5Dopen (group_id, "PT", H5P_DEFAULT);
+                    }
+                    #endif
+
+                    
                     //read the data in
                     status = H5Dread(dset_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p0+j));
                     status = H5Dread(dset_p1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p1+j));
@@ -4388,6 +4472,13 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     
                     status = H5Dread(dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (weight+j));
                     
+                    #if SAVE_TYPE == ON
+                    {
+                        status = H5Dread(dset_ph_type, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL, H5P_DEFAULT, (ph_type+j));
+                    }
+                    #endif
+
+                    
                 
                     //get the number of points
                     dspace = H5Dget_space (dset_p0);
@@ -4411,6 +4502,13 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
                     }
                     #endif
+                    
+                    #if SAVE_TYPE == ON
+                    {
+                        status = H5Dclose (dset_ph_type);
+                    }
+                    #endif
+
                     
                     status = H5Dclose (dset_num_scatt);
                     
@@ -4454,6 +4552,13 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             dset_num_scatt=H5Dcreate2(file_new, "NS", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             
             dset_weight=H5Dcreate2(file_new, "PW", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            
+            #if SAVE_TYPE == ON
+            {
+                dset_ph_type=H5Dcreate2(file_new, "PT", H5T_NATIVE_CHAR, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            }
+            #endif
+
             
             //save the data in the new file
             status = H5Dwrite (dset_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
@@ -4508,6 +4613,14 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                                 H5P_DEFAULT, s3);
             }
             #endif
+            
+            #if SAVE_TYPE == ON
+            {
+                status = H5Dwrite (dset_ph_type, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL,
+                H5P_DEFAULT, ph_type);
+            }
+            #endif
+
                         
             status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, num_scatt);
@@ -4531,6 +4644,13 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                 status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
             }
             #endif
+            
+            #if SAVE_TYPE == ON
+            {
+                status = H5Dclose (dset_ph_type);
+            }
+            #endif
+
             status = H5Dclose (dset_num_scatt);
             
             status = H5Dclose (dset_weight);
@@ -4543,6 +4663,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             free(r0);free(r1); free(r2);
             free(s0);free(s1); free(s2);free(s3);
             free(num_scatt); free(weight);
+            free(ph_type);
         
             isNotCorrupted=0;
         }

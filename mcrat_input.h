@@ -13,7 +13,8 @@
 //#define FILEPATH "/Volumes/LACIE_RAID/Collapsars/2D/HUGE_BOXES/CONSTANT/16OI/"
 #define FILEPATH "/Users/Tylerparsotan/Documents/16OI_TEST/"
 #define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
-#define MC_PATH "SKN_16OI_SPHERICAL/"
+#define MC_PATH "16OI_SPHERICAL/"
+//#define MC_PATH "SKN_16OI_SPHERICAL/"
 
 /*
 #define THISRUN "Science"
@@ -55,6 +56,7 @@
 #define     SYNCHROTRON_SWITCH      ON
 #define     B_FIELD_CALC            TOTAL_E
 #define     EPSILON_B               0.5
+#define     SAVE_TYPE               ON
 
 #define     MCPAR                   "mc.par"
 

@@ -98,13 +98,17 @@ struct photon
 
 #endif
 
-//take care of stokes switch and comv_switch defaults too
+//take care of stokes switch and comv_switch and save_type defaults too
 #ifndef STOKES_SWITCH
     #define STOKES_SWITCH   OFF
 #endif
 
 #ifndef COMV_SWITCH
     #define COMV_SWITCH   OFF
+#endif
+
+#ifndef SAVE_TYPE
+    #define SAVE_TYPE   OFF
 #endif
 
 //throw errors during compilation if other switches are not defined

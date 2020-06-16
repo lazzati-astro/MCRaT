@@ -37,7 +37,7 @@ int main(int argc, char **argv)
     char group[500]="";
     char merged_filename[500]="";
     char filename_k[2000]="", mcdata_type[20]="";
-    char *str="mc_proc_";
+    char *str="mc_proc_", *ph_type=NULL, *ph_type_p=NULL;
     struct dirent* dent;
     DIR * dirp;
     struct dirent * entry;
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
      hsize_t      size[1];
     hsize_t      offset[1];
     herr_t	status, status_group;
-    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight;
+    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_ph_type;
     
     #if COMV_SWITCH == ON && STOKES_SWITCH == ON
     {
@@ -66,6 +66,13 @@ int main(int argc, char **argv)
         num_types=9;//just save lab 4 momentum, position and num_scatt
     }
     #endif
+    
+    #if SAVE_TYPE == ON
+    {
+        num_types+=1;
+    }
+    #endif
+
 
     while((dent = readdir(srcdir)) != NULL)
     {
@@ -339,6 +346,12 @@ int main(int argc, char **argv)
                         case 14: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
                         case 15: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                         case 16: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
+                        #if SAVE_TYPES == ON
+                        {
+                            case 17: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PT"); break;
+                        }
+                        #endif
+
                     }
                 }
                 #elif STOKES_SWITCH == ON && COMV_SWITCH == OFF
@@ -358,6 +371,12 @@ int main(int argc, char **argv)
                         case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
                         case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                         case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
+                        #if SAVE_TYPES == ON
+                        {
+                            case 13: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PT"); break;
+                        }
+                        #endif
+
                     }
                 }
                 #elif STOKES_SWITCH == OFF && COMV_SWITCH == ON
@@ -377,6 +396,11 @@ int main(int argc, char **argv)
                         case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
                         case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                         case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
+                        #if SAVE_TYPES == ON
+                        {
+                            case 13: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PT"); break;
+                        }
+                        #endif
                     }
                 }
                 #else
@@ -392,6 +416,11 @@ int main(int argc, char **argv)
                         case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
                         case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                         case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
+                        #if SAVE_TYPES == ON
+                        {
+                            case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PT"); break;
+                        }
+                        #endif
                     }
                 }
                 #endif
@@ -493,21 +522,21 @@ int main(int argc, char **argv)
                     if (status_group >= 0 && file>=0)
                     //#endif
                     {
-                            //read in the number of injected photons first
-                            #if SYNCHROTRON_SWITCH == ON
-                                snprintf(group,sizeof(group),"%d",i );
-                            #else
-                                snprintf(group,sizeof(group),"%d",l );
-                            #endif
-                            group_id = H5Gopen2(file, group, H5P_DEFAULT);
-                            dset_weight = H5Dopen (group_id, "PW", H5P_DEFAULT);
-                            dspace = H5Dget_space (dset_weight);
-                            status=H5Sget_simple_extent_dims(dspace, dims, NULL); //save dimesnions in dims
-                            j=dims[0];//calculate the total number of photons to save to new hdf5 file
-                            status = H5Sclose (dspace);
-                            status = H5Dclose (dset_weight);
-                            status = H5Gclose(group_id);
-                            //printf("Num of ph: %d\n", j);
+                        //read in the number of injected photons first
+                        #if SYNCHROTRON_SWITCH == ON
+                            snprintf(group,sizeof(group),"%d",i );
+                        #else
+                            snprintf(group,sizeof(group),"%d",l );
+                        #endif
+                        group_id = H5Gopen2(file, group, H5P_DEFAULT);
+                        dset_weight = H5Dopen (group_id, "PW", H5P_DEFAULT);
+                        dspace = H5Dget_space (dset_weight);
+                        status=H5Sget_simple_extent_dims(dspace, dims, NULL); //save dimesnions in dims
+                        j=dims[0];//calculate the total number of photons to save to new hdf5 file
+                        status = H5Sclose (dspace);
+                        status = H5Dclose (dset_weight);
+                        status = H5Gclose(group_id);
+                        //printf("Num of ph: %d\n", j);
                         
                         snprintf(group,sizeof(group),"%d",i ); 
                     
@@ -553,6 +582,13 @@ int main(int argc, char **argv)
                         }
                         #endif
                         
+                        #if SAVE_TYPE == ON
+                        {
+                            dset_ph_type = H5Dopen (group_id, "PT", H5P_DEFAULT);
+                        }
+                        #endif
+
+                        
                         //malloc memory
                         p0_p=malloc(j*sizeof(double));  p1_p=malloc(j*sizeof(double));  p2_p=malloc(j*sizeof(double));  p3_p=malloc(j*sizeof(double));
                         
@@ -567,6 +603,12 @@ int main(int argc, char **argv)
                         #if STOKES_SWITCH == ON
                         {
                             s0_p=malloc(j*sizeof(double));  s1_p=malloc(j*sizeof(double));  s2_p=malloc(j*sizeof(double));  s3_p=malloc(j*sizeof(double));
+                        }
+                        #endif
+                        
+                        #if SAVE_TYPE == ON
+                        {
+                            ph_type_p=malloc((j)*sizeof(char));
                         }
                         #endif
                         
@@ -686,6 +728,15 @@ int main(int argc, char **argv)
                         status = H5Sclose (dspace); status = H5Dclose (dset_weight);
                         //printf("After Weight read\n");
                         
+                        #if SAVE_TYPE == ON
+                        {
+                            dspace = H5Dget_space(dset_ph_type);
+                            status = H5Sselect_hyperslab (dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dread(dset_ph_type, H5T_NATIVE_CHAR, mspace, dspace, H5P_DEFAULT, (ph_type_p));
+                            status = H5Sclose (dspace); status = H5Dclose (dset_ph_type);
+                        }
+                        #endif
+                        
                         status = H5Sclose (mspace);
                         status = H5Gclose(group_id);
                         
@@ -718,6 +769,12 @@ int main(int argc, char **argv)
                         #if STOKES_SWITCH == ON
                         {
                             s0_p=malloc(j*sizeof(double));  s1_p=malloc(j*sizeof(double));  s2_p=malloc(j*sizeof(double));  s3_p=malloc(j*sizeof(double));
+                        }
+                        #endif
+                        
+                        #if SAVE_TYPE == ON
+                        {
+                            ph_type_p=malloc((j)*sizeof(char));
                         }
                         #endif
                         
@@ -769,6 +826,12 @@ int main(int argc, char **argv)
                     }
                     #endif
                     
+                    #if SAVE_TYPE == ON
+                    {
+                        ph_type=malloc(all_photons*sizeof(char));
+                    }
+                    #endif
+                    
                     num_scatt=malloc(all_photons*sizeof(double));
                     
                     weight=malloc(all_photons*sizeof(double));
@@ -803,6 +866,13 @@ int main(int argc, char **argv)
                         MPI_Allgatherv(s3_p, dims[0], MPI_DOUBLE, s3, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
                     }
                     #endif
+                    
+                    #if SAVE_TYPE == ON
+                    {
+                        MPI_Allgatherv(ph_type_p, dims[0], MPI_CHAR, ph_type, each_subdir_number, displPtr, MPI_CHAR, frames_to_merge_comm);
+                    }
+                    #endif
+
                     
                     MPI_Allgatherv(num_scatt_p, dims[0], MPI_DOUBLE, num_scatt, each_subdir_number, displPtr, MPI_DOUBLE, frames_to_merge_comm);
                     
@@ -863,6 +933,13 @@ int main(int argc, char **argv)
                             dset_s3=H5Dcreate2(file_id, "S3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
                         }
                         #endif
+                        
+                        #if SAVE_TYPE == ON
+                        {
+                            dset_ph_type=H5Dcreate2(file_id, "PT", H5T_NATIVE_CHAR, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
+                        }
+                        #endif
+
                         
                         dset_num_scatt=H5Dcreate2(file_id, "NS", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, plist_id_data, H5P_DEFAULT);
                         
@@ -962,6 +1039,17 @@ int main(int argc, char **argv)
                         }
                         #endif
                         
+                        #if SAVE_TYPE == ON
+                        {
+                            dspace = H5Dget_space(dset_ph_type);
+                            status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            status = H5Dwrite (dset_ph_type, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL, plist_id_data, ph_type);
+                            H5Sclose(dspace);
+
+                        }
+                        #endif
+
+                        
                         dspace = H5Dget_space(dset_num_scatt);
                         status = H5Sselect_hyperslab(dspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
                         status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, plist_id_data, num_scatt);
@@ -989,6 +1077,13 @@ int main(int argc, char **argv)
                             status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
                         }
                         #endif
+                        
+                        #if SAVE_TYPE == ON
+                        {
+                            status = H5Dclose (dset_ph_type);
+                        }
+                        #endif
+
                         
                         status = H5Dclose (dset_num_scatt);
                         
@@ -1243,6 +1338,27 @@ int main(int argc, char **argv)
                         }
                         #endif
                         
+                        #if SAVE_TYPE == ON
+                        {
+                            dset_ph_type = H5Dopen (file_id, "PT", H5P_DEFAULT); //open dataset
+                            dspace = H5Dget_space (dset_ph_type);
+                            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
+                            size[0] = dims[0]+ dims_old[0];
+                            status = H5Dset_extent (dset_ph_type, size);
+                            fspace = H5Dget_space (dset_ph_type);
+                            offset[0] = dims_old[0];
+                            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL, dims, NULL);
+                            mspace = H5Screate_simple (1, dims, NULL);
+                            status = H5Dwrite (dset_ph_type, H5T_NATIVE_CHAR, mspace, fspace, plist_id_data, ph_type);
+                            status = H5Sclose (dspace);
+                            status = H5Sclose (mspace);
+                            status = H5Sclose (fspace);
+                            status = H5Dclose (dset_ph_type);
+
+                        }
+                        #endif
+
+                        
                         dset_num_scatt = H5Dopen (file_id, "NS", H5P_DEFAULT); //open dataset
                         dspace = H5Dget_space (dset_num_scatt);
                         status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims_old
@@ -1307,6 +1423,13 @@ int main(int argc, char **argv)
                     
                     free(weight_p);
                     
+                    #if SAVE_TYPE == ON
+                    {
+                        free(ph_type_p);
+                    }
+                    #endif
+
+                    
                     free(p0);free(p1); free(p2);free(p3);
                     
                     #if COMV_SWITCH == ON
@@ -1326,6 +1449,12 @@ int main(int argc, char **argv)
                     free(num_scatt);
                     
                     free(weight);
+                    
+                    #if SAVE_TYPE == ON
+                    {
+                        free(ph_type);
+                    }
+                    #endif
                     //exit(0);
                 }
             

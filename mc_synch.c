@@ -1553,9 +1553,9 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                     #if DIMENSIONS==2
                         #if GEOMETRY == CARTESIAN
                         //printf("ph_dens_calc init=%e\n", ph_dens_calc);
-                            ph_dens_calc*=2*M_PI*(*(x+i))*pow(*(szx+i),2.0)/(fps*ph_weight_adjusted);
+                            ph_dens_calc*=2*M_PI*(*(x+i))*pow(*(szx+i),2.0)/(ph_weight_adjusted);
                         #elif GEOMETRY == SPHERICAL
-                            ph_dens_calc*=2*M_PI*pow(*(r+i),2.0)*sin(*(theta+i))*(*(szx+i))*(*(szy+i))/(fps*ph_weight_adjusted);
+                            ph_dens_calc*=2*M_PI*pow(*(r+i),2.0)*sin(*(theta+i))*(*(szx+i))*(*(szy+i))/(ph_weight_adjusted);
                         #endif
                         //printf("Temp %e, el_dens %e, B %e, nu_c %e, dimlesstheta %e, number of photons to emit %e, error %e, Intervals %zu\n",  *(temp+i), el_dens, calcB(el_dens, *(temp+i), epsilon_b), nu_c, dimlesstheta, ph_dens_calc, error, w->size);
                         //exit(0);
