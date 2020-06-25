@@ -68,7 +68,9 @@ Additionally, there are a number of switches that the user can specify to the pr
 
 The \texttt{SIM\_SWITCH} tells MCRaT what hydro simulation is being used. The options are \texttt{FLASH} and \texttt{PLUTO\_CHOMBO}, for the FLASH hydrodynamic code and the PLUTO hydro code with CHOMBO AMR respectively. The switch \texttt{DIM\_SWITCH} tells MCRaT the dimensionality of the hydro simulation that is used. This switch can be set to \texttt{2}, for 2D, or \texttt{3}, for 3D. The 3D feature is still in development so the switch should be set to \texttt{2} for now. The geometry can also be specified through the \texttt{GEOMETRY} define statement. The options are \texttt{SPHERICAL} and \texttt{CARTESIAN}; however, since MCRaT only supports 2D, the supported spherical coordinate system is $(r, \theta)$ and the supported \texttt{CARTESIAN} system is $(x,y)$ and $(r,z)$ in cylindrical coordinates. The length scale of the hydro simulation also has to be specified by setting the value of \texttt{HYDRO\_L\_SCALE} to the normalization that is used in the hydro simulation.
 
-In order to enable the consideration of thermal synchrotron photons in the MCRaT simulation the \texttt{SYNCHROTRON\_SWITCH} needs to be set to \texttt{ON}, otherwise this switch should be set to \texttt{OFF}. If it is set to be \texttt{ON}, the user needs to define other variables. One variable that needs to be defined is \texttt{SYNCHROTRON\_REBIN\_E\_PERC} which provides MCRaT with an upper limit for the number of synchrotron photons to emit. This quantity is calculated as the percentage of the maximum number of photons the user wants injected (see line 17 of the example mc.par file in section \ref{mc.par}). If \texttt{SYNCHROTRON\_REBIN\_E\_PERC} is set to 0.5 and the value of the 17$^\textrm{th}$ line is 3000, the the upper limit for the number of synchrotron emitted photons is 1500. This variable also defines the number of energy bins that MCRaT will create when it rebins the synchrotron photons, thus in the aforementioned example, the number of energy bins that the photons will be rebinned into is 1500 as well. MCRaT will also rebin the photons into spatial bins and the size of these bins are specified using the \texttt{SYNCHROTRON\_REBIN\_ANG} variable. In considering synchrotron emission, the user needs to specify how the magnetic field is calculated. This is done through the \texttt{B\_FIELD\_CALC} switch which can be set to \texttt{INTERNAL\_E}, where the magnetic energy density is set equal to the internal energy of the outflow, or \texttt{TOTAL\_E}, where the magnetic field is calculated from the total energy of the outflow. If \texttt{B\_FIELD\_CALC} is set to \texttt{TOTAL\_E}, the user needs to set the \texttt{EPSILON\_B} switch, which represents the fraction of the total outflow energy that is in the magnetic field. More information about the implementation of thermal synchrotron emission in the algorithm of the code can be found in section \ref{algorithm}. More information regarding the physics of the implementation of thermal synchrotron emission and absorption can be found in section \ref{synch}. 
+In order to enable the consideration of thermal synchrotron photons in the MCRaT simulation the \texttt{SYNCHROTRON\_SWITCH} needs to be set to \texttt{ON}, otherwise this switch should be set to \texttt{OFF}. If it is set to be \texttt{ON}, the user needs to define other variables. One variable that needs to be defined is \texttt{SYNCHROTRON\_REBIN\_E\_PERC} which provides MCRaT with an upper limit for the number of synchrotron photons to emit. This quantity is calculated as the percentage of the maximum number of photons the user wants injected (see line 17 of the example mc.par file in section \ref{mc.par}). If \texttt{SYNCHROTRON\_REBIN\_E\_PERC} is set to 0.5 and the value of the 17$^\textrm{th}$ line is 3000, the upper limit for the number of synchrotron emitted photons is 1500. This variable also defines the number of energy bins that MCRaT will create when it rebins the synchrotron photons, thus in the aforementioned example, the number of energy bins that the photons will be rebinned into is 1500 as well. MCRaT will also rebin the photons into spatial bins and the size of these bins are specified using the \texttt{SYNCHROTRON\_REBIN\_ANG} variable. In considering synchrotron emission, the user needs to specify how the magnetic field is calculated. This is done through the \texttt{B\_FIELD\_CALC} switch which can be set to \texttt{INTERNAL\_E}, where the magnetic energy density is set equal to the internal energy of the outflow, or \texttt{TOTAL\_E}, where the magnetic field is calculated from the total energy of the outflow. If \texttt{B\_FIELD\_CALC} is set to \texttt{TOTAL\_E}, the user needs to set the \texttt{EPSILON\_B} switch, which represents the fraction of the total outflow energy that is in the magnetic field. More information about the implementation of thermal synchrotron emission in the algorithm of the code can be found in section \ref{algorithm}. More information regarding the physics of the implementation of thermal synchrotron emission and absorption can be found in section \ref{synch}. 
+
+Another helpful switch is the \texttt{SAVE\_TYPE} switch, with tells MCRaT to include the photon type in the saved datasets. 
 
 
 The parameters that can be set and the appropriate values that each parameter can be set as are as follows:
@@ -93,6 +95,8 @@ STOKES\_SWITCH & ON, OFF (Defaults to OFF) \\
 \hline 
 COMV\_SWITCH & ON, OFF (Defaults to OFF)\\ 
 \hline 
+SAVE\_TYPE & ON, OFF (Defaults to OFF)\\
+\hline 
 DIMENSIONS & 2 \\ 
 \hline 
 GEOMETRY & CARTESIAN, SPHERICAL \\ 
@@ -106,16 +110,16 @@ SYNCHROTRON\_SWITCH & ON, OFF (Defaults to OFF)\\
 \hline
 If SYNCHROTRON\_SWITCH is ON: & \\
 \hline
-SYNCHROTRON\_REBIN\_E\_PERC & (0.0, 1.0] \\
+SYNCHROTRON\_REBIN\_E\_PERC & (0.0, 1.0] (Default is 0.1)\\
 \hline
-SYNCHROTRON\_REBIN\_ANG &  $(-\infty, +\infty)$ \\
+SYNCHROTRON\_REBIN\_ANG &  $(-\infty, +\infty)$ (Default is 0.5) \\
 \hline
-B\_FIELD\_CALC & INTERNAL\_E (Default)\newline TOTAL\_E \\
+B\_FIELD\_CALC & INTERNAL\_E \newline TOTAL\_E (Default)\\
 \hline
 \hline
 If B\_FIELD\_CALC is TOTAL\_E: & \\
 \hline
-EPSILON\_B & (0.0, 1.0] \\
+EPSILON\_B & (0.0, 1.0] (Default is 0.5)\\
 \hline
 \end{tabular} 
 %\end{table}
@@ -309,7 +313,7 @@ Each MCRaT MPI process outputs 3 files. These files are named \texttt{mc\_proc\_
 
 The \texttt{mc\_chkpt\_$i$.dat} file is a binary file that contains the data from the MPI process that allows it to continue the simulation if MCRaT gets interrupted for any reason. This information is: the MPI process' range of hydro frames to inject photons into, the frame that the current set of photons were injected in, the frame in which the photons were recently scattered in, the current time of the MCRaT simulation, the number of photons that the code is keeping track of, and the \texttt{photon} data structure for each photon in the simulation.
 
-The \texttt{mc\_proc\_$i$.h5} file is a HDF5 file that contains all the data for the photons that the $i^\mathrm{th}$ MPI process injects and propagates through the hydro simulation. The data is organized by the hydro simulation frame which constitutes a HDF5 group. Within the group, there are the following datasets, depending on if \texttt{STOKES\_SWITCH} or \texttt{COMV\_SWITCH} id set to ON or OFF.
+The \texttt{mc\_proc\_$i$.h5} file is a HDF5 file that contains all the data for the photons that the $i^\mathrm{th}$ MPI process injects and propagates through the hydro simulation. The data is organized by the hydro simulation frame which constitutes a HDF5 group. Within the group, there are the following datasets, depending on if \texttt{STOKES\_SWITCH}, \texttt{COMV\_SWITCH} or \texttt{SAVE\_TYPE} ids are set to ON or OFF.
 \begin{itemize}
 \item PW - The photon weight for any photons that were injected into the frame. If there were no photons injected, then this data set does not exist.
 \item P0 - the energy of the photons (in erg/c)
@@ -328,6 +332,7 @@ The \texttt{mc\_proc\_$i$.h5} file is a HDF5 file that contains all the data for
 \item S2 - the normalized U Stokes parameter for the photons
 \item S3 - the normalized V Stokes parameter for the photons
 \item NS - the cumulative number of scattering each photon has undergone
+\item PT - the photon type of each photon (these are saved as ASCII decimal numbers that can be mapped to a character)
 \end{itemize}
 
 These data sets include information for all of the photons after they were scattered through the given hydro simulation frame. The order of the data is based on the chronological order in which each set of photons were injected. For the example \texttt{mc.par} file in \autoref{mc.par}, if the user uses $N$ MPI processes such that each process injects photons into 2 frames, the \texttt{mc\_proc\_$0$.h5} file would look like:
@@ -357,7 +362,7 @@ The last file produced by the MCRaT MPI processes are named \texttt{mc\_output\_
 
 When the MCRaT MPI process has completed the Monte Carlo scattering portion of the code it will print: ``Process $i$ has completed the MC calculation.'' where $i$ is the ID of the MPI process. When all of the MPI processes are complete with the Monte Carlo scattering they will collectively produce the \texttt{mcdata\_$f$.h5} files which contain the merged data from each MPI process within a given angle range.
 
-These \texttt{mcdata\_$f$.h5} files are formatted in the same way that the HDF5 groups are formatted in the \texttt{mc\_proc\_$i$.h5} files. The only exception is that there is a \texttt{PW} dataset with the weight of the photons being in the chronological order of photon injection for each \texttt{mcdata\_$f$.h5} file.
+These \texttt{mcdata\_$f$.h5} files are formatted in the same way that the HDF5 groups are formatted in the \texttt{mc\_proc\_$i$.h5} files with the exception of the PW dataset being included in each frame, regardless of whether additional photons were injected into the simulation at that frame or not. 
 
 \subsection{Post-processing Algorithm}
 When the user has completed running MCRaT for each angle range that they are interested in, the data for every simulated photon needs to be merged. The MERGE code that is included with the download of MCRaT uses parallel HDF5 I/O to accomplish and speed up this post-processing. 
@@ -464,7 +469,7 @@ T[\theta_{\mathrm{sc}},\epsilon_{0}, \epsilon]=  \left(\begin{array}{lll}{1+\cos
 \end{equation}
 where, similar to \cite{krawczynski2011polarization},  we have excluded the factors in front since they cancel out when we normalize the scattered Stokes parameters by $I$ as mentioned above. We have also excluded the fourth row and column of the matrix since we only consider linear polarization. In this case, $\theta_{\mathrm{sc}}$ is acquired by calculating the angle between the photon's original incoming 3 momentum and the new outgoing 3 momentum. We calculate this as:
 \begin{equation}
-\theta_{\mathrm{sc}}=\arccos(p_\mathrm{in} \cdot p_\mathrm{out})
+\theta_{\mathrm{sc}}=\arccos(\overrightarrow{p_\mathrm{in}} \cdot \overrightarrow{p_\mathrm{out}})
 \end{equation}
 
 Once the new stokes parameters are acquired, they are normalized by dividing by $S0$. Then, the stokes parameters are rotated to ensure that the y-axis of the Stokes plane is perpendicular to the plane formed by the electron rest frame's z-axis and the outgoing photon's 3 momentum. After the photon is deboosted back to the lab frame and the stokes parameters are rotated for each lorentz boost.
@@ -514,7 +519,41 @@ For $\theta_{\mathrm{v}}/\theta_{\mathrm{j}} \gtrsim 1.6$ ($\theta_{\mathrm{v}} 
 
 \subsection{Thermal Synchrotron Radiation}\label{synch}
 \subsubsection{Emitting Thermal Synchrotron Photons}
-The emission of the thermal synchrotron photons is similar to injecting photons into the outflow.
+The emission of the thermal synchrotron photons is similar to injecting photons into the outflow. We iteratively calculate the number of photons to emit as synchrotron photons in the frame and assign them random 4 momenta with an energy corresponding to the local cyclotron frequency. We consider the source of thermal synchrotron photons to be constant in time so we emit a constant number and if any synchrotron photon gets upscattered, we replace it with another synchrotron photon. 
+
+These photons are emitted into a region that the original injected photons are passing through so it accounts for the thermal synchrotron photons that would be upscattered in the flow during the time of interest of the original injected photons.
+
+The maximum number of photons that are emitted, $N_{e,max}$, are calculated as the percentage of the maximum number of photons the user wants injected (see line 17 of the example mc.par file in section \ref{mc.par}). For example, if \texttt{SYNCHROTRON\_REBIN\_E\_PERC} is set to 0.5 and the value of the 17$^\textrm{th}$ line is 3000, the upper limit for the number of synchrotron emitted photons is 1500. The number density of thermal synchrotron photons, $n_{s,i}$, in a given cell is acquired by integrating the blackbody photon number spectrum up to the cyclotron frequency, $\nu_B$. We calculate the number density as
+\begin{equation}
+n_{s,i}=\int\limits_{0}^{\nu_B}\frac{8\pi \nu^2 }{c^3 (e^\frac{h\nu}{kT_i}-1 )}d\nu\frac{dV_i}{w}
+\end{equation}
+ where w is the weight of each thermal synchrotron photon, $dV_i$ is the volume of the HD cell, $T_i$ is the temperature of the same cell, h is Planck's constant and 
+\begin{equation}
+\nu_B=\frac{eB}{2\pi m_e c}
+\end{equation}
+where $e$ is the electron charge and $B$ is the magnetic field within the cell. Once $n_{s,i}$ is calculated, we draw a random number from a Poisson distribution with a mean of $n_{s,i}$ to acquire the total actual number of photons that are emitted into the cell. We get the total number of emitted photons, $N_e$, by summing over each cell's $n_{s,i}$. If $N_e > N_{e,max}$, then the $w$ is made larger and then the aforementioned calculations are made. If $N_e \le N_{e,max}$ then the code proceeds to assign the thermal synchrotron photons a random 4 momentum and assigns them to be at the center of their respective hydrodynamic cell.
+
+When a thermal synchrotron photon gets scattered, it is placed randomly within its HD cell and the scattering proceeds as it normally would. Then another thermal synchrotron photon gets added to the pool of photons at the center of their respective HD cell with the proper $\nu_B$.
+
+\subsubsection{Calculating B}
+MCRaT provides 2 ways to calculate the magnetic field in the outflow, in order to calculate $\nu_B$. It either uses the internal energy fo the flow to calculate B, when the \texttt{INTERNAL\_E} switch is turned \texttt{ON}, or it uses the total energy of the outflow to calculate B, when the \texttt{TOTAL\_E} is turned turned \texttt{ON}.
+\begin{itemize}
+\item Total Energy
+
+For a given plasma, the luminosity from matter and radiation can be written as $L=4\pi(\rho c^2+4p)\Gamma^2cr^2$, where c is the speed of light, $\rho$ is the plasma density, $p$ is the pressure, $\Gamma$ is the bulk Lorentz factor, and $r$ is the radius of the plasma away from its point of origin. The luminosity due to the magnetic field is $L_B=4\pi(B^2/8\pi)\Gamma^2cr^2$ where B is the magnetic field of the plasma. The fraction of energy between the magnetic outflow luminosity and the total outflow luminosity can be written as
+\begin{equation}
+\epsilon_{B}=\frac{L_B}{L}=\frac{B^2}{8\pi(\rho c^2+4p)}
+\end{equation}
+If the user supplies $\epsilon_{B}$ to MCRaT via the \texttt{EPSILON\_B} parameterm then the code uses the above formula to solve for the magnetic field in each HD cell.
+
+\item Internal Energy
+
+In the internal energy case, the magnetic field energy density is equated to the electron thermal kinetic energy.
+\begin{equation}
+\frac{B^2}{8\pi}=\frac{3}{2}nkT
+\end{equation}
+where n is the number density of electrons, k is the boltzmann constant and T is the plasma temperature.
+\end{itemize}
 
 \subsubsection{Rebinning The Scattered Thermal Synchrotron Photons}
 

@@ -80,7 +80,7 @@ struct photon
 
     //if the user hasnt defined anything for how to calculate the B field, assume that they want it calculated from the internal energy
     #ifndef B_FIELD_CALC
-        #define B_FIELD_CALC INTERNAL_E
+        #define B_FIELD_CALC TOTAL_E
     #else
         //it is defined therefore see if TOTAL_E is what has been set
         #if B_FIELD_CALC == TOTAL_E
