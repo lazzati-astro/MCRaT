@@ -30,8 +30,6 @@ This file is for the different functions for emitting and absorbing synchrotron 
 #include <gsl/gsl_histogram2d.h>
 #include <gsl/gsl_integration.h>
 
-//#DEFINE CRITICAL_B FINE_STRUCT*sqrt(M_EL*C_LIGHT*C_LIGHT/pow(R_EL, 3))
-
 double calcCyclotronFreq(double magnetic_field)
 {
     //B has to be in gauss
@@ -205,13 +203,11 @@ double calcSynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_in
     if (strcmp(min_or_max, "min")==0)
     {
         //printf("IN MIN\nframe_scatt %e frame_inj %e fps %e r_inj %e C_LIGHT %e\n", frame_scatt, frame_inj, fps, r_inj, C_LIGHT);
-        //val+= (C_LIGHT*(frame_scatt-frame_inj-1)/(2*fps)); this is wrong
         val+=(C_LIGHT*(frame_scatt-frame_inj)/fps - 0.5*C_LIGHT/fps);
     }
     else
     {
         //printf("IN MAX\n");
-        //val+= (C_LIGHT*(frame_scatt-frame_inj+1)/(2*fps)); this is wrong
         val+=(C_LIGHT*(frame_scatt-frame_inj)/fps + 0.5*C_LIGHT/fps);
     }
     
@@ -923,7 +919,6 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
 
             
             // also save the index of these photons because they wil become null later on
-            //*(synch_comp_photon_idx+count)=i;
             synch_comp_photon_idx[count]=i;
             //fprintf(fPtr, "Save index %d\n", i );
             count++;
@@ -1059,17 +1054,9 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                             avg_values[8] += (*ph_orig)[i].weight;
                             
                             //get theta and phi of random photon
-                            //if (j == (int) rand1 )
                             {
                                 avg_values[9] += fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0) *(*ph_orig)[i].weight;
                                 avg_values[10] += (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
-                                //avg_values[9] = fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1)*180/M_PI + 360),360.0);// *(*ph_orig)[i].weight;
-                                //avg_values[10] = (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0));//*(*ph_orig)[i].weight;
-                                
-                                //also get its position
-                                //avg_values[0] = (*ph_orig)[i].r0;//*(*ph_orig)[i].weight; //used to calc weighted averages, now doing r, theta and phi averages in space
-                                //avg_values[1] = (*ph_orig)[i].r1;//*(*ph_orig)[i].weight;
-                                //avg_values[2] = (*ph_orig)[i].r2;//(*ph_orig)[i].weight; //this will be replaced with random phi angle between 0 and 2*pi
 
                             }
                             
@@ -1112,9 +1099,6 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 (rebin_ph+count)->weight=avg_values[8];
                 (rebin_ph+count)->nearest_block_index=0; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
                 
-                //ph_r=pow(((rebin_ph+count)->r0)*((rebin_ph+count)->r0) + ((rebin_ph+count)->r1)*((rebin_ph+count)->r1) + ((rebin_ph+count)->r2)*((rebin_ph+count)->r2),0.5);
-                //ph_theta=acos(((rebin_ph+count)->r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
-
                 //fprintf(fPtr, "bin %e-%e, %e-%e has %e photons: Theta of averages photon is: %e\n",pow(10, min_range)*C_LIGHT/1.6e-9, pow(10,max_range)*C_LIGHT/1.6e-9, min_range_theta, max_range_theta, gsl_histogram2d_get(h_energy_theta, count_x, count_y), ph_theta);
                 //fflush(fPtr);
                                 
@@ -1401,30 +1385,6 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
         exit(1);
     }
     
-    //int null_ph_count=0;
-    //int null_ph_count_1=0;
-    /*
-    //int null_ph_count_2=0;
-#pragma omp parallel for num_threads(num_thread) reduction(+:null_ph_count)
-    for (i=0;i<*num_ph;i++)
-    {
-        if ((*ph_orig)[i].weight == 0)
-        {
-            null_ph_count++;
-            //fprintf(fPtr, "%d \n", null_ph_count);
-            
-        }
-        
-        //if ((*ph_orig)[i].type == 'i')
-        //{
-        //    null_ph_count_1++;
-        //}
-          
-        //fprintf(fPtr, "%d %c %e %e %e %d\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0, (*ph_orig)[i].nearest_block_index );
-        printf( "%d %c %e %e %e %d\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0, (*ph_orig)[i].nearest_block_index );
-
-    }
-    */
     
     *scatt_synch_num_ph=num_bins*num_bins_theta-num_null_rebin_ph;
     *num_ph_emit=num_bins*num_bins_theta+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
@@ -1530,22 +1490,6 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                         params[2]= el_dens;
                         F.params = &params;
                         
-                        //printf("Integrating\n");
-                        //status=gsl_integration_qags(&F, nu_c*1e-4, nu_c*1e2, 0, 1e-2, 10000, w, &ph_dens_calc, &error); //do this range b/c its ~4 order of magnitude difference between peak and lower limit and at high frequencies have exponential cut off therefore probability goes down very fast
-                        //ph_dens_calc*=2*M_PI*(*(x+i))*pow(*(szx+i),2.0)/(fps*ph_weight_adjusted);
-                        //printf ("error: %s\n", gsl_strerror (status));
-                        //Before integrated the photon number spectrum to get the number of photons to emit
-                        
-                        //ph_p_comv[0]=nu_c*PL_CONST/C_LIGHT;
-                        //ph_p_comv[1]=0;
-                        //ph_p_comv[2]=0;
-                        //ph_p_comv[3]=0; //dont care about these components of the 4 momentum
-                        
-                        //now assume steady state for thermal synchrotron radiation, emit number of photons as source function (j/absorption) at nu_c divided by h*nu_c
-                        //singleElectron(&el_p[0], *(temp+i), &ph_p_comv[0], rand, fPtr); //get random electron, only care about its energy
-                        //printf("Chosen el: p0 %e p1 %e p2 %e p3 %e\n", *(el_p+0), *(el_p+1), *(el_p+2), *(el_p+3));
-                        //ph_dens_calc=jnu(nu_c, nu_c, dimlesstheta, el_dens)/(el_dens*synCrossSection(el_dens, *(temp+i), ph_p_comv[0]*C_LIGHT/PL_CONST, sqrt((el_p[0]*el_p[0]/(M_EL*M_EL*C_LIGHT*C_LIGHT))-1), epsilon_b)*(PL_CONST*nu_c));
-                        
                         //printf("Integrating\n"); //instead integrating from 0 to nu_c
                         status=gsl_integration_qags(&F, 10, nu_c, 0, 1e-2, 10000, w, &ph_dens_calc, &error); //find number of low energy seed photons in the tail of the BB distribution
                         //printf ("error: %s\n", gsl_strerror (status));
@@ -1567,10 +1511,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                     (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
                     
                     //printf("%d, %lf \n",*(ph_dens+j), ph_dens_calc);
-                    
-                    //modify the number of photons injected here
-                    //(*(ph_dens+j))=(*(ph_dens+j))/5;
-                    
+                                        
                     //sum up all the densities to get total number of photons
                     ph_tot+=(*(ph_dens+j));
                     
@@ -1617,9 +1558,6 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     }
     
     
-    //fprintf(fPtr, "Original number of photons: %d Null photons %d\nEmitting %d synchrotron photons between %e and %e in this frame with weight %e\n", (*num_ph), null_ph_count, ph_tot, rmin, rmax, ph_weight_adjusted);
-    //fflush(fPtr);
-    //exit(0);
     //allocate memory for that many photons and also allocate memory to hold comoving 4 momentum of each photon and the velocity of the fluid
     //ph_emit=malloc (ph_tot * sizeof (struct photon ));
     p_comv=malloc(4*sizeof(double));
@@ -1638,12 +1576,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         {
             /* everything ok */
             *ph_orig = tmp;
-            /*
-             for (i=0;i<*num_ph;i++)
-             {
-             fprintf(fPtr, "i: %d after realloc freq %e\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST );
-             }
-             */
+
         }
         else
         {
@@ -1690,20 +1623,6 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                 //fflush(fPtr);
                 j++;
             }
-            /*
-            else
-            {
-                //for one fo the original photon see if there are any photons with non zero weights and the nearest_block_index==-1, change the nearest_block_index to 0
-                //this was an synch photon emitted in the last frame and has to have this value changes so it can be scattered/absorbed
-                if (((*ph_orig)[i].weight != 0) && ((*ph_orig)[i].nearest_block_index == -1))
-                {
-                    //if the photon weight isnt 0 and the nearest_block_index==-1 change the nearest_block_index to 0
-                    //this was an synch photon emitted in the last frame and has to have this value changes so it can be scattered/absorbed
-                    (*ph_orig)[i].nearest_block_index == 0;
-                    fprintf(fPtr, "Allowing photon %d to scatter/absorb now.\n", i);
-                }
-            }
-            */
         }
         count_null_indexes=ph_tot; //use this to count the number fo null photons we have actually created, (this can help if we decide to directly double (or *1.5) number of photons each time we need to allocate more memory, then use factor*((*num_ph)+ph_tot)-(*num_ph)
         
@@ -1723,16 +1642,6 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         j=0;
         for (i=(*num_ph)-1;i>=0;i--)
         {
-            /*
-            if (((*ph_orig)[i].weight != 0) && ((*ph_orig)[i].nearest_block_index == -1))
-            {
-                //if the photon weight isnt 0 and the nearest_block_index==-1 change the nearest_block_index to 0
-                //this was an synch photon emitted in the last frame and has to have this value changes so it can be scattered/absorbed
-                (*ph_orig)[i].nearest_block_index == 0;
-                fprintf(fPtr, "Allowing photon %d to scatter/absorb now.\n", i);
-            }
-            else
-                */
             if ((*ph_orig)[i].weight == 0)  //if photons are null 'c' photons and not absorbed 'o' photons
             {
                 // if the weight is 0, this is a photons that has been absorbed and is now null
@@ -1773,22 +1682,6 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                 {
                     //printf("flash_array_idx: %d Temp %e, el_dens %e, B %e, nu_c %e, dimlesstheta %e\n",i, *(temp+i), el_dens, calcB(el_dens, *(temp+i), epsilon_b), nu_c, dimlesstheta);
 
-                    //have to get random frequency for the photon comoving frequency
-                    /*
-                    y_dum=1; //initalize loop
-                    yfr_dum=0;
-                    while (y_dum>yfr_dum)
-                    {
-                        fr_dum=gsl_rng_uniform_pos(rand)*(nu_c*1e2) ;//pow(10, gsl_rng_uniform_pos(rand)*log10(nu_c*1e2)); //in Hz
-                        //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
-                        y_dum=gsl_rng_uniform_pos(rand)*max_jnu;
-                        //printf("%lf ",fr_dum);
-                        yfr_dum=jnu(fr_dum, nu_c, dimlesstheta, el_dens);
-                     
-                        //printf("%lf,%lf,%e \n",fr_dum, y_dum, yfr_dum);
-                     
-                    }
-                     */
                     fr_dum=nu_c; //set the frequency directly to the cyclotron frequency
                     //fprintf(fPtr, "%lf\n ",fr_dum);
                     //exit(0);
@@ -1937,9 +1830,6 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
 
 double phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_synch_num_ph, double *temp, double *dens, FILE *fPtr)
 {
-    //still need to deal with below issue
-    //frame 213 where the absorption doesnt occur for all emitted photons and have some absorbed before/after unabsorbed photons, how to deal with this?
-    //ph 97, neg lab nu in frame 210, from -1 * c/h
     int i=0, count=0, abs_ph_count=0, synch_ph_count=0, num_thread=1;
     int other_count=0;
     #if defined(_OPENMP)
@@ -1979,7 +1869,6 @@ double phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *sc
                     if ((*ph_orig)[i].type == 's')
                     {
                         synch_ph_count++;
-                        //(*ph_orig)[i].type == 'c';
                     }
                 }
                 else
@@ -1992,41 +1881,11 @@ double phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *sc
                     (*ph_orig)[i].weight=0;
                     abs_ph_count++;
 
-                    
-                    //replace the potantial null photon with this photon's data
-                    /*
-                    (*ph_orig)[count].p0=(*ph_orig)[i].p0;
-                    (*ph_orig)[count].p1=(*ph_orig)[i].p1;
-                    (*ph_orig)[count].p2=(*ph_orig)[i].p2;
-                    (*ph_orig)[count].p3=(*ph_orig)[i].p3;
-                    (*ph_orig)[count].comv_p0=(*ph_orig)[i].comv_p0;
-                    (*ph_orig)[count].comv_p1=(*ph_orig)[i].comv_p1;
-                    (*ph_orig)[count].comv_p2=(*ph_orig)[i].comv_p2;
-                    (*ph_orig)[count].comv_p3=(*ph_orig)[i].comv_p3;
-                    (*ph_orig)[count].r0= (*ph_orig)[i].r0;
-                    (*ph_orig)[count].r1=(*ph_orig)[i].r1 ;
-                    (*ph_orig)[count].r2=(*ph_orig)[i].r2;
-                    (*ph_orig)[count].s0=(*ph_orig)[i].s0;
-                    (*ph_orig)[count].s1=(*ph_orig)[i].s1;
-                    (*ph_orig)[count].s2=(*ph_orig)[i].s2;
-                    (*ph_orig)[count].s3=(*ph_orig)[i].s3;
-                    (*ph_orig)[count].num_scatt=(*ph_orig)[i].num_scatt;
-                    (*ph_orig)[count].weight=(*ph_orig)[i].weight;
-                    (*ph_orig)[count].nearest_block_index=(*ph_orig)[i].nearest_block_index;
-                    (*ph_orig)[count].type=(*ph_orig)[i].type;
-                    
-                    //count+=1; //increment count (counts non-null photons in array)
-                    */
-                    //dont care about saving the absorbed 'o' photons data
                 }
             }
             else
             {
                 //if the phootn isnt going to be absorbed, see if its a 'c' photon thats survived and change it to an injected type
-                //if (((*ph_orig)[i].type == 'c') )
-                //{
-                //    (*ph_orig)[i].type = 'i';
-                //} DONT DO THIS YET SO WE KNOW WHICH ONES NEED TO BE SAVED IN printPhotons function
                 
                 //replace the potantial null photon with this photon's data
                 (*ph_orig)[count].p0=(*ph_orig)[i].p0;
@@ -2110,18 +1969,7 @@ double phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *sc
         count+=1;
     }
     //fprintf(fPtr, "In phAbsSynch func: count after loop= %d\n", count);
-   /*
-    count=0;
-    for (i=0;i<*num_ph;i++)
-    {
-        if ((*ph_orig)[i].weight == 0)
-        {
-            count++;
-        }
-    }
-    fprintf(fPtr, "In phAbsSynch func: nulll_count= %d\n", count);
-    fflush(fPtr);
-    */
+
     return abs_count;
 }
 

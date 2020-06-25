@@ -148,7 +148,6 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
     
      //now using hdf5 file for each process w/ group structure /(weights or Hydro File #)/(p0,p1,p2,p3, r0, r1, r2, s0, s1, s2, or num_scatt)
     
-    //if (STOKES_SWITCH==0), not going to save the polarization info
      
      //open the file if it exists and see if the group exists for the given frame, if frame doesnt exist then write datasets for all photons as extendable
      //if the frame does exist then read information from the prewritten data and then add new data to it as extended chunk
@@ -199,15 +198,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             {
                 weight[weight_net_num_ph]= ((ph+i)->weight);
                 weight_net_num_ph++;
-                /* placed in savecheckpoint file
-                #if SYNCHROTRON_SWITCH == ON
-                if ((ph+i)->type == 'c')
-                {
-                    (ph+i)->type = 'o'; //set this to be an old synchrotron scattered photon
-                }
-                #endif
-                 */
-                //fprintf(fPtr, "%d %c %e %e %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9);
+             //fprintf(fPtr, "%d %c %e %e %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9);
             }
             
             if ((frame==frame_last))
@@ -462,39 +453,6 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
         }
         
         status = H5Pclose (prop);
-        /*
-        if ((status_weight>=0) && (scatt_synch_num_ph > 0) && (frame==frame_last))
-        {
-            //the /PW dataset exists (b/c already created it in frame photons were injected in) and we need to do something different to save the emitted synch photons to the dataset
-            dset_weight = H5Dopen (file, "PW", H5P_DEFAULT); //open dataset
-            
-            //get dimensions of array and save it
-            dspace = H5Dget_space (dset_weight);
-            
-            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
-            
-            //extend the dataset
-            size[0] = dims_weight[0]+ dims_old[0];
-            status = H5Dset_extent (dset_weight, size);
-            
-           //  Select a hyperslab in extended portion of dataset
-            fspace = H5Dget_space (dset_weight);
-            offset[0] = dims_old[0];
-            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
-                                          dims_weight, NULL);
-            
-            // Define memory space
-            mspace = H5Screate_simple (rank, dims_weight, NULL);
-            
-            // Write the data to the extended portion of dataset
-            status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, mspace, fspace,
-                               H5P_DEFAULT, weight);
-            
-            status = H5Sclose (dspace);
-            status = H5Sclose (mspace);
-            status = H5Sclose (fspace);
-        }
-        */
     }
     else
     {
@@ -954,12 +912,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
     #endif
     
     status = H5Dclose (dset_num_scatt); 
-    //if ((frame==frame_inj) || (scatt_synch_num_ph > 0))
-    //{
-        //status = H5Dclose (dset_weight_2);
-    //} put this right after portion of code that actually uses it
-    
-    //if ((frame==frame_inj) || ((frame==frame_last) && (status_weight>=0)))
+
     if ((frame==frame_last))
     {
         status = H5Dclose (dset_weight);
@@ -971,10 +924,6 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
     /* Terminate access to the file. */
       status = H5Fclose(file);
     
-    //if (status_weight>=0)
-    //{
-    //    exit(0);
-    //}
 
 }
 
