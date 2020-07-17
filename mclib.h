@@ -21,6 +21,12 @@
 #define INTERNAL_E  0
 #define TOTAL_E     1
 
+//define photon types
+#define INJECTED_PHOTON 'i'
+#define COMPTONIZED_PHOTON 'c'
+#define SYNCHROTRON_POOL_PHOTON 's'
+#define OLD_COMPTONIZED_PHOTON 'o'
+
 
 extern const double C_LIGHT;
 extern const double A_RAD;

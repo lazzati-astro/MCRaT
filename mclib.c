@@ -194,7 +194,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             s2[count]= ((ph+i)->s2);
             s3[count]= ((ph+i)->s3);
             num_scatt[count]= ((ph+i)->num_scatt);
-            //if ((frame==frame_inj) || ((scatt_synch_num_ph > 0) && ((ph+i)->type == 'c'))) //if the frame is the same one that the photons were injected in, save the photon weights OR if there are synchrotron photons that havent been absorbed
+            //if ((frame==frame_inj) || ((scatt_synch_num_ph > 0) && ((ph+i)->type == COMPTONIZED_PHOTON))) //if the frame is the same one that the photons were injected in, save the photon weights OR if there are synchrotron photons that havent been absorbed
             {
                 weight[weight_net_num_ph]= ((ph+i)->weight);
                 weight_net_num_ph++;
@@ -982,9 +982,9 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
             for(i=0;i<ph_num;i++)
             {
                 #if SYNCHROTRON_SWITCH == ON
-                if (((ph+i)->type == 'c') && ((ph+i)->weight != 0))
+                if (((ph+i)->type == COMPTONIZED_PHOTON) && ((ph+i)->weight != 0))
                 {
-                    (ph+i)->type = 'o'; //set this to be an old synchrotron scattered photon
+                    (ph+i)->type = OLD_COMPTONIZED_PHOTON; //set this to be an old synchrotron scattered photon
                 }
                 #endif
                 fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
@@ -1034,9 +1034,9 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
             for(i=0;i<ph_num;i++)
             {
                 #if SYNCHROTRON_SWITCH == ON
-                if (((ph+i)->type == 'c') && ((ph+i)->weight != 0))
+                if (((ph+i)->type == COMPTONIZED_PHOTON) && ((ph+i)->weight != 0))
                 {
-                    (ph+i)->type = 'o'; //set this to be an old synchrotron scattered photon
+                    (ph+i)->type = OLD_COMPTONIZED_PHOTON; //set this to be an old synchrotron scattered photon
                 }
                 #endif
                 //fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
@@ -1073,9 +1073,9 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
             for(i=0;i<ph_num;i++)
             {
                 #if SYNCHROTRON_SWITCH == ON
-                if (((ph+i)->type == 'c') && ((ph+i)->weight != 0))
+                if (((ph+i)->type == COMPTONIZED_PHOTON) && ((ph+i)->weight != 0))
                 {
-                    (ph+i)->type = 'o'; //set this to be an old synchrotron scattered photon
+                    (ph+i)->type = OLD_COMPTONIZED_PHOTON; //set this to be an old synchrotron scattered photon
                 }
                 #endif
                 fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
@@ -1172,7 +1172,7 @@ int readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framesta
                 (*ph)[i].type= phHolder->type;
                 
                 #if SYNCHROTRON_SWITCH == ON
-                    if (((*ph)[i].weight != 0) && (((*ph)[i].type == 'c') || ((*ph)[i].type == 'o')) && ((*ph)[i].p0 > 0))
+                    if (((*ph)[i].weight != 0) && (((*ph)[i].type == COMPTONIZED_PHOTON) || ((*ph)[i].type == OLD_COMPTONIZED_PHOTON)) && ((*ph)[i].p0 > 0))
                     {
                         scatt_synch_num_ph++;
                     }
@@ -1925,7 +1925,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                 (*ph)[ph_tot].num_scatt=0;
                 (*ph)[ph_tot].weight=ph_weight_adjusted;
                 (*ph)[ph_tot].nearest_block_index=0;
-                (*ph)[ph_tot].type='i'; //i for injected
+                (*ph)[ph_tot].type=INJECTED_PHOTON; //i for injected
                 //printf("%d\n",ph_tot);
                 ph_tot++;
             }
@@ -2913,7 +2913,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
     #pragma omp parallel for num_threads(num_thread) firstprivate(old_position, new_position, divide_p0)
     for (i=0;i<num_ph;i++)
     {
-        if (((ph+i)->type != 's') && ((ph+i)->weight != 0))
+        if (((ph+i)->type != SYNCHROTRON_POOL_PHOTON) && ((ph+i)->weight != 0))
         {
             old_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 ); //uncommented checks since they were not necessary anymore
             
@@ -3156,10 +3156,10 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
         
                 //fill in photon 4 momentum
                 //printf("filling in 4 momentum in photonScatter for photon index %d\n", ph_index);
-                if ((ph+ph_index)->type == 's')
+                if ((ph+ph_index)->type == SYNCHROTRON_POOL_PHOTON)
                 {
                     //printf("The scattering photon is a seed photon w/ comv freq %e Hz.\n", ((ph+ph_index)->comv_p0)*C_LIGHT/PL_CONST);
-                    //*nu_c_scatt=((ph+ph_index)->comv_p0)*C_LIGHT/PL_CONST;//dont need this anymore b/c the 's' photon doesnt move from its cell
+                    //*nu_c_scatt=((ph+ph_index)->comv_p0)*C_LIGHT/PL_CONST;//dont need this anymore b/c the SYNCHROTRON_POOL_PHOTON photon doesnt move from its cell
                 
                 }
             
@@ -3903,7 +3903,7 @@ double averagePhotonEnergy(struct photon *ph, int num_ph)
     for (i=0;i<num_ph;i++)
     {
         #if SYNCHROTRON_SWITCH == ON
-        if (((ph+i)->weight != 0)) //dont want account for null or absorbed 'o' photons
+        if (((ph+i)->weight != 0)) //dont want account for null or absorbed OLD_COMPTONIZED_PHOTON photons
         #endif
         {
             e_sum+=(((ph+i)->p0)*((ph+i)->weight));
@@ -3927,7 +3927,7 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
     for (i=0;i<ph_num;i++)
     {
         #if SYNCHROTRON_SWITCH == ON
-        if (((ph+i)->weight != 0)) //dont want account for null or absorbed 'o' photons
+        if (((ph+i)->weight != 0)) //dont want account for null or absorbed OLD_COMPTONIZED_PHOTON photons
         #endif
         {
             sum+=((ph+i)->num_scatt);
@@ -3948,13 +3948,13 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
                 //printf("The new min is: %d\n", temp_min);
             }
             
-            if (((ph+i)->type) == 'i' )
+            if (((ph+i)->type) == INJECTED_PHOTON )
             {
                 avg_r_sum_inject+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
                 count_i++;
             }
                         
-            if ((((ph+i)->type) == 'c') || (((ph+i)->type) == 'o'))
+            if ((((ph+i)->type) == COMPTONIZED_PHOTON) || (((ph+i)->type) == OLD_COMPTONIZED_PHOTON))
             {
                 avg_r_sum_comp+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
                 count_comp++;
@@ -3964,7 +3964,7 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
             count++;
         }
         
-        if (((ph+i)->type) == 's' )
+        if (((ph+i)->type) == SYNCHROTRON_POOL_PHOTON )
         {
             avg_r_sum_synch+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
             count_synch++;

@@ -941,10 +941,10 @@ int main(int argc, char **argv)
                             
                             //see if the scattered phton was a seed photon, if so replenish the seed photon
                             #if SYNCHROTRON_SWITCH == ON
-                            if ((phPtr+ph_scatt_index)->type == 's')
+                            if ((phPtr+ph_scatt_index)->type == SYNCHROTRON_POOL_PHOTON)
                             {
                                 n_comptonized+=(phPtr+ph_scatt_index)->weight;
-                                (phPtr+ph_scatt_index)->type = 'c'; //c for compton scattered synchrotron photon
+                                (phPtr+ph_scatt_index)->type = COMPTONIZED_PHOTON; //c for compton scattered synchrotron photon
                                 
                                 //fprintf(fPtr, "num_null_ph %d\n", num_null_ph);
                                 //printf("The previous scattered photon was a seed photon %c.\n", (phPtr+ph_scatt_index)->type);
