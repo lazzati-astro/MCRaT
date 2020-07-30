@@ -1203,6 +1203,21 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
         //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
         //need to realloc memory to hold the old photon info and the new emitted photon's info
         //before was doing ((*num_ph)+num_bins-count_c_ph-(*num_null_ph) ) but instead did the beow since that creatd extr space for null photons to be filled in later on
+        
+        /*
+         fprintf(fPtr, "\nBefore Rebin: \n");
+         fflush(fPtr);
+
+        for (i=0;i<*num_ph;i++)
+        {
+            fprintf(fPtr, "%d %c %e %e %e %d\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0, (*ph_orig)[i].nearest_block_index );
+
+        }
+         fprintf(fPtr, "Before Rebin: \n\n");
+         fflush(fPtr);
+         */
+
+        
         fprintf(fPtr, "Rebin: Allocating %d space\n", ((*num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph) )); //befoe was dong
         fflush(fPtr);
         tmp=realloc(*ph_orig, ((*num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph))* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
@@ -1261,13 +1276,6 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
         end_count=(*scatt_synch_num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph);
         
         //go through all the phtons and ID where the synchrotron ones are and reset them to what they were originally
-        /*
-        for (i=0;i<*num_ph;i++)
-        {
-            fprintf(fPtr, "%d %c %e %e %e %d\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0, (*ph_orig)[i].nearest_block_index );
-
-        }
-         */
         count=0;
         for (i=0;i<synch_photon_count;i++)
         {
@@ -1297,6 +1305,29 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 count++;
             }
         }
+        
+        //go through the newly added phootns in the array and make sure that there are no SYNCHROTRON_POOL_PHOTON type photons there that can cause issues later on
+        for (i=( *num_ph)-(num_bins*num_bins_theta-count_c_ph+(*num_null_ph));i<(*num_ph);i++)
+        {
+            if ((*ph_orig)[i].type == SYNCHROTRON_POOL_PHOTON)
+            {
+                (*ph_orig)[i].type = COMPTONIZED_PHOTON;
+            }
+        }
+        
+        /*
+         fprintf(fPtr, "\nAfter Rebin: \n");
+         fflush(fPtr);
+
+        for (i=0;i<*num_ph;i++)
+        {
+            fprintf(fPtr, "%d %c %e %e %e %d\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0, (*ph_orig)[i].nearest_block_index );
+
+        }
+         fprintf(fPtr, "After Rebin: \n\n");
+         fflush(fPtr);
+         */
+
         
         
     }
@@ -1341,7 +1372,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 (*ph_orig)[idx].num_scatt=(rebin_ph+count)->num_scatt;
                 (*ph_orig)[idx].weight=(rebin_ph+count)->weight;
                 (*ph_orig)[idx].nearest_block_index=(rebin_ph+count)->nearest_block_index;
-                (*ph_orig)[idx].type = COMPTONIZED_PHOTON;
+                (*ph_orig)[idx].type = REBINNED_PHOTON;//COMPTONIZED_PHOTON;//MODIFIED HERE FOR TESTING
                 
                 
                 if ((rebin_ph+count)->weight==0)
@@ -1401,6 +1432,21 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
         fflush(fPtr);
         exit(1);
     }
+    
+    /*
+     fprintf(fPtr, "\nPost Rebin Fill-in: \n");
+     fflush(fPtr);
+
+    for (i=0;i<*num_ph;i++)
+    {
+        fprintf(fPtr, "%d %c %e %e %e %d\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0, (*ph_orig)[i].s0, (*ph_orig)[i].nearest_block_index );
+
+    }
+     fprintf(fPtr, "Post Rebin Fill-in: \n\n");
+     fflush(fPtr);
+
+     */
+
     
     
     *scatt_synch_num_ph=num_bins*num_bins_theta-num_null_rebin_ph;

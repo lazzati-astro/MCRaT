@@ -24,8 +24,10 @@
 //define photon types
 #define INJECTED_PHOTON 'i'
 #define COMPTONIZED_PHOTON 'c'
-#define SYNCHROTRON_POOL_PHOTON 's'
-#define OLD_COMPTONIZED_PHOTON 'o'
+#define SYNCHROTRON_POOL_PHOTON 'p'
+#define OLD_COMPTONIZED_PHOTON 's'
+#define REBINNED_PHOTON 'r'
+
 
 
 extern const double C_LIGHT;
@@ -182,11 +184,11 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
 
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr);
 
-int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand, FILE *fPtr);
+int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand, FILE *fPtr, char photon_type);//MODIFIED HERE FOR TESTING
 
 int comptonScatter(double *theta, double *phi, gsl_rng * rand, FILE *fPtr);
 
-int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double u, gsl_rng * rand, FILE *fPtr);
+int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double u, gsl_rng * rand, FILE *fPtr, char photon_type);
 
 double averagePhotonEnergy(struct photon *ph, int num_ph);
 
