@@ -3029,6 +3029,12 @@ double findPhi(double *x_old, double *y_old, double *x_new, double *y_new)
     
     gsl_blas_ddot(&y.vector, &y_prime.vector, &dot_prod_result);
     
+    if ((dot_prod_result<-1) || (dot_prod_result>1))
+    {
+        printf("The old dot poduct was %e, the new one is %e\n",dot_prod_result, round(dot_prod_result));
+        dot_prod_result=round(dot_prod_result);//do this rounding so numerical error that causes value to be <-1 or >1 gets rounded and becomes a real value if its close enough to these limits
+    }
+    
     return -1*factor*acos(dot_prod_result);
 }
 
@@ -3053,6 +3059,13 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
     //rotate the stokes vector now to put it in the coordinate system fo the boosted photon and the boost evctor
     mullerMatrixRotation(phi, s, fPtr);
     
+    /*
+    if ( isnan(*(s+0)) || isnan(*(s+1)) || isnan(*(s+2)) || isnan(*(s+3)) )
+    {
+        printf("A stokes value is nan\n\n");
+    }
+     */
+    
     //find the new coordinates of the rotated stokes vector with the boosted photon and the boost vector
     findXY(v_ph_boosted, v, &x, &y);
     
@@ -3063,6 +3076,13 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
     
     //do the rotation of the stokes vector to put it in the coordinate system of the boosted photon and the z axis
     mullerMatrixRotation(phi, s, fPtr);
+    
+    /*
+    if ( isnan(*(s+0)) || isnan(*(s+1)) || isnan(*(s+2)) || isnan(*(s+3)) )
+    {
+        printf("A stokes value is nan\n\n");
+    }
+     */
     
 }
 
@@ -3211,7 +3231,9 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                 //if (STOKES_SWITCH != 0)
                 #if STOKES_SWITCH == ON
                 {
+
                     stokesRotation(fluid_beta, (ph_p+1), (ph_p_comov+1), s, fPtr);
+                    
                 }
                 #endif
                 
@@ -3529,10 +3551,9 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     //if (STOKES_SWITCH != 0)
     #if STOKES_SWITCH == ON
     {
-        i=1;
         stokesRotation(el_v, (ph_comov+1), (ph_p_prime+1), s, fPtr);
         stokes=gsl_vector_view_array(s, 4);
-        i=0;
+
     }
     #endif
     
@@ -3741,12 +3762,15 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
              fprintf(fPtr,"Scatt Matrix 3: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 3,0), gsl_matrix_get(scatt, 3,1), gsl_matrix_get(scatt, 3,2), gsl_matrix_get(scatt, 3,3));
              fprintf(fPtr,"s: %e, %e, %e,%e\n", gsl_vector_get(scatt_result,0), gsl_vector_get(scatt_result,1), gsl_vector_get(scatt_result,2), gsl_vector_get(scatt_result,3));
              */
+            
+            
             //normalize and rotate back
             *(s+0)=gsl_vector_get(scatt_result,0)/gsl_vector_get(scatt_result,0); //should be 1.0
             *(s+1)=gsl_vector_get(scatt_result,1)/gsl_vector_get(scatt_result,0);
             *(s+2)=gsl_vector_get(scatt_result,2)/gsl_vector_get(scatt_result,0);
             *(s+3)=gsl_vector_get(scatt_result,3)/gsl_vector_get(scatt_result,0);
             //fprintf(fPtr,"s after norm: %e, %e, %e,%e\n", gsl_vector_get(&stokes.vector,0), gsl_vector_get(&stokes.vector,1), gsl_vector_get(&stokes.vector,2), gsl_vector_get(&stokes.vector,3));
+            
             
             //need to find current stokes coordinate system defined in the plane of k-k_0
             findXY(gsl_vector_ptr(result0,0),gsl_vector_ptr(ph_p_orig, 1), x_tilde, y_tilde);
