@@ -420,7 +420,7 @@ int main(int argc, char **argv)
             if (count!=numprocs)
             {
                 //if the number of processes needed to continue the simulation is different from the number of processes in the mpiexec call exit
-                printf('The simulation needs %d processes to properly continue. The number of processes initialized was %d.\nThe program is now exiting to prevent data corruption\n.', count, numprocs);
+                printf("The simulation needs %d processes to properly continue. The number of processes initialized was %d.\nThe program is now exiting to prevent data corruption\n.", count, numprocs);
                 exit(2);
             }
         

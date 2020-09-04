@@ -29,7 +29,6 @@
 #define REBINNED_PHOTON 'r'
 
 
-
 extern const double C_LIGHT;
 extern const double A_RAD;
 extern const double PL_CONST;
@@ -86,7 +85,7 @@ struct photon
         #define SYNCHROTRON_REBIN_ANG 0.5
     #endif
 
-    //if the user hasnt defined anything for how to calculate the B field, assume that they want it calculated from the internal energy
+    //if the user hasnt defined anything for how to calculate the B field, assume that they want it calculated from the total energy
     #ifndef B_FIELD_CALC
         #define B_FIELD_CALC TOTAL_E
     #else
@@ -184,11 +183,11 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
 
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr);
 
-int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand, FILE *fPtr, char photon_type);//MODIFIED HERE FOR TESTING
+int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand, FILE *fPtr);
 
 int comptonScatter(double *theta, double *phi, gsl_rng * rand, FILE *fPtr);
 
-int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double u, gsl_rng * rand, FILE *fPtr, char photon_type);
+int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double u, gsl_rng * rand, FILE *fPtr);
 
 double averagePhotonEnergy(struct photon *ph, int num_ph);
 

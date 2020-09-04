@@ -5,45 +5,45 @@ The style file: apj.bst.bst
 Database file #1: references.bib
 Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
 Warning--empty publisher in Rybiki_Lightman
-You've used 10 entries,
+You've used 11 entries,
             3085 wiz_defined-function locations,
-            702 strings with 6120 characters,
-and the built_in function-call counts, 4060 in all, are:
-= -- 353
-> -- 222
+            710 strings with 6281 characters,
+and the built_in function-call counts, 4518 in all, are:
+= -- 394
+> -- 252
 < -- 7
-+ -- 79
-- -- 74
-* -- 297
-:= -- 774
-add.period$ -- 10
-call.type$ -- 10
-change.case$ -- 63
-chr.to.int$ -- 10
-cite$ -- 11
-duplicate$ -- 180
-empty$ -- 283
-format.name$ -- 89
-if$ -- 811
++ -- 89
+- -- 85
+* -- 335
+:= -- 858
+add.period$ -- 11
+call.type$ -- 11
+change.case$ -- 70
+chr.to.int$ -- 11
+cite$ -- 12
+duplicate$ -- 199
+empty$ -- 311
+format.name$ -- 101
+if$ -- 903
 int.to.chr$ -- 1
 int.to.str$ -- 0
-missing$ -- 10
-newline$ -- 34
-num.names$ -- 40
-pop$ -- 61
+missing$ -- 11
+newline$ -- 37
+num.names$ -- 44
+pop$ -- 68
 preamble$ -- 1
-purify$ -- 63
+purify$ -- 70
 quote$ -- 0
-skip$ -- 159
+skip$ -- 175
 stack$ -- 0
-substring$ -- 189
+substring$ -- 210
 swap$ -- 0
 text.length$ -- 0
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 87
+type$ -- 96
 warning$ -- 1
-while$ -- 39
+while$ -- 43
 width$ -- 0
-write$ -- 102
+write$ -- 112
 (There was 1 warning)

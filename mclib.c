@@ -3031,7 +3031,7 @@ double findPhi(double *x_old, double *y_old, double *x_new, double *y_new)
     
     if ((dot_prod_result<-1) || (dot_prod_result>1))
     {
-        printf("The old dot poduct was %e, the new one is %e\n",dot_prod_result, round(dot_prod_result));
+        //printf("The old dot poduct was %e, the new one is %e\n",dot_prod_result, round(dot_prod_result));
         dot_prod_result=round(dot_prod_result);//do this rounding so numerical error that causes value to be <-1 or >1 gets rounded and becomes a real value if its close enough to these limits
     }
     
@@ -3141,12 +3141,13 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
         
                 ph_phi=atan2(((ph+ph_index)->r1), (((ph+ph_index)->r0)));
                 
+                /*
                 if (isnan((ph+ph_index)->r0) || isnan((ph+ph_index)->r1) || isnan((ph+ph_index)->r2))
                 {
                     printf("Not a number\n");
                 }
             
-                /*
+                
                 fprintf(fPtr,"ph_phi=%e\n", ph_phi);
                 fflush(fPtr);
                 */
@@ -3246,7 +3247,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
          
         
                 //third we perform the scattering and save scattered photon 4 monetum in ph_p_comov @ end of function
-                event_did_occur=singleScatter(el_p_comov, ph_p_comov, s, rand, fPtr, (ph+ph_index)->type);//MODIFIED HERE FOR TESTING
+                event_did_occur=singleScatter(el_p_comov, ph_p_comov, s, rand, fPtr);
             
         
                 //fprintf(fPtr,"After Scattering, After Lorentz Boost to Comov frame: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
@@ -3254,14 +3255,6 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                 //event_did_occur=0;
                 if (event_did_occur==1)
                 {
-//                    FILE *testFile;
-//                    testFile = fopen("energy_change_test_lab_frame.txt", "a");
-//                    fprintf(testFile, "%c\t%e\t", (ph+ph_index)->type, ((ph+ph_index)->p0) );//MODIFIED HERE FOR TESTING
-
-                    if ((ph+ph_index)->type == REBINNED_PHOTON)
-                    {
-                        (ph+ph_index)->type = COMPTONIZED_PHOTON; //MODIFIED HERE FOR TESTING
-                    }
                     //fprintf(fPtr,"Within the if!\n");
                     //fflush(fPtr);
                 
@@ -3274,7 +3267,6 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                     //fprintf(fPtr,"Scattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
                     //fflush(fPtr);
                     
-                    //if (STOKES_SWITCH != 0)
                     #if STOKES_SWITCH == ON
                     {
                         stokesRotation(negative_fluid_beta, (ph_p_comov+1), (ph_p+1), s, fPtr); //rotate to boost back to lab frame
@@ -3293,9 +3285,10 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                         fprintf(fPtr,"Extremely High Photon Energy!!!!!!!!\n");
                         fflush(fPtr);
                     }
-
+                    
                     //fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
                     //fprintf(fPtr, "Old: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+                    
         
                     //assign the photon its new lab 4 momentum
                     ((ph+ph_index)->p0)=(*(ph_p+0));
@@ -3315,27 +3308,10 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                     ((ph+ph_index)->num_scatt)+=1;
                     *frame_scatt_cnt+=1; //incrememnt total number of scatterings
                     
-                    
-//                    fprintf(testFile, "%e\n", ((ph+ph_index)->p0) );//MODIFIED HERE FOR TESTING
-//                    fflush(testFile);
-//                    fclose(testFile);
 
                 
                 }
-                /*
-            }
-            else
-            {
-                //the photon will be absorbed
-                event_did_occur=1;
-                *frame_abs_cnt+=1;
-                //set weight=0 (to make sure it cant affect anything if it somehow gets saved) and for us to knwo which photons have been absorbed
-                ((ph+ph_index)->weight)=0;
-                ((ph+ph_index)->nearest_block_index)=-1;
-                fprintf(fPtr, "Photon %d In the absorption part of if-else.\n", ph_index);
-                //exit(0);
-            } wont need this since we are not dealing with individual absorption events
-                 */
+                
         }
         else
         {
@@ -3475,9 +3451,8 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
 }
 
 
-int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand, FILE *fPtr, char photon_type)
+int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand, FILE *fPtr)
 {
-    //MODIFIED HERE FOR TESTING
     //This routine performs a scattering between a photon and a moving electron.
     int i=0, scattering_occured=0;
     double dotprod_1; //to test orthogonality
@@ -3633,7 +3608,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     
     //determine if the scattering will occur between photon and electron
     //scattering_occured=comptonScatter(&theta, &phi, rand, fPtr); //determine the angles phi and theta for the photon to scatter into using thompson differential cross section
-    scattering_occured=kleinNishinaScatter(&theta, &phi, *(ph_p_prime+0), *(s+1), *(s+2), rand, fPtr, photon_type);//determine the angles phi and theta for the photon to scatter into using KN differential cross section, if the photon will end up scattering
+    scattering_occured=kleinNishinaScatter(&theta, &phi, *(ph_p_prime+0), *(s+1), *(s+2), rand, fPtr);//determine the angles phi and theta for the photon to scatter into using KN differential cross section, if the photon will end up scattering
     
     //fprintf(fPtr,"Phi: %e, Theta: %e\n", phi, theta);
     //theta=2.4475668271885342;
@@ -3646,11 +3621,6 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     
     if (scattering_occured==1)
     {
-//        FILE *testFile;
-//        testFile = fopen("test.txt", "a");
-//        fprintf(testFile, "%c\t%e\t%e\t", photon_type, *(ph_p_prime+0), theta );//MODIFIED HERE FOR TESTING
-        //fprintf(testFile, "%c\t%e\t%e\t", photon_type, *(ph_comov+0), theta );//MODIFIED HERE FOR TESTING
-        
         //perform scattering and compute new 4-momenta of electron and photon
         //scattered photon 4 momentum
         gsl_vector_set(result, 0, (*(ph_p_prime+0))/(1+ (( (*(ph_p_prime+0))*(1-cos(theta)) )/(M_EL*C_LIGHT )) ) ); // scattered energy of photon
@@ -3719,10 +3689,6 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
         gsl_matrix_set(rot0, 1,0,-sin(-phi0));
         gsl_blas_dgemv(CblasNoTrans, 1, rot0, &ph_p.vector, 0, result0);
         
-//        fprintf(testFile, "%e\n", *(ph_p_prime+0) );//MODIFIED HERE FOR TESTING
-//        fflush(testFile);
-//        fclose(testFile);
-
         
         /*
          printf("Photon Phi: %e\n", phi0);
@@ -3803,9 +3769,6 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
         lorentzBoost(negative_el_v, ph_p_prime, ph_comov, 'p', fPtr);
         //printf("Undo boost 1: %e, %e, %e, %e\n",  *(ph_comov+0), *(ph_comov+1),  *(ph_comov+2),  *(ph_comov+3));
         
-        //fprintf(testFile, "%e\n", *(ph_comov+0) );//MODIFIED HERE FOR TESTING
-        //fflush(testFile);
-        //fclose(testFile);
         
         //dont need to find stokes vector and do previosu rotations, can just find the stokes coordinates in function because the stokes coordinate vectors rotate with the photon vector and no rotations to a new stokes coordinate system are needed
         //if (STOKES_SWITCH != 0)
@@ -3848,7 +3811,7 @@ int comptonScatter(double *theta, double *phi, gsl_rng * rand, FILE *fPtr)
 }
 
 
-int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double u, gsl_rng * rand, FILE *fPtr, char photon_type)
+int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double u, gsl_rng * rand, FILE *fPtr)
 {
     //sample theta using:  https://doi.org/10.13182/NSE11-57
     double phi_dum=0, cos_theta_dum=0, f_phi_dum=0, f_cos_theta_dum=0, f_theta_dum=0, phi_y_dum=0, cos_theta_y_dum=0, KN_x_section_over_thomson_x_section=0, rand_num=0;
@@ -3859,16 +3822,7 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
     //determine the KN cross section over the thomson cross section From RYBICKI AND LIGHTMAN pg 197
     KN_x_section_over_thomson_x_section= (3.0/4.0)*(  (  ((1+energy_ratio)/ pow(energy_ratio,3.0))*(((2*energy_ratio)*(1+energy_ratio)/(1+2*energy_ratio)) - log(1+2*energy_ratio)))  + (log(1+2*energy_ratio)/(2*energy_ratio)) - ((1+3*energy_ratio)/pow((1+2*energy_ratio),2.0))  );
     rand_num=gsl_rng_uniform(rand);
-    
-    //MODIFIED HERE
-    /*
-    if (photon_type!=INJECTED_PHOTON)
-    {
-        fprintf(fPtr,"Rand: %e, p0: %e, X: %e, Ratio: %e\n", rand_num, p0*C_LIGHT, energy_ratio, KN_x_section_over_thomson_x_section);
-        fflush(fPtr);
-    }
-     */
-    
+        
     if ((rand_num<= KN_x_section_over_thomson_x_section) || (p0 < 1e-2*(M_EL*C_LIGHT ) ))
     {
         //include last condition so low energy seed phtoons can scatter (as they should under thompson scattering), calculating KN_x_section_over_thomson_x_section incurs numerical error at very low frequencies
@@ -3888,14 +3842,6 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
             cos_theta_dum=gsl_rng_uniform(rand)*2-1;
             f_cos_theta_dum=pow((1+energy_ratio*(1-cos_theta_dum)),-2)*(energy_ratio*(1-cos_theta_dum)+(1/(1+energy_ratio*(1-cos_theta_dum))) + cos_theta_dum*cos_theta_dum);
             
-            //MODIFIED HERE
-            /*
-            if (photon_type!=INJECTED_PHOTON)
-            {
-                fprintf(fPtr,"cos_theta_y_dum: %e, cos_theta_dum: %e, f_cos_theta_dum: %e\n", cos_theta_y_dum, cos_theta_dum, f_cos_theta_dum);
-                fflush(fPtr);
-            }
-             */
         }
         *theta=acos(cos_theta_dum);
         mu=1+energy_ratio*(1-cos(*theta));
