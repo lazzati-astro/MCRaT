@@ -23,6 +23,7 @@
 #include "mclib.h"
 #include <omp.h>
 #include "mpi.h"
+#include "mc_synch.h"
 
 #define PROP_DIM1 1
 #define PROP_DIM2 8
@@ -32,8 +33,8 @@
 #define THETA_DIM_2D 2000
 
 //define constants
-const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27;
-const double K_B=1.380658e-16, M_P=1.6726231e-24, THOM_X_SECT=6.65246e-25, M_EL=9.1093879e-28 ;
+const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27, FINE_STRUCT=7.29735308e-3, CHARGE_EL= 4.8032068e-10;
+const double K_B=1.380658e-16, M_P=1.6726231e-24, THOM_X_SECT=6.65246e-25, M_EL=9.1093879e-28 , R_EL=2.817941499892705e-13;
 
 int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200], int angle_rank,  int angle_procs, int last_frame)
 {
@@ -141,54 +142,74 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
 }
 
 
-void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char dir[200], int angle_rank,  FILE *fPtr )
+void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit, int num_null_ph, int scatt_synch_num_ph, int frame,int frame_inj, int frame_last, char dir[200], int angle_rank, FILE *fPtr )
 {
     //function to save the photons' positions and 4 momentum
     
      //now using hdf5 file for each process w/ group structure /(weights or Hydro File #)/(p0,p1,p2,p3, r0, r1, r2, s0, s1, s2, or num_scatt)
     
-    //if (STOKES_SWITCH==0), not going to save the polarization info
      
      //open the file if it exists and see if the group exists for the given frame, if frame doesnt exist then write datasets for all photons as extendable
      //if the frame does exist then read information from the prewritten data and then add new data to it as extended chunk
      
      
-    int i=0, rank=1;
+    int i=0, count=0, rank=1, net_num_ph=num_ph-num_ph_abs-num_null_ph, weight_net_num_ph= num_ph-num_ph_abs-num_null_ph, global_weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : num_ph_emit-num_ph_abs ; //can have more photons absorbed than emitted, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : scatt_synch_num_ph
+    #if defined(_OPENMP)
     int num_thread=omp_get_num_threads();
-    char mc_file[200]="", group[200]="";
-    double p0[num_ph], p1[num_ph], p2[num_ph], p3[num_ph] , r0[num_ph], r1[num_ph], r2[num_ph], num_scatt[num_ph], weight[num_ph];
-    double s0[num_ph], s1[num_ph], s2[num_ph], s3[num_ph], comv_p0[num_ph], comv_p1[num_ph], comv_p2[num_ph], comv_p3[num_ph];
-    hid_t  file, file_init, dspace, fspace, mspace, prop, group_id;
-    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_2, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3;
-    herr_t status, status_group;
-    hsize_t dims[1]={num_ph}, dims_old[1]={0}; //1 is the number of dimansions for the dataset, called rank
+    #endif
+    char mc_file[200]="", group[200]="", group_weight[200]="", *ph_type=NULL;
+    double p0[net_num_ph], p1[net_num_ph], p2[net_num_ph], p3[net_num_ph] , r0[net_num_ph], r1[net_num_ph], r2[net_num_ph], num_scatt[net_num_ph], weight[weight_net_num_ph], global_weight[net_num_ph];
+    double s0[net_num_ph], s1[net_num_ph], s2[net_num_ph], s3[net_num_ph], comv_p0[net_num_ph], comv_p1[net_num_ph], comv_p2[net_num_ph], comv_p3[net_num_ph];
+    hid_t  file, file_init, dspace, dspace_weight, dspace_global_weight, fspace, mspace, prop, prop_weight, prop_global_weight, group_id;
+    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_2, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_ph_type;
+    herr_t status, status_group, status_weight, status_weight_2;
+    hsize_t dims[1]={net_num_ph}, dims_weight[1]={weight_net_num_ph}, dims_old[1]={0}; //1 is the number of dimansions for the dataset, called rank
+
+    
     hsize_t maxdims[1]={H5S_UNLIMITED};
     hsize_t      size[1];
     hsize_t      offset[1];
     
-    //save photon data into large arrays
-    #pragma omp parallel for num_threads(num_thread)
+    fprintf(fPtr, "num_ph %d num_ph_abs %d num_null_ph %d num_ph_emit %d\nAllocated weight to be %d values large and other arrays to be %d\n",num_ph,num_ph_abs,num_null_ph,num_ph_emit, weight_net_num_ph, net_num_ph);
+    
+    ph_type=malloc((net_num_ph)*sizeof(char));
+    
+    //save photon data into large arrays, NEED TO KNOW HOW MANY NULL PHOTONS WE HAVE AKA SAVED SPACE THAT AREN'T ACTUALLY PHOTONS TO PROPERLY SAVE SPACE FOR ARRAYS ABOVE
+    weight_net_num_ph=0;
+    count=0;//used to keep track of weight values since it may not be the same as num_ph
+    //#pragma omp parallel for num_threads(num_thread) reduction(+:weight_net_num_ph)
     for (i=0;i<num_ph;i++)
     {
-        p0[i]= ((ph+i)->p0);
-        p1[i]= ((ph+i)->p1);
-        p2[i]= ((ph+i)->p2);
-        p3[i]= ((ph+i)->p3);
-        comv_p0[i]= ((ph+i)->comv_p0);
-        comv_p1[i]= ((ph+i)->comv_p1);
-        comv_p2[i]= ((ph+i)->comv_p2);
-        comv_p3[i]= ((ph+i)->comv_p3);
-        r0[i]= ((ph+i)->r0);
-        r1[i]= ((ph+i)->r1);
-        r2[i]= ((ph+i)->r2);
-        s0[i]= ((ph+i)->s0);
-        s1[i]= ((ph+i)->s1);
-        s2[i]= ((ph+i)->s2);
-        s3[i]= ((ph+i)->s3);
-        num_scatt[i]= ((ph+i)->num_scatt);
-        if (frame==frame_inj) //if the frame is the same one that the photons were injected in, save the photon weights
+        if ((ph+i)->weight != 0)
         {
-            weight[i]= ((ph+i)->weight);
+            p0[count]= ((ph+i)->p0);
+            p1[count]= ((ph+i)->p1);
+            p2[count]= ((ph+i)->p2);
+            p3[count]= ((ph+i)->p3); 
+            r0[count]= ((ph+i)->r0);
+            r1[count]= ((ph+i)->r1);
+            r2[count]= ((ph+i)->r2);
+            s0[count]= ((ph+i)->s0);
+            s1[count]= ((ph+i)->s1);
+            s2[count]= ((ph+i)->s2);
+            s3[count]= ((ph+i)->s3);
+            num_scatt[count]= ((ph+i)->num_scatt);
+            //if ((frame==frame_inj) || ((scatt_synch_num_ph > 0) && ((ph+i)->type == COMPTONIZED_PHOTON))) //if the frame is the same one that the photons were injected in, save the photon weights OR if there are synchrotron photons that havent been absorbed
+            {
+                weight[weight_net_num_ph]= ((ph+i)->weight);
+                weight_net_num_ph++;
+             //fprintf(fPtr, "%d %c %e %e %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9);
+            }
+            
+            if ((frame==frame_last))
+            {
+                global_weight[count]=((ph+i)->weight);
+            }
+            
+            *(ph_type+count)=(ph+i)->type;
+            //printf("%d %c %e %e %e %e %e %e %e %e %c\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9, *(ph_type+count));
+            
+            count++;
         }
         
     }
@@ -209,18 +230,21 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     {
         //the file exists, open it with read write 
         file=H5Fopen(mc_file, H5F_ACC_RDWR, H5P_DEFAULT);
-        //printf("In IF\n");
+        //fprintf(fPtr,"In IF\n");
         
         //see if the group exists
         status = H5Eset_auto(NULL, NULL, NULL);
         status_group = H5Gget_objinfo (file, group, 0, NULL);
         status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
         
+        
+        
         /*
         fprintf(fPtr, group);
         if (status_group == 0)
         {   
             fprintf (fPtr, "The group exists.\n");
+            //now try to see if there's a weight data set for this group
         }
         else 
         {
@@ -233,6 +257,13 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     if ((file_init>=0) || (status_group != 0) )
     {
         //printf("In IF\n");
+        //if the file exists, see if the weight exists
+        //snprintf(group_weight,sizeof(group),"/PW",i );
+        status = H5Eset_auto(NULL, NULL, NULL);
+        status_weight = H5Gget_objinfo (file, "/PW", 0, NULL);
+        status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+        
+        fprintf(fPtr,"Status of /PW %d\n", status_weight);
         
         //the file has been newly created or if the group does not exist then  create the group for the frame
         group_id = H5Gcreate2(file, group, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -241,10 +272,23 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         /* Modify dataset creation properties, i.e. enable chunking  */
         prop = H5Pcreate (H5P_DATASET_CREATE);
         status = H5Pset_chunk (prop, rank, dims);
+        
+        if ((frame==frame_inj) || (scatt_synch_num_ph > 0))
+        {
+            prop_weight= H5Pcreate (H5P_DATASET_CREATE);
+            status = H5Pset_chunk (prop_weight, rank, dims_weight);
+        }
+        
+        if ((frame==frame_last))
+        {
+            status = H5Pset_chunk (prop, rank, dims);
+        }
     
         /* Create the data space with unlimited dimensions. */
         dspace = H5Screate_simple (rank, dims, maxdims);
-    
+        
+        dspace_weight=H5Screate_simple (rank, dims_weight, maxdims);
+        
         /* Create a new dataset within the file using chunk creation properties.  */
         dset_p0 = H5Dcreate2 (group_id, "P0", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
@@ -301,15 +345,27 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         }
         #endif
         
+        #if SAVE_TYPE == ON
+        {
+            dset_ph_type = H5Dcreate2 (group_id, "PT", H5T_NATIVE_CHAR, dspace,
+                                       H5P_DEFAULT, prop, H5P_DEFAULT);
+        }
+        #endif
+        
         dset_num_scatt = H5Dcreate2 (group_id, "NS", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
                             
-        if (frame==frame_inj) //if the frame is the same one that the photons were injected in, save the photon weights
+        if ((frame==frame_inj) || (scatt_synch_num_ph > 0)) //if the frame is the same one that the photons were injected in, save the photon weights or if there are emitted photons that havent been absorbed
         {
-            dset_weight = H5Dcreate2 (file, "Weight", H5T_NATIVE_DOUBLE, dspace,
-                            H5P_DEFAULT, prop, H5P_DEFAULT);
-            dset_weight_2 = H5Dcreate2 (group_id, "Weight", H5T_NATIVE_DOUBLE, dspace,
-                            H5P_DEFAULT, prop, H5P_DEFAULT); //save the new injected photons' weights
+            dset_weight_2 = H5Dcreate2 (group_id, "PW", H5T_NATIVE_DOUBLE, dspace_weight,
+                            H5P_DEFAULT, prop_weight, H5P_DEFAULT); //save the new injected photons' weights
+        }
+        
+        if ((frame==frame_last))
+        {
+            //if saving the injected photons weight dont have to worry about the major ph_weight thats not in a group
+            dset_weight = H5Dcreate2 (file, "PW", H5T_NATIVE_DOUBLE, dspace,
+                                      H5P_DEFAULT, prop, H5P_DEFAULT);
         }
                          
         /* Write data to dataset */
@@ -368,19 +424,35 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         }
         #endif
         
+        #if SAVE_TYPE == ON
+        {
+            status = H5Dwrite (dset_ph_type, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL,
+                            H5P_DEFAULT, ph_type);
+        }
+        #endif
+
+        
         status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                         H5P_DEFAULT, num_scatt);
         
-        if (frame==frame_inj)
+        if ((frame==frame_inj) || (scatt_synch_num_ph > 0))
         {
-            status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-                            H5P_DEFAULT, weight);
             status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, weight);
+            
+            status = H5Pclose (prop_weight);
+            status = H5Dclose (dset_weight_2);
+        }
+        
+        if ((frame==frame_last))
+        {
+            //printf("Before write\n");
+            status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                               H5P_DEFAULT, global_weight);
+            //printf("After write\n");
         }
         
         status = H5Pclose (prop);
-    
     }
     else
     {
@@ -651,6 +723,27 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         }
         #endif
         
+        #if SAVE_TYPE == ON
+        {
+            dset_ph_type = H5Dopen (group_id, "PT", H5P_DEFAULT); //open dataset
+            dspace = H5Dget_space (dset_ph_type);
+            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+            size[0] = dims[0]+ dims_old[0];
+            status = H5Dset_extent (dset_ph_type, size);
+            fspace = H5Dget_space (dset_ph_type);
+            offset[0] = dims_old[0];
+            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                      dims, NULL);
+            mspace = H5Screate_simple (rank, dims, NULL);
+            status = H5Dwrite (dset_ph_type, H5T_NATIVE_CHAR, mspace, fspace,
+                                H5P_DEFAULT, ph_type);
+            status = H5Sclose (dspace);
+            status = H5Sclose (mspace);
+            status = H5Sclose (fspace);
+        }
+        #endif
+
+        
         dset_num_scatt = H5Dopen (group_id, "NS", H5P_DEFAULT); //open dataset
         dspace = H5Dget_space (dset_num_scatt);
         status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
@@ -664,54 +757,126 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
         status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, mspace, fspace,
                             H5P_DEFAULT, num_scatt);
         
+        //see if the weights group exists, if it does then we can extend it, otherwise we need to create it and write the new values to it
+        snprintf(group_weight,sizeof(group_weight),"PW",i );
+        status = H5Eset_auto(NULL, NULL, NULL);
+        status_weight = H5Gget_objinfo (group_id, "PW", 0, NULL);
+        status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
         
-        if (frame==frame_inj)
+        fprintf(fPtr,"Status of /frame/PW %d\n", status_weight);
+        
+        //if (((frame==frame_inj) || (scatt_synch_num_ph > 0)) )
         {
+            
             status = H5Sclose (dspace);
             status = H5Sclose (mspace);
             status = H5Sclose (fspace);
-        
-            dset_weight = H5Dopen (file, "Weight", H5P_DEFAULT); //open dataset
     
-            //get dimensions of array and save it
-            dspace = H5Dget_space (dset_weight);
-    
-            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
-        
-            //extend the dataset
-            size[0] = dims[0]+ dims_old[0];
-            status = H5Dset_extent (dset_weight, size);
-        
-            /* Select a hyperslab in extended portion of dataset  */
-            fspace = H5Dget_space (dset_weight);
-            offset[0] = dims_old[0];
-            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
-                                  dims, NULL); 
-                                  
-            /* Define memory space */
-            mspace = H5Screate_simple (rank, dims, NULL);
-        
-            /* Write the data to the extended portion of dataset  */
-            status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, mspace, fspace,
-                            H5P_DEFAULT, weight);
-                            
-            //will have to create the weight dataset for the new set of phtons that have been injected
-             /* Modify dataset creation properties, i.e. enable chunking  */
-            prop = H5Pcreate (H5P_DATASET_CREATE);
-            status = H5Pset_chunk (prop, rank, dims);
-    
-            /* Create the data space with unlimited dimensions. */
-            dspace = H5Screate_simple (rank, dims, maxdims);
+            if (((frame==frame_last)))
+            {
+                //make sure to append the newly injected/emitted photons from the most recent set of injected photons to the global weights
             
-            dset_weight_2 = H5Dcreate2 (group_id, "Weight", H5T_NATIVE_DOUBLE, dspace,
-                            H5P_DEFAULT, prop, H5P_DEFAULT); //save the new injected photons' weights
-                            
-            status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-                            H5P_DEFAULT, weight);
-                            
-            status = H5Pclose (prop);
+                dset_weight = H5Dopen (file, "PW", H5P_DEFAULT); //open dataset
+        
+                //get dimensions of array and save it
+                dspace = H5Dget_space (dset_weight);
+        
+                status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
             
+                //extend the dataset
+                size[0] = dims_weight[0]+ dims_old[0];
+                status = H5Dset_extent (dset_weight, size);
+            
+                /* Select a hyperslab in extended portion of dataset  */
+                fspace = H5Dget_space (dset_weight);
+                offset[0] = dims_old[0];
+                status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                      dims_weight, NULL);
+                
+                /* Define memory space */
+                mspace = H5Screate_simple (rank, dims_weight, NULL);
+            
+                /* Write the data to the extended portion of dataset  */
+                status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, mspace, fspace,
+                                H5P_DEFAULT, weight);
+            }
+            
+            if (status_weight >= 0)
+            {
+                //will have to create the weight dataset for the new set of phtons that have been injected, although it may already be created since emitting photons now
+                //see if the group exists
+                status = H5Eset_auto(NULL, NULL, NULL);
+                status_weight_2 = H5Gget_objinfo (group_id, "/PW", 0, NULL);
+                status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                
+                if (status_weight_2 < 0)
+                {
+                    //the dataset doesnt exist
+                     /* Modify dataset creation properties, i.e. enable chunking  */
+                    prop = H5Pcreate (H5P_DATASET_CREATE);
+                    status = H5Pset_chunk (prop, rank, dims);
+            
+                    /* Create the data space with unlimited dimensions. */
+                    dspace = H5Screate_simple (rank, dims, maxdims);
+                    
+                    dset_weight_2 = H5Dcreate2 (group_id, "PW", H5T_NATIVE_DOUBLE, dspace,
+                                    H5P_DEFAULT, prop, H5P_DEFAULT); //save the new injected photons' weights
+                    
+                    status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                                    H5P_DEFAULT, weight);
+                    
+                    status = H5Pclose (prop);
+                }
+                else
+                {
+                    //it exists and need to modify it
+                    dset_weight_2 = H5Dopen (group_id, "PW", H5P_DEFAULT); //open dataset
+                    
+                    //get dimensions of array and save it
+                    dspace = H5Dget_space (dset_weight_2);
+                    
+                    status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
+                    
+                    //extend the dataset
+                    size[0] = dims_weight[0]+ dims_old[0];
+                    status = H5Dset_extent (dset_weight_2, size);
+                    
+                    /* Select a hyperslab in extended portion of dataset  */
+                    fspace = H5Dget_space (dset_weight_2);
+                    offset[0] = dims_old[0];
+                    status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
+                                                  dims_weight, NULL);
+                    
+                    /* Define memory space */
+                    mspace = H5Screate_simple (rank, dims_weight, NULL);
+                    
+                    /* Write the data to the extended portion of dataset  */
+                    status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, mspace, fspace,
+                                       H5P_DEFAULT, weight);
+                }
+            }
+            else
+            {
+                fprintf(fPtr, "The frame exists in the hdf5 file but the weight dataset for the frame doesnt exist, therefore creating it.\n");
+                fflush(fPtr);
+                
+                prop_weight= H5Pcreate (H5P_DATASET_CREATE);
+                status = H5Pset_chunk (prop_weight, rank, dims_weight);
+                
+                dspace_weight=H5Screate_simple (rank, dims_weight, maxdims);
+                
+                dset_weight_2 = H5Dcreate2 (group_id, "PW", H5T_NATIVE_DOUBLE, dspace_weight,
+                                            H5P_DEFAULT, prop_weight, H5P_DEFAULT);
+                
+                status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                                   H5P_DEFAULT, weight);
+                
+                status = H5Pclose (prop_weight);
+            }
+            
+            status = H5Dclose (dset_weight_2);
         }
+        
                         
         
         status = H5Sclose (dspace);
@@ -722,6 +887,8 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     
     
     /* Close resources */
+    
+    free(ph_type);
     //status = H5Sclose (dspace);
     status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
     //if (COMV_SWITCH!=0)
@@ -738,18 +905,25 @@ void printPhotons(struct photon *ph, int num_ph, int frame,int frame_inj, char d
     }
     #endif
     
+    #if SAVE_TYPE == ON
+    {
+        status = H5Dclose (dset_ph_type);
+    }
+    #endif
+    
     status = H5Dclose (dset_num_scatt); 
-    if (frame==frame_inj)
+
+    if ((frame==frame_last))
     {
         status = H5Dclose (dset_weight);
-        status = H5Dclose (dset_weight_2);
     }
     
     /* Close the group. */
    status = H5Gclose(group_id);
     
     /* Terminate access to the file. */
-    status = H5Fclose(file);
+      status = H5Fclose(file);
+    
 
 }
 
@@ -758,13 +932,15 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
     //function to save data necessary to restart simulation if it ends
     //need to save all photon data
     FILE *fPtr=NULL;
-    char checkptfile[200]="";
-    char command[200]="";
+    char checkptfile[2000]="";
+    char command[2000]="";
     char restart;
     int i=0, success=0;;
     
     
     snprintf(checkptfile,sizeof(checkptfile),"%s%s%d%s",dir,"mc_chkpt_", angle_rank,".dat" );
+    //snprintf(checkptfile,sizeof(checkptfile),"%s%s%d%s%d%s",dir,"mc_chkpt_", angle_rank, "_frame_", scatt_frame, ".dat" ); //look at frame 1341?
+
     
     if ((scatt_frame!=last_frame) && (scatt_frame != frame))
     {
@@ -805,6 +981,12 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
             fflush(stdout);
             for(i=0;i<ph_num;i++)
             {
+                #if SYNCHROTRON_SWITCH == ON
+                if (((ph+i)->type == COMPTONIZED_PHOTON) && ((ph+i)->weight != 0))
+                {
+                    (ph+i)->type = OLD_COMPTONIZED_PHOTON; //set this to be an old synchrotron scattered photon
+                }
+                #endif
                 fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
                 //fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
             }
@@ -851,6 +1033,12 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
             fflush(stdout);
             for(i=0;i<ph_num;i++)
             {
+                #if SYNCHROTRON_SWITCH == ON
+                if (((ph+i)->type == COMPTONIZED_PHOTON) && ((ph+i)->weight != 0))
+                {
+                    (ph+i)->type = OLD_COMPTONIZED_PHOTON; //set this to be an old synchrotron scattered photon
+                }
+                #endif
                 //fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
                 fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
             }
@@ -882,6 +1070,17 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
             fwrite(&restart, sizeof(char), 1, fPtr);
             fwrite(&frame, sizeof(int), 1, fPtr);
             fwrite(&frame2, sizeof(int), 1, fPtr);
+            for(i=0;i<ph_num;i++)
+            {
+                #if SYNCHROTRON_SWITCH == ON
+                if (((ph+i)->type == COMPTONIZED_PHOTON) && ((ph+i)->weight != 0))
+                {
+                    (ph+i)->type = OLD_COMPTONIZED_PHOTON; //set this to be an old synchrotron scattered photon
+                }
+                #endif
+                fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
+            }
+
             success=0;
         }
     }
@@ -893,12 +1092,13 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
     return success;
 }
 
-void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size )
+int readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size )
 {
     //function to read in data from checkpoint file
     FILE *fPtr=NULL;
     char checkptfile[200]="";
     int i=0;
+    int scatt_synch_num_ph=0;//count the number of scattered synchrotron photons from the previosu frame that were saved
     //int frame, scatt_frame, ph_num, i=0;
     struct photon *phHolder=NULL; //pointer to struct to hold data read in from checkpoint file
     
@@ -945,6 +1145,7 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
             phHolder=malloc(sizeof(struct photon));
             (*ph)=malloc(sizeof(struct photon)*(*ph_num)); //allocate memory to hold photon data
             
+            
             for (i=0;i<(*ph_num);i++)
             {
                 fread(phHolder, sizeof(struct photon), 1, fPtr);
@@ -968,9 +1169,19 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
                 (*ph)[i].num_scatt=phHolder->num_scatt;
                 (*ph)[i].weight=phHolder->weight;
                 (*ph)[i].nearest_block_index= phHolder->nearest_block_index;
+                (*ph)[i].type= phHolder->type;
+                
+                #if SYNCHROTRON_SWITCH == ON
+                    if (((*ph)[i].weight != 0) && (((*ph)[i].type == COMPTONIZED_PHOTON) || ((*ph)[i].type == OLD_COMPTONIZED_PHOTON)) && ((*ph)[i].p0 > 0))
+                    {
+                        scatt_synch_num_ph++;
+                    }
+                //printf("%d %c %e %e %e %e %e %e %e\n", i, (*ph)[i].type, (*ph)[i].r0, (*ph)[i].r1, (*ph)[i].r2, (*ph)[i].num_scatt, (*ph)[i].weight, (*ph)[i].p0*C_LIGHT/1.6e-9, (*ph)[i].comv_p0);
+                #endif
             }
             
             free(phHolder);
+            //printf("In readcheckpoint count=%d\n", count);
         }
         else
         {
@@ -998,6 +1209,8 @@ void readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framest
         *restart='r';
         
     }
+    
+    return scatt_synch_num_ph;
 }
 
 void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart)
@@ -1132,10 +1345,10 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
     double *velx_unprc=NULL, *vely_unprc=NULL, *dens_unprc=NULL, *pres_unprc=NULL, *x_unprc=NULL, *y_unprc=NULL, *r_unprc=NULL, *szx_unprc=NULL, *szy_unprc=NULL;
     int  i,j,count,x1_count, y1_count, r_count, **node_buffer=NULL, num_nodes=0, elem_factor=0;
     double x1[8]={-7.0/16,-5.0/16,-3.0/16,-1.0/16,1.0/16,3.0/16,5.0/16,7.0/16};
-    double ph_rmin=0, ph_rmax=0, ph_thetamin=0, ph_thetamax=0, r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
+    double ph_rmin=0, ph_rmax=0, ph_thetamin=0, ph_thetamax=0, r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0, track_min_r=DBL_MAX, track_max_r=0;
+        #if defined(_OPENMP)
     int num_thread=omp_get_num_threads();
-    
-    
+    #endif
     
 
     if (ph_inj_switch==0)
@@ -1341,7 +1554,11 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
 
     //fill in radius array and find in how many places r > injection radius
 //have single thread execute this while loop and then have inner loop be parallel
-    elem_factor=2;
+    #if SYNCHROTRON_SWITCH == ON
+        elem_factor=2;
+    #else
+        elem_factor=0;
+    #endif
     r_count=0;
     while (r_count==0)
     {
@@ -1350,6 +1567,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
         for (i=0;i<count;i++)
         {
             *(r_unprc+i)=pow((*(x_unprc+i))*(*(x_unprc+i))+(*(y_unprc+i))*(*(y_unprc+i)),0.5);
+            
             if (ph_inj_switch==0)
             {
                 r_grid_innercorner = pow((*(x_unprc+i) - *(szx_unprc+i)/2.0) * ((*(x_unprc+i) - *(szx_unprc+i)/2.0))+(*(y_unprc+i) - *(szx_unprc+i)/2.0) * (*(y_unprc+i) - *(szx_unprc+i)/2.0),0.5);
@@ -1422,6 +1640,17 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
                 (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
                 (*temp)[j]=pow(3*(*(pres_unprc+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
                 j++;
+                /*
+                if (*(r_unprc+i)<track_min_r)
+                {
+                    track_min_r=*(r_unprc+i);
+                }
+                
+                if (*(r_unprc+i)>track_max_r)
+                {
+                    track_max_r=*(r_unprc+i);
+                }
+                 */
             }
         }
         else
@@ -1446,8 +1675,8 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
         }
     }
     
-    //fprintf(fPtr, "number: %d\n", r_count);
-    
+    //fprintf(fPtr, "Actual Min and Max Flash grid radii are: %e %e\n", track_min_r, track_max_r);
+    //fflush(fPtr);
 
     *number=r_count;
 
@@ -1641,7 +1870,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                         //printf("%lf, %lf,%lf,%e \n",(*(temps+i)),fr_dum, y_dum, yfr_dum);
                         
                     }
-                   //printf("%lf\n ",fr_dum);
+                    //printf("i: %d freq:%lf\n ",ph_tot, fr_dum);
                    position_phi=gsl_rng_uniform(rand)*2*M_PI;
                    com_v_phi=gsl_rng_uniform(rand)*2*M_PI;
                    com_v_theta=acos((gsl_rng_uniform(rand)*2)-1);
@@ -1658,7 +1887,6 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                     *(boost+0)=-1*(*(vx+i))*cos(position_phi);
                     *(boost+1)=-1*(*(vx+i))*sin(position_phi);
                     *(boost+2)=-1*(*(vy+i));
-                    //printf("%lf, %lf, %lf\n", *(boost+0), *(boost+1), *(boost+2));
                     
                     //boost to lab frame
                     lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
@@ -1697,6 +1925,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                 (*ph)[ph_tot].num_scatt=0;
                 (*ph)[ph_tot].weight=ph_weight_adjusted;
                 (*ph)[ph_tot].nearest_block_index=0;
+                (*ph)[ph_tot].type=INJECTED_PHOTON; //i for injected
                 //printf("%d\n",ph_tot);
                 ph_tot++;
             }
@@ -1927,6 +2156,7 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
     if (is_in_block==0)
     {
         fprintf(fPtr, "Couldn't find a block that the photon is in\nx: %e y:%e\n", ph_x, ph_y);
+        fflush(fPtr);
         within_block_index=-1;
     }
     
@@ -2005,25 +2235,26 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
     return return_val;
 }
 
-int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
+int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y, double epsilon_b, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
                                    double *temp, double *all_time_steps, int *sorted_indexes, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)
 {
-    
-    int i=0, min_index=0, ph_block_index=0;
+    int i=0, min_index=0, ph_block_index=0, num_thread=1, thread_id=0;
     double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, ph_r=0, ph_theta=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
 
-    double ph_v_norm=0, fl_v_norm=0;
+    double ph_v_norm=0, fl_v_norm=0, synch_x_sect=0;
     double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
-    double rnd_tracker=0, n_dens_lab_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
-    int num_thread=omp_get_num_threads();
+    double rnd_tracker=0, n_dens_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
+    #if defined(_OPENMP)
+    num_thread=omp_get_num_threads(); //default is one above if theres no openmp usage
+    #endif
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
     
-    int index=0;
+    int index=0, num_photons_find_new_element=0;
     double mfp=0,min_mfp=0, beta=0;
     double el_p[4];
     double ph_p_comv[4], ph_p[4], fluid_beta[3];
-    
+
     //initialize gsl random number generator fo each thread
     
         const gsl_rng_type *rng_t;
@@ -2046,17 +2277,19 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     //or just parallelize this part here
     
     min_mfp=1e12;
-    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
+    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p, ph_p, fluid_beta) private(i) shared(min_mfp ) reduction(+:num_photons_find_new_element)
     for (i=0;i<num_ph; i++)
     {
-        //printf("%d, %e,%e\n", i, ((ph+i)->r0), ((ph+i)->r1));
+        //fprintf(fPtr, "%d, %d,%e\n", i, ((ph+i)->nearest_block_index), ((ph+i)->weight));
+        //fflush(fPtr);
+        
         if (find_nearest_block_switch==0)
         {
-            ph_block_index=(ph+i)->nearest_block_index; //if starting a new frame the number of indexes can change and cause a seg fault
+            ph_block_index=(ph+i)->nearest_block_index; //if starting a new frame the number of indexes can change and cause a seg fault here
         }
         else
         {
-            ph_block_index=0; //if starting a new frame set index=0 to avoid this issue
+            ph_block_index=0; // therefore if starting a new frame set index=0 to avoid this issue
         }
         
         //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
@@ -2087,12 +2320,22 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         
         //if the location of the photon is less than the domain of the hydro simulation then do all of this, otherwise assing huge mfp value so no scattering occurs and the next frame is loaded
-        if ((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x))
+        // absorbed photons have ph_block_index=-1, therefore if this value is not less than 0, calulate the mfp properly but doesnt work when go to new frame and find new indexes (will change b/c will get rid of these photons when printing)
+        //alternatively make decision based on 0 weight
+        if (((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x)) && ((ph+i)->nearest_block_index != -1) ) //can use sorted index to see which photons have been absorbed efficiently before printing and get the indexes
         {
             #if GEOMETRY == SPHERICAL
                 is_in_block=checkInBlock(ph_block_index,  ph_r,  ph_theta,  ph_z,  x,   y, z,  szx,  szy);
             #elif GEOMETRY == CARTESIAN
                 is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy);
+            #endif
+            
+            //when rebinning photons can have comoving 4 momenta=0 and nearest_block_index=0 (and block 0 be the actual block the photon is in making it not refind the proper index and reclaulate the comoving 4 momenta) which can make counting synch scattered photons be thrown off, thus take care of this case by forcing the function to recalc things
+            #if SYNCHROTRON_SWITCH == ON
+                if ((ph_block_index==0) && ( ((ph+i)->comv_p0)+((ph+i)->comv_p1)+((ph+i)->comv_p2)+((ph+i)->comv_p3) == 0 ) )
+                {
+                    is_in_block=0; //say that photon is not in the block, force it to recompute things
+                }
             #endif
         
             if (find_nearest_block_switch==0 && is_in_block)
@@ -2147,6 +2390,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                     ((ph+i)->comv_p2)=ph_p_comv[2];
                     ((ph+i)->comv_p3)=ph_p_comv[3];
                     
+                    num_photons_find_new_element+=1;
                 }
                 else
                 {
@@ -2155,7 +2399,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             
             }
             
-            //if min_index!= -1 do all this stuff, otherwise make sure photon doesnt scatter
+            //if min_index!= -1 (know which fluid element photon is in) do all this stuff, otherwise make sure photon doesnt scatter
             if (min_index != -1)
             {
                 //fprintf(fPtr,"Min Index: %d\n", min_index);
@@ -2165,6 +2409,8 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 (n_vx_tmp)= (*(velx+min_index));
                 (n_vy_tmp)= (*(vely+min_index));
                 (n_temp_tmp)= (*(temp+min_index));
+                
+
                 //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
                 #if DIMENSIONS == 3
                 {
@@ -2203,13 +2449,66 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                     beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)+pow((n_vz_tmp),2)),0.5);
                 }
                 #endif
+
+                *(ph_p+0)=((ph+i)->p0);
+                *(ph_p+1)=((ph+i)->p1);
+                *(ph_p+2)=((ph+i)->p2);
+                *(ph_p+3)=((ph+i)->p3);
+                
+                //ph_p_comv[0]=((ph+i)->comv_p0);
+                //ph_p_comv[1]=((ph+i)->comv_p1);
+                //ph_p_comv[2]=((ph+i)->comv_p2);
+                //ph_p_comv[3]=((ph+i)->comv_p3);
+                
+                //printf("ph: p0 %e p1 %e p2 %e p3 %e\n",  *(ph_p_comv+0), *(ph_p_comv+1), *(ph_p_comv+2), *(ph_p_comv+3));
+
+                
+                //singleElectron(&el_p[0], n_temp_tmp, &ph_p_comv[0], rng[omp_get_thread_num()], fPtr); //get random electron
+                //printf("after singleElectron n_temp_tmp %e from ptr %e n_dens_tmp %e from ptr %e\n", n_temp_tmp, (*(temp+min_index)), n_dens_tmp, (*(dens+min_index)));
+                
+                //printf("Chosen el: p0 %e p1 %e p2 %e p3 %e\nph: p0 %e p1 %e p2 %e p3 %e\n", *(el_p+0), *(el_p+1), *(el_p+2), *(el_p+3), *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
+                
+                //synch_x_sect=synCrossSection(n_dens_tmp/M_P, n_temp_tmp, ph_p_comv[0]*C_LIGHT/PL_CONST, sqrt((el_p[0]*el_p[0]/(M_EL*M_EL*C_LIGHT*C_LIGHT))-1), epsilon_b);
+                //printf("i: %d flash_array_idx %d synch_x_sect %e freq %e temp %e el_dens %e\n", i, min_index, synch_x_sect, *(ph_p+0)*C_LIGHT/PL_CONST, n_temp_tmp, n_dens_tmp/M_P);
+                
+                //if (synch_x_sect==0)
+                //{
+                //*(will_scatter+i)=1; //this photon will scatter b/c probability of absorption=0
+                //}
+                /*
+                else
+                {
+                    if (gsl_rng_uniform_pos(rng[omp_get_thread_num()])>(THOM_X_SECT/(THOM_X_SECT+synch_x_sect)))
+                    {
+                        //this photon will be absorbed
+                        *(will_scatter+i)=0;
+                    }
+                    else
+                    {
+                        *(will_scatter+i)=1;
+                    }
+                    
+                } photons can onlt scatter now
+                */
+                
                 //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
                 rnd_tracker=0;
-        
-                rnd_tracker=gsl_rng_uniform_pos(rng[omp_get_thread_num()]);
+                #if defined(_OPENMP)
+                thread_id=omp_get_thread_num();
+                #endif
+                
+                rnd_tracker=gsl_rng_uniform_pos(rng[thread_id]);
                 //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
         
-                mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths 
+                //mfp=(-1)*log(rnd_tracker)*(M_P/((n_dens_tmp))/(THOM_X_SECT)); ///(1.0-beta*((n_cosangle)))) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths DO EVERYTHING IN COMOV FRAME NOW
+                mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ;
+                
+                //if (mfp/C_LIGHT < 1e-100)
+                //{
+                //    fprintf("Photon %d has a mfp of %d\n", i, mfp);
+                //    exit(0);
+                //}
+                
             }
             else
             {
@@ -2219,12 +2518,13 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
          else
         {
             mfp=min_mfp;
-            //printf("In ELSE\n");
+            //fprintf(fPtr,"Photon %d In ELSE\n", i);
+            //exit(0);
         }
         
         *(all_time_steps+i)=mfp/C_LIGHT;
     }
-    
+    //exit(0);
     //free rand number generator
     for (i=1;i<num_thread;i++)
     {
@@ -2253,11 +2553,17 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     //}
     //exit(0);
     
+    //print number of times we had to refind the index of the elemtn photons were located in
+    if (find_nearest_block_switch!=0)
+    {
+        num_photons_find_new_element=0; //force this to be 0 since we forced MCRaT to find the indexes for all the photons here
+    }
     
-    (*time_step)=*(all_time_steps+(*(sorted_indexes+0)));
-    index= *(sorted_indexes+0);//first element of sorted array
-    
-    return index;
+    //fprintf(fPtr, "MCRat had to refind where %d photons were located in the grid\n", num_photons_find_new_element);
+    //(*time_step)=*(all_time_steps+(*(sorted_indexes+0))); //dont need to return index b/c photonEvent doesnt use this, but mcrat.c uses this info
+    //index= *(sorted_indexes+0);//first element of sorted array
+    //free(el_p);free(ph_p_comv);
+    return num_photons_find_new_element;
     
 }
 
@@ -2312,7 +2618,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     /*
      * THIS FUNCTION IS WRITTEN JUST FOR 2D SIMS AS OF NOW, not used
     */
-    int i=0, j=0, min_index=0, ph_block_index=0;
+    int i=0, j=0, min_index=0, ph_block_index=0, thread_id=0;
     int left_block_index=0, right_block_index=0, bottom_block_index=0, top_block_index=0, all_adjacent_block_indexes[4];
     double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, dist=0, left_dist_min=0, right_dist_min=0, top_dist_min=0, bottom_dist_min=0, dv=0, v=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
@@ -2536,8 +2842,11 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         #endif
         //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
         rnd_tracker=0;
+        #if defined(_OPENMP)
+        thread_id=omp_get_thread_num();
+        #endif
         
-        rnd_tracker=gsl_rng_uniform_pos(rng[omp_get_thread_num()]);
+        rnd_tracker=gsl_rng_uniform_pos(rng[thread_id]);
         
         mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths 
         
@@ -2594,13 +2903,18 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
 {
     //move photons by speed of light
  
-    int i=0, num_thread=omp_get_num_threads();
+    int i=0;
+    #if defined(_OPENMP)
+    int num_thread=omp_get_num_threads();
+    #endif
     double old_position=0, new_position=0, divide_p0=0;
     
     
     #pragma omp parallel for num_threads(num_thread) firstprivate(old_position, new_position, divide_p0)
     for (i=0;i<num_ph;i++)
     {
+        if (((ph+i)->type != SYNCHROTRON_POOL_PHOTON) && ((ph+i)->weight != 0))
+        {
             old_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 ); //uncommented checks since they were not necessary anymore
             
             divide_p0=1.0/((ph+i)->p0);
@@ -2612,18 +2926,19 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
             ((ph+i)->r2)+=((ph+i)->p3)*divide_p0*C_LIGHT*t;//update z
             
             new_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 );
-            
-            //if ((new_position-old_position)/t > C_LIGHT)
-            //{
-            //    fprintf(fPtr, "PHOTON NUMBER %d IS SUPERLUMINAL. ITS SPEED IS %e c.\n", i, ((new_position-old_position)/t)/C_LIGHT);
-            //}
-            
-            if ( (ph+i)->s0 != 1)
+            /*
+            if ((new_position-old_position)/t > C_LIGHT)
             {
-            	fprintf(fPtr, "PHOTON NUMBER %d DOES NOT HAVE I=1. Instead it is %e\n", i, (ph+i)->s0);
+                fprintf(fPtr, "PHOTON NUMBER %d IS SUPERLUMINAL. ITS SPEED IS %e c.\n", i, ((new_position-old_position)/t)/C_LIGHT);
+            }
+            */
+            //if ( (ph+i)->s0 != 1)
+            {
+            //	fprintf(fPtr, "PHOTON NUMBER %d DOES NOT HAVE I=1. Instead it is: %e\n", i, (ph+i)->s0);
             }
             
-            //printf("In update  function: %e, %e, %e, %e, %e, %e, %e\n",((ph+i)->r0), ((ph+i)->r1), ((ph+i)->r2), t, ((ph+i)->p1)/((ph+i)->p0), ((ph+i)->p2)/((ph+i)->p0), ((ph+i)->p3)/((ph+i)->p0) );  
+            //printf("In update  function: %e, %e, %e, %e, %e, %e, %e\n",((ph+i)->r0), ((ph+i)->r1), ((ph+i)->r2), t, ((ph+i)->p1)/((ph+i)->p0), ((ph+i)->p2)/((ph+i)->p0), ((ph+i)->p3)/((ph+i)->p0) );
+        }
     }
         
     //printf("In update  function: %e, %e, %e, %e\n",t, ((ph)->p1)/((ph)->p0), ((ph)->p2)/((ph)->p0), ((ph)->p3)/((ph)->p0) );    
@@ -2714,6 +3029,12 @@ double findPhi(double *x_old, double *y_old, double *x_new, double *y_new)
     
     gsl_blas_ddot(&y.vector, &y_prime.vector, &dot_prod_result);
     
+    if ((dot_prod_result<-1) || (dot_prod_result>1))
+    {
+        //printf("The old dot poduct was %e, the new one is %e\n",dot_prod_result, round(dot_prod_result));
+        dot_prod_result=round(dot_prod_result);//do this rounding so numerical error that causes value to be <-1 or >1 gets rounded and becomes a real value if its close enough to these limits
+    }
+    
     return -1*factor*acos(dot_prod_result);
 }
 
@@ -2738,6 +3059,13 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
     //rotate the stokes vector now to put it in the coordinate system fo the boosted photon and the boost evctor
     mullerMatrixRotation(phi, s, fPtr);
     
+    /*
+    if ( isnan(*(s+0)) || isnan(*(s+1)) || isnan(*(s+2)) || isnan(*(s+3)) )
+    {
+        printf("A stokes value is nan\n\n");
+    }
+     */
+    
     //find the new coordinates of the rotated stokes vector with the boosted photon and the boost vector
     findXY(v_ph_boosted, v, &x, &y);
     
@@ -2749,14 +3077,20 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
     //do the rotation of the stokes vector to put it in the coordinate system of the boosted photon and the z axis
     mullerMatrixRotation(phi, s, fPtr);
     
+    /*
+    if ( isnan(*(s+0)) || isnan(*(s+1)) || isnan(*(s+2)) || isnan(*(s+3)) )
+    {
+        printf("A stokes value is nan\n\n");
+    }
+     */
+    
 }
 
 
-double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, gsl_rng * rand, FILE *fPtr)
+double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt, gsl_rng * rand, FILE *fPtr)
 {
     //function to perform single photon scattering
-    //stokes switch of 0 means that we don't consider the stokes parameters (aka no polarization)
-    int  i=0, index=0, ph_index=0, scatter_did_occur=0; //variable scatter_did_occur is to keep track of wether a scattering actually occured or not, 
+    int  i=0, index=0, ph_index=0, event_did_occur=0; //variable event_did_occur is to keep track of wether a scattering or absorption actually occured or not,
     double scatt_time=0, old_scatt_time=0; //keep track of new time to scatter vs old time to scatter to know how much to incrementally propagate the photons if necessary
     double phi=0, theta=0; //phi and theta for the 4 momentum 
     double ph_phi=0, flash_vx=0, flash_vy=0, flash_vz=0, fluid_temp=0;    
@@ -2769,11 +3103,11 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
     
     i=0;
     old_scatt_time=0;
-    scatter_did_occur=0;
+    event_did_occur=0;
     //fprintf(fPtr,"In this function Num_ph %d\n", num_ph);
     //fflush(fPtr);
-    
-    while (i<num_ph && scatter_did_occur==0 )
+        
+    while (i<num_ph && event_did_occur==0 )
     {
         ph_index=(*(sorted_indexes+i));
         
@@ -2787,176 +3121,206 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
             //fprintf(fPtr,"i: %d, Photon: %d, Delta t=%e\n", i, ph_index, scatt_time-old_scatt_time);
             //fflush(fPtr);
             
-            //WHAT IF THE PHOTON MOVES TO A NEW BLOCK BETWEEN WHEN WE CALC MFP AND MOVE IT TO DO THE SCATTERING????
-            //it mostly happens at low optical depth, near the photosphere so we would have a large mfp anyways so we probably wouldn't be in this function in that case
-            index=(ph+ph_index)->nearest_block_index; //the sorted_indexes gives index of photon with smallest time to potentially scatter then extract the index of the block closest to that photon
-    
-            flash_vx=*(all_flash_vx+  index);
-            flash_vy=*(all_flash_vy+  index);
-            fluid_temp=*(all_fluid_temp+  index);
-            //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
-            #if DIMENSIONS == 3
-            {
-                flash_vz=*(all_flash_vz+  index);
-            }
-            #endif
-    
-            ph_phi=atan2(((ph+ph_index)->r1), (((ph+ph_index)->r0)));
-            /*
-            fprintf(fPtr,"ph_phi=%e\n", ph_phi);
-            fflush(fPtr);
-            */
-
-            //convert flash coordinated into MCRaT coordinates
-            //printf("Getting fluid_beta\n");
-    
-            //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
-            #if DIMENSIONS == 2
-            {
-                (*(fluid_beta+0))=flash_vx*cos(ph_phi);
-                (*(fluid_beta+1))=flash_vx*sin(ph_phi);
-                (*(fluid_beta+2))=flash_vy;
-            }
-            #else
-            {
-                (*(fluid_beta+0))=flash_vx;
-                (*(fluid_beta+1))=flash_vy;
-                (*(fluid_beta+2))=flash_vz;
-            }
-            #endif
+            //if the photon should scatter then do so, will_scatter==1
+            //if (*(will_scatter+ph_index) != 0 ) ont need b/c all photns are able to scatter and none can be explicitly absorbed
+            //{
             
-            /*
-            fprintf(fPtr,"FLASH v: %e, %e\n", flash_vx,flash_vy);
-            fflush(fPtr);
-            */
-    
-            //fill in photon 4 momentum 
-            //printf("filling in 4 momentum in photonScatter\n");
-            *(ph_p+0)=((ph+ph_index)->p0);
-            *(ph_p+1)=((ph+ph_index)->p1);
-            *(ph_p+2)=((ph+ph_index)->p2);
-            *(ph_p+3)=((ph+ph_index)->p3);
+                //WHAT IF THE PHOTON MOVES TO A NEW BLOCK BETWEEN WHEN WE CALC MFP AND MOVE IT TO DO THE SCATTERING????
+                //it mostly happens at low optical depth, near the photosphere so we would have a large mfp anyways so we probably wouldn't be in this function in that case
+                index=(ph+ph_index)->nearest_block_index; //the sorted_indexes gives index of photon with smallest time to potentially scatter then extract the index of the block closest to that photon
         
-            //fill in stokes parameters
-            *(s+0)=((ph+ph_index)->s0); //I ==1
-            *(s+1)=((ph+ph_index)->s1); //Q/I
-            *(s+2)=((ph+ph_index)->s2); //U/I
-            *(s+3)=((ph+ph_index)->s3); //V/I 
-    
-            /*
-            fprintf(fPtr,"Unscattered Photon in Lab frame: %e, %e, %e,%e, %e, %e, %e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3), (ph->r0), (ph->r1), (ph->r2));
-            fflush(fPtr);
-            fprintf(fPtr,"Fluid Beta: %e, %e, %e\n", *(fluid_beta+0),*(fluid_beta+1), *(fluid_beta+2));
-            fflush(fPtr);
-            */
-    
-            //first we bring the photon to the fluid's comoving frame
-            //lorentzBoost(fluid_beta, ph_p, ph_p_comov, 'p', fPtr);
-            *(ph_p_comov+0)=((ph+ph_index)->comv_p0);
-            *(ph_p_comov+1)=((ph+ph_index)->comv_p1);
-            *(ph_p_comov+2)=((ph+ph_index)->comv_p2);
-            *(ph_p_comov+3)=((ph+ph_index)->comv_p3);
-            
-            /*
-            fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
-            fflush(fPtr);
-     
-            fprintf(fPtr, "Before Scattering, In Comov_frame:\n");
-            fflush(fPtr);
-            fprintf(fPtr, "ph_comov: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
-            fflush(fPtr);
-            */
+                flash_vx=*(all_flash_vx+  index);
+                flash_vy=*(all_flash_vy+  index);
+                fluid_temp=*(all_fluid_temp+  index);
+                //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+                #if DIMENSIONS == 3
+                {
+                    flash_vz=*(all_flash_vz+  index);
+                }
+                #endif
         
-        
-            //fprintf(fPtr, "Theta: %e Phi %e Lab: x_tilde: %e, %e, %e, y_tilde: %e %e %e\n", theta, phi, *(x_tilde+0), *(x_tilde+1), *(x_tilde+2), *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
-        
-            //then rotate the stokes plane by some angle such that we are in the stokes coordinat eystsem after the lorentz boost
-            //if (STOKES_SWITCH != 0)
-            #if STOKES_SWITCH == ON
-            {
-                stokesRotation(fluid_beta, (ph_p+1), (ph_p_comov+1), s, fPtr);
-            }
-            #endif
-            
-            //exit(0);
-            //second we generate a thermal electron at the correct temperature
-            singleElectron(el_p_comov, fluid_temp, ph_p_comov, rand, fPtr);
-    
-            //fprintf(fPtr,"el_comov: %e, %e, %e,%e\n", *(el_p_comov+0), *(el_p_comov+1), *(el_p_comov+2), *(el_p_comov+3));
-            //fflush(fPtr);
-     
-    
-            //third we perform the scattering and save scattered photon 4 monetum in ph_p_comov @ end of function
-            scatter_did_occur=singleScatter(el_p_comov, ph_p_comov, s, rand, fPtr);
-        
-        
-    
-            //fprintf(fPtr,"After Scattering, After Lorentz Boost to Comov frame: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
-            //fflush(fPtr);
-            //scatter_did_occur=0;
-            if (scatter_did_occur==1)
-            {
-                //fprintf(fPtr,"Within the if!\n");
-                //fflush(fPtr);
-            
-                //if the scattering occured have to uodate the phtoon 4 momentum. if photon didnt scatter nothing changes
-                //fourth we bring the photon back to the lab frame
-                *(negative_fluid_beta+0)=-1*( *(fluid_beta+0));
-                *(negative_fluid_beta+1)=-1*( *(fluid_beta+1));
-                *(negative_fluid_beta+2)=-1*( *(fluid_beta+2));
-                lorentzBoost(negative_fluid_beta, ph_p_comov, ph_p, 'p',  fPtr);
-                //fprintf(fPtr,"Scattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
-                //fflush(fPtr);
+                ph_phi=atan2(((ph+ph_index)->r1), (((ph+ph_index)->r0)));
                 
+                /*
+                if (isnan((ph+ph_index)->r0) || isnan((ph+ph_index)->r1) || isnan((ph+ph_index)->r2))
+                {
+                    printf("Not a number\n");
+                }
+            
+                
+                fprintf(fPtr,"ph_phi=%e\n", ph_phi);
+                fflush(fPtr);
+                */
+
+                //convert flash coordinated into MCRaT coordinates
+                //printf("Getting fluid_beta\n");
+        
+                //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+                #if DIMENSIONS == 2
+                {
+                    (*(fluid_beta+0))=flash_vx*cos(ph_phi);
+                    (*(fluid_beta+1))=flash_vx*sin(ph_phi);
+                    (*(fluid_beta+2))=flash_vy;
+                }
+                #else
+                {
+                    (*(fluid_beta+0))=flash_vx;
+                    (*(fluid_beta+1))=flash_vy;
+                    (*(fluid_beta+2))=flash_vz;
+                }
+                #endif
+                
+                /*
+                fprintf(fPtr,"FLASH v: %e, %e\n", flash_vx,flash_vy);
+                fflush(fPtr);
+                */
+        
+                //fill in photon 4 momentum
+                //printf("filling in 4 momentum in photonScatter for photon index %d\n", ph_index);
+                //if ((ph+ph_index)->type == SYNCHROTRON_POOL_PHOTON)
+                {
+                    //printf("The scattering photon is a seed photon w/ comv freq %e Hz.\n", ((ph+ph_index)->comv_p0)*C_LIGHT/PL_CONST);
+                    //*nu_c_scatt=((ph+ph_index)->comv_p0)*C_LIGHT/PL_CONST;//dont need this anymore b/c the SYNCHROTRON_POOL_PHOTON photon doesnt move from its cell
+                
+                }
+            
+            
+                *(ph_p+0)=((ph+ph_index)->p0);
+                *(ph_p+1)=((ph+ph_index)->p1);
+                *(ph_p+2)=((ph+ph_index)->p2);
+                *(ph_p+3)=((ph+ph_index)->p3);
+                
+                *(ph_p_comov+0)=((ph+ph_index)->comv_p0);
+                *(ph_p_comov+1)=((ph+ph_index)->comv_p1);
+                *(ph_p_comov+2)=((ph+ph_index)->comv_p2);
+                *(ph_p_comov+3)=((ph+ph_index)->comv_p3);
+            
+                //fill in stokes parameters
+                *(s+0)=((ph+ph_index)->s0); //I ==1
+                *(s+1)=((ph+ph_index)->s1); //Q/I
+                *(s+2)=((ph+ph_index)->s2); //U/I
+                *(s+3)=((ph+ph_index)->s3); //V/I
+        
+                /*
+                fprintf(fPtr,"Unscattered Photon in Lab frame: %e, %e, %e,%e, %e, %e, %e\nStokes params %e %e %e %e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3), (ph->r0), (ph->r1), (ph->r2), *(s+0), *(s+1), *(s+2), *(s+3));
+                fflush(fPtr);
+                fprintf(fPtr,"Fluid Beta: %e, %e, %e\n", *(fluid_beta+0),*(fluid_beta+1), *(fluid_beta+2));
+                fflush(fPtr);
+                */
+                
+                
+                //first we bring the photon to the fluid's comoving frame
+                //lorentzBoost(fluid_beta, ph_p, ph_p_comov, 'p', fPtr);
+                //*(ph_p_comov+0)=((ph+ph_index)->comv_p0);
+                //*(ph_p_comov+1)=((ph+ph_index)->comv_p1);
+                //*(ph_p_comov+2)=((ph+ph_index)->comv_p2);
+                //*(ph_p_comov+3)=((ph+ph_index)->comv_p3);
+                
+                /*
+                fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
+                fflush(fPtr);
+         
+                fprintf(fPtr, "Before Scattering, In Comov_frame:\n");
+                fflush(fPtr);
+                fprintf(fPtr, "ph_comov: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+                fflush(fPtr);
+                */
+                        
+                //fprintf(fPtr, "Theta: %e Phi %e Lab: x_tilde: %e, %e, %e, y_tilde: %e %e %e\n", theta, phi, *(x_tilde+0), *(x_tilde+1), *(x_tilde+2), *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
+            
+                //then rotate the stokes plane by some angle such that we are in the stokes coordinat eystsem after the lorentz boost
                 //if (STOKES_SWITCH != 0)
                 #if STOKES_SWITCH == ON
                 {
-                    stokesRotation(negative_fluid_beta, (ph_p_comov+1), (ph_p+1), s, fPtr); //rotate to boost back to lab frame
+
+                    stokesRotation(fluid_beta, (ph_p+1), (ph_p_comov+1), s, fPtr);
                     
-                    //save stokes parameters
-                    ((ph+ph_index)->s0)= *(s+0); //I ==1
-                    ((ph+ph_index)->s1)= *(s+1);
-                    ((ph+ph_index)->s2)= *(s+2);
-                    ((ph+ph_index)->s3)= *(s+3);
                 }
                 #endif
-            
-                if (((*(ph_p+0))*C_LIGHT/1.6e-9) > 1e4)
-                {
-                    fprintf(fPtr,"Extremely High Photon Energy!!!!!!!!\n");
-                    fflush(fPtr);
-                }
-                //fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
-                //fprintf(fPtr, "Old: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
-    
-                //assign the photon its new lab 4 momentum
-                ((ph+ph_index)->p0)=(*(ph_p+0));
-                ((ph+ph_index)->p1)=(*(ph_p+1));
-                ((ph+ph_index)->p2)=(*(ph_p+2));
-                ((ph+ph_index)->p3)=(*(ph_p+3));
                 
-                //assign it the comoving frame 4 momentum
-                ((ph+ph_index)->comv_p0)=(*(ph_p_comov+0));
-                ((ph+ph_index)->comv_p1)=(*(ph_p_comov+1));
-                ((ph+ph_index)->comv_p2)=(*(ph_p_comov+2));
-                ((ph+ph_index)->comv_p3)=(*(ph_p_comov+3));
-                //printf("Done assigning values to original struct\n");
-    
-                //incremement that photons number of scatterings
-                ((ph+ph_index)->num_scatt)+=1;
-                *frame_scatt_cnt+=1; //incrememnt total number of scatterings
-            
                 //exit(0);
-            }
+                //second we generate a thermal electron at the correct temperature
+                singleElectron(el_p_comov, fluid_temp, ph_p_comov, rand, fPtr);
         
+                //fprintf(fPtr,"el_comov: %e, %e, %e,%e\n", *(el_p_comov+0), *(el_p_comov+1), *(el_p_comov+2), *(el_p_comov+3));
+                //fflush(fPtr);
+         
+        
+                //third we perform the scattering and save scattered photon 4 monetum in ph_p_comov @ end of function
+                event_did_occur=singleScatter(el_p_comov, ph_p_comov, s, rand, fPtr);
+            
+        
+                //fprintf(fPtr,"After Scattering, After Lorentz Boost to Comov frame: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+                //fflush(fPtr);
+                //event_did_occur=0;
+                if (event_did_occur==1)
+                {
+                    //fprintf(fPtr,"Within the if!\n");
+                    //fflush(fPtr);
+                
+                    //if the scattering occured have to uodate the phtoon 4 momentum. if photon didnt scatter nothing changes
+                    //fourth we bring the photon back to the lab frame
+                    *(negative_fluid_beta+0)=-1*( *(fluid_beta+0));
+                    *(negative_fluid_beta+1)=-1*( *(fluid_beta+1));
+                    *(negative_fluid_beta+2)=-1*( *(fluid_beta+2));
+                    lorentzBoost(negative_fluid_beta, ph_p_comov, ph_p, 'p',  fPtr);
+                    //fprintf(fPtr,"Scattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
+                    //fflush(fPtr);
+                    
+                    #if STOKES_SWITCH == ON
+                    {
+                        stokesRotation(negative_fluid_beta, (ph_p_comov+1), (ph_p+1), s, fPtr); //rotate to boost back to lab frame
+                        
+                        //save stokes parameters
+                        ((ph+ph_index)->s0)= *(s+0); //I ==1
+                        ((ph+ph_index)->s1)= *(s+1);
+                        ((ph+ph_index)->s2)= *(s+2);
+                        ((ph+ph_index)->s3)= *(s+3);
+                    }
+                    #endif
+                
+
+                    if (((*(ph_p+0))*C_LIGHT/1.6e-9) > 1e4)
+                    {
+                        fprintf(fPtr,"Extremely High Photon Energy!!!!!!!!\n");
+                        fflush(fPtr);
+                    }
+                    
+                    //fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
+                    //fprintf(fPtr, "Old: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+                    
+        
+                    //assign the photon its new lab 4 momentum
+                    ((ph+ph_index)->p0)=(*(ph_p+0));
+                    ((ph+ph_index)->p1)=(*(ph_p+1));
+                    ((ph+ph_index)->p2)=(*(ph_p+2));
+                    ((ph+ph_index)->p3)=(*(ph_p+3));
+                    
+                    //assign it the comoving frame 4 momentum
+                    ((ph+ph_index)->comv_p0)=(*(ph_p_comov+0));
+                    ((ph+ph_index)->comv_p1)=(*(ph_p_comov+1));
+                    ((ph+ph_index)->comv_p2)=(*(ph_p_comov+2));
+                    ((ph+ph_index)->comv_p3)=(*(ph_p_comov+3));
+                    
+                    //printf("Done assigning values to original struct\n");
+        
+                    //incremement that photons number of scatterings
+                    ((ph+ph_index)->num_scatt)+=1;
+                    *frame_scatt_cnt+=1; //incrememnt total number of scatterings
+                    
+
+                
+                }
+                
         }
         else
         {
             // if the photon scatt_time > dt_max
             //have to adjust the time properly so that the time si now appropriate for the next frame
             scatt_time=dt_max;
-            updatePhotonPosition(ph, num_ph, scatt_time-old_scatt_time, fPtr);
-            scatter_did_occur=1; //set equal to 1 to get out of the loop b/c other subsequent photons will have scatt_time > dt_max
+            updatePhotonPosition(ph, num_ph, scatt_time-old_scatt_time, fPtr); 
+            event_did_occur=1; //set equal to 1 to get out of the loop b/c other subsequent photons will have scatt_time > dt_max
+            
         }
     
         old_scatt_time=scatt_time;
@@ -2965,7 +3329,7 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
     //exit(0);
     *scattered_ph_index=ph_index; //save the index of the photon that was scattered
     
-    //fprintf(fPtr,"scatt_time: %e \n", scatt_time);
+    //fprintf(fPtr,"scattered_ph_index: %d %d\n", *scattered_ph_index, (*(sorted_indexes+i-1)));
     //fflush(fPtr);
     
     free(el_p_comov); 
@@ -2983,7 +3347,6 @@ double photonScatter(struct photon *ph, int num_ph, double dt_max, double *all_t
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr)
 {
     //generates an electron with random energy 
-    
     double factor=0, gamma=0;
     double y_dum=0, f_x_dum=0, x_dum=0, beta_x_dum=0, beta=0, phi=0, theta=0, ph_theta=0, ph_phi=0;
     gsl_matrix *rot= gsl_matrix_calloc (3, 3); //create matrix thats 3x3 to do rotation 
@@ -3004,7 +3367,7 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
             beta_x_dum=pow(1-(pow(x_dum, -2.0)) ,0.5);
             y_dum=gsl_rng_uniform(rand)/2.0;
             
-            f_x_dum=pow(x_dum,2)*(beta_x_dum/gsl_sf_bessel_Kn (2, 1.0/factor))*exp(-1*x_dum/factor); //not sure if this is right is giving small values of gamma -> beta=nan
+            f_x_dum=pow(x_dum,2)*(beta_x_dum/gsl_sf_bessel_Kn (2, 1.0/factor))*exp(-1*x_dum/factor); //
             //fprintf(fPtr,"Choosing a Gamma: xdum: %e, f_x_dum: %e, y_dum: %e\n", x_dum, f_x_dum, y_dum);
         }
         gamma=x_dum;
@@ -3113,6 +3476,8 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     gsl_vector_view ph_p ;//create vector to hold comoving photon and electron 4 momentum
     gsl_vector_view el_p ;
     gsl_vector_view stokes, test, test_x, test_y;
+    
+
     /*
      Dont need these vectors anymore, plus didnt have code to free allocations so it was causing memory leaks
     gsl_vector *result0_x=gsl_vector_alloc (3); //vectors to hold results of rotations for stokes coordinates
@@ -3161,10 +3526,9 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     //if (STOKES_SWITCH != 0)
     #if STOKES_SWITCH == ON
     {
-        i=1;
         stokesRotation(el_v, (ph_comov+1), (ph_p_prime+1), s, fPtr);
         stokes=gsl_vector_view_array(s, 4);
-        i=0;
+
     }
     #endif
     
@@ -3325,6 +3689,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
         gsl_matrix_set(rot0, 1,0,-sin(-phi0));
         gsl_blas_dgemv(CblasNoTrans, 1, rot0, &ph_p.vector, 0, result0);
         
+        
         /*
          printf("Photon Phi: %e\n", phi0);
          printf("Rotation Matrix 0: %e,%e, %e\n", gsl_matrix_get(rot0, 0,0), gsl_matrix_get(rot0, 0,1), gsl_matrix_get(rot0, 0,2));
@@ -3363,12 +3728,15 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
              fprintf(fPtr,"Scatt Matrix 3: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 3,0), gsl_matrix_get(scatt, 3,1), gsl_matrix_get(scatt, 3,2), gsl_matrix_get(scatt, 3,3));
              fprintf(fPtr,"s: %e, %e, %e,%e\n", gsl_vector_get(scatt_result,0), gsl_vector_get(scatt_result,1), gsl_vector_get(scatt_result,2), gsl_vector_get(scatt_result,3));
              */
+            
+            
             //normalize and rotate back
             *(s+0)=gsl_vector_get(scatt_result,0)/gsl_vector_get(scatt_result,0); //should be 1.0
             *(s+1)=gsl_vector_get(scatt_result,1)/gsl_vector_get(scatt_result,0);
             *(s+2)=gsl_vector_get(scatt_result,2)/gsl_vector_get(scatt_result,0);
             *(s+3)=gsl_vector_get(scatt_result,3)/gsl_vector_get(scatt_result,0);
             //fprintf(fPtr,"s after norm: %e, %e, %e,%e\n", gsl_vector_get(&stokes.vector,0), gsl_vector_get(&stokes.vector,1), gsl_vector_get(&stokes.vector,2), gsl_vector_get(&stokes.vector,3));
+            
             
             //need to find current stokes coordinate system defined in the plane of k-k_0
             findXY(gsl_vector_ptr(result0,0),gsl_vector_ptr(ph_p_orig, 1), x_tilde, y_tilde);
@@ -3400,6 +3768,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
         
         lorentzBoost(negative_el_v, ph_p_prime, ph_comov, 'p', fPtr);
         //printf("Undo boost 1: %e, %e, %e, %e\n",  *(ph_comov+0), *(ph_comov+1),  *(ph_comov+2),  *(ph_comov+3));
+        
         
         //dont need to find stokes vector and do previosu rotations, can just find the stokes coordinates in function because the stokes coordinate vectors rotate with the photon vector and no rotations to a new stokes coordinate system are needed
         //if (STOKES_SWITCH != 0)
@@ -3453,12 +3822,10 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
     //determine the KN cross section over the thomson cross section From RYBICKI AND LIGHTMAN pg 197
     KN_x_section_over_thomson_x_section= (3.0/4.0)*(  (  ((1+energy_ratio)/ pow(energy_ratio,3.0))*(((2*energy_ratio)*(1+energy_ratio)/(1+2*energy_ratio)) - log(1+2*energy_ratio)))  + (log(1+2*energy_ratio)/(2*energy_ratio)) - ((1+3*energy_ratio)/pow((1+2*energy_ratio),2.0))  );
     rand_num=gsl_rng_uniform(rand);
-    
-    //fprintf(fPtr,"Rand: %e, p0: %e, X: %e, Ratio: %e\n", rand_num, p0*C_LIGHT, energy_ratio, KN_x_section_over_thomson_x_section);
-    //fflush(fPtr);
-    
-    if (rand_num<= KN_x_section_over_thomson_x_section)
+        
+    if ((rand_num<= KN_x_section_over_thomson_x_section) || (p0 < 1e-2*(M_EL*C_LIGHT ) ))
     {
+        //include last condition so low energy seed phtoons can scatter (as they should under thompson scattering), calculating KN_x_section_over_thomson_x_section incurs numerical error at very low frequencies
         //fprintf(fPtr,"In If!\n");
         //fflush(fPtr);
     
@@ -3474,9 +3841,7 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
             cos_theta_y_dum=gsl_rng_uniform(rand)*2;
             cos_theta_dum=gsl_rng_uniform(rand)*2-1;
             f_cos_theta_dum=pow((1+energy_ratio*(1-cos_theta_dum)),-2)*(energy_ratio*(1-cos_theta_dum)+(1/(1+energy_ratio*(1-cos_theta_dum))) + cos_theta_dum*cos_theta_dum);
-
-            //fprintf(fPtr,"theta_y_dum: %e, theta_dum: %e, mu: %e, f_theta_dum: %e\n", theta_y_dum, theta_dum, mu, f_theta_dum);
-            //fflush(fPtr);
+            
         }
         *theta=acos(cos_theta_dum);
         mu=1+energy_ratio*(1-cos(*theta));
@@ -3538,50 +3903,91 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
 double averagePhotonEnergy(struct photon *ph, int num_ph)
 {
     //to calculate weighted photon energy in ergs
-    int i=0, num_thread=omp_get_num_threads();
+    int i=0;
+    #if defined(_OPENMP)
+    int num_thread=omp_get_num_threads();
+    #endif
     double e_sum=0, w_sum=0;
     
     #pragma omp parallel for reduction(+:e_sum) reduction(+:w_sum)
     for (i=0;i<num_ph;i++)
     {
-        e_sum+=(((ph+i)->p0)*((ph+i)->weight));
-        w_sum+=((ph+i)->weight);
+        #if SYNCHROTRON_SWITCH == ON
+        if (((ph+i)->weight != 0)) //dont want account for null or absorbed OLD_COMPTONIZED_PHOTON photons
+        #endif
+        {
+            e_sum+=(((ph+i)->p0)*((ph+i)->weight));
+            w_sum+=((ph+i)->weight);
+        }
     }
     
     return (e_sum*C_LIGHT)/w_sum;
 }
 
-void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg, double *r_avg  )
+void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg, double *r_avg, FILE *fPtr  )
 {
-    int temp_max=0, temp_min=INT_MAX,  i=0, num_thread=omp_get_num_threads();
-    double sum=0, avg_r_sum=0;
+    int temp_max=0, temp_min=INT_MAX,  i=0, count=0, count_synch=0, count_comp=0, count_i=0;
+    #if defined(_OPENMP)
+    int num_thread=omp_get_num_threads();
+    #endif
+    double sum=0, avg_r_sum=0, avg_r_sum_synch=0, avg_r_sum_comp=0, avg_r_sum_inject=0;
     
     //printf("Num threads: %d", num_thread);
-    #pragma omp parallel for num_threads(num_thread) reduction(min:temp_min) reduction(max:temp_max) reduction(+:sum) reduction(+:avg_r_sum)
+#pragma omp parallel for num_threads(num_thread) reduction(min:temp_min) reduction(max:temp_max) reduction(+:sum) reduction(+:avg_r_sum) reduction(+:count)
     for (i=0;i<ph_num;i++)
     {
-        sum+=((ph+i)->num_scatt);
-        avg_r_sum+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
-        
-        if (((ph+i)->num_scatt) > temp_max )
+        #if SYNCHROTRON_SWITCH == ON
+        if (((ph+i)->weight != 0)) //dont want account for null or absorbed OLD_COMPTONIZED_PHOTON photons
+        #endif
         {
-            temp_max=((ph+i)->num_scatt);
-            //printf("The new max is: %d\n", temp_max);
+            sum+=((ph+i)->num_scatt);
+            avg_r_sum+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
+            
+            //printf("%d %c  %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt);
+            
+            if (((ph+i)->num_scatt) > temp_max )
+            {
+                temp_max=((ph+i)->num_scatt);
+                //printf("The new max is: %d\n", temp_max);
+            }
+            
+            //if ((i==0) || (((ph+i)->num_scatt)<temp_min))
+            if (((ph+i)->num_scatt)<temp_min)
+            {
+                temp_min=((ph+i)->num_scatt);
+                //printf("The new min is: %d\n", temp_min);
+            }
+            
+            if (((ph+i)->type) == INJECTED_PHOTON )
+            {
+                avg_r_sum_inject+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
+                count_i++;
+            }
+                        
+            if ((((ph+i)->type) == COMPTONIZED_PHOTON) || (((ph+i)->type) == OLD_COMPTONIZED_PHOTON))
+            {
+                avg_r_sum_comp+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
+                count_comp++;
+            }
+            
+            
+            count++;
         }
         
-        //if ((i==0) || (((ph+i)->num_scatt)<temp_min))
-        if (((ph+i)->num_scatt)<temp_min)
+        if (((ph+i)->type) == SYNCHROTRON_POOL_PHOTON )
         {
-            temp_min=((ph+i)->num_scatt);
-            //printf("The new min is: %d\n", temp_min);
+            avg_r_sum_synch+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
+            count_synch++;
         }
+
         
     }
-    //printf("The  min outside the loop is: %d\n", temp_min);
+    fprintf(fPtr, "In this frame Avg r for i type: %e c and o type: %e and s type: %e\n", avg_r_sum_inject/count_i, avg_r_sum_comp/count_comp, avg_r_sum_synch/count_synch);
+    fflush(fPtr);
     //exit(0);
     
-    *avg=sum/ph_num;
-    *r_avg=avg_r_sum/ph_num;
+    *avg=sum/count;
+    *r_avg=avg_r_sum/count;
     *max=temp_max;
     *min=temp_min;
     
@@ -3608,7 +4014,8 @@ void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double
 
 void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array, FILE *fPtr)
 {
-    double  gamma_infinity=100, lumi=1e52, r00=1e8;
+    double  gamma_infinity=100, lumi=1e56, r00=1e8; //shopuld be 10^57
+    //double  gamma_infinity=5, lumi=1e52, r00=1e8; //shopuld be 10^57
     double vel=0;
     int i=0;
     
@@ -3689,35 +4096,38 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
 {
     //function to merge files in mcdir produced by various threads
     double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *comv_p0=NULL, *comv_p1=NULL, *comv_p2=NULL, *comv_p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;
-    int i=0, j=0, k=0, isNotCorrupted=0, num_types=12;
+    int i=0, j=0, k=0, isNotCorrupted=0, num_types=9; //just save lab 4 momentum, position and num_scatt by default
     int increment=1;
     char filename_k[2000]="", file_no_thread_num[2000]="", cmd[2000]="", mcdata_type[20]="";
-    char group[200]="";
+    char group[200]="", *ph_type=NULL;
     hid_t  file, file_new, group_id, dspace;
     hsize_t dims[1]={0};
     herr_t status, status_group;
-    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight;
-    
+    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_frame, dset_ph_type;
+   
     //printf("Merging files in %s\n", dir); 
     //#pragma omp parallel for num_threads(num_thread) firstprivate( filename_k, file_no_thread_num, cmd,mcdata_type,num_files, increment ) private(i,j,k)
     // i < last frame because calculation before this function gives last_frame as the first frame of the next process set of frames to merge files for
     
-    //if ((COMV_SWITCH!=0) && (STOKES_SWITCH!=0))
     #if COMV_SWITCH == ON && STOKES_SWITCH == ON
     {
-        num_types=16;//both switches on, want to save comv and stokes
+        num_types=17;//both switches on, want to save comv and stokes
     }
-    //else if ((COMV_SWITCH!=0) || (STOKES_SWITCH!=0))
     #elif COMV_SWITCH == ON || STOKES_SWITCH == ON
     {
-        num_types=12;//either switch acivated, just subtract 4 datasets
+        num_types=13;//either switch acivated, just subtract 4 datasets
     }
     #else
     {
-        num_types=8;//just save lab 4 momentum, position and num_scatt
+        num_types=9;//just save lab 4 momentum, position and num_scatt
     }
     #endif
     
+    #if SAVE_TYPE == ON
+    {
+        num_types+=1;
+    }
+    #endif
     
     
     for (i=start_frame;i<last_frame;i=i+increment)
@@ -3784,8 +4194,8 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             
             for (k=0;k<num_types;k++)
             {
-                //if ((COMV_SWITCH!=0) && (STOKES_SWITCH!=0))
-                #if COMV_SWITCH == ON && STOKES_SWITCH == ON
+                
+               #if COMV_SWITCH == ON && STOKES_SWITCH == ON
                 {
                     switch (k)
                     {
@@ -3805,9 +4215,14 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 13: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S2"); break;
                         case 14: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
                         case 15: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                        case 16: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
+                        #if SAVE_TYPES == ON
+                        {
+                            case 17: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PT"); break;
+                        }
+                        #endif
                     }
                 }
-                //else if (STOKES_SWITCH!=0)
                 #elif STOKES_SWITCH == ON && COMV_SWITCH == OFF
                 {
                     switch (k)
@@ -3824,9 +4239,14 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S2"); break;
                         case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
                         case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                        case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
+                        #if SAVE_TYPES == ON
+                        {
+                            case 13: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PT"); break;
+                        }
+                        #endif
                     }
                 }
-                //else if (COMV_SWITCH!=0)
                 #elif STOKES_SWITCH == OFF && COMV_SWITCH == ON
                 {
                     switch (k)
@@ -3843,6 +4263,12 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
                         case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
                         case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                        case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
+                        #if SAVE_TYPES == ON
+                        {
+                            case 13: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PT"); break;
+                        }
+                        #endif
                     }
                 }
                 #else
@@ -3857,6 +4283,12 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                         case 5: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R1"); break;
                         case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
                         case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
+                        case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
+                        #if SAVE_TYPES == ON
+                        {
+                            case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PT"); break;
+                        }
+                        #endif
                     }
                 }
                 #endif
@@ -3902,7 +4334,8 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             comv_p0=malloc(j*sizeof(double));  comv_p1=malloc(j*sizeof(double));  comv_p2=malloc(j*sizeof(double));  comv_p3=malloc(j*sizeof(double));
             r0=malloc(j*sizeof(double));  r1=malloc(j*sizeof(double));  r2=malloc(j*sizeof(double));
             s0=malloc(j*sizeof(double));  s1=malloc(j*sizeof(double));  s2=malloc(j*sizeof(double));  s3=malloc(j*sizeof(double));
-            num_scatt=malloc(j*sizeof(double)); 
+            num_scatt=malloc(j*sizeof(double)); weight=malloc(j*sizeof(double));
+            ph_type=malloc((j)*sizeof(char));
         
             j=0;
             for (k=0;k<numprocs;k++)
@@ -3925,7 +4358,6 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     dset_p2 = H5Dopen (group_id, "P2", H5P_DEFAULT);
                     dset_p3 = H5Dopen (group_id, "P3", H5P_DEFAULT);
                     
-                    //if (COMV_SWITCH!=0)
                     #if COMV_SWITCH == ON
                     {
                         dset_comv_p0 = H5Dopen (group_id, "COMV_P0", H5P_DEFAULT); //open dataset
@@ -3939,7 +4371,6 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     dset_r1 = H5Dopen (group_id, "R1", H5P_DEFAULT);
                     dset_r2 = H5Dopen (group_id, "R2", H5P_DEFAULT);
                     
-                    //if (STOKES_SWITCH!=0)
                     #if STOKES_SWITCH == ON
                     {
                         dset_s0 = H5Dopen (group_id, "S0", H5P_DEFAULT);
@@ -3950,14 +4381,30 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     #endif
                     
                     dset_num_scatt = H5Dopen (group_id, "NS", H5P_DEFAULT);
-                
+                    
+                    #if SYNCHROTRON_SWITCH == ON
+                    {
+                        dset_weight = H5Dopen (group_id, "PW", H5P_DEFAULT); // have to account for this only being used for synchrotron emission switch being on
+                    }
+                    #else
+                    {
+                        dset_weight = H5Dopen (file, "PW", H5P_DEFAULT); //for non synch runs look at the global /PW dataset
+                    }
+                    #endif
+                    
+                    #if SAVE_TYPE == ON
+                    {
+                        dset_ph_type = H5Dopen (group_id, "PT", H5P_DEFAULT);
+                    }
+                    #endif
+
+                    
                     //read the data in
                     status = H5Dread(dset_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p0+j));
                     status = H5Dread(dset_p1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p1+j));
                     status = H5Dread(dset_p2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p2+j));
                     status = H5Dread(dset_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (p3+j));
                     
-                    //if (COMV_SWITCH!=0)
                     #if COMV_SWITCH == ON
                     {
                         status = H5Dread(dset_comv_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (comv_p0+j));
@@ -3971,7 +4418,6 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     status = H5Dread(dset_r1, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r1+j));
                     status = H5Dread(dset_r2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (r2+j));
                     
-                    //if (STOKES_SWITCH!=0)
                     #if STOKES_SWITCH == ON
                     {
                         status = H5Dread(dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (s0+j));
@@ -3982,6 +4428,16 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     #endif
                     
                     status = H5Dread(dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (num_scatt+j));
+                    
+                    status = H5Dread(dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (weight+j));
+                    
+                    #if SAVE_TYPE == ON
+                    {
+                        status = H5Dread(dset_ph_type, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL, H5P_DEFAULT, (ph_type+j));
+                    }
+                    #endif
+
+                    
                 
                     //get the number of points
                     dspace = H5Dget_space (dset_p0);
@@ -3991,7 +4447,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                 
                     status = H5Sclose (dspace);
                     status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
-                    //if (COMV_SWITCH!=0)
+
                     #if COMV_SWITCH == ON
                     {
                         status = H5Dclose (dset_comv_p0); status = H5Dclose (dset_comv_p1); status = H5Dclose (dset_comv_p2); status = H5Dclose (dset_comv_p3);
@@ -4000,14 +4456,23 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     
                     status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
                     
-                    //if (STOKES_SWITCH!=0)
                     #if STOKES_SWITCH == ON
                     {
                         status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
                     }
                     #endif
                     
-                    status = H5Dclose (dset_num_scatt); 
+                    #if SAVE_TYPE == ON
+                    {
+                        status = H5Dclose (dset_ph_type);
+                    }
+                    #endif
+
+                    
+                    status = H5Dclose (dset_num_scatt);
+                    
+                    status = H5Dclose (dset_weight);
+
                     status = H5Gclose(group_id);
                 }
                 status = H5Fclose(file);
@@ -4020,7 +4485,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             dset_p1=H5Dcreate2(file_new, "P1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_p2=H5Dcreate2(file_new, "P2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_p3=H5Dcreate2(file_new, "P3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            //if (COMV_SWITCH!=0)
+
             #if COMV_SWITCH == ON
             {
                 dset_comv_p0=H5Dcreate2(file_new, "COMV_P0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -4029,10 +4494,11 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                 dset_comv_p3=H5Dcreate2(file_new, "COMV_P3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             }
             #endif
+            
             dset_r0=H5Dcreate2(file_new, "R0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_r1=H5Dcreate2(file_new, "R1", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             dset_r2=H5Dcreate2(file_new, "R2", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            //if (STOKES_SWITCH!=0)
+            
             #if STOKES_SWITCH == ON
             {
                 dset_s0=H5Dcreate2(file_new, "S0", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -4041,7 +4507,17 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                 dset_s3=H5Dcreate2(file_new, "S3", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             }
             #endif
+            
             dset_num_scatt=H5Dcreate2(file_new, "NS", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            
+            dset_weight=H5Dcreate2(file_new, "PW", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            
+            #if SAVE_TYPE == ON
+            {
+                dset_ph_type=H5Dcreate2(file_new, "PT", H5T_NATIVE_CHAR, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            }
+            #endif
+
             
             //save the data in the new file
             status = H5Dwrite (dset_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
@@ -4056,7 +4532,6 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             status = H5Dwrite (dset_p3, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, p3);
             
-            //if (COMV_SWITCH!=0)
             #if COMV_SWITCH == ON
             {
                 status = H5Dwrite (dset_comv_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
@@ -4082,7 +4557,6 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
             status = H5Dwrite (dset_r2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, r2);
             
-            //if (STOKES_SWITCH!=0)
             #if STOKES_SWITCH == ON
             {
                 status = H5Dwrite (dset_s0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
@@ -4098,33 +4572,57 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                                 H5P_DEFAULT, s3);
             }
             #endif
+            
+            #if SAVE_TYPE == ON
+            {
+                status = H5Dwrite (dset_ph_type, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL,
+                H5P_DEFAULT, ph_type);
+            }
+            #endif
+
                         
             status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, num_scatt);
-        
+            
+                status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                               H5P_DEFAULT, weight);
+            
             status = H5Sclose (dspace);
             status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
-            //if (COMV_SWITCH!=0)
+            
             #if COMV_SWITCH == ON
             {
                 status = H5Dclose (dset_comv_p0); status = H5Dclose (dset_comv_p1); status = H5Dclose (dset_comv_p2); status = H5Dclose (dset_comv_p3);
             }
             #endif
+            
             status = H5Dclose (dset_r0); status = H5Dclose (dset_r1); status = H5Dclose (dset_r2);
-            //if (STOKES_SWITCH!=0)
+            
             #if STOKES_SWITCH == ON
             {
                 status = H5Dclose (dset_s0); status = H5Dclose (dset_s1); status = H5Dclose (dset_s2); status = H5Dclose (dset_s3);
             }
             #endif
-            status = H5Dclose (dset_num_scatt); 
+            
+            #if SAVE_TYPE == ON
+            {
+                status = H5Dclose (dset_ph_type);
+            }
+            #endif
+
+            status = H5Dclose (dset_num_scatt);
+            
+            status = H5Dclose (dset_weight);
+            
+
             status = H5Fclose (file_new);
         
             free(p0);free(p1); free(p2);free(p3);
             free(comv_p0);free(comv_p1); free(comv_p2);free(comv_p3);
             free(r0);free(r1); free(r2);
             free(s0);free(s1); free(s2);free(s3);
-            free(num_scatt);
+            free(num_scatt); free(weight);
+            free(ph_type);
         
             isNotCorrupted=0;
         }
@@ -4132,68 +4630,6 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
         
     }
         
-    
-    
-    if (angle_id==0)
-    {
-        //merge photon weight files
-        snprintf(file_no_thread_num,sizeof(file_no_thread_num),"%s%s",dir,"mcdata_PW.h5" );
-        file_new = H5Fcreate (file_no_thread_num, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT); //just recreate the file b/c its easier
-        
-        //calculate total number of photons 
-        j=0;
-        for (k=0;k<numprocs;k++)
-        {
-            //for each process' file, find out how many elements and add up to find total number of elements needed in the data set for the frame number
-            snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dir,"mc_proc_", k, ".h5" );
-            
-            //open the file
-            file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
-            
-            //open the datatset
-            dset_weight = H5Dopen (file, "Weight", H5P_DEFAULT); //open dataset
-                
-            //get the number of points
-            dspace = H5Dget_space (dset_weight);
-            status=H5Sget_simple_extent_dims(dspace, dims, NULL); //save dimesnions in dims
-            j+=dims[0];//calculate the total number of photons to save to new hdf5 file
-                
-            status = H5Sclose (dspace);
-            status = H5Dclose (dset_weight);
-        }
-        status = H5Fclose(file);
-        
-        weight=malloc(j*sizeof(double));
-        j=0;
-        //open each data set and save it
-        for (k=0;k<numprocs;k++)
-        {
-            snprintf(filename_k,sizeof(filename_k),"%s%s%d%s",dir,"mc_proc_", k, ".h5" );
-            file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
-            dset_weight = H5Dopen (file, "Weight", H5P_DEFAULT);
-            status = H5Dread(dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, (weight+j));
-            
-            dspace = H5Dget_space (dset_weight);
-            status=H5Sget_simple_extent_dims(dspace, dims, NULL); //save dimesnions in dims
-            j+=dims[0];//calculate the total number of photons to save to new hdf5 file
-            
-            status = H5Sclose (dspace);
-            status = H5Dclose (dset_weight);
-            status = H5Fclose(file);
-        }
-        
-        //save the dataset to the new file
-        dims[0]=j;
-        dspace = H5Screate_simple(1, dims, NULL);
-        dset_weight=H5Dcreate2(file_new, "Weight", H5T_NATIVE_DOUBLE, dspace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-        status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, weight);
-        
-        status = H5Sclose (dspace);
-        status = H5Dclose (dset_weight);
-        status = H5Fclose(file_new);
-        
-        free(weight);
-    }
     
     //exit(0);
     

@@ -3,20 +3,25 @@
 \contentsline {subsection}{\numberline {2.1}Required Libraries}{2}{subsection.2.1}
 \contentsline {subsection}{\numberline {2.2}Downloading and Compiling MCRaT}{3}{subsection.2.2}
 \contentsline {subsection}{\numberline {2.3}The mcrat\_input.h file}{3}{subsection.2.3}
-\contentsline {subsection}{\numberline {2.4}The MCRaT Parameter File}{4}{subsection.2.4}
-\contentsline {subsection}{\numberline {2.5}Understanding MCRaT's Parallelism}{6}{subsection.2.5}
-\contentsline {subsection}{\numberline {2.6}Running MCRaT}{6}{subsection.2.6}
-\contentsline {subsection}{\numberline {2.7}MCRaT Output}{7}{subsection.2.7}
-\contentsline {subsection}{\numberline {2.8}Restarting MCRaT}{8}{subsection.2.8}
-\contentsline {subsubsection}{\numberline {2.8.1}Using The mcrat\_msp.sh Shell Script}{8}{subsubsection.2.8.1}
-\contentsline {subsection}{\numberline {2.9}Using Hybrid-Parellelization}{9}{subsection.2.9}
-\contentsline {subsection}{\numberline {2.10}Post-Processing MCRaT Data}{9}{subsection.2.10}
-\contentsline {section}{\numberline {3}The MCRaT Code}{10}{section.3}
-\contentsline {subsection}{\numberline {3.1}Assumptions about the RHD Simulation}{10}{subsection.3.1}
-\contentsline {subsection}{\numberline {3.2}Algorithm}{10}{subsection.3.2}
-\contentsline {subsection}{\numberline {3.3}Output}{13}{subsection.3.3}
-\contentsline {subsection}{\numberline {3.4}Post-processing Algorithm}{15}{subsection.3.4}
-\contentsline {section}{\numberline {4}Physics Included in MCRaT}{16}{section.4}
-\contentsline {subsection}{\numberline {4.1}Injecting Photons}{16}{subsection.4.1}
-\contentsline {subsection}{\numberline {4.2}Scattering Photons}{17}{subsection.4.2}
-\contentsline {subsection}{\numberline {4.3}Polarization}{17}{subsection.4.3}
+\contentsline {subsection}{\numberline {2.4}The MCRaT Parameter File}{5}{subsection.2.4}
+\contentsline {subsection}{\numberline {2.5}Understanding MCRaT's Parallelism}{7}{subsection.2.5}
+\contentsline {subsection}{\numberline {2.6}Running MCRaT}{7}{subsection.2.6}
+\contentsline {subsection}{\numberline {2.7}MCRaT Output Files}{8}{subsection.2.7}
+\contentsline {subsection}{\numberline {2.8}Restarting MCRaT}{9}{subsection.2.8}
+\contentsline {subsubsection}{\numberline {2.8.1}Using The mcrat\_msp.sh Shell Script}{9}{subsubsection.2.8.1}
+\contentsline {subsection}{\numberline {2.9}Using Hybrid-Parellelization}{10}{subsection.2.9}
+\contentsline {subsection}{\numberline {2.10}Post-Processing MCRaT Data}{10}{subsection.2.10}
+\contentsline {section}{\numberline {3}The MCRaT Code}{11}{section.3}
+\contentsline {subsection}{\numberline {3.1}Assumptions about the Hydro Simulation}{11}{subsection.3.1}
+\contentsline {subsection}{\numberline {3.2}Algorithm}{11}{subsection.3.2}
+\contentsline {subsection}{\numberline {3.3}Saved Quantities}{15}{subsection.3.3}
+\contentsline {subsection}{\numberline {3.4}Post-processing Algorithm}{18}{subsection.3.4}
+\contentsline {section}{\numberline {4}Physics Included in MCRaT}{18}{section.4}
+\contentsline {subsection}{\numberline {4.1}Injecting Photons}{18}{subsection.4.1}
+\contentsline {subsection}{\numberline {4.2}Scattering Photons}{19}{subsection.4.2}
+\contentsline {subsection}{\numberline {4.3}Polarization}{21}{subsection.4.3}
+\contentsline {subsection}{\numberline {4.4}Thermal Synchrotron Radiation}{26}{subsection.4.4}
+\contentsline {subsubsection}{\numberline {4.4.1}Emitting Thermal Synchrotron Photons}{26}{subsubsection.4.4.1}
+\contentsline {subsubsection}{\numberline {4.4.2}Calculating B}{27}{subsubsection.4.4.2}
+\contentsline {subsubsection}{\numberline {4.4.3}Rebinning The Scattered Thermal Synchrotron Photons}{27}{subsubsection.4.4.3}
+\contentsline {subsubsection}{\numberline {4.4.4}Absorption of Thermal Synchrotron Photons}{28}{subsubsection.4.4.4}

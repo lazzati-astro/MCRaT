@@ -38,6 +38,9 @@
 *  version 7.0 used OpenMP to parallelize the code by angle and the function findminmfp()
  
  version 8.0 added 3D capabilities for RIKEN hydro data  and 2D capablities for RIKEN 2D hydro data and made it more efficient with grid selection to speed it up
+ 
+* Version 9.0 late 2017 included full Klein Nishina Cross Section and polarization with stokes parameters
+* Version 9.1 late 2018 including synchrotron absorption and emission
 */
 
 #include <stdio.h>
@@ -88,22 +91,24 @@ int main(int argc, char **argv)
     FILE *fPtr=NULL; //pointer to log file for each thread
     double *xPtr=NULL,  *yPtr=NULL,  *rPtr=NULL,  *thetaPtr=NULL,  *velxPtr=NULL,  *velyPtr=NULL,  *densPtr=NULL,  *presPtr=NULL,  *gammaPtr=NULL,  *dens_labPtr=NULL;
     double *szxPtr=NULL,*szyPtr=NULL, *tempPtr=NULL; //pointers to hold data from FLASH files
-    double *phiPtr=NULL, *velzPtr=NULL, *zPtr=NULL, *all_time_steps=NULL;
-    int num_ph=0, array_num=0, ph_scatt_index=0, max_scatt=0, min_scatt=0,i=0; //number of photons produced in injection algorithm, number of array elleemnts from reading FLASH file, index of photon whch does scattering, generic counter
+    double *phiPtr=NULL, *velzPtr=NULL, *zPtr=NULL, *all_time_steps=NULL ;
+    int num_ph=0, scatt_synch_num_ph=0, num_null_ph=0, array_num=0, ph_scatt_index=0, num_photons_find_new_element=0, max_scatt=0, min_scatt=0,i=0; //number of photons produced in injection algorithm, number of array elleemnts from reading FLASH file, index of photon whch does scattering, generic counter
     double dt_max=0, thescatt=0, accum_time=0; 
     double  gamma_infinity=0, time_now=0, time_step=0, avg_scatt=0,avg_r=0; //gamma_infinity not used?
     double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0, ph_vzPtr=0;// *ph_cosanglePtr=NULL ;
-    double min_r=0, max_r=0, min_theta=0, max_theta=0;
-    int frame=0, scatt_frame=0, frame_scatt_cnt=0, scatt_framestart=0, framestart=0;
+    double min_r=0, max_r=0, min_theta=0, max_theta=0, nu_c_scatt=0, n_comptonized=0;
+    int frame=0, scatt_frame=0, frame_scatt_cnt=0, frame_abs_cnt=0, scatt_framestart=0, framestart=0;
     struct photon *phPtr=NULL; //pointer to array of photons 
     
-    int angle_count=0;
+    int angle_count=0, num_ph_emit=0;
     int num_angles=0, old_num_angle_procs=0; //old_num_angle_procs is to hold the old number of procs in each angle when cont sims, if  restarting sims this gets set to angle_procs
-    int *frame_array=NULL, *proc_frame_array=NULL, *element_num=NULL, *sorted_indexes=NULL, proc_frame_size=0;
+    int *frame_array=NULL, *proc_frame_array=NULL, *element_num=NULL, *sorted_indexes=NULL,  proc_frame_size=0;
     double *thread_theta=NULL; //saves ranges of thetas for each thread to go through
     double delta_theta=1;
     
     int myid, numprocs, angle_procs, angle_id, procs_per_angle;
+    int temporary[3]={0}, tempo=0;
+
     
    
    //new OpenMPI stuff
@@ -231,6 +236,8 @@ int main(int argc, char **argv)
             
             old_num_angle_procs=getOrigNumProcesses(&count_cont_procs,  &cont_proc_idsPtr, mc_dir, angle_id,  angle_procs,  last_frm);
             
+            //count_cont_procs=1;//just for testing purposes
+            
             if (old_num_angle_procs==-1)
             {
                 printf("MCRAT wasnt able to get a value of old_num_angle_procs to continue the simulation. Now exiting to prevent data corruption.\n" );
@@ -243,10 +250,11 @@ int main(int argc, char **argv)
             
             MPI_Barrier(angle_comm);
             MPI_Barrier(sub_world_comm);
-            if (angle_id==0)
-            {
-                printf("Angle_procs: %d 1st gather: %d, %d, %d\n", angle_procs, *(total_cont_procs_angle_Ptr), *(total_cont_procs_angle_Ptr+1), *(total_cont_procs_angle_Ptr+2));
-            }
+            
+            //if (angle_id==0)
+            //{
+            //    printf("Angle_procs: %d 1st gather: %d, %d, %d\n", angle_procs, *(total_cont_procs_angle_Ptr), *(total_cont_procs_angle_Ptr+1), *(total_cont_procs_angle_Ptr+2));
+            //}
             
             MPI_Reduce(&count_cont_procs, &total_cont_procs_angle, 1, MPI_INT, MPI_SUM, 0, angle_comm); //for each angle sum the number of procs to continue and pass it to the root for angle_comm
             
@@ -391,7 +399,7 @@ int main(int argc, char **argv)
             if (myid==numprocs-1)
             {
                 printf("Number of processes: %d\n", old_num_angle_procs);
-                printf("restarting process numbers for each angle range: %d, %d, %d\n", *(each_num_to_restart_per_anglePtr), *(each_num_to_restart_per_anglePtr+1), *(each_num_to_restart_per_anglePtr+2));
+                //printf("restarting process numbers for each angle range: %d, %d, %d\n", *(each_num_to_restart_per_anglePtr), *(each_num_to_restart_per_anglePtr+1), *(each_num_to_restart_per_anglePtr+2));
             }
         
             //assign proper number of processes to each angle range to con't sims and then reset angle_id to original value from when simulation was first started
@@ -408,10 +416,11 @@ int main(int argc, char **argv)
                 printf("Myid: %d, Color: %d, Count %d, Num To Start Per Angle: %d\n", myid, color, count, (*(each_num_to_restart_per_anglePtr+j)));
             }
             
+            
             if (count!=numprocs)
             {
                 //if the number of processes needed to continue the simulation is different from the number of processes in the mpiexec call exit
-                printf('The simulation needs %d processes to properly continue. The number of processes initialized was %d.\nThe program is now exiting to prevent data corruption\n.', count, numprocs);
+                printf("The simulation needs %d processes to properly continue. The number of processes initialized was %d.\nThe program is now exiting to prevent data corruption\n.", count, numprocs);
                 exit(2);
             }
         
@@ -468,6 +477,9 @@ int main(int argc, char **argv)
     }
     
     //make vector to hold the frames we are injecting in, vector should have (frm2-frm0)/angle_procs slots, if fps is const
+    
+        //angle_procs=1;//just for testing purposes
+    
         proc_frame_size=ceil((frm2-frm0)/ (float) angle_procs);
         frame_array=malloc(((frm2-frm0)+1)*sizeof(int));
         
@@ -498,7 +510,7 @@ int main(int argc, char **argv)
                 printf(">> mc.py:  Reading checkpoint\n");
                 //#pragma omp critical
                 
-                    readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs);
+                    scatt_synch_num_ph=readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs);
                 
                 /*
                 for (i=0;i<num_ph;i++)
@@ -537,6 +549,7 @@ int main(int argc, char **argv)
                         }
                     }
                     printf("File count %d\n", file_count);
+                    //file_count=0;
                     
                     if (file_count>0)
                     {
@@ -716,9 +729,6 @@ int main(int argc, char **argv)
                     
                 }
                 
-                all_time_steps=malloc(num_ph*sizeof(double));
-                sorted_indexes=malloc(num_ph*sizeof(int));
-                
                 //scatter photons all the way thoughout the jet
                 //for a checkpoint implmentation, start from the last saved "scatt_frame" value eh start_frame=frame or start_frame=cont_frame
                 if (restrt=='r')
@@ -726,6 +736,7 @@ int main(int argc, char **argv)
                     scatt_framestart=frame; //have to make sure that once the inner loop is done and the outer loop is incrememnted by one the inner loop starts at that new value and not the one read by readCheckpoint()
                 }
                 
+                num_null_ph=0;
                 for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame=scatt_frame+increment_scatt)
                 {
                     #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
@@ -756,7 +767,7 @@ int main(int argc, char **argv)
                     #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
                         fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Structurd Spherical Outflow - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
                     #endif
-
+                    
                     fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Opening file...\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     fflush(fPtr);
                     
@@ -777,6 +788,20 @@ int main(int argc, char **argv)
                             fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
                             fflush(fPtr);
                             
+                                if ((scatt_frame != scatt_framestart) || (restrt=='c'))
+                                {
+                                    //NEED TO DETERMINE IF min_r or max_r is smaller/larger than the rmin/rmax in photonEmitSynch to properly emit photons in the range that the process is interested in
+                                    //printf("OLD: min_r %e max_r %e\n", min_r, max_r);
+                                    double test=0;
+                                    test=calcSynchRLimits( scatt_frame, frame, fps_modified,  inj_radius, "min");
+                                    //printf("TEST MIN: %e\n", test);
+                                    min_r=(min_r < test) ? min_r : test ;
+                                    test=calcSynchRLimits( scatt_frame, frame, fps_modified,  inj_radius, "max");
+                                    //printf("TEST MAX: %e\n", test);
+                                    max_r=(max_r > test ) ? max_r : test ;
+                                    //printf("NEW: min_r %e max_r %e\n", min_r, max_r);
+                                }
+                            
                             readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                     &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr);
                         }
@@ -787,11 +812,11 @@ int main(int argc, char **argv)
                             phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                             fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
                             fflush(fPtr);
-                            
+                            phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                             readPlutoChombo(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                     &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr);
                             
-                            exit(0);
+                            //exit(0);
                         }
                         #else
                         {
@@ -802,6 +827,7 @@ int main(int argc, char **argv)
                             //fprintf(fPtr, "%d\n\n", array_num);
                         }
                         #endif
+                        //fprintf(fPtr, "Number of Hydo Elements %d\n", array_num);
         //exit(0);
                     }
                     #else
@@ -837,13 +863,50 @@ int main(int argc, char **argv)
                     }
                     #endif
                         //printf("The result of read and decimate are arrays with %d elements\n", array_num);
+                    
+                    //emit synchrotron photons here
+                    num_ph_emit=0;
+                    
+                    //by default want to allocat ememory for time_steps and sorted indexes to scatter
+                    all_time_steps=malloc(num_ph*sizeof(double));
+                    sorted_indexes=malloc(num_ph*sizeof(int));
+                    
+                    #if SYNCHROTRON_SWITCH == ON
+                    if ((scatt_frame != scatt_framestart) || (restrt=='c')) //remember to revert back to !=
+                    {
+                        //if injecting synch photons, emit them if continuing simulation from a point where scatt_frame != scatt_framestart
+                        //if necessary, then add memory to then arrays allocated directly above
                         
-                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph);
+                        //printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0);
+                        
+                        fprintf(fPtr, "Emitting Synchrotron Photons in frame %d\n", scatt_frame);
+                        
+                        #if B_FIELD_CALC == INTERNAL_E
+                            fprintf(fPtr, "Calculating the magnetic field using internal energy.\n", scatt_frame);
+                        #else
+                            //otherwise calculate B from the total energy
+                            fprintf(fPtr, "Calculating the magnetic field using the total energy and epsilon_B is set to %lf.\n", EPSILON_B);
+                        #endif
+                        
+                        phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
+                        num_ph_emit=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 0, 0, fPtr);
+                        
+                        
+                        
+                        //printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e (phPtr)[72].comv_p0 %e (phPtr)[73].comv_p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0, (phPtr)[72].comv_p0, (phPtr)[73].comv_p0);
+                        
+                    }
+                    #endif
+                    
+                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph-num_null_ph);
                     fflush(fPtr);
                     
                     frame_scatt_cnt=0;
+                    frame_abs_cnt=0;
                     find_nearest_grid_switch=1; // set to true so the function findNearestPropertiesAndMinMFP by default finds the index of the grid block closest to each photon since we just read in a file and the prior index is invalid
+                    num_photons_find_new_element=0;
                     
+                    n_comptonized=0;
                     while (time_now<((scatt_frame+increment_scatt)/fps))
                     {
                         //if simulation time is less than the simulation time of the next frame, keep scattering in this frame
@@ -853,8 +916,9 @@ int main(int argc, char **argv)
                         //and choose the photon with the smallest mfp and calculate the timestep
                         
 
-                        ph_scatt_index=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, &time_step, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
+                        num_photons_find_new_element+=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, 1, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
                                                                       all_time_steps, sorted_indexes, rng, find_nearest_grid_switch, fPtr);
+
                         
                         find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
 
@@ -863,29 +927,62 @@ int main(int argc, char **argv)
                         //fflush(fPtr);
                         //for (i=1;i<num_ph;i++)
                         //{
-                        //    fprintf(fPtr, "Newest Method results: %d, %e\n", *(sorted_indexes+i), *(all_time_steps+(*(sorted_indexes+i))) );
+                        //   fprintf(fPtr, "Newest Method results: %d, %e\n", *(sorted_indexes+i), *(all_time_steps+(*(sorted_indexes+i))) );
                         //}
                         
                         
-                         if (time_step<dt_max)
+                        if (*(all_time_steps+(*(sorted_indexes+0)))<dt_max)
                         {
                             //scatter the photon
                             //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
-                            time_step=photonScatter( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, rng, fPtr );
+                            time_step=photonEvent( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );
                             time_now+=time_step;
                             
+                            //see if the scattered phton was a seed photon, if so replenish the seed photon
+                            #if SYNCHROTRON_SWITCH == ON
+                            if ((phPtr+ph_scatt_index)->type == SYNCHROTRON_POOL_PHOTON)
+                            {
+                                n_comptonized+=(phPtr+ph_scatt_index)->weight;
+                                (phPtr+ph_scatt_index)->type = COMPTONIZED_PHOTON; //c for compton scattered synchrotron photon
+                                
+                                //fprintf(fPtr, "num_null_ph %d\n", num_null_ph);
+                                //printf("The previous scattered photon was a seed photon %c.\n", (phPtr+ph_scatt_index)->type);
+                                num_ph_emit+=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 1, ph_scatt_index, fPtr);
+                                //fprintf(fPtr, " num_photon: %d\n",num_ph  );
+                                //fflush(fPtr);
+                                
+                                scatt_synch_num_ph++;//keep track of the number of synch photons that have scattered for later in checking of we need to rebin them
+                                //fprintf(fPtr,"photonEmitSynch: scatt_synch_num_ph Number: %d\n", scatt_synch_num_ph);
+                                //exit(0);
+                                 
+                            }
+                            #endif
                             
+                            //phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
                             
-                            if (frame_scatt_cnt%1000 == 0)
+                            if ((frame_scatt_cnt%1000 == 0) && (frame_scatt_cnt != 0)) //modified this so it doesn't print when all photons get absorbed at first and frame_scatt_cnt=0
                             {
                                 fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
-                                //fprintf(fPtr,"Scattering Photon Number: %d\n", ph_scatt_index);
                                 fprintf(fPtr,"The local temp is: %e K\n", *(tempPtr + (phPtr+ph_scatt_index)->nearest_block_index) );
                                 fprintf(fPtr,"Average photon energy is: %e ergs\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 can then do (1.6e-9) to get keV
                                 fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
+                                //fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
                                 fflush(fPtr);
-                            }
+                                
+                                #if SYNCHROTRON_SWITCH == ON
+                                if (scatt_synch_num_ph>max_photons)
+                                {
+                                    //if the number of synch photons that have been scattered is too high rebin them
+                                    
+                                    //printf("num_ph_emit: %d\n", num_ph_emit);
+                                    rebin2dSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_ph_emit, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
+
+                                    //fprintf(fPtr, "rebinSynchCompPhotons: scatt_synch_num_ph: %d\n", scatt_synch_num_ph);
+                                    //exit(0);
+                                }
+                                #endif
+                           }
                             //exit(0);
                         }
                         else
@@ -901,27 +998,57 @@ int main(int argc, char **argv)
 
                     }
                     
+                    #if SYNCHROTRON_SWITCH == ON
+                    if ((scatt_frame != scatt_framestart) || (restrt=='c')) //rememebr to change to != also at the other place in the code
+                    {
+                        if (scatt_synch_num_ph>max_photons)
+                        {
+                            //rebin the photons to ensure that we have a constant amount here
+                            fprintf(fPtr, "Num_ph: %d\n", num_ph);
+                            /*
+                            fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
+                            fflush(fPtr);
+                            */
+                            rebin2dSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_ph_emit, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
+                          //exit(0);
+                       }
+                                                
+
+                        
+                        //make sure the photons that shou;d be absorbed should be absorbed
+                        n_comptonized-=phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph, tempPtr, densPtr, fPtr);
+                        
+                   }
+                    #endif
+                    
                     //get scattering statistics
-                    phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
+                    phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr);
                         
                     fprintf(fPtr,"The number of scatterings in this frame is: %d\n", frame_scatt_cnt);
+                    #if SYNCHROTRON_SWITCH == ON
+                        fprintf(fPtr,"The number of photons absorbed in this frame is: %d\n", frame_abs_cnt);
+                    #endif
                     fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
-                    fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scattering for a photon is: %d\n", max_scatt, min_scatt);
+                    fprintf(fPtr,"MCRaT had to refind the position of photons %d times in this frame.\n", num_photons_find_new_element);
+                    fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scatterings for a photon is: %d\n", max_scatt, min_scatt);
                     fprintf(fPtr,"The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
+                    
                     fflush(fPtr);
                     
                     fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Making checkpoint file\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     fflush(fPtr);
                 
                     fprintf(fPtr, " mc_dir: %s\nframe %d\nfrm2: %d\nscatt_frame: %d\n num_photon: %d\ntime_now: %e\nlast_frame: %d\n", mc_dir, frame, frm2, scatt_frame, num_ph, time_now, last_frm  );
+                    
+                    fprintf(fPtr,"n_comptonized in this frame is: %e\n ", n_comptonized);
                     fflush(fPtr);
-
+                    
                     save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id, old_num_angle_procs);
                     
                     if (save_chkpt_success==0)
                     {
                         //if we saved the checkpoint successfully also save the photons to the hdf5 file, else there may be something wrong with the file system
-                        printPhotons(phPtr, num_ph,  scatt_frame , frame, mc_dir, angle_id, fPtr);
+                        printPhotons(phPtr, num_ph, frame_abs_cnt, num_ph_emit, num_null_ph, scatt_synch_num_ph, scatt_frame , frame, last_frm, mc_dir, angle_id, fPtr);
                     }
                     else
                     {
@@ -930,7 +1057,11 @@ int main(int argc, char **argv)
                         fflush(fPtr);
                         exit(1);
                     }
-                    //exit(0);
+
+                    //if (frame==last_frm)
+                    //{
+                    //    exit(0);
+                    //}
                     
                      //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
                     #if SIM_SWITCH == RIKEN && DIMENSIONS ==3
@@ -950,6 +1081,8 @@ int main(int argc, char **argv)
                 }
                 
                 restrt='r';//set this to make sure that the next iteration of propogating photons doesnt use the values from the last reading of the checkpoint file
+                scatt_synch_num_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
+                num_null_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
                 free(phPtr); 
                 phPtr=NULL;
                 free(all_time_steps);

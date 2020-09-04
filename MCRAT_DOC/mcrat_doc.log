@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex 2018.8.22)  9 DEC 2019 21:44
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex 2018.8.22)  3 SEP 2020 15:43
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -302,36 +302,77 @@ Package: array 2018/04/30 v2.4h Tabular extension package (FMi)
 \TX@cols=\count117
 \TX@ftn=\toks24
 )
+(/usr/local/texlive/2018/texmf-dist/tex/latex/natbib/natbib.sty
+Package: natbib 2010/09/13 8.31b (PWD, AO)
+\bibhang=\skip49
+\bibsep=\skip50
+LaTeX Info: Redefining \cite on input line 694.
+\c@NAT@ctr=\count118
+)
+(/usr/local/texlive/2018/texmf-dist/tex/latex/subfig/subfig.sty
+Package: subfig 2005/06/28 ver: 1.3 subfig package
+
+(/usr/local/texlive/2018/texmf-dist/tex/latex/caption/caption.sty
+Package: caption 2018/05/01 v3.3-147 Customizing captions (AR)
+
+(/usr/local/texlive/2018/texmf-dist/tex/latex/caption/caption3.sty
+Package: caption3 2018/05/27 v1.8a caption3 kernel (AR)
+Package caption3 Info: TeX engine: e-TeX on input line 64.
+\captionmargin=\dimen143
+\captionmargin@=\dimen144
+\captionwidth=\dimen145
+\caption@tempdima=\dimen146
+\caption@indent=\dimen147
+\caption@parindent=\dimen148
+\caption@hangindent=\dimen149
+)
+\c@ContinuedFloat=\count119
+Package caption Info: hyperref package is loaded.
+)
+\c@KVtest=\count120
+\sf@farskip=\skip51
+\sf@captopadj=\dimen150
+\sf@capskip=\skip52
+\sf@nearskip=\skip53
+\c@subfigure=\count121
+\c@subfigure@save=\count122
+\c@lofdepth=\count123
+\c@subtable=\count124
+\c@subtable@save=\count125
+\c@lotdepth=\count126
+\sf@top=\skip54
+\sf@bottom=\skip55
+)
 (./mcrat_doc.aux)
 \openout1 = `mcrat_doc.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 14.
-LaTeX Font Info:    ... okay on input line 14.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 14.
-LaTeX Font Info:    ... okay on input line 14.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 14.
-LaTeX Font Info:    ... okay on input line 14.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 14.
-LaTeX Font Info:    ... okay on input line 14.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 14.
-LaTeX Font Info:    ... okay on input line 14.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 14.
-LaTeX Font Info:    ... okay on input line 14.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 14.
-LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 18.
+LaTeX Font Info:    ... okay on input line 18.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 18.
+LaTeX Font Info:    ... okay on input line 18.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 18.
+LaTeX Font Info:    ... okay on input line 18.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 18.
+LaTeX Font Info:    ... okay on input line 18.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 18.
+LaTeX Font Info:    ... okay on input line 18.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 18.
+LaTeX Font Info:    ... okay on input line 18.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 18.
+LaTeX Font Info:    ... okay on input line 18.
 
 (/usr/local/texlive/2018/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count118
-\scratchdimen=\dimen143
+\scratchcounter=\count127
+\scratchdimen=\dimen151
 \scratchbox=\box30
-\nofMPsegments=\count119
-\nofMParguments=\count120
+\nofMPsegments=\count128
+\nofMParguments=\count129
 \everyMPshowfont=\toks25
-\MPscratchCnt=\count121
-\MPscratchDim=\dimen144
-\MPnumerator=\count122
-\makeMPintoPDFobject=\count123
+\MPscratchCnt=\count130
+\MPscratchDim=\dimen152
+\MPnumerator=\count131
+\makeMPintoPDFobject=\count132
 \everyMPtoPDFconversion=\toks26
 ) (/usr/local/texlive/2018/texmf-dist/tex/latex/oberdiek/epstopdf-base.sty
 Package: epstopdf-base 2016/05/15 v2.6 Base part for package epstopdf
@@ -385,29 +426,32 @@ e
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
 \AtBeginShipoutBox=\box31
-Package hyperref Info: Link coloring OFF on input line 14.
+Package hyperref Info: Link coloring OFF on input line 18.
 (/usr/local/texlive/2018/texmf-dist/tex/latex/hyperref/nameref.sty
 Package: nameref 2016/05/21 v2.44 Cross-referencing by name of section
 
 (/usr/local/texlive/2018/texmf-dist/tex/generic/oberdiek/gettitlestring.sty
 Package: gettitlestring 2016/05/16 v1.5 Cleanup title references (HO)
 )
-\c@section@level=\count124
+\c@section@level=\count133
 )
-LaTeX Info: Redefining \ref on input line 14.
-LaTeX Info: Redefining \pageref on input line 14.
-LaTeX Info: Redefining \nameref on input line 14.
+LaTeX Info: Redefining \ref on input line 18.
+LaTeX Info: Redefining \pageref on input line 18.
+LaTeX Info: Redefining \nameref on input line 18.
 
 (./mcrat_doc.out) (./mcrat_doc.out)
 \@outlinefile=\write3
 \openout3 = `mcrat_doc.out'.
 
-LaTeX Font Info:    Try loading font information for U+msa on input line 16.
+Package caption Info: Begin \AtBeginDocument code.
+Package caption Info: subfig package v1.3 is loaded.
+Package caption Info: End \AtBeginDocument code.
+LaTeX Font Info:    Try loading font information for U+msa on input line 20.
 
 (/usr/local/texlive/2018/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Try loading font information for U+msb on input line 16.
+LaTeX Font Info:    Try loading font information for U+msb on input line 20.
 
 (/usr/local/texlive/2018/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
@@ -419,88 +463,152 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
  [1
 
 {/usr/local/texlive/2018/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
-LaTeX Font Info:    Try loading font information for OMS+cmr on input line 34.
+LaTeX Font Info:    Try loading font information for OMS+cmr on input line 41.
  (/usr/local/texlive/2018/texmf-dist/tex/latex/base/omscmr.fd
 File: omscmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
 )
 LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <12> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 34.
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 41.
 
 [2] [3]
-Overfull \hbox (1.9659pt too wide) in paragraph at lines 60--61
+Overfull \hbox (1.9659pt too wide) in paragraph at lines 67--68
 \OT1/cmr/m/n/12 to tell it whether they want to con-sider the ef-fects of po-la
 r-iza-tion, with the \OT1/cmtt/m/n/12 STOKES[]SWITCH\OT1/cmr/m/n/12 ,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 100--101
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 130--131
 
  []
 
-
-Overfull \hbox (17.62482pt too wide) in paragraph at lines 122--123
+[4]
+Overfull \hbox (17.62482pt too wide) in paragraph at lines 152--153
 [][] 
  []
 
-[4] [5] [6] [7]
-Overfull \hbox (4.22931pt too wide) in paragraph at lines 185--186
+[5] [6] [7] [8]
+Overfull \hbox (4.22931pt too wide) in paragraph at lines 215--216
 \OT1/cmtt/m/n/12 dir[]with[]MCRaT[]parameter[]file/angle[]dir/mc[]output[]* |gr
 ep "completed" |wc -l
  []
 
-[8]
-Underfull \hbox (badness 10000) in paragraph at lines 204--205
+[9]
+Underfull \hbox (badness 10000) in paragraph at lines 234--235
 
  []
 
-[9] [10] [11] [12]
-Overfull \hbox (31.56396pt too wide) in paragraph at lines 274--275
+[10] [11] [12] [13]
+Overfull \hbox (11.60268pt too wide) in paragraph at lines 306--307
+\OT1/cmr/m/n/12 the \OT1/cmtt/m/n/12 MCPAR \OT1/cmr/m/n/12 file. The num-ber of
+ spa-tial bins, $\OML/cmm/m/it/12 N[]$\OT1/cmr/m/n/12 , is cal-cu-lated as $^^A
+\OML/cmm/m/it/12 ^^R=$\OT1/cmtt/m/n/12 SYNCHROTRON[]REBIN[]ANG\OT1/cmr/m/n/12 ,
+
+ []
+
+[14]
+Overfull \hbox (31.56396pt too wide) in paragraph at lines 312--313
 \OT1/cmr/m/n/12 Each MCRaT MPI pro-cess out-puts 3 files. These files are named
  \OT1/cmtt/m/n/12 mc[]proc[]$\OML/cmm/m/it/12 i$\OT1/cmtt/m/n/12 .h5\OT1/cmr/m/
 n/12 , \OT1/cmtt/m/n/12 mc[]chkpt[]$\OML/cmm/m/it/12 i$\OT1/cmtt/m/n/12 .dat\OT
 1/cmr/m/n/12 ,
  []
 
-[13]
+[15]
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
-[14] [15] [16]
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 377.
- [17]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 377.
+[16] [17] [18] [19] [20] [21] [22]
+<phi_sampling_depaola.pdf, id=329, 462.52798pt x 346.89601pt>
+File: phi_sampling_depaola.pdf Graphic file (type pdf)
+<use phi_sampling_depaola.pdf>
+Package pdftex.def Info: phi_sampling_depaola.pdf  used on input line 487.
+(pdftex.def)             Requested size: 462.52684pt x 346.89516pt.
+
+Overfull \hbox (9.55894pt too wide) in paragraph at lines 487--488
+ [][] 
+ []
+
+
+LaTeX Warning: No positions in optional float specifier.
+               Default added (so using `tbp') on input line 492.
+
+<kraw_test_i.pdf, id=334, 372.9132pt x 281.56392pt>
+File: kraw_test_i.pdf Graphic file (type pdf)
+<use kraw_test_i.pdf>
+Package pdftex.def Info: kraw_test_i.pdf  used on input line 496.
+(pdftex.def)             Requested size: 226.48395pt x 171.00616pt.
+<kraw_test_q.pdf, id=335, 372.9132pt x 281.56392pt>
+File: kraw_test_q.pdf Graphic file (type pdf)
+<use kraw_test_q.pdf>
+Package pdftex.def Info: kraw_test_q.pdf  used on input line 499.
+(pdftex.def)             Requested size: 226.48395pt x 171.00616pt.
+
+Overfull \hbox (15.6665pt too wide) in paragraph at lines 496--499
+ [][][][] 
+ []
+
+<kraw_test_u.pdf, id=336, 372.9132pt x 281.56392pt>
+File: kraw_test_u.pdf Graphic file (type pdf)
+<use kraw_test_u.pdf>
+Package pdftex.def Info: kraw_test_u.pdf  used on input line 502.
+(pdftex.def)             Requested size: 226.48395pt x 171.00616pt.
+[23 <./phi_sampling_depaola.pdf>] [24 <./kraw_test_i.pdf> <./kraw_test_q.pdf
+
+pdfTeX warning: /Library/TeX/texbin/pdflatex (file ./kraw_test_q.pdf): PDF incl
+usion: multiple pdfs with page group included in a single page
+> <./kraw_test_u.pdf
+
+pdfTeX warning: /Library/TeX/texbin/pdflatex (file ./kraw_test_u.pdf): PDF incl
+usion: multiple pdfs with page group included in a single page
+>]
+<comp_lundman_p_4_thetaj_1e-01.pdf, id=495, 418.30151pt x 318.3733pt>
+File: comp_lundman_p_4_thetaj_1e-01.pdf Graphic file (type pdf)
+<use comp_lundman_p_4_thetaj_1e-01.pdf>
+Package pdftex.def Info: comp_lundman_p_4_thetaj_1e-01.pdf  used on input line 
+511.
+(pdftex.def)             Requested size: 452.9679pt x 344.77077pt.
+ [25 <./comp_lundman_p_4_thetaj_1e-01.pdf>] [26] [27] (./mcrat_doc.bbl
+[28])
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 594.
+ [29]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 594.
  (./mcrat_doc.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 377.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 377.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 594.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 594.
 Package rerunfilecheck Info: File `mcrat_doc.out' has not changed.
-(rerunfilecheck)             Checksum: 564F8E379D2A521A5AB7F07BAE030C2E;1499.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 377.
+(rerunfilecheck)             Checksum: 2F65CA5873464E07C65E0E1E7529D4AE;1977.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 594.
  ) 
 Here is how much of TeX's memory you used:
- 6630 strings out of 492642
- 95459 string characters out of 6129384
- 205376 words of memory out of 5000000
- 10396 multiletter control sequences out of 15000+600000
- 12919 words of font info for 50 fonts, out of 8000000 for 9000
+ 8285 strings out of 492642
+ 123576 string characters out of 6129384
+ 236125 words of memory out of 5000000
+ 11977 multiletter control sequences out of 15000+600000
+ 13540 words of font info for 52 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 28i,12n,28p,1938b,382s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 44i,13n,43p,2109b,423s stack positions out of 5000i,500n,10000p,200000b,80000s
 </usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb
 ></usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb>
 </usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb><
-/usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></u
-sr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr
-/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/l
-ocal/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/loca
-l/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/t
-exlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/te
-xlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texl
-ive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texliv
-e/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/local/texlive
-/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb>
-Output written on mcrat_doc.pdf (17 pages, 206713 bytes).
+/usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></u
+sr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr
+/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/l
+ocal/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/loc
+al/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/
+texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/tex
+live/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texl
+ive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texliv
+e/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/
+2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/local/texlive/2
+018/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb></usr/local/texlive/20
+18/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb>
+Output written on mcrat_doc.pdf (29 pages, 363807 bytes).
 PDF statistics:
- 266 PDF objects out of 1000 (max. 8388607)
- 231 compressed objects within 3 object streams
- 43 named destinations out of 1000 (max. 500000)
- 177 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 649 PDF objects out of 1000 (max. 8388607)
+ 482 compressed objects within 5 object streams
+ 93 named destinations out of 1000 (max. 500000)
+ 242 words of extra memory for PDF output out of 10000 (max. 10000000)
 
