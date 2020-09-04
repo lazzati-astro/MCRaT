@@ -4,7 +4,6 @@ CC          = gcc-mp-9
 CFLAGS      = -Wall -O3 -fopenmp
 #CFLAGS      = -Wall -g  -fsanitize=address
 # -fopenmp 
-#-fsanitize=address
 LIB         = -lz -lm -ldl -lgsl -lgslcblas -lm -lmpi 
 
 DEPS = mclib.h mclib_3d.h mclib_pluto.h mc_synch.h mcrat_input.h

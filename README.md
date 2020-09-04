@@ -13,4 +13,4 @@ The code was initially written in python by Dr. Davide Lazzati as a proof of con
 
 There are also python files with documented functions to process the MCRaT output located at: https://github.com/parsotat/ProcessMCRaT.
 
-In using MCRaT and the ProcessMCRaT codes, we ask that you cite the following papers: Lazzati (2016); Parsotan & Lazzati (2018); Parsotan et al. (2018).
+In using MCRaT and the ProcessMCRaT codes, we ask that you cite the following papers: [Lazzati (2016)](https://doi.org/10.3847/0004-637X/829/2/76); [Parsotan & Lazzati (2018)](https://doi.org/10.3847/1538-4357/aaa087); [Parsotan et al. (2018)](https://doi.org/10.3847/1538-4357/aaeed1); [Parsotan et. al. (2020)](https://doi.org/10.3847/1538-4357/ab910f).

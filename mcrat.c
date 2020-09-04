@@ -809,7 +809,6 @@ int main(int argc, char **argv)
                         #elif SIM_SWITCH == PLUTO_CHOMBO
                         {
                             modifyPlutoName(flash_file, flash_prefix, scatt_frame);
-                            phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                             fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
                             fflush(fPtr);
                             phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
