@@ -88,16 +88,14 @@ struct photon
     //if the user hasnt defined anything for how to calculate the B field, assume that they want it calculated from the total energy
     #ifndef B_FIELD_CALC
         #define B_FIELD_CALC TOTAL_E
-    #else
-        //it is defined therefore see if TOTAL_E is what has been set
-        #if B_FIELD_CALC == TOTAL_E
-            //see if epsilon_b has been set
-            #ifndef EPSILON_B
-                //if not set it to be 0.5 by default
-                #DEFINE EPSILON_B 0.5
-            #endif
+    #endif
+    //it is defined therefore see if TOTAL_E is what has been set
+    #if B_FIELD_CALC == TOTAL_E
+        //see if epsilon_b has been set
+        #ifndef EPSILON_B
+            //if not set it to be 0.5 by default
+            #define EPSILON_B 0.5
         #endif
-
     #endif
 #else
     //if its not defined set it to be off by default
