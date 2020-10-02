@@ -765,7 +765,7 @@ int main(int argc, char **argv)
                     #elif SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
                         fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Cylindrical Outflow - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
                     #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
-                        fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Structurd Spherical Outflow - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
+                        fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Structured Spherical Outflow - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
                     #endif
                     
                     fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Opening file...\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
@@ -1017,7 +1017,7 @@ int main(int argc, char **argv)
                         //make sure the photons that shou;d be absorbed should be absorbed
                         n_comptonized-=phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph, tempPtr, densPtr, fPtr);
                         
-                   }
+                    }
                     #endif
                     
                     //get scattering statistics

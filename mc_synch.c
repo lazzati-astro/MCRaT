@@ -1525,7 +1525,12 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         fprintf(fPtr, "Block cnt %d\n", block_cnt);
         fflush(fPtr);
         
-        //min_photons=block_cnt;//do this so we have at least one synch photon in each block that meets the radius requiements
+        //min_photons=block_cnt;//do this so we have at least one synch photon in each block that meets the radius requiements, need to double check to see if this changes things or not (I dont expect it to)
+        
+        if (block_cnt==0)
+        {
+            min_photons=block_cnt; //this is for the case of there being no blocks near photons, probably b/c photons are off the hydro grid, and lets the program progress past the while loop below
+        }
         
         //allocate memory to record density of photons for each block
         ph_dens=malloc(block_cnt * sizeof(int));
@@ -1606,9 +1611,17 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         }
         
         
-        
-        fprintf(fPtr, "Emitting %d synch photons with weight %e\n", ph_tot,ph_weight_adjusted );
-        fflush(fPtr);
+        if (block_cnt!=0)
+        {
+            fprintf(fPtr, "Emitting %d synch photons with weight %e\n", ph_tot,ph_weight_adjusted );
+            fflush(fPtr);
+        }
+        else
+        {
+            fprintf(fPtr, "Emitting 0 synch photons\n" );
+            fflush(fPtr);
+
+        }
         
     }
     else
