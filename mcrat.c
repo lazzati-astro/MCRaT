@@ -1014,8 +1014,11 @@ int main(int argc, char **argv)
                                                 
 
                         
-                        //make sure the photons that shou;d be absorbed should be absorbed
-                        n_comptonized-=phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph, tempPtr, densPtr, fPtr);
+                        //make sure the photons that shou;d be absorbed should be absorbed if we have actually emitted any synchrotron photons
+                        if (num_ph_emit>0)
+                        {
+                            n_comptonized-=phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph, tempPtr, densPtr, fPtr);
+                        }
                         
                     }
                     #endif
