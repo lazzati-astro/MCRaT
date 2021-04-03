@@ -115,7 +115,7 @@ do
 #exit
 done
 
-#  if the --modifypar file is set modify the N_inj parameters in the mc.par file
+#  if the -modifypar file is set modify the N_inj parameters in the mc.par file
 if (("$MODIFY_FLAG" == 1));
 then
     TAB=$'\t'

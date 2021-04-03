@@ -19,6 +19,8 @@
 #define     DIMENSIONS              2
 #define     GEOMETRY                CARTESIAN
 #define     HYDRO_L_SCALE           1e9
+#define     HYDRO_P_SCALE           C_LIGHT*C_LIGHT
+#define     HYDRO_D_SCALE           1
 #define     SYNCHROTRON_SWITCH      ON
 #define     SAVE_TYPE               ON
 

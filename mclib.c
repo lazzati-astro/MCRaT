@@ -1524,8 +1524,8 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
             y1_count=0;
             for (j=0;j<(PROP_DIM1*PROP_DIM2*PROP_DIM3);j++)
             {
-                *(pres_unprc+count)=pres_buffer[i][j];
-                *(dens_unprc+count)=dens_buffer[i][j];
+                *(pres_unprc+count)=pres_buffer[i][j]*HYDRO_P_SCALE;
+                *(dens_unprc+count)=dens_buffer[i][j]*HYDRO_D_SCALE;
                 *(velx_unprc+count)=vel_x_buffer[i][j];
                 *(vely_unprc+count)=vel_y_buffer[i][j];
                 *(szx_unprc+count)=((block_sz_buffer[i][0])/8)*HYDRO_L_SCALE; //divide by 8 for resolution, multiply by 1e9 to scale properly?
@@ -1638,7 +1638,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
                 (*theta)[j]=atan2( *(x_unprc+i) , *(y_unprc+i) );//theta in radians in relation to jet axis
                 (*gamma)[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
                 (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
-                (*temp)[j]=pow(3*(*(pres_unprc+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                (*temp)[j]=pow(3*(*(pres_unprc+i))/(A_RAD) ,1.0/4.0);
                 j++;
                 /*
                 if (*(r_unprc+i)<track_min_r)
@@ -1669,7 +1669,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
                 (*theta)[j]=atan2( *(x_unprc+i) , *(y_unprc+i) );//theta in radians in relation to jet axis
                 (*gamma)[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
                 (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
-                (*temp)[j]=pow(3*(*(pres_unprc+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                (*temp)[j]=pow(3*(*(pres_unprc+i))/(A_RAD) ,1.0/4.0);
                 j++;
             }
         }
@@ -4006,8 +4006,8 @@ void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double
         *(vy+i)=vel;
         *(dens+i)=ddensity;
         *(dens_lab+i)=lab_dens;
-        *(pres+i)=(A_RAD*pow(t_comov, 4.0))/(3*pow(C_LIGHT, 2.0)); 
-        *(temp+i)=pow(3*(*(pres+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0); //just assign t_comov
+        *(pres+i)=(A_RAD*pow(t_comov, 4.0))/(3);
+        *(temp+i)=pow(3*(*(pres+i))/(A_RAD) ,1.0/4.0); //just assign t_comov
     }
     
 }
@@ -4024,12 +4024,12 @@ void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, 
         if ((*(r+i)) >= (r00*gamma_infinity))
         {
             *(gamma+i)=gamma_infinity;
-            *(pres+i)=(lumi*pow(r00, 2.0/3.0)*pow(*(r+i), -8.0/3.0) )/(12.0*M_PI*C_LIGHT*pow(gamma_infinity, 4.0/3.0)*pow(C_LIGHT, 2.0)); 
+            *(pres+i)=(lumi*pow(r00, 2.0/3.0)*pow(*(r+i), -8.0/3.0) )/(12.0*M_PI*C_LIGHT*pow(gamma_infinity, 4.0/3.0));
         }
         else
         {
             *(gamma+i)=(*(r+i))/r00;
-            *(pres+i)=(lumi*pow(r00, 2.0))/(12.0*M_PI*C_LIGHT*pow(C_LIGHT, 2.0)*pow(*(r+i), 4.0) );  
+            *(pres+i)=(lumi*pow(r00, 2.0))/(12.0*M_PI*C_LIGHT*pow(*(r+i), 4.0) );
         }
         
         vel=pow(1-(pow(*(gamma+i), -2.0)) ,0.5);
@@ -4037,7 +4037,7 @@ void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, 
         *(vy+i)=(vel*(*(y+i)))/pow(pow(*(x+i), 2)+ pow(*(y+i), 2) ,0.5);
         *(dens+i)=lumi/(4*M_PI*pow(*(r+i), 2.0)*pow(C_LIGHT, 3.0)*gamma_infinity*(*(gamma+i)));
         *(dens_lab+i)=(*(dens+i))*(*(gamma+i));
-        *(temp+i)=pow(3*(*(pres+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+        *(temp+i)=pow(3*(*(pres+i))/(A_RAD) ,1.0/4.0);
         //fprintf(fPtr,"Gamma: %lf\nR: %lf\nPres: %e\nvel %lf\nX: %lf\nY %lf\nVx: %lf\nVy: %lf\nDens: %e\nLab_Dens: %e\nTemp: %lf\n", *(gamma+i), *(r+i), *(pres+i), vel, *(x+i), *(y+i), *(vx+i), *(vy+i), *(dens+i), *(dens_lab+i), *(temp+i));
 
     }
@@ -4084,7 +4084,7 @@ void structuredFireballPrep(double *r, double *theta,  double *x, double *y, dou
         *(vy+i)=(vel*(*(y+i)))/pow(pow(*(x+i), 2)+ pow(*(y+i), 2) ,0.5);
         *(dens+i)=M_P*lumi/(4*M_PI*M_P*C_LIGHT*C_LIGHT*C_LIGHT*eta*vel*(*(gamma+i))*(*(r+i))*(*(r+i))); //equation paper has extra c, but then units dont work out
         *(dens_lab+i)=(*(dens+i))*(*(gamma+i));
-        *(pres+i)=(A_RAD*pow(*(temp+i), 4.0))/(3*pow(C_LIGHT, 2.0));
+        *(pres+i)=(A_RAD*pow(*(temp+i), 4.0))/(3);
         //fprintf(fPtr,"eta: %lf\nr_sat: %lf\nGamma: %lf\nR: %lf\nTheta: %lf\nPres: %e\nvel %lf\nX: %lf\nY %lf\nVx: %lf\nVy: %lf\nDens: %e\nLab_Dens: %e\nTemp: %lf\n\n", eta, r_sat, *(gamma+i), *(r+i), (*(theta+i)), *(pres+i), vel, *(x+i), *(y+i), *(vx+i), *(vy+i), *(dens+i), *(dens_lab+i), *(temp+i));
         
     }
