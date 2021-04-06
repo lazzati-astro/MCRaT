@@ -33,7 +33,7 @@
 <br />
 <p align="center">
   <a href="https://github.com/lazzati-astro/MCRaT">
-    <img src="Doc/MCRaT_Logo.jpg" alt="Logo" width="80" height="80">
+    <img src="Doc/MCRaT_Logo.jpg" alt="Logo">
   </a>
 
   <h3 align="center">The MCRaT Code</h3>
