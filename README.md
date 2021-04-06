@@ -24,7 +24,7 @@
 [![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
+[![MIT License][license-shield]][license-url]  
 [![Google Scholar Badge](https://img.shields.io/badge/Google-Scholar-lightgrey)](https://scholar.google.com/citations?user=cIxaj3MAAAAJ&hl=en)
 [![ResearchGate Badge](https://img.shields.io/badge/Research-Gate-9cf)](https://www.researchgate.net/profile/Tyler-Parsotan)
 <a href="https://ascl.net/2005.019"><img src="https://img.shields.io/badge/ascl-2005.019-blue.svg?colorB=262255" alt="ascl:2005.019" /></a>
@@ -173,11 +173,11 @@ Contributions are what make the open source community such an amazing place to b
 
 
 
-<!-- LICENSE 
+<!-- LICENSE -->
 ## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
--->
+
 
 
 <!-- CONTACT -->
@@ -211,6 +211,6 @@ Project Link: [https://github.com/lazzati-astro/MCRaT](https://github.com/lazzat
 [issues-shield]: https://img.shields.io/github/issues/lazzati-astro/MCRaT.svg?style=for-the-badge
 [issues-url]: https://github.com/lazzati-astro/MCRaT/issues
 [license-shield]: https://img.shields.io/github/license/lazzati-astro/MCRaT.svg?style=for-the-badge
- [license-url]: https://github.com/lazzati-astro/MCRaT/blob/master/LICENSE.txt
+ [license-url]: https://github.com/lazzati-astro/MCRaT/blob/master/LICENSE
 <!-- [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555 
 [linkedin-url]: https://linkedin.com/in/lazzati-astro -->
