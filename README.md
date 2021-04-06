@@ -25,8 +25,9 @@
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
 [![MIT License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
-
+[![Google Scholar Badge](https://img.shields.io/badge/Google-Scholar-lightgrey)](https://scholar.google.com/citations?user=cIxaj3MAAAAJ&hl=en)
+[![ResearchGate Badge](https://img.shields.io/badge/Research-Gate-9cf)](https://www.researchgate.net/profile/Tyler-Parsotan)
+<a href="https://ascl.net/2005.019"><img src="https://img.shields.io/badge/ascl-2005.019-blue.svg?colorB=262255" alt="ascl:2005.019" /></a>
 
 
 <!-- PROJECT LOGO -->
@@ -46,7 +47,7 @@ MCRaT injects photons in a FLASH simulation and individually propagates and comp
 Currently, MCRaT works with FLASH hydrodynamic simulations and PLUTO AMR simulations, with both 2D spherical (r, ![equation](https://latex.codecogs.com/gif.latex?%5Ctheta)) and 2D cartesian ((x,y) and (r,z)).
 <!-- for tex: https://stackoverflow.com/questions/35498525/latex-rendering-in-readme-md-on-github -->
 
-MCRaT is also able to emit and absorb thermal synchrotron photons and keep track of them as the photons, and the outflow, propagates. 
+MCRaT is also able to emit and absorb cyclo-synchrotron photons and keep track of them as the photons, and the outflow, propagates. 
 
 The video below shows an example of MCRaT scattering photons through a Gamma Ray Burst jet. MCRaT allows us to track the evolution fo the photon spectrum as they photons propagate through the jet and as the jet propagates through space. Additionally, we can keep track of how well the photons are in equilibrium with the matter in the jet, as indicated by the effective temperatures. 
 
@@ -172,11 +173,11 @@ Contributions are what make the open source community such an amazing place to b
 
 
 
-<!-- LICENSE -->
+<!-- LICENSE 
 ## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
-
+-->
 
 
 <!-- CONTACT -->
@@ -202,7 +203,7 @@ Project Link: [https://github.com/lazzati-astro/MCRaT](https://github.com/lazzat
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 [contributors-shield]: https://img.shields.io/github/contributors/lazzati-astro/MCRaT.svg?style=for-the-badge
-[contributors-url]: https://github.com/https://github.com/lazzati-astro/MCRaT/graphs/contributors
+[contributors-url]: https://github.com/lazzati-astro/MCRaT/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/lazzati-astro/MCRaT.svg?style=for-the-badge
 [forks-url]: https://github.com/lazzati-astro/MCRaT/network/members
 [stars-shield]: https://img.shields.io/github/stars/lazzati-astro/MCRaT.svg?style=for-the-badge
@@ -210,6 +211,6 @@ Project Link: [https://github.com/lazzati-astro/MCRaT](https://github.com/lazzat
 [issues-shield]: https://img.shields.io/github/issues/lazzati-astro/MCRaT.svg?style=for-the-badge
 [issues-url]: https://github.com/lazzati-astro/MCRaT/issues
 [license-shield]: https://img.shields.io/github/license/lazzati-astro/MCRaT.svg?style=for-the-badge
-[license-url]: https://github.com/lazzati-astro/MCRaT/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/lazzati-astro
+ [license-url]: https://github.com/lazzati-astro/MCRaT/blob/master/LICENSE.txt
+<!-- [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555 
+[linkedin-url]: https://linkedin.com/in/lazzati-astro -->
