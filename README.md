@@ -56,8 +56,6 @@ The video below shows an example of MCRaT scattering photons through a Gamma Ray
 The code was initially written in python by Dr. Davide Lazzati as a proof of concept. The code was then translated into C by Tyler Parsotan and made to use the OpenMP, MPI, HDF5, and GNU Scientific libraries. MCRaT is highly parallelized and is easy to set up and use.
 
 There are also python files with documented functions to process the MCRaT output located at: https://github.com/parsotat/ProcessMCRaT.
-
-In using MCRaT and the ProcessMCRaT codes, we ask that you cite the following papers: [Lazzati (2016)](https://doi.org/10.3847/0004-637X/829/2/76); [Parsotan & Lazzati (2018)](https://doi.org/10.3847/1538-4357/aaa087); [Parsotan et al. (2018)](https://doi.org/10.3847/1538-4357/aaeed1); [Parsotan et. al. (2020)](https://doi.org/10.3847/1538-4357/ab910f).
     <br />
     <a href="https://github.com/lazzati-astro/MCRaT"><strong>Explore the docs »</strong></a>
     <br />
@@ -192,8 +190,8 @@ Project Link: [https://github.com/lazzati-astro/MCRaT](https://github.com/lazzat
 <!-- ACKNOWLEDGEMENTS -->
 ## Acknowledgements
 
-* []()
-* []()
+* In using MCRaT and the ProcessMCRaT codes, we ask that you cite the following papers: [Lazzati (2016)](https://doi.org/10.3847/0004-637X/829/2/76); [Parsotan & Lazzati (2018)](https://doi.org/10.3847/1538-4357/aaa087); [Parsotan et al. (2018)](https://doi.org/10.3847/1538-4357/aaeed1); [Parsotan et. al. (2020)](https://doi.org/10.3847/1538-4357/ab910f).
+    * Test
 * [README Template from: othneildrew/Best-README-Template](https://github.com/othneildrew/Best-README-Template)
 
 
