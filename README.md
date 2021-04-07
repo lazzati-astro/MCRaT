@@ -90,14 +90,14 @@
 
 With advances in simulating astrophysical fluid flows and radiative transfer simulations through the flows, MCRaT represents a next generation radiative transfer simulation that conducts radiative calculations using the background of realistic fluid flow profiles that have been acquired from hydrodynamically simulated outflows. Although MCRaT has primarily been used to study the emission from Gamma Ray Burst jets, it can also be used to study the emission from other astrophysical phenomenon such as jets from Active Galactic Nuclei and Tidal Disruption Events.
 
-MCRaT injects photons into a hydrodynamic simulation of an outflow and calculates the evolution of the trapped radiation within the fluid until the end of the hydrodynamic simulation.  In simulating the raditation, MCRaT takes  a number of physical processes into account including:
+MCRaT injects photons into a hydrodynamic simulation of an outflow and calculates the evolution of the trapped radiation within the fluid until the end of the hydrodynamic simulation.  In simulating the radiation, MCRaT takes  a number of physical processes into account including:
 * Compton Scattering 
 * The Klein–Nishina Cross Section Including the Effects of Polarization
 * Cyclo-synchrotron Emission and Absorption
 
 Once the MCRaT calculations have completed, users can construct mock observed light curves, spectra, and polarization measurements from the MCRaT results using the [ProcessMCRaT](https://github.com/parsotat/ProcessMCRaT) libray. 
 
-Currently, MCRaT works with FLASH hydrodynamic simulations and PLUTO AMR simulations, with both 2D spherical (r, &theta; ![equation](https://latex.codecogs.com/gif.latex?%5Ctheta)) and 2D cartesian ((x,y) and (r,z)).
+Currently, MCRaT works with FLASH hydrodynamic simulations and PLUTO AMR simulations, with both 2D spherical (r, &theta;) and 2D cartesian ((x,y) and (r,z)).
 <!-- for tex: https://stackoverflow.com/questions/35498525/latex-rendering-in-readme-md-on-github -->
 
 ### Built With
@@ -116,11 +116,13 @@ To get a local copy up and running follow these simple steps.
 
 ### Prerequisites
 
-This is an example of how to list things you need to use the software and how to install them.
-* npm
-  ```sh
-  npm install npm@latest -g
-  ```
+The following are necessary to compile the MCRaT code and should be installed in the manner that each packages specifies:
+* [GCC](https://gcc.gnu.org/) or [ICC](https://software.intel.com/en-us/c-compilers) 
+* [Message Passing Interface (MPI)](http://www.open-mpi.org/)
+* [OpenMP](https://www.openmp.org//)  -- typically comes with the GCC or ICC compiler
+* [The GNU Scientific Library (GSL)](https://www.gnu.org/software/gsl/)
+* [The HDF5 library](https://www.hdfgroup.org/solutions/hdf5/) -- need to install the serial and parallel versions (v1.10 and greater)
+
 
 ### Installation
 
@@ -128,11 +130,19 @@ This is an example of how to list things you need to use the software and how to
    ```sh
    git clone https://github.com/lazzati-astro/MCRaT.git
    ```
-2. Install NPM packages
+2. Copy one of the template Makefile files into the `Src/` directory and rename it `Makefile` if necessary. The file named `Makefile` is a template for a smaller compute cluster while the file named `Makefile_supercomputer` is a template for compiling MCRaT on a supercomputer using `icc`.
    ```sh
-   npm install
+   cp Makefile_supercomputer Src/Makefile 
    ```
+3. Modify the `Makefile` to specify the location of the installed prerequisite libraries that are needed to compile MCRaT. In some rare cases this may not need to be done if the system that the user is on uses modules and paths are set correctly.
+4. Set the necessary parameters in the `mcrat_input.h` file and the `mc.par` file for the hydrodynamics simulations that MCRaT is using and the physical processes that the user wants MCRaT to consider
+5. Compile the code by running
+    ```sh
+    make 
+    ```
+6. Run the MCRaT code using mpiexec 
 
+_These steps are provided in greater detail in the  [Documentation](https://github.com/lazzati-astro/MCRaT/Doc)_
 
 
 <!-- USAGE EXAMPLES -->
