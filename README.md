@@ -40,14 +40,7 @@
   <h3 align="center">The MCRaT Code</h3>
 
   <p align="center">
-    The Monte Carlo Radiation Transfer (MCRaT; pronounced _Em-Cee-Rat_) code is a next generation radiation transfer code that can be used to analyze the radiation signature expected from astrophysical outflows. The code is written in C and uses the Message Passing Interface (MPI) library for inter-process communication, the Open Multi-Processor (OpenMP) library for intra-node communication, the GNU Scientific Library, and the HDF5 library for parallel I/O.
-
-MCRaT injects photons in a FLASH simulation and individually propagates and compton scatters the photons through the fluid until the end of the simulation. This process of injection and propagating occurs for a user specified number of times until there are no more photons to be injected. Users can then construct light curves and spectra with the MCRaT calculated results. The hydrodynamic simulations used with this version of MCRaT must be in 2D, however, the photon propagation and scattering is done in 3D by assuming cylindrical symmetry. Additionally, MCRaT uses the full Klein–Nishina cross section including the effects of polarization, which can be fully simulated in the code.
-
-Currently, MCRaT works with FLASH hydrodynamic simulations and PLUTO AMR simulations, with both 2D spherical (r, ![equation](https://latex.codecogs.com/gif.latex?%5Ctheta)) and 2D cartesian ((x,y) and (r,z)).
-<!-- for tex: https://stackoverflow.com/questions/35498525/latex-rendering-in-readme-md-on-github -->
-
-MCRaT is also able to emit and absorb cyclo-synchrotron photons and keep track of them as the photons, and the outflow, propagates. 
+    MCRaT (pronounced _Em-Cee-Rat_ ) code is a next generation radiation transfer code that can be used to analyze the radiation signature expected from astrophysical outflows. 
     <br />
     <a href="https://github.com/lazzati-astro/MCRaT"><strong>Explore the docs »</strong></a>
     <br />
@@ -93,12 +86,19 @@ MCRaT is also able to emit and absorb cyclo-synchrotron photons and keep track o
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
+<!-- [![Product Name Screen Shot][product-screenshot]](https://example.com) -->
 
-Here's a blank template to get started:
-**To avoid retyping too much info. Do a search and replace with your text editor for the following:**
-`lazzati-astro`, `MCRaT`, `twitter_handle`, `email`, `project_title`, `project_description`
+With advances in simulating astrophysical fluid flows and radiative transfer simulations through the flows, MCRaT represents a next generation radiative transfer simulation that conducts radiative calculations using the background of realistic fluid flow profiles that have been acquired from hydrodynamically simulated outflows. Although MCRaT has primarily been used to study the emission from Gamma Ray Burst jets, it can also be used to study the emission from other astrophysical phenomenon such as jets from Active Galactic Nuclei and Tidal Disruption Events.
 
+MCRaT injects photons into a hydrodynamic simulation of an outflow and calculates the evolution of the trapped radiation within the fluid until the end of the hydrodynamic simulation.  In simulating the raditation, MCRaT takes  a number of physical processes into account including:
+* Compton Scattering 
+* The Klein–Nishina Cross Section Including the Effects of Polarization
+* Cyclo-synchrotron Emission and Absorption
+
+Once the MCRaT calculations have completed, users can construct mock observed light curves, spectra, and polarization measurements from the MCRaT results using the [ProcessMCRaT](https://github.com/parsotat/ProcessMCRaT) libray. 
+
+Currently, MCRaT works with FLASH hydrodynamic simulations and PLUTO AMR simulations, with both 2D spherical (r, ![equation](https://latex.codecogs.com/gif.latex?%5Ctheta)) and 2D cartesian ((x,y) and (r,z)).
+<!-- for tex: https://stackoverflow.com/questions/35498525/latex-rendering-in-readme-md-on-github -->
 
 ### Built With
 
