@@ -42,11 +42,11 @@
   <p align="center">
     MCRaT (pronounced _Em-Cee-Rat_ ) code is a next generation radiation transfer code that can be used to analyze the radiation signature expected from astrophysical outflows. 
     <br />
-    <a href="https://github.com/lazzati-astro/MCRaT"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/lazzati-astro/MCRaT/tree/master/Doc"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/lazzati-astro/MCRaT">View Demo</a>
-    ·
+    <!-- <a href="https://github.com/lazzati-astro/MCRaT">View Demo</a>
+    · -->
     <a href="https://github.com/lazzati-astro/MCRaT/issues">Report Bug</a>
     ·
     <a href="https://github.com/lazzati-astro/MCRaT/issues">Request Feature</a>
@@ -95,7 +95,7 @@ MCRaT injects photons into a hydrodynamic simulation of an outflow and calculate
 * The Klein–Nishina Cross Section Including the Effects of Polarization
 * Cyclo-synchrotron Emission and Absorption
 
-Once the MCRaT calculations have completed, users can construct mock observed light curves, spectra, and polarization measurements from the MCRaT results using the [ProcessMCRaT](https://github.com/parsotat/ProcessMCRaT) libray. 
+Once the MCRaT calculations have completed, users can construct mock observed light curves, spectra, and polarization measurements from the MCRaT results using the [ProcessMCRaT](https://github.com/parsotat/ProcessMCRaT) library. 
 
 Currently, MCRaT works with FLASH hydrodynamic simulations and PLUTO AMR simulations, with both 2D spherical (r, &theta;) and 2D cartesian ((x,y) and (r,z)).
 <!-- for tex: https://stackoverflow.com/questions/35498525/latex-rendering-in-readme-md-on-github -->
@@ -142,21 +142,24 @@ The following are necessary to compile the MCRaT code and should be installed in
     ```
 6. Run the MCRaT code using mpiexec 
 
-_These steps are provided in greater detail in the  [Documentation](https://github.com/lazzati-astro/MCRaT/Doc)_
+_These steps are provided in greater detail in the  [Documentation](https://github.com/lazzati-astro/MCRaT/tree/master/Doc)_
 
 
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-The video below shows an example of MCRaT scattering photons through a Gamma Ray Burst jet. MCRaT allows us to track the evolution fo the photon spectrum as they photons propagate through the jet and as the jet propagates through space. Additionally, we can keep track of how well the photons are in equilibrium with the matter in the jet, as indicated by the effective temperatures. 
+The typical MCRaT workflow is as follows:
+
+1. Compile MCRaT as was briefly mentioned in the previous section
+2. Run the MCRaT code 
+3. Process the output of the MCRaT calculations using the included `Merge` code
+4. Use the [ProcessMCRaT](https://github.com/parsotat/ProcessMCRaT) library to produce mock observed light curves, spectra, and polarization measurements for the simulated astrophysical outflow
+
+The video below shows an example of MCRaT scattering photons through a Gamma Ray Burst jet. MCRaT allows us to track the evolution fo the photon spectrum as they photons propagate through the jet and as the jet propagates through space. Additionally, we can keep track of how well the photons are in equilibrium with the matter in the jet, as indicated by the effective temperatures.  
 
 [![](https://img.youtube.com/vi/pjkAyGUsJro/0.jpg)](https://www.youtube.com/watch?v=pjkAyGUsJro)
 
-There are also python files with documented functions to process the MCRaT output located at: https://github.com/parsotat/ProcessMCRaT.
-
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
-
-_For more examples, please refer to the [Documentation](https://github.com/lazzati-astro/MCRaT/Doc)_
+_For more details, please refer to the [Documentation](https://github.com/lazzati-astro/MCRaT/tree/master/Doc)_
 
 
 
