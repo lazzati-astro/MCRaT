@@ -97,7 +97,7 @@ MCRaT injects photons into a hydrodynamic simulation of an outflow and calculate
 
 Once the MCRaT calculations have completed, users can construct mock observed light curves, spectra, and polarization measurements from the MCRaT results using the [ProcessMCRaT](https://github.com/parsotat/ProcessMCRaT) library. 
 
-Currently, MCRaT works with FLASH hydrodynamic simulations and PLUTO AMR simulations, with both 2D spherical (r, &theta;) and 2D cartesian ((x,y) and (r,z)).
+Currently, MCRaT works with FLASH hydrodynamic simulations and [PLUTO](http://plutocode.ph.unito.it/) AMR simulations, with both 2D spherical (r, &theta;) and 2D cartesian ((x,y) and (r,z)).
 <!-- for tex: https://stackoverflow.com/questions/35498525/latex-rendering-in-readme-md-on-github -->
 
 ### Built With
