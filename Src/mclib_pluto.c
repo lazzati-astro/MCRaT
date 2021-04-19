@@ -359,7 +359,11 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
     
     //have all the data so need to go through and decide which values we will be keeping based on phtoon ranges we want to keep
     //fill in radius array and find in how many places r > injection radius
-    elem_factor=2;
+    #if SYNCHROTRON_SWITCH == ON
+        elem_factor=2;
+    #else
+        elem_factor=0;
+    #endif
     r_count=0;
     while (r_count==0)
     {
