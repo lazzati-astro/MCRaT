@@ -494,6 +494,7 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
 void modifyPlutoName(char file[200], char prefix[200], int frame)
 {
     int lim1=0, lim2=0, lim3=0;
+    char test[200]="" ;
     
     //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
     #if DIMENSIONS == 2
@@ -514,19 +515,20 @@ void modifyPlutoName(char file[200], char prefix[200], int frame)
     
     if (frame<lim1)
     {
-        snprintf(file,sizeof(file), "%s%.3d%d.hdf5",prefix,000,frame);
+        snprintf(test,sizeof(test), "%s%.3d%d.hdf5",prefix,000,frame);
     }
     else if (frame<lim2)
     {
-        snprintf(file,sizeof(file), "%s%.2d%d.hdf5",prefix,00,frame);
+        snprintf(test,sizeof(test), "%s%.2d%d.hdf5",prefix,00,frame);
     }
     else if (frame<lim3)
     {
-        snprintf(file,sizeof(file), "%s%d%d.hdf5",prefix,0,frame);
+        snprintf(test,sizeof(test), "%s%d%d.hdf5",prefix,0,frame);
     }
     else
     {
-        snprintf(file,sizeof(file), "%s%d.hdf5",prefix,frame);
+        snprintf(test,sizeof(test), "%s%d.hdf5",prefix,frame);
     }
+    strncpy(file, test, sizeof(test));//had to do this workaround for some weird reason
 }
 
