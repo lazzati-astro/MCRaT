@@ -4014,7 +4014,7 @@ void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double
 
 void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array, FILE *fPtr)
 {
-    double  gamma_infinity=100, lumi=1e56, r00=1e8; //shopuld be 10^57
+    double  gamma_infinity=100, lumi=1e52, r00=1e8; //shopuld be 10^57
     //double  gamma_infinity=5, lumi=1e52, r00=1e8; //shopuld be 10^57
     double vel=0;
     int i=0;

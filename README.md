@@ -40,7 +40,7 @@
   <h3 align="center">The MCRaT Code</h3>
 
   <p align="center">
-    MCRaT (pronounced _Em-Cee-Rat_ ) code is a next generation radiation transfer code that can be used to analyze the radiation signature expected from astrophysical outflows. 
+    MCRaT (pronounced _Em-Cee-Rat_ ) code is a next generation radiation transfer code that can be used to analyze the radiation signature expected from hydrodynamically simulated astrophysical outflows. 
     <br />
     <a href="https://github.com/lazzati-astro/MCRaT/tree/master/Doc"><strong>Explore the docs »</strong></a>
     <br />
@@ -122,6 +122,8 @@ The following are necessary to compile the MCRaT code and should be installed in
 * [OpenMP](https://www.openmp.org//)  -- typically comes with the GCC or ICC compiler
 * [The GNU Scientific Library (GSL)](https://www.gnu.org/software/gsl/)
 * [The HDF5 library](https://www.hdfgroup.org/solutions/hdf5/) -- need to install the serial and parallel versions (v1.10 and greater)
+
+In addition to the above, you will also need a hydrodynamical simulation that you want to calculate radiation from. Currently, this can be a FLASH or PLUTO-CHOMBO simulation in 2D cartesian ((x,y) and (r,z)) and 2D spherical (r, &theta;) coordinates.
 
 
 ### Installation
