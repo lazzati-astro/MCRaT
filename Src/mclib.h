@@ -5,7 +5,8 @@
 //define the codes for the different types of hydro simulations that we can use
 #define FLASH           0
 #define PLUTO_CHOMBO    1
-#define RIKEN           2 //need to replace this when done testing, just keeping it in the background for now and minimize its effect
+#define PLUTO           2 //have separate compiler directive for file type
+#define RIKEN           3 //need to replace this when done testing, just keeping it in the background for now and minimize its effect
 
 //define types of simulations that can be run
 #define SCIENCE                         0
@@ -14,8 +15,10 @@
 #define STRUCTURED_SPHERICAL_OUTFLOW    3
 
 //define the geometries that we can handle
-#define CARTESIAN 0
-#define SPHERICAL 1
+#define CARTESIAN   0
+#define SPHERICAL   1
+#define CYLINDRICAL 2
+#define POLAR       3
 
 //define the types of things that we can assume for the thermal synchrotron emission and how we calculate the B field
 #define INTERNAL_E  0
