@@ -142,7 +142,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
 }
 
 
-void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit, int num_null_ph, int scatt_synch_num_ph, int frame,int frame_inj, int frame_last, char dir[200], int angle_rank, FILE *fPtr )
+void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosynch_ph_emit, int num_null_ph, int scatt_cyclosynch_num_ph, int frame,int frame_inj, int frame_last, char dir[200], int angle_rank, FILE *fPtr )
 {
     //function to save the photons' positions and 4 momentum
     
@@ -153,7 +153,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
      //if the frame does exist then read information from the prewritten data and then add new data to it as extended chunk
      
      
-    int i=0, count=0, rank=1, net_num_ph=num_ph-num_ph_abs-num_null_ph, weight_net_num_ph= num_ph-num_ph_abs-num_null_ph, global_weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : num_ph_emit-num_ph_abs ; //can have more photons absorbed than emitted, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : scatt_synch_num_ph
+    int i=0, count=0, rank=1, net_num_ph=num_ph-num_ph_abs-num_null_ph, weight_net_num_ph= num_ph-num_ph_abs-num_null_ph, global_weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : num_cyclosynch_ph_emit-num_ph_abs ; //can have more photons absorbed than emitted, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : scatt_cyclosynch_num_ph
     #if defined(_OPENMP)
     int num_thread=omp_get_num_threads();
     #endif
@@ -170,7 +170,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
     hsize_t      size[1];
     hsize_t      offset[1];
     
-    fprintf(fPtr, "num_ph %d num_ph_abs %d num_null_ph %d num_ph_emit %d\nAllocated weight to be %d values large and other arrays to be %d\n",num_ph,num_ph_abs,num_null_ph,num_ph_emit, weight_net_num_ph, net_num_ph);
+    fprintf(fPtr, "num_ph %d num_ph_abs %d num_null_ph %d num_cyclosynch_ph_emit %d\nAllocated weight to be %d values large and other arrays to be %d\n",num_ph,num_ph_abs,num_null_ph,num_cyclosynch_ph_emit, weight_net_num_ph, net_num_ph);
     
     ph_type=malloc((net_num_ph)*sizeof(char));
     
@@ -194,7 +194,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
             s2[count]= ((ph+i)->s2);
             s3[count]= ((ph+i)->s3);
             num_scatt[count]= ((ph+i)->num_scatt);
-            //if ((frame==frame_inj) || ((scatt_synch_num_ph > 0) && ((ph+i)->type == COMPTONIZED_PHOTON))) //if the frame is the same one that the photons were injected in, save the photon weights OR if there are synchrotron photons that havent been absorbed
+            //if ((frame==frame_inj) || ((scatt_cyclosynch_num_ph > 0) && ((ph+i)->type == COMPTONIZED_PHOTON))) //if the frame is the same one that the photons were injected in, save the photon weights OR if there are synchrotron photons that havent been absorbed
             {
                 weight[weight_net_num_ph]= ((ph+i)->weight);
                 weight_net_num_ph++;
@@ -273,7 +273,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
         prop = H5Pcreate (H5P_DATASET_CREATE);
         status = H5Pset_chunk (prop, rank, dims);
         
-        if ((frame==frame_inj) || (scatt_synch_num_ph > 0))
+        if ((frame==frame_inj) || (scatt_cyclosynch_num_ph > 0))
         {
             prop_weight= H5Pcreate (H5P_DATASET_CREATE);
             status = H5Pset_chunk (prop_weight, rank, dims_weight);
@@ -355,7 +355,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
         dset_num_scatt = H5Dcreate2 (group_id, "NS", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
                             
-        if ((frame==frame_inj) || (scatt_synch_num_ph > 0)) //if the frame is the same one that the photons were injected in, save the photon weights or if there are emitted photons that havent been absorbed
+        if ((frame==frame_inj) || (scatt_cyclosynch_num_ph > 0)) //if the frame is the same one that the photons were injected in, save the photon weights or if there are emitted photons that havent been absorbed
         {
             dset_weight_2 = H5Dcreate2 (group_id, "PW", H5T_NATIVE_DOUBLE, dspace_weight,
                             H5P_DEFAULT, prop_weight, H5P_DEFAULT); //save the new injected photons' weights
@@ -435,7 +435,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
         status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                         H5P_DEFAULT, num_scatt);
         
-        if ((frame==frame_inj) || (scatt_synch_num_ph > 0))
+        if ((frame==frame_inj) || (scatt_cyclosynch_num_ph > 0))
         {
             status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                             H5P_DEFAULT, weight);
@@ -765,7 +765,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_ph_emit
         
         fprintf(fPtr,"Status of /frame/PW %d\n", status_weight);
         
-        //if (((frame==frame_inj) || (scatt_synch_num_ph > 0)) )
+        //if (((frame==frame_inj) || (scatt_cyclosynch_num_ph > 0)) )
         {
             
             status = H5Sclose (dspace);
@@ -981,7 +981,7 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
             fflush(stdout);
             for(i=0;i<ph_num;i++)
             {
-                #if SYNCHROTRON_SWITCH == ON
+                #if CYCLOSYNCHROTRON_SWITCH == ON
                 if (((ph+i)->type == COMPTONIZED_PHOTON) && ((ph+i)->weight != 0))
                 {
                     (ph+i)->type = UNABSORBED_CS_PHOTON; //set this to be an old synchrotron scattered photon
@@ -1033,7 +1033,7 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
             fflush(stdout);
             for(i=0;i<ph_num;i++)
             {
-                #if SYNCHROTRON_SWITCH == ON
+                #if CYCLOSYNCHROTRON_SWITCH == ON
                 if (((ph+i)->type == COMPTONIZED_PHOTON) && ((ph+i)->weight != 0))
                 {
                     (ph+i)->type = UNABSORBED_CS_PHOTON; //set this to be an old synchrotron scattered photon
@@ -1072,7 +1072,7 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
             fwrite(&frame2, sizeof(int), 1, fPtr);
             for(i=0;i<ph_num;i++)
             {
-                #if SYNCHROTRON_SWITCH == ON
+                #if CYCLOSYNCHROTRON_SWITCH == ON
                 if (((ph+i)->type == COMPTONIZED_PHOTON) && ((ph+i)->weight != 0))
                 {
                     (ph+i)->type = UNABSORBED_CS_PHOTON; //set this to be an old synchrotron scattered photon
@@ -1098,7 +1098,7 @@ int readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framesta
     FILE *fPtr=NULL;
     char checkptfile[200]="";
     int i=0;
-    int scatt_synch_num_ph=0;//count the number of scattered synchrotron photons from the previosu frame that were saved
+    int scatt_cyclosynch_num_ph=0;//count the number of scattered synchrotron photons from the previosu frame that were saved
     //int frame, scatt_frame, ph_num, i=0;
     struct photon *phHolder=NULL; //pointer to struct to hold data read in from checkpoint file
     
@@ -1171,10 +1171,10 @@ int readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framesta
                 (*ph)[i].nearest_block_index= phHolder->nearest_block_index;
                 (*ph)[i].type= phHolder->type;
                 
-                #if SYNCHROTRON_SWITCH == ON
+                #if CYCLOSYNCHROTRON_SWITCH == ON
                     if (((*ph)[i].weight != 0) && (((*ph)[i].type == COMPTONIZED_PHOTON) || ((*ph)[i].type == UNABSORBED_CS_PHOTON)) && ((*ph)[i].p0 > 0))
                     {
-                        scatt_synch_num_ph++;
+                        scatt_cyclosynch_num_ph++;
                     }
                 //printf("%d %c %e %e %e %e %e %e %e\n", i, (*ph)[i].type, (*ph)[i].r0, (*ph)[i].r1, (*ph)[i].r2, (*ph)[i].num_scatt, (*ph)[i].weight, (*ph)[i].p0*C_LIGHT/1.6e-9, (*ph)[i].comv_p0);
                 #endif
@@ -1210,7 +1210,7 @@ int readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framesta
         
     }
     
-    return scatt_synch_num_ph;
+    return scatt_cyclosynch_num_ph;
 }
 
 void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart)
@@ -1554,7 +1554,7 @@ void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x,
 
     //fill in radius array and find in how many places r > injection radius
 //have single thread execute this while loop and then have inner loop be parallel
-    #if SYNCHROTRON_SWITCH == ON
+    #if CYCLOSYNCHROTRON_SWITCH == ON
         elem_factor=2;
     #else
         elem_factor=0;
@@ -2331,7 +2331,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             #endif
             
             //when rebinning photons can have comoving 4 momenta=0 and nearest_block_index=0 (and block 0 be the actual block the photon is in making it not refind the proper index and reclaulate the comoving 4 momenta) which can make counting synch scattered photons be thrown off, thus take care of this case by forcing the function to recalc things
-            #if SYNCHROTRON_SWITCH == ON
+            #if CYCLOSYNCHROTRON_SWITCH == ON
                 if ((ph_block_index==0) && ( ((ph+i)->comv_p0)+((ph+i)->comv_p1)+((ph+i)->comv_p2)+((ph+i)->comv_p3) == 0 ) )
                 {
                     is_in_block=0; //say that photon is not in the block, force it to recompute things
@@ -3912,7 +3912,7 @@ double averagePhotonEnergy(struct photon *ph, int num_ph)
     #pragma omp parallel for reduction(+:e_sum) reduction(+:w_sum)
     for (i=0;i<num_ph;i++)
     {
-        #if SYNCHROTRON_SWITCH == ON
+        #if CYCLOSYNCHROTRON_SWITCH == ON
         if (((ph+i)->weight != 0)) //dont want account for null or absorbed UNABSORBED_CS_PHOTON photons
         #endif
         {
@@ -3936,7 +3936,7 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
 #pragma omp parallel for num_threads(num_thread) reduction(min:temp_min) reduction(max:temp_max) reduction(+:sum) reduction(+:avg_r_sum) reduction(+:count)
     for (i=0;i<ph_num;i++)
     {
-        #if SYNCHROTRON_SWITCH == ON
+        #if CYCLOSYNCHROTRON_SWITCH == ON
         if (((ph+i)->weight != 0)) //dont want account for null or absorbed UNABSORBED_CS_PHOTON photons
         #endif
         {
@@ -4382,7 +4382,7 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
                     
                     dset_num_scatt = H5Dopen (group_id, "NS", H5P_DEFAULT);
                     
-                    #if SYNCHROTRON_SWITCH == ON
+                    #if CYCLOSYNCHROTRON_SWITCH == ON
                     {
                         dset_weight = H5Dopen (group_id, "PW", H5P_DEFAULT); // have to account for this only being used for synchrotron emission switch being on
                     }

@@ -125,6 +125,6 @@ then
 
     mv "${DIRECTORY%/*/*}"/mc.par "${DIRECTORY%/*/*}"/old_mc.par
     mv "${DIRECTORY%/*/*}"/new_file.txt "${DIRECTORY%/*/*}"/mc.par #keep copy of old mc.par and move new_file (modified mc.par) to become mc.par
-    printf "${RED}Make sure that the mc.par file is set to continue the simulation with 'c' and not 'r'${NC}\n"
+    printf "${RED}Make sure that the mc.par file is set to continue the simulation with 'c' and not 'i'${NC}\n"
 fi
 

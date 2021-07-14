@@ -197,7 +197,7 @@ double synCrossSection(double el_dens, double T, double nu_ph, double p_el)
     return (3.0*M_PI*M_PI/8.0)*(THOM_X_SECT/FINE_STRUCT)*(b_cr/B)*pow(nu_c/nu_ph, 2.0) * exp(-2*nu_ph*(gamma_el*log((gamma_el+1)/p_el)-1)/nu_c)* ((C(nu_ph, nu_c, gamma_el, p_el)/G(gamma_el, p_el))-(G_prime(gamma_el, p_el)/pow(G(gamma_el, p_el),2.0)));
 }
 
-double calcSynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_inj, char *min_or_max)
+double calcCyclosynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_inj, char *min_or_max)
 {
     double val=r_inj;
     if (strcmp(min_or_max, "min")==0)
@@ -216,9 +216,9 @@ double calcSynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_in
     return val;
 }
 
-int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_ph, int *num_ph_emit, int *scatt_synch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
+int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_ph, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
 {
-    int i=0, j=0, k=0, count=0, count_c_ph=0, end_count=(*scatt_synch_num_ph), idx=0, num_thread=1;
+    int i=0, j=0, k=0, count=0, count_c_ph=0, end_count=(*scatt_cyclosynch_num_ph), idx=0, num_thread=1;
     #if defined(_OPENMP)
     num_thread=omp_get_num_threads();
     #endif
@@ -231,7 +231,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     double min_range=0, max_range=0, energy=0;
     double ph_r=0, ph_theta=0, temp_theta_max=0, temp_theta_min=DBL_MAX;
     //int *synch_comp_photon_idx=NULL; make this an array b/c had issue with deallocating this memory for some reason
-    int synch_comp_photon_idx[*scatt_synch_num_ph];
+    int synch_comp_photon_idx[*scatt_cyclosynch_num_ph];
     //struct photon *rebin_ph=malloc(num_bins* sizeof (struct photon ));
     int num_null_rebin_ph=0;
     struct photon *tmp=NULL;
@@ -245,7 +245,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     //calc min and max p0 and set the bins to be even within this interval
     //save the frequencies of photons to a
     //#pragma omp parallel for num_threads(num_thread) reduction(min:nu_min) reduction(max:nu_max)
-    //synch_comp_photon_idx=malloc((*scatt_synch_num_ph)*sizeof(int));
+    //synch_comp_photon_idx=malloc((*scatt_cyclosynch_num_ph)*sizeof(int));
     //if (synch_comp_photon_idx==NULL)
     //{
     //    printf("Error with allocating space to hold data for synch_comp_photon_idx\n");
@@ -253,7 +253,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     //}
     
     
-    fprintf(fPtr, "In the rebin func; num_threads %d scatt_synch_num_ph %d, num_ph %d\n", num_thread, (*scatt_synch_num_ph), *num_ph);
+    fprintf(fPtr, "In the rebin func; num_threads %d scatt_cyclosynch_num_ph %d, num_ph %d\n", num_thread, (*scatt_cyclosynch_num_ph), *num_ph);
     fflush(fPtr); //try to see if all the photons are being set to some value at the end of this function when allocating things
     
     /*
@@ -268,7 +268,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
             count++;
         }
     }
-    fprintf(fPtr, "in rebin: count is: %d and scatt_synch_num_ph is %d\n", count, *scatt_synch_num_ph );
+    fprintf(fPtr, "in rebin: count is: %d and scatt_cyclosynch_num_ph is %d\n", count, *scatt_cyclosynch_num_ph );
     */
     int min_idx=0, max_idx=0;
     count=0;
@@ -547,7 +547,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     //may need to expand the array of photons, shouldnt need to do this though
     
     //this is a default setting, see comment below where there was an else statement that had the failing line
-    //end_count=(scatt_synch_num_ph);
+    //end_count=(scatt_cyclosynch_num_ph);
     
     if ((count_c_ph+(*num_null_ph))<num_bins)
     {
@@ -610,7 +610,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         //fprintf(fPtr, "Rebin: Allocating %d space good in 3rd realloc\n", ((*num_ph)+num_bins-count_c_ph+(*num_null_ph) ));
         //fflush(fPtr);
 
-        //tmp_int=realloc(*synch_comp_photon_idx, ((*scatt_synch_num_ph)+num_bins-count_c_ph-(*num_null_ph))*sizeof(int));
+        //tmp_int=realloc(*synch_comp_photon_idx, ((*scatt_cyclosynch_num_ph)+num_bins-count_c_ph-(*num_null_ph))*sizeof(int));
         //if (tmp_int!=NULL)
         //{
         //    *synch_comp_photon_idx=tmp_int;
@@ -652,11 +652,11 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
          */
         
         *num_ph=( *num_ph)+(num_bins-count_c_ph+(*num_null_ph));
-        end_count=(*scatt_synch_num_ph)+num_bins-count_c_ph+(*num_null_ph);
+        end_count=(*scatt_cyclosynch_num_ph)+num_bins-count_c_ph+(*num_null_ph);
     }
     //else dont knwo why this is failing try to put this before if, so it gets sets and only if the above if statement is true will end_count be modified
     //{
-    //    end_count=(*scatt_synch_num_ph);
+    //    end_count=(*scatt_cyclosynch_num_ph);
     //}
     
     //go through and assign the rebinned photons to the COMPTONIZED_PHOTON phtoons and make all UNABSORBED_CS_PHOTON photons become "absorbed"
@@ -665,7 +665,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     i=0;
     for (i=0;i<end_count;i++)
     {
-        if (i<(*scatt_synch_num_ph))
+        if (i<(*scatt_cyclosynch_num_ph))
         {
             //the photon idx can be found from the original array
             //idx=(*(synch_comp_photon_idx+i));
@@ -675,7 +675,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         {
             //enter this if we realloc the arrays
             //idx=(*num_ph)+i;
-            idx=i-(*scatt_synch_num_ph)+( *num_ph)-(num_bins-count_c_ph+(*num_null_ph));//go to the end of the old num_ph value and start setting things to null photons
+            idx=i-(*scatt_cyclosynch_num_ph)+( *num_ph)-(num_bins-count_c_ph+(*num_null_ph));//go to the end of the old num_ph value and start setting things to null photons
         }
         /*
         if (idx==1183)
@@ -770,8 +770,8 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     //make sure that all the rebinned photons have been saved
     if (count<num_bins)
     {
-        fprintf(fPtr, "There was an issue where MCRaT Was not able to save all of the rebinned photons\n");
-        printf("TThere was an issue where MCRaT Was not able to save all of the rebinned photons\n");
+        fprintf(fPtr, "There was an issue where MCRaT was not able to save all of the rebinned photons\n");
+        printf("TThere was an issue where MCRaT was not able to save all of the rebinned photons\n");
         fflush(fPtr);
         exit(1);
     }
@@ -816,15 +816,15 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         
     }
     
-    //*num_ph_emit=0;
+    //*num_cyclosynch_ph_emit=0;
     
     //int temporary;
-    *scatt_synch_num_ph=num_bins-num_null_rebin_ph;
+    *scatt_cyclosynch_num_ph=num_bins-num_null_rebin_ph;
     //temporary=num_bins+synch_photon_count-num_null_rebin_ph;
-    *num_ph_emit=num_bins+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
+    *num_cyclosynch_ph_emit=num_bins+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
     *num_null_ph=null_ph_count; //was using j before but i have no idea why its not counting correctly
         
-    //fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d num_null_rebin_ph: %d old scatt_synch_num_ph: %d new scatt_synch_num_ph: %d\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1, num_null_rebin_ph, *scatt_synch_num_ph, num_bins-num_null_rebin_ph  );
+    //fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d forloop null_ph: %d, num_inj: %d num_null_rebin_ph: %d old scatt_cyclosynch_num_ph: %d new scatt_cyclosynch_num_ph: %d\n", *num_null_ph, (*num_ph), j, null_ph_count, null_ph_count_1, num_null_rebin_ph, *scatt_cyclosynch_num_ph, num_bins-num_null_rebin_ph  );
     
     //fprintf(fPtr, "at end of rebin f(x)  %d,  %d, %d\n", null_ph_count, num_bins+synch_photon_count-num_null_rebin_ph, num_bins-num_null_rebin_ph);
     //fflush(fPtr);
@@ -840,7 +840,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
             count++;
         }
     }
-    fprintf(fPtr, "at end of rebin f(x): count is: %d and scatt_synch_num_ph is %d\n", count, *scatt_synch_num_ph );
+    fprintf(fPtr, "at end of rebin f(x): count is: %d and scatt_cyclosynch_num_ph is %d\n", count, *scatt_cyclosynch_num_ph );
     */
     
     ////gsl_histogram_fprintf (stdout, h, "%g", "%g");
@@ -853,14 +853,14 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     return num_null_rebin_ph; //num_bins-num_null_rebin_ph;
 }
 
-int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_ph, int *num_ph_emit, int *scatt_synch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
+int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_ph, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
 {
-    int i=0, j=0, k=0, count=0, count_x=0, count_y=0, count_c_ph=0, end_count=(*scatt_synch_num_ph), idx=0, num_thread=1;
+    int i=0, j=0, k=0, count=0, count_x=0, count_y=0, count_c_ph=0, end_count=(*scatt_cyclosynch_num_ph), idx=0, num_thread=1;
     #if defined(_OPENMP)
     num_thread=omp_get_num_threads();
     #endif
-    int synch_comp_photon_count=0, synch_photon_count=0, num_avg=12, num_bins=(SYNCHROTRON_REBIN_E_PERC)*max_photons; //some factor of the max number of photons that is specified in the mc.par file, num bins is also in test function
-    double dtheta_bin=SYNCHROTRON_REBIN_ANG*M_PI/180; //the size of the bin that we want to produce for spatial binning in theta
+    int synch_comp_photon_count=0, synch_photon_count=0, num_avg=12, num_bins=(CYCLOSYNCHROTRON_REBIN_E_PERC)*max_photons; //some factor of the max number of photons that is specified in the mc.par file, num bins is also in test function
+    double dtheta_bin=CYCLOSYNCHROTRON_REBIN_ANG*M_PI/180; //the size of the bin that we want to produce for spatial binning in theta
     int num_bins_theta=(thread_theta_max-thread_theta_min)/dtheta_bin;//try this many bins such that we have 0.5 degree resolution, can also try to do adaptive binning with constant SNR
     double avg_values[12]={0}; //number of averages that'll be taken is given by num_avg in above line
     double p0_min=DBL_MAX, p0_max=0, log_p0_min=0, log_p0_max=0;//look at p0 of photons not by frequency since its just nu=p0*C_LIGHT/PL_CONST
@@ -868,7 +868,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     double min_range=0, max_range=0, min_range_theta=0, max_range_theta=0, energy=0;
     double ph_r=0, ph_theta=0, temp_theta_max=0, temp_theta_min=DBL_MAX;
     //int *synch_comp_photon_idx=NULL; make this an array b/c had issue with deallocating this memory for some reason
-    int synch_comp_photon_idx[*scatt_synch_num_ph];
+    int synch_comp_photon_idx[*scatt_cyclosynch_num_ph];
     //struct photon *rebin_ph=malloc(num_bins* sizeof (struct photon ));
     int num_null_rebin_ph=0, num_in_bin=0;
     struct photon *tmp=NULL;
@@ -876,7 +876,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     int *tmp_int=NULL;
     double count_weight=0;
 
-    fprintf(fPtr, "In the rebin func; num_threads %d scatt_synch_num_ph %d, num_ph %d\n", num_thread, (*scatt_synch_num_ph), *num_ph);
+    fprintf(fPtr, "In the rebin func; num_threads %d scatt_cyclosynch_num_ph %d, num_ph %d\n", num_thread, (*scatt_cyclosynch_num_ph), *num_ph);
     fflush(fPtr);
     
     int min_idx=0, max_idx=0;
@@ -1281,7 +1281,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
 
         
         *num_ph=( *num_ph)+(num_bins*num_bins_theta-count_c_ph+(*num_null_ph));
-        end_count=(*scatt_synch_num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph);
+        end_count=(*scatt_cyclosynch_num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph);
         
         //go through all the phtons and ID where the synchrotron ones are and reset them to what they were originally
         count=0;
@@ -1346,7 +1346,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     i=0;
     for (i=0;i<end_count;i++)
     {
-        if (i<(*scatt_synch_num_ph))
+        if (i<(*scatt_cyclosynch_num_ph))
         {
             //the photon idx can be found from the original array
             idx=synch_comp_photon_idx[i];
@@ -1354,7 +1354,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
         else
         {
             //enter this if we realloc the arrays
-            idx=i-(*scatt_synch_num_ph)+( *num_ph)-(num_bins*num_bins_theta-count_c_ph+(*num_null_ph));//go to the end of the old num_ph value and start setting things to null photons
+            idx=i-(*scatt_cyclosynch_num_ph)+( *num_ph)-(num_bins*num_bins_theta-count_c_ph+(*num_null_ph));//go to the end of the old num_ph value and start setting things to null photons
         }
 
         if (((*ph_orig)[idx].type == UNABSORBED_CS_PHOTON) || ((*ph_orig)[idx].type == COMPTONIZED_PHOTON))
@@ -1434,8 +1434,8 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     //make sure that all the rebinned photons have been saved
     if (count<num_bins*num_bins_theta)
     {
-        fprintf(fPtr, "There was an issue where MCRaT Was not able to save all of the rebinned photons\n");
-        printf("TThere was an issue where MCRaT Was not able to save all of the rebinned photons\n");
+        fprintf(fPtr, "There was an issue where MCRaT was not able to save all of the rebinned photons\n");
+        printf("TThere was an issue where MCRaT was not able to save all of the rebinned photons\n");
         fflush(fPtr);
         exit(1);
     }
@@ -1456,11 +1456,11 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
 
     
     
-    *scatt_synch_num_ph=num_bins*num_bins_theta-num_null_rebin_ph;
-    *num_ph_emit=num_bins*num_bins_theta+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
+    *scatt_cyclosynch_num_ph=num_bins*num_bins_theta-num_null_rebin_ph;
+    *num_cyclosynch_ph_emit=num_bins*num_bins_theta+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
     *num_null_ph=j; //was using j before but i have no idea why its not counting correctly
         
-    //fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d  num_null_rebin_ph: %d old scatt_synch_num_ph: %d new scatt_synch_num_ph: %d\n", *num_null_ph, (*num_ph), j, num_null_rebin_ph, *scatt_synch_num_ph, num_bins*num_bins_theta-num_null_rebin_ph  );
+    //fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d  num_null_rebin_ph: %d old scatt_cyclosynch_num_ph: %d new scatt_cyclosynch_num_ph: %d\n", *num_null_ph, (*num_ph), j, num_null_rebin_ph, *scatt_cyclosynch_num_ph, num_bins*num_bins_theta-num_null_rebin_ph  );
     //fflush(fPtr);
     
     //exit(2);
@@ -1474,9 +1474,9 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
 }
 
 
-int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,   gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr)
+int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,   gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr)
 {
-    double rmin=0, rmax=0, max_photons=SYNCHROTRON_REBIN_E_PERC*maximum_photons; //have 10% as default, can change later need to figure out how many photons across simulations I want emitted
+    double rmin=0, rmax=0, max_photons=CYCLOSYNCHROTRON_REBIN_E_PERC*maximum_photons; //have 10% as default, can change later need to figure out how many photons across simulations I want emitted
     double ph_weight_adjusted=0, position_phi=0;
     double dimlesstheta=0, nu_c=0, el_dens=0, error=0, ph_dens_calc=0, max_jnu=0;
     double el_p[4], ph_p_comv[4];
@@ -1507,8 +1507,8 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     
     if (inject_single_switch == 0)
     {
-        rmin=calcSynchRLimits( frame_scatt, frame_inj, fps,  r_inj, "min");
-        rmax=calcSynchRLimits( frame_scatt, frame_inj, fps,  r_inj, "max");
+        rmin=calcCyclosynchRLimits( frame_scatt, frame_inj, fps,  r_inj, "min");
+        rmax=calcCyclosynchRLimits( frame_scatt, frame_inj, fps,  r_inj, "max");
         
         fprintf(fPtr, "rmin %e rmax %e, theta min/max: %e %e\n", rmin, rmax, theta_min, theta_max);
         #pragma omp parallel for num_threads(num_thread) reduction(+:block_cnt)
@@ -1613,12 +1613,12 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         
         if (block_cnt!=0)
         {
-            fprintf(fPtr, "Emitting %d synch photons with weight %e\n", ph_tot,ph_weight_adjusted );
+            fprintf(fPtr, "Emitting %d cyclo-synch photons with weight %e\n", ph_tot,ph_weight_adjusted );
             fflush(fPtr);
         }
         else
         {
-            fprintf(fPtr, "Emitting 0 synch photons\n" );
+            fprintf(fPtr, "Emitting 0 cyclo-synch photons\n" );
             fflush(fPtr);
 
         }
@@ -1911,7 +1911,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     
 }
 
-double phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_synch_num_ph, double *temp, double *dens, FILE *fPtr)
+double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_cyclosynch_num_ph, double *temp, double *dens, FILE *fPtr)
 {
     int i=0, count=0, abs_ph_count=0, synch_ph_count=0, num_thread=1;
     int other_count=0;
@@ -1922,9 +1922,9 @@ double phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *sc
     double el_dens=0, nu_c=0, abs_count=0;
     //struct photon tmp_ph;//hold temporay photon to move its data
     
-    fprintf(fPtr, "In phAbsSynch func begin: abs_ph_count: %d synch_ph_count: %d scatt_synch_num_ph: %d num_threads: %d\n", abs_ph_count, synch_ph_count, *scatt_synch_num_ph, num_thread);
+    fprintf(fPtr, "In phAbsCyclosynch func begin: abs_ph_count: %d synch_ph_count: %d scatt_cyclosynch_num_ph: %d num_threads: %d\n", abs_ph_count, synch_ph_count, *scatt_cyclosynch_num_ph, num_thread);
     
-    *scatt_synch_num_ph=0;//set thsi equal to 0, to recount in this function and get prepared for the next frame
+    *scatt_cyclosynch_num_ph=0;//set thsi equal to 0, to recount in this function and get prepared for the next frame
     
     #pragma omp parallel for num_threads(num_thread) firstprivate(el_dens, nu_c) reduction(+:abs_ph_count)
     for (i=0;i<*num_ph;i++)
@@ -1998,7 +1998,7 @@ double phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *sc
                 {
                     //if the photon is a COMPTONIZED_PHOTON phton (scattered synch photon from the current frame) or a UNABSORBED_CS_PHOTON photon (scattered synch photon) from an old frame
                     //count how many of these there are
-                    *scatt_synch_num_ph+=1;
+                    *scatt_cyclosynch_num_ph+=1;
                 }
                 
             }
@@ -2036,10 +2036,10 @@ double phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *sc
                 
         //fprintf(fPtr, "photon %d has energy %e and weight %e with FLASH grid number %d\n", i, (*ph_orig)[i].p0*C_LIGHT/1.6e-9, (*ph_orig)[i].weight, (*ph_orig)[i].nearest_block_index);
     }
-    //fprintf(fPtr, "In phAbsSynch func: abs_ph_count: %d synch_ph_count: %d scatt_synch_num_ph: %d\n", abs_ph_count, synch_ph_count, *scatt_synch_num_ph);
+    //fprintf(fPtr, "In phAbsCyclosynch func: abs_ph_count: %d synch_ph_count: %d scatt_cyclosynch_num_ph: %d\n", abs_ph_count, synch_ph_count, *scatt_cyclosynch_num_ph);
     *num_abs_ph=abs_ph_count; //+synch_ph_count; dont need this
     
-    //fprintf(fPtr, "In phAbsSynch func: count before_loop= %d\n", count);
+    //fprintf(fPtr, "In phAbsCyclosynch func: count before_loop= %d\n", count);
 
     while (count<*num_ph)
     {
@@ -2051,7 +2051,7 @@ double phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *sc
         
         count+=1;
     }
-    //fprintf(fPtr, "In phAbsSynch func: count after loop= %d\n", count);
+    //fprintf(fPtr, "In phAbsCyclosynch func: count after loop= %d\n", count);
 
     return abs_count;
 }

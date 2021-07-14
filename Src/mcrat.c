@@ -92,7 +92,7 @@ int main(int argc, char **argv)
     double *xPtr=NULL,  *yPtr=NULL,  *rPtr=NULL,  *thetaPtr=NULL,  *velxPtr=NULL,  *velyPtr=NULL,  *densPtr=NULL,  *presPtr=NULL,  *gammaPtr=NULL,  *dens_labPtr=NULL;
     double *szxPtr=NULL,*szyPtr=NULL, *tempPtr=NULL; //pointers to hold data from FLASH files
     double *phiPtr=NULL, *velzPtr=NULL, *zPtr=NULL, *all_time_steps=NULL ;
-    int num_ph=0, scatt_synch_num_ph=0, num_null_ph=0, array_num=0, ph_scatt_index=0, num_photons_find_new_element=0, max_scatt=0, min_scatt=0,i=0; //number of photons produced in injection algorithm, number of array elleemnts from reading FLASH file, index of photon whch does scattering, generic counter
+    int num_ph=0, scatt_cyclosynch_num_ph=0, num_null_ph=0, array_num=0, ph_scatt_index=0, num_photons_find_new_element=0, max_scatt=0, min_scatt=0,i=0; //number of photons produced in injection algorithm, number of array elleemnts from reading FLASH file, index of photon whch does scattering, generic counter
     double dt_max=0, thescatt=0, accum_time=0; 
     double  gamma_infinity=0, time_now=0, time_step=0, avg_scatt=0,avg_r=0; //gamma_infinity not used?
     double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0, ph_vzPtr=0;// *ph_cosanglePtr=NULL ;
@@ -100,7 +100,7 @@ int main(int argc, char **argv)
     int frame=0, scatt_frame=0, frame_scatt_cnt=0, frame_abs_cnt=0, scatt_framestart=0, framestart=0;
     struct photon *phPtr=NULL; //pointer to array of photons 
     
-    int angle_count=0, num_ph_emit=0;
+    int angle_count=0, num_cyclosynch_ph_emit=0;
     int num_angles=0, old_num_angle_procs=0; //old_num_angle_procs is to hold the old number of procs in each angle when cont sims, if  restarting sims this gets set to angle_procs
     int *frame_array=NULL, *proc_frame_array=NULL, *element_num=NULL, *sorted_indexes=NULL,  proc_frame_size=0;
     double *thread_theta=NULL; //saves ranges of thetas for each thread to go through
@@ -510,7 +510,7 @@ int main(int argc, char **argv)
                 printf(">> mc.py:  Reading checkpoint\n");
                 //#pragma omp critical
                 
-                    scatt_synch_num_ph=readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs);
+                    scatt_cyclosynch_num_ph=readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs);
                 
                 /*
                 for (i=0;i<num_ph;i++)
@@ -790,13 +790,13 @@ int main(int argc, char **argv)
                             
                                 if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE))
                                 {
-                                    //NEED TO DETERMINE IF min_r or max_r is smaller/larger than the rmin/rmax in photonEmitSynch to properly emit photons in the range that the process is interested in
+                                    //NEED TO DETERMINE IF min_r or max_r is smaller/larger than the rmin/rmax in photonEmitCyclosynch to properly emit photons in the range that the process is interested in
                                     //printf("OLD: min_r %e max_r %e\n", min_r, max_r);
                                     double test=0;
-                                    test=calcSynchRLimits( scatt_frame, frame, fps_modified,  inj_radius, "min");
+                                    test=calcCyclosynchRLimits( scatt_frame, frame, fps_modified,  inj_radius, "min");
                                     //printf("TEST MIN: %e\n", test);
                                     min_r=(min_r < test) ? min_r : test ;
-                                    test=calcSynchRLimits( scatt_frame, frame, fps_modified,  inj_radius, "max");
+                                    test=calcCyclosynchRLimits( scatt_frame, frame, fps_modified,  inj_radius, "max");
                                     //printf("TEST MAX: %e\n", test);
                                     max_r=(max_r > test ) ? max_r : test ;
                                     //printf("NEW: min_r %e max_r %e\n", min_r, max_r);
@@ -864,13 +864,13 @@ int main(int argc, char **argv)
                         //printf("The result of read and decimate are arrays with %d elements\n", array_num);
                     
                     //emit synchrotron photons here
-                    num_ph_emit=0;
+                    num_cyclosynch_ph_emit=0;
                     
                     //by default want to allocat ememory for time_steps and sorted indexes to scatter
                     all_time_steps=malloc(num_ph*sizeof(double));
                     sorted_indexes=malloc(num_ph*sizeof(int));
                     
-                    #if SYNCHROTRON_SWITCH == ON
+                    #if CYCLOSYNCHROTRON_SWITCH == ON
                     if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //remember to revert back to !=
                     {
                         //if injecting synch photons, emit them if continuing simulation from a point where scatt_frame != scatt_framestart
@@ -888,7 +888,7 @@ int main(int argc, char **argv)
                         #endif
                         
                         phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
-                        num_ph_emit=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 0, 0, fPtr);
+                        num_cyclosynch_ph_emit=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 0, 0, fPtr);
                         
                         
                         
@@ -939,7 +939,7 @@ int main(int argc, char **argv)
                             time_now+=time_step;
                             
                             //see if the scattered phton was a seed photon, if so replenish the seed photon
-                            #if SYNCHROTRON_SWITCH == ON
+                            #if CYCLOSYNCHROTRON_SWITCH == ON
                             if ((phPtr+ph_scatt_index)->type == CS_POOL_PHOTON)
                             {
                                 n_comptonized+=(phPtr+ph_scatt_index)->weight;
@@ -947,12 +947,12 @@ int main(int argc, char **argv)
                                 
                                 //fprintf(fPtr, "num_null_ph %d\n", num_null_ph);
                                 //printf("The previous scattered photon was a seed photon %c.\n", (phPtr+ph_scatt_index)->type);
-                                num_ph_emit+=photonEmitSynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 1, ph_scatt_index, fPtr);
+                                num_cyclosynch_ph_emit+=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 1, ph_scatt_index, fPtr);
                                 //fprintf(fPtr, " num_photon: %d\n",num_ph  );
                                 //fflush(fPtr);
                                 
-                                scatt_synch_num_ph++;//keep track of the number of synch photons that have scattered for later in checking of we need to rebin them
-                                //fprintf(fPtr,"photonEmitSynch: scatt_synch_num_ph Number: %d\n", scatt_synch_num_ph);
+                                scatt_cyclosynch_num_ph++;//keep track of the number of synch photons that have scattered for later in checking of we need to rebin them
+                                //fprintf(fPtr,"photonEmitCyclosynch: scatt_cyclosynch_num_ph Number: %d\n", scatt_cyclosynch_num_ph);
                                 //exit(0);
                                  
                             }
@@ -969,15 +969,15 @@ int main(int argc, char **argv)
                                 //fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
                                 fflush(fPtr);
                                 
-                                #if SYNCHROTRON_SWITCH == ON
-                                if (scatt_synch_num_ph>max_photons)
+                                #if CYCLOSYNCHROTRON_SWITCH == ON
+                                if (scatt_cyclosynch_num_ph>max_photons)
                                 {
                                     //if the number of synch photons that have been scattered is too high rebin them
                                     
-                                    //printf("num_ph_emit: %d\n", num_ph_emit);
-                                    rebin2dSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_ph_emit, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
+                                    //printf("num_cyclosynch_ph_emit: %d\n", num_cyclosynch_ph_emit);
+                                    rebin2dCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
 
-                                    //fprintf(fPtr, "rebinSynchCompPhotons: scatt_synch_num_ph: %d\n", scatt_synch_num_ph);
+                                    //fprintf(fPtr, "rebinSynchCompPhotons: scatt_cyclosynch_num_ph: %d\n", scatt_cyclosynch_num_ph);
                                     //exit(0);
                                 }
                                 #endif
@@ -997,10 +997,10 @@ int main(int argc, char **argv)
 
                     }
                     
-                    #if SYNCHROTRON_SWITCH == ON
+                    #if CYCLOSYNCHROTRON_SWITCH == ON
                     if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //rememebr to change to != also at the other place in the code
                     {
-                        if (scatt_synch_num_ph>max_photons)
+                        if (scatt_cyclosynch_num_ph>max_photons)
                         {
                             //rebin the photons to ensure that we have a constant amount here
                             fprintf(fPtr, "Num_ph: %d\n", num_ph);
@@ -1008,16 +1008,16 @@ int main(int argc, char **argv)
                             fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
                             fflush(fPtr);
                             */
-                            rebin2dSynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_ph_emit, &scatt_synch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
+                            rebin2dCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
                           //exit(0);
                        }
                                                 
 
                         
                         //make sure the photons that shou;d be absorbed should be absorbed if we have actually emitted any synchrotron photons
-                        if (num_ph_emit>0)
+                        if (num_cyclosynch_ph_emit>0)
                         {
-                            n_comptonized-=phAbsSynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_synch_num_ph, tempPtr, densPtr, fPtr);
+                            n_comptonized-=phAbsCyclosynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_cyclosynch_num_ph, tempPtr, densPtr, fPtr);
                         }
                         
                     }
@@ -1027,7 +1027,7 @@ int main(int argc, char **argv)
                     phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr);
                         
                     fprintf(fPtr,"The number of scatterings in this frame is: %d\n", frame_scatt_cnt);
-                    #if SYNCHROTRON_SWITCH == ON
+                    #if CYCLOSYNCHROTRON_SWITCH == ON
                         fprintf(fPtr,"The number of photons absorbed in this frame is: %d\n", frame_abs_cnt);
                     #endif
                     fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
@@ -1050,7 +1050,7 @@ int main(int argc, char **argv)
                     if (save_chkpt_success==0)
                     {
                         //if we saved the checkpoint successfully also save the photons to the hdf5 file, else there may be something wrong with the file system
-                        printPhotons(phPtr, num_ph, frame_abs_cnt, num_ph_emit, num_null_ph, scatt_synch_num_ph, scatt_frame , frame, last_frm, mc_dir, angle_id, fPtr);
+                        printPhotons(phPtr, num_ph, frame_abs_cnt, num_cyclosynch_ph_emit, num_null_ph, scatt_cyclosynch_num_ph, scatt_frame , frame, last_frm, mc_dir, angle_id, fPtr);
                     }
                     else
                     {
@@ -1083,7 +1083,7 @@ int main(int argc, char **argv)
                 }
                 
                 restrt=INITALIZE;//set this to make sure that the next iteration of propogating photons doesnt use the values from the last reading of the checkpoint file
-                scatt_synch_num_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
+                scatt_cyclosynch_num_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
                 num_null_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
                 free(phPtr); 
                 phPtr=NULL;
