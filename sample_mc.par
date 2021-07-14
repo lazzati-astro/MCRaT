@@ -16,4 +16,4 @@
 50		#min number of photons
 100		#max number of photons
 b		#type of spectrum we inject with, w=wien b=blackbody
-r		#restart of continue simulation (r=restart (delete all files) c=continue
+i		#initalize or continue simulation (i=initalize (delete all files) c=continue) 

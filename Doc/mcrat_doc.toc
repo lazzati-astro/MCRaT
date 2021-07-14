@@ -20,8 +20,8 @@
 \contentsline {subsection}{\numberline {4.1}Injecting Photons}{19}{subsection.4.1}
 \contentsline {subsection}{\numberline {4.2}Scattering Photons}{20}{subsection.4.2}
 \contentsline {subsection}{\numberline {4.3}Polarization}{22}{subsection.4.3}
-\contentsline {subsection}{\numberline {4.4}Thermal Synchrotron Radiation}{27}{subsection.4.4}
-\contentsline {subsubsection}{\numberline {4.4.1}Emitting Thermal Synchrotron Photons}{27}{subsubsection.4.4.1}
+\contentsline {subsection}{\numberline {4.4}Cyclo-synchrotron Radiation}{27}{subsection.4.4}
+\contentsline {subsubsection}{\numberline {4.4.1}Emitting Cyclo-synchrotron (CS) Photons}{27}{subsubsection.4.4.1}
 \contentsline {subsubsection}{\numberline {4.4.2}Calculating B}{28}{subsubsection.4.4.2}
-\contentsline {subsubsection}{\numberline {4.4.3}Rebinning The Scattered Thermal Synchrotron Photons}{28}{subsubsection.4.4.3}
-\contentsline {subsubsection}{\numberline {4.4.4}Absorption of Thermal Synchrotron Photons}{29}{subsubsection.4.4.4}
+\contentsline {subsubsection}{\numberline {4.4.3}Rebinning The Scattered CS Photons}{28}{subsubsection.4.4.3}
+\contentsline {subsubsection}{\numberline {4.4.4}Absorption of CS Photons}{29}{subsubsection.4.4.4}

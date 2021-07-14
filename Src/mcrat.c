@@ -163,7 +163,7 @@ int main(int argc, char **argv)
      //printf("%d\n", procs_per_angle);
      
      MPI_Comm angle_comm;
-     if (restrt=='r') //uncomment this when I run MCRAT for sims that didnt originally save angle_procs 
+     if (restrt==INITALIZE) //uncomment this when I run MCRAT for sims that didnt originally save angle_procs
      {
         
         MPI_Comm_split(MPI_COMM_WORLD, myid/procs_per_angle , myid, &angle_comm);
@@ -505,7 +505,7 @@ int main(int argc, char **argv)
             }
                 
             
-            if (restrt=='c')
+            if (restrt==CONTINUE)
             {
                 printf(">> mc.py:  Reading checkpoint\n");
                 //#pragma omp critical
@@ -518,7 +518,7 @@ int main(int argc, char **argv)
                     printf("%e,%e,%e, %e,%e,%e, %e, %e\n",(phPtr+i)->p0, (phPtr+i)->p1, (phPtr+i)->p2, (phPtr+i)->p3, (phPtr+i)->r0, (phPtr+i)->r1, (phPtr+i)->r2, (phPtr+i)->num_scatt );
                 }
                 */
-                if (restrt=='c')
+                if (restrt==CONTINUE)
                 {
                     printf(">> Rank %d: Starting from photons injected at frame: %d out of %d\n", angle_id,framestart, frm2);
                     printf(">> Rank %d with angles %0.1lf-%0.1lf: Continuing scattering %d photons from frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph, scatt_framestart);
@@ -530,7 +530,7 @@ int main(int argc, char **argv)
                 }
                 
             }
-            else if ((stat(mc_dir, &st) == -1) && (restrt=='r'))
+            else if ((stat(mc_dir, &st) == -1) && (restrt==INITALIZE))
             {
                 mkdir(mc_dir, 0777); //make the directory with full permissions
                 
@@ -621,7 +621,7 @@ int main(int argc, char **argv)
                 }
                 #endif
                                 
-                 if (restrt=='r')
+                 if (restrt==INITALIZE)
                  {
                     time_now=frame/fps; //for a checkpoint implmentation, load the saved "time_now" value when reading the ckeckpoint file otherwise calculate it normally
                  }
@@ -630,7 +630,7 @@ int main(int argc, char **argv)
                 fprintf(fPtr,"Im Proc: %d with angles %0.1lf - %0.1lf Working on Frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frame);
                 fflush(fPtr);
                 
-                if (restrt=='r')
+                if (restrt==INITALIZE)
                 {
                     
                     
@@ -731,7 +731,7 @@ int main(int argc, char **argv)
                 
                 //scatter photons all the way thoughout the jet
                 //for a checkpoint implmentation, start from the last saved "scatt_frame" value eh start_frame=frame or start_frame=cont_frame
-                if (restrt=='r')
+                if (restrt==INITALIZE)
                 {
                     scatt_framestart=frame; //have to make sure that once the inner loop is done and the outer loop is incrememnted by one the inner loop starts at that new value and not the one read by readCheckpoint()
                 }
@@ -788,7 +788,7 @@ int main(int argc, char **argv)
                             fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
                             fflush(fPtr);
                             
-                                if ((scatt_frame != scatt_framestart) || (restrt=='c'))
+                                if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE))
                                 {
                                     //NEED TO DETERMINE IF min_r or max_r is smaller/larger than the rmin/rmax in photonEmitSynch to properly emit photons in the range that the process is interested in
                                     //printf("OLD: min_r %e max_r %e\n", min_r, max_r);
@@ -871,7 +871,7 @@ int main(int argc, char **argv)
                     sorted_indexes=malloc(num_ph*sizeof(int));
                     
                     #if SYNCHROTRON_SWITCH == ON
-                    if ((scatt_frame != scatt_framestart) || (restrt=='c')) //remember to revert back to !=
+                    if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //remember to revert back to !=
                     {
                         //if injecting synch photons, emit them if continuing simulation from a point where scatt_frame != scatt_framestart
                         //if necessary, then add memory to then arrays allocated directly above
@@ -940,7 +940,7 @@ int main(int argc, char **argv)
                             
                             //see if the scattered phton was a seed photon, if so replenish the seed photon
                             #if SYNCHROTRON_SWITCH == ON
-                            if ((phPtr+ph_scatt_index)->type == SYNCHROTRON_POOL_PHOTON)
+                            if ((phPtr+ph_scatt_index)->type == CS_POOL_PHOTON)
                             {
                                 n_comptonized+=(phPtr+ph_scatt_index)->weight;
                                 (phPtr+ph_scatt_index)->type = COMPTONIZED_PHOTON; //c for compton scattered synchrotron photon
@@ -998,7 +998,7 @@ int main(int argc, char **argv)
                     }
                     
                     #if SYNCHROTRON_SWITCH == ON
-                    if ((scatt_frame != scatt_framestart) || (restrt=='c')) //rememebr to change to != also at the other place in the code
+                    if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //rememebr to change to != also at the other place in the code
                     {
                         if (scatt_synch_num_ph>max_photons)
                         {
@@ -1082,7 +1082,7 @@ int main(int argc, char **argv)
                     szxPtr=NULL; szyPtr=NULL; tempPtr=NULL;
                 }
                 
-                restrt='r';//set this to make sure that the next iteration of propogating photons doesnt use the values from the last reading of the checkpoint file
+                restrt=INITALIZE;//set this to make sure that the next iteration of propogating photons doesnt use the values from the last reading of the checkpoint file
                 scatt_synch_num_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
                 num_null_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
                 free(phPtr); 

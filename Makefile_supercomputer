@@ -4,8 +4,8 @@ CC          = icc
 CFLAGS      = -Wall -qopenmp -O3 -ipo -axCORE-AVX2 -xSSE4.2 
 LIB         = -lz -lm -ldl -lgsl -lgslcblas -lm -lmpi -lsz -Wl,-rpath -Wl,/nasa/hdf5/1.8.18_mpt/lib
 
-DEPS = mclib.h mclib_3d.h mclib_pluto.h mc_synch.h mcrat_input.h
-OBJ = mcrat.o mclib.o mclib_3d.o mclib_pluto.o mc_synch.o
+DEPS = mclib.h mclib_3d.h mclib_pluto.h mc_cyclosynch.h mcrat_input.h
+OBJ = mcrat.o mclib.o mclib_3d.o mclib_pluto.o mc_cyclosynch.o
 
 
 INCLUDE   = -I/nasa/pkgsrc/sles12/2016Q4/include -I/nasa/szip/2.1.1/include -I/u/tparsota/gsl-2.4/include

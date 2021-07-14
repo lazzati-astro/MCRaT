@@ -2,11 +2,22 @@
 #define ON  1
 #define OFF 0
 
+//define switches for MCRaT to continue a simulation 'c' or initalize a simulation
+#define INITALIZE 'i'
+#define CONTINUE  'c'
+
 //define the codes for the different types of hydro simulations that we can use
 #define FLASH           0
 #define PLUTO_CHOMBO    1
 #define PLUTO           2 //have separate compiler directive for file type
 #define RIKEN           3 //need to replace this when done testing, just keeping it in the background for now and minimize its effect
+
+//define PLUTO file types here
+#define FILE_DBL         0
+#define FILE_FLT         1
+#define FILE_DBL_H5      2
+#define FILE_FLT_H5      3
+#define FILE_VTK         4
 
 //define types of simulations that can be run
 #define SCIENCE                         0
@@ -23,12 +34,13 @@
 //define the types of things that we can assume for the thermal synchrotron emission and how we calculate the B field
 #define INTERNAL_E  0
 #define TOTAL_E     1
+#define SIMULATION  2 //need to add this to statement below to take care of defaults
 
 //define photon types
 #define INJECTED_PHOTON 'i'
-#define COMPTONIZED_PHOTON 'c'
-#define SYNCHROTRON_POOL_PHOTON 'p'
-#define OLD_COMPTONIZED_PHOTON 's'
+#define COMPTONIZED_PHOTON 'k'
+#define CS_POOL_PHOTON 'p'  
+#define UNABSORBED_CS_PHOTON 'c'
 #define REBINNED_PHOTON 'r'
 
 
@@ -73,7 +85,14 @@ struct photon
 
 #include "mclib_3d.h"
 #include "mclib_pluto.h"
-#include "mc_synch.h"
+#include "mc_cyclosynch.h"
+
+//take care of default PLUTO file types here
+#ifdef PLUTO
+    #ifndef PLUTO_FILETYPE
+        #define PLUTO_FILETYPE  FILE_DBL
+    #endif
+#endif
 
 //take care of synchrotron defaults here
 #ifdef SYNCHROTRON_SWITCH
@@ -92,8 +111,8 @@ struct photon
     #ifndef B_FIELD_CALC
         #define B_FIELD_CALC TOTAL_E
     #endif
-    //it is defined therefore see if TOTAL_E is what has been set
-    #if B_FIELD_CALC == TOTAL_E
+    //it is defined therefore see if EPSILON_B has been set and B_FIELD_CALC != SIMULATION
+    #if B_FIELD_CALC == TOTAL_E || B_FIELD_CALC == INTERNAL_E
         //see if epsilon_b has been set
         #ifndef EPSILON_B
             //if not set it to be 0.5 by default

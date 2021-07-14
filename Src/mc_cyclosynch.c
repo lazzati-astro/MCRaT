@@ -59,7 +59,7 @@ double calcB(double el_dens, double temp)
     //calc the B field from assuming its some fraction of the matter energy density
     //assume equipartition here
     #if B_FIELD_CALC == INTERNAL_E
-        return sqrt(8*M_PI*3*el_dens*K_B*temp/2);
+        return sqrt(EPSILON_B*8*M_PI*3*el_dens*K_B*temp/2);
     #else
         //otherwise calculate B from the total energy
         return sqrt(8*M_PI*EPSILON_B*(el_dens*M_P*C_LIGHT*C_LIGHT+4*A_RAD*temp*temp*temp*temp/3));
@@ -263,7 +263,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         //fprintf(fPtr, "%d %c %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0 );
         //fflush(fPtr);
         
-        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == OLD_COMPTONIZED_PHOTON)) && ((*ph_orig)[i].p0 > 0))
+        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON)) && ((*ph_orig)[i].p0 > 0))
         {
             count++;
         }
@@ -274,12 +274,12 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     count=0;
     for (i=0;i<*num_ph;i++)
     {
-        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == OLD_COMPTONIZED_PHOTON)) && ((*ph_orig)[i].p0 > 0))
+        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON)) && ((*ph_orig)[i].p0 > 0))
         {
             //see if the photon's nu is larger than nu_max or smaller than nu_min
             if (((*ph_orig)[i].p0< p0_min))
             {
-                //dont include any absorbed OLD_COMPTONIZED_PHOTON photons that have negative P0 values
+                //dont include any absorbed UNABSORBED_CS_PHOTON photons that have negative P0 values
                 p0_min= (*ph_orig)[i].p0;
                 min_idx=i;
                 //fprintf(fPtr, "new p0 min %e\n", (p0_min) );
@@ -322,7 +322,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
                 count_c_ph+=1;
             }
         }
-        else if (((*ph_orig)[i].type == SYNCHROTRON_POOL_PHOTON) && ((*ph_orig)[i].weight != 0))
+        else if (((*ph_orig)[i].type == CS_POOL_PHOTON) && ((*ph_orig)[i].weight != 0))
         {
             synch_photon_count++;
         }
@@ -363,7 +363,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     //may not need this loop, can just check if the photon nu falls within the bin edges and do averages etc within next loop
     for (i=0;i<*num_ph;i++)
     {
-        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == OLD_COMPTONIZED_PHOTON)) && ((*ph_orig)[i].p0 > 0))
+        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON)) && ((*ph_orig)[i].p0 > 0))
         {
             //gsl_histogram_accumulate (h, log10((*ph_orig)[i].p0), (*ph_orig)[i].weight);
             gsl_histogram_increment (h, log10((*ph_orig)[i].p0));
@@ -395,7 +395,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
             //loop over the number of photons
             for (i=0;i<*num_ph;i++)
             {
-                if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == OLD_COMPTONIZED_PHOTON)) && ((*ph_orig)[i].p0 > 0))
+                if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON)) && ((*ph_orig)[i].p0 > 0))
                 {
                     gsl_histogram_get_range(h, count, &min_range, &max_range);
                     //if the photon nu falls in the count bin of the nu histogram then add it to the phi_theta 2d hist
@@ -475,7 +475,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
             //for thr case of just 1 hoton being in the bin just set the rebinned photon to the one photons parameters
             for (i=0;i<*num_ph;i++)
             {
-                if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == OLD_COMPTONIZED_PHOTON))&& ((*ph_orig)[i].p0 > 0))
+                if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON))&& ((*ph_orig)[i].p0 > 0))
                 {
                     if ((log10((*ph_orig)[i].p0)< max_range  ) && (log10((*ph_orig)[i].p0)>=min_range))
                     {
@@ -542,7 +542,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     
     
     //find indexes of old photons that will not become null photons
-    //if the photons are OLD_COMPTONIZED_PHOTON photons make them have p0=-1
+    //if the photons are UNABSORBED_CS_PHOTON photons make them have p0=-1
     //for the COMPTONIZED_PHOTON photons replace the first num_bins indexes with the new rebinned photons and replace the rest of the indexes with null values
     //may need to expand the array of photons, shouldnt need to do this though
     
@@ -659,7 +659,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
     //    end_count=(*scatt_synch_num_ph);
     //}
     
-    //go through and assign the rebinned photons to the COMPTONIZED_PHOTON phtoons and make all OLD_COMPTONIZED_PHOTON photons become "absorbed"
+    //go through and assign the rebinned photons to the COMPTONIZED_PHOTON phtoons and make all UNABSORBED_CS_PHOTON photons become "absorbed"
     j=0;
     count=0;
     i=0;
@@ -684,16 +684,16 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         }
         */
         /*
-        if ((*ph_orig)[idx].type == OLD_COMPTONIZED_PHOTON)
+        if ((*ph_orig)[idx].type == UNABSORBED_CS_PHOTON)
         {
             //if the photon is a compton scatered synch photon from a past frame treat it as though it has been absorbed
             (*ph_orig)[idx].p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been "absorbed", this makes it still get saves in the hdf5 files
             (*ph_orig)[idx].nearest_block_index=-1;
-            (*ph_orig)[idx].weight=0; //now making the absorbed OLD_COMPTONIZED_PHOTON photons become null photons
+            (*ph_orig)[idx].weight=0; //now making the absorbed UNABSORBED_CS_PHOTON photons become null photons
         }
         else if ((*ph_orig)[idx].type == COMPTONIZED_PHOTON)
          */
-        if (((*ph_orig)[idx].type == OLD_COMPTONIZED_PHOTON) || ((*ph_orig)[idx].type == COMPTONIZED_PHOTON))
+        if (((*ph_orig)[idx].type == UNABSORBED_CS_PHOTON) || ((*ph_orig)[idx].type == COMPTONIZED_PHOTON))
         {
             if (count<num_bins)
             {
@@ -731,12 +731,12 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
             }
             else
             {
-                if ((*ph_orig)[idx].type == OLD_COMPTONIZED_PHOTON)
+                if ((*ph_orig)[idx].type == UNABSORBED_CS_PHOTON)
                 {
                     //if the photon is a compton scatered synch photon from a past frame treat it as though it has been absorbed
                     (*ph_orig)[idx].p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been "absorbed", this makes it still get saves in the hdf5 files
                     (*ph_orig)[idx].nearest_block_index=-1;
-                    (*ph_orig)[idx].weight=0; //now making the absorbed OLD_COMPTONIZED_PHOTON photons become null photons
+                    (*ph_orig)[idx].weight=0; //now making the absorbed UNABSORBED_CS_PHOTON photons become null photons
 
                 }
                 else
@@ -750,7 +750,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
             
             
         }
-        else if ((*ph_orig)[idx].type != SYNCHROTRON_POOL_PHOTON)
+        else if ((*ph_orig)[idx].type != CS_POOL_PHOTON)
         {
             //this is a realloc photon that has to be set to null
             (*ph_orig)[idx].type = COMPTONIZED_PHOTON;
@@ -835,7 +835,7 @@ int rebinSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_p
         //fprintf(fPtr, "%d %c %e %e\n", i, (*ph_orig)[i].type, (*ph_orig)[i].weight, (*ph_orig)[i].p0 );
         //fflush(fPtr);
         
-        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == OLD_COMPTONIZED_PHOTON)) && ((*ph_orig)[i].p0 > 0))
+        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON)) && ((*ph_orig)[i].p0 > 0))
         {
             count++;
         }
@@ -883,12 +883,12 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     count=0;
     for (i=0;i<*num_ph;i++)
     {
-        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == OLD_COMPTONIZED_PHOTON)) && ((*ph_orig)[i].p0 > 0))
+        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON)) && ((*ph_orig)[i].p0 > 0))
         {
             //see if the photon's nu is larger than nu_max or smaller than nu_min
             if (((*ph_orig)[i].p0< p0_min))
             {
-                //dont include any absorbed OLD_COMPTONIZED_PHOTON photons that have negative P0 values
+                //dont include any absorbed UNABSORBED_CS_PHOTON photons that have negative P0 values
                 p0_min= (*ph_orig)[i].p0;
                 min_idx=i;
                 //fprintf(fPtr, "new p0 min %e\n", (p0_min) );
@@ -930,7 +930,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 count_c_ph+=1;
             }
         }
-        else if (((*ph_orig)[i].type == SYNCHROTRON_POOL_PHOTON) && ((*ph_orig)[i].weight != 0))
+        else if (((*ph_orig)[i].type == CS_POOL_PHOTON) && ((*ph_orig)[i].weight != 0))
         {
             synch_photon_count++;
         }
@@ -974,7 +974,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
     count=0;
     for (i=0;i<*num_ph;i++)
     {
-        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == OLD_COMPTONIZED_PHOTON)) && ((*ph_orig)[i].p0 > 0))
+        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON)) && ((*ph_orig)[i].p0 > 0))
         {
             
             ph_r=pow(((*ph_orig)[i].r0)*((*ph_orig)[i].r0) + ((*ph_orig)[i].r1)*((*ph_orig)[i].r1) + ((*ph_orig)[i].r2)*((*ph_orig)[i].r2),0.5);
@@ -986,7 +986,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
 
         }
         
-        if (((*ph_orig)[i].type == SYNCHROTRON_POOL_PHOTON) && ((*ph_orig)[i].weight != 0))
+        if (((*ph_orig)[i].type == CS_POOL_PHOTON) && ((*ph_orig)[i].weight != 0))
         {
             //save the sych photons here because they may get written over later and corrupted
             (synch_ph+count)->p0=(*ph_orig)[i].p0;
@@ -1042,7 +1042,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 j=0; //to compare to rand1 for choosing the photon
                 for (i=0;i<*num_ph;i++)
                 {
-                    if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == OLD_COMPTONIZED_PHOTON)) && ((*ph_orig)[i].p0 > 0))
+                    if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON)) && ((*ph_orig)[i].p0 > 0))
                     {
                         ph_r=pow(((*ph_orig)[i].r0)*((*ph_orig)[i].r0) + ((*ph_orig)[i].r1)*((*ph_orig)[i].r1) + ((*ph_orig)[i].r2)*((*ph_orig)[i].r2),0.5);
                         ph_theta=acos(((*ph_orig)[i].r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
@@ -1124,7 +1124,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 //for thr case of just 1 hoton being in the bin just set the rebinned photon to the one photons parameters
                 for (i=0;i<*num_ph;i++)
                 {
-                    if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == OLD_COMPTONIZED_PHOTON))&& ((*ph_orig)[i].p0 > 0))
+                    if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON))&& ((*ph_orig)[i].p0 > 0))
                     {
                         ph_r=pow(((*ph_orig)[i].r0)*((*ph_orig)[i].r0) + ((*ph_orig)[i].r1)*((*ph_orig)[i].r1) + ((*ph_orig)[i].r2)*((*ph_orig)[i].r2),0.5);
                         ph_theta=acos(((*ph_orig)[i].r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
@@ -1287,7 +1287,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
         count=0;
         for (i=0;i<synch_photon_count;i++)
         {
-            //if ((*ph_orig)[i].type == SYNCHROTRON_POOL_PHOTON)
+            //if ((*ph_orig)[i].type == CS_POOL_PHOTON)
             {
                 idx=synch_photon_idx[i];
                 (*ph_orig)[idx].p0=(synch_ph+count)->p0;
@@ -1308,16 +1308,16 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
                 (*ph_orig)[idx].num_scatt=(synch_ph+count)->num_scatt;
                 (*ph_orig)[idx].weight=(synch_ph+count)->weight;
                 (*ph_orig)[idx].nearest_block_index=(synch_ph+count)->nearest_block_index;
-                //(*ph_orig)[idx].type = SYNCHROTRON_POOL_PHOTON;
+                //(*ph_orig)[idx].type = CS_POOL_PHOTON;
                 
                 count++;
             }
         }
         
-        //go through the newly added phootns in the array and make sure that there are no SYNCHROTRON_POOL_PHOTON type photons there that can cause issues later on
+        //go through the newly added phootns in the array and make sure that there are no CS_POOL_PHOTON type photons there that can cause issues later on
         for (i=( *num_ph)-(num_bins*num_bins_theta-count_c_ph+(*num_null_ph));i<(*num_ph);i++)
         {
-            if ((*ph_orig)[i].type == SYNCHROTRON_POOL_PHOTON)
+            if ((*ph_orig)[i].type == CS_POOL_PHOTON)
             {
                 (*ph_orig)[i].type = COMPTONIZED_PHOTON;
             }
@@ -1340,7 +1340,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
         
     }
     
-    //go through and assign the rebinned photons to the COMPTONIZED_PHOTON phtoons and make all OLD_COMPTONIZED_PHOTON photons become "absorbed"
+    //go through and assign the rebinned photons to the COMPTONIZED_PHOTON phtoons and make all UNABSORBED_CS_PHOTON photons become "absorbed"
     j=0;
     count=0;
     i=0;
@@ -1357,7 +1357,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
             idx=i-(*scatt_synch_num_ph)+( *num_ph)-(num_bins*num_bins_theta-count_c_ph+(*num_null_ph));//go to the end of the old num_ph value and start setting things to null photons
         }
 
-        if (((*ph_orig)[idx].type == OLD_COMPTONIZED_PHOTON) || ((*ph_orig)[idx].type == COMPTONIZED_PHOTON))
+        if (((*ph_orig)[idx].type == UNABSORBED_CS_PHOTON) || ((*ph_orig)[idx].type == COMPTONIZED_PHOTON))
         {
             if (count<num_bins*num_bins_theta)
             {
@@ -1394,12 +1394,12 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
             }
             else
             {
-                if ((*ph_orig)[idx].type == OLD_COMPTONIZED_PHOTON)
+                if ((*ph_orig)[idx].type == UNABSORBED_CS_PHOTON)
                 {
                     //if the photon is a compton scatered synch photon from a past frame treat it as though it has been absorbed
                     (*ph_orig)[idx].p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been "absorbed", this makes it still get saves in the hdf5 files
                     (*ph_orig)[idx].nearest_block_index=-1;
-                    (*ph_orig)[idx].weight=0; //now making the absorbed OLD_COMPTONIZED_PHOTON photons become null photons
+                    (*ph_orig)[idx].weight=0; //now making the absorbed UNABSORBED_CS_PHOTON photons become null photons
                     //num_null_rebin_ph++;
                 }
                 else
@@ -1414,7 +1414,7 @@ int rebin2dSynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null
             
             
         }
-        else if ((*ph_orig)[idx].type != SYNCHROTRON_POOL_PHOTON)
+        else if ((*ph_orig)[idx].type != CS_POOL_PHOTON)
         {
             //this is a realloc photon that has to be set to null
             (*ph_orig)[idx].type = COMPTONIZED_PHOTON;
@@ -1634,7 +1634,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
     #pragma omp parallel for num_threads(num_thread) reduction(+:null_ph_count)
     for (i=0;i<*num_ph;i++)
     {
-        if (((*ph_orig)[i].weight == 0)) //if photons are null COMPTONIZED_PHOTON photons and not absorbed OLD_COMPTONIZED_PHOTON photons
+        if (((*ph_orig)[i].weight == 0)) //if photons are null COMPTONIZED_PHOTON photons and not absorbed UNABSORBED_CS_PHOTON photons
         {
             null_ph_count+=1;
         }
@@ -1725,7 +1725,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         j=0;
         for (i=(*num_ph)-1;i>=0;i--)
         {
-            if ((*ph_orig)[i].weight == 0)  //if photons are null COMPTONIZED_PHOTON photons and not absorbed OLD_COMPTONIZED_PHOTON photons
+            if ((*ph_orig)[i].weight == 0)  //if photons are null COMPTONIZED_PHOTON photons and not absorbed UNABSORBED_CS_PHOTON photons
             {
                 // if the weight is 0, this is a photons that has been absorbed and is now null
                 *(null_ph_indexes+j)=i;
@@ -1811,7 +1811,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
                     (*ph_orig)[idx].num_scatt=0;
                     (*ph_orig)[idx].weight=ph_weight_adjusted;
                     (*ph_orig)[idx].nearest_block_index=0; //these photons can be scattered
-                    (*ph_orig)[idx].type=SYNCHROTRON_POOL_PHOTON;
+                    (*ph_orig)[idx].type=CS_POOL_PHOTON;
                     //printf("%d\n",ph_tot);
                     ph_tot++; //count how many photons have been emitted
                     count_null_indexes--; //keep track fo the null photon indexes
@@ -1881,7 +1881,7 @@ int photonEmitSynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, doub
         (*ph_orig)[idx].num_scatt=0;
         (*ph_orig)[idx].weight=(*ph_orig)[scatt_ph_index].weight;
         (*ph_orig)[idx].nearest_block_index=i; //these photons can be scattered
-        (*ph_orig)[idx].type=SYNCHROTRON_POOL_PHOTON;
+        (*ph_orig)[idx].type=CS_POOL_PHOTON;
         
         //change position of scattered synchrotron photon to be random in the hydro grid
         position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
@@ -1936,29 +1936,29 @@ double phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *sc
             el_dens= (*(dens+(*ph_orig)[i].nearest_block_index))/M_P;
             nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+(*ph_orig)[i].nearest_block_index)));
             //printf("photon %d has lab nu %e comv frequency %e and nu_c %e with FLASH grid number %d\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST, (*ph_orig)[i].comv_p0*C_LIGHT/PL_CONST, nu_c, (*ph_orig)[i].nearest_block_index);
-            if (((*ph_orig)[i].comv_p0*C_LIGHT/PL_CONST <= nu_c) || ((*ph_orig)[i].type == SYNCHROTRON_POOL_PHOTON))
+            if (((*ph_orig)[i].comv_p0*C_LIGHT/PL_CONST <= nu_c) || ((*ph_orig)[i].type == CS_POOL_PHOTON))
             {
                 //if the photon has a frequency less that nu_c, it should be absorbed and becomes a null photon
                 //preset values for the the newly created spots to hold the emitted phtoons in;
                 
                 //if this is a synchrotron photons or photons that have been scattered that were once synch photons in this frame
                 //fprintf(fPtr,"photon %d being absorbed\n", i);
-                if (((*ph_orig)[i].type != INJECTED_PHOTON) && ((*ph_orig)[i].type != OLD_COMPTONIZED_PHOTON) )
+                if (((*ph_orig)[i].type != INJECTED_PHOTON) && ((*ph_orig)[i].type != UNABSORBED_CS_PHOTON) )
                 {
                     (*ph_orig)[i].weight=0;
                     (*ph_orig)[i].nearest_block_index=-1;
                     abs_ph_count++;
                     
-                    if ((*ph_orig)[i].type == SYNCHROTRON_POOL_PHOTON)
+                    if ((*ph_orig)[i].type == CS_POOL_PHOTON)
                     {
                         synch_ph_count++;
                     }
                 }
                 else
                 {
-                    //have an injected photon or OLD_COMPTONIZED_PHOTON (previous COMPTONIZED_PHOTON photon) that has a nu that can be absorbed
+                    //have an injected photon or UNABSORBED_CS_PHOTON (previous COMPTONIZED_PHOTON photon) that has a nu that can be absorbed
                     abs_count+=(*ph_orig)[i].weight;
-                    (*ph_orig)[i].p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been absorbed, this makes it still get saves in the hdf5 files
+                    (*ph_orig)[i].p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been absorbed,
                     (*ph_orig)[i].nearest_block_index=-1;
                     //also set the weight equal to 0 since we no longer care about saving it
                     (*ph_orig)[i].weight=0;
@@ -1994,9 +1994,9 @@ double phAbsSynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *sc
                 //increment count
                 count+=1;
                 
-                if (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == OLD_COMPTONIZED_PHOTON) )
+                if (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON) )
                 {
-                    //if the photon is a COMPTONIZED_PHOTON phton (scattered synch photon from the current frame) or a OLD_COMPTONIZED_PHOTON photon (scattered synch photon) from an old frame
+                    //if the photon is a COMPTONIZED_PHOTON phton (scattered synch photon from the current frame) or a UNABSORBED_CS_PHOTON photon (scattered synch photon) from an old frame
                     //count how many of these there are
                     *scatt_synch_num_ph+=1;
                 }

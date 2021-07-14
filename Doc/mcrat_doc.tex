@@ -74,7 +74,7 @@ Additionally, there are a number of switches that the user can specify to the pr
 
 The \texttt{SIM\_SWITCH} tells MCRaT what hydro simulation is being used. The options are \texttt{FLASH} and \texttt{PLUTO\_CHOMBO}, for the FLASH hydrodynamic code and the PLUTO hydro code with CHOMBO AMR respectively. The switch \texttt{DIM\_SWITCH} tells MCRaT the dimensionality of the hydro simulation that is used. This switch can be set to \texttt{2}, for 2D, or \texttt{3}, for 3D. The 3D feature is still in development so the switch should be set to \texttt{2} for now. The geometry can also be specified through the \texttt{GEOMETRY} define statement. The options are \texttt{SPHERICAL} and \texttt{CARTESIAN}; however, since MCRaT only supports 2D, the supported spherical coordinate system is $(r, \theta)$ and the supported \texttt{CARTESIAN} system is $(x,y)$ and $(r,z)$ in cylindrical coordinates. The length, pressure, and density scales of the hydro simulation also has to be specified by setting the values of \texttt{HYDRO\_L\_SCALE}, \texttt{HYDRO\_P\_SCALE}, and \texttt{HYDRO\_D\_SCALE}, respectively, to the normalization that is used in the hydro simulation.
 
-In order to enable the consideration of thermal synchrotron photons in the MCRaT simulation the \texttt{SYNCHROTRON\_SWITCH} needs to be set to \texttt{ON}, otherwise this switch should be set to \texttt{OFF}. If it is set to be \texttt{ON}, the user needs to define other variables. One variable that needs to be defined is \texttt{SYNCHROTRON\_REBIN\_E\_PERC} which provides MCRaT with an upper limit for the number of synchrotron photons to emit. This quantity is calculated as the percentage of the maximum number of photons the user wants injected (see line 17 of the example mc.par file in section \ref{mc.par}). If \texttt{SYNCHROTRON\_REBIN\_E\_PERC} is set to 0.5 and the value of the 17$^\textrm{th}$ line is 3000, the upper limit for the number of synchrotron emitted photons is 1500. This variable also defines the number of energy bins that MCRaT will create when it rebins the synchrotron photons, thus in the aforementioned example, the number of energy bins that the photons will be rebinned into is 1500 as well. MCRaT will also rebin the photons into spatial bins and the size of these bins are specified using the \texttt{SYNCHROTRON\_REBIN\_ANG} variable which has units of degrees. In considering synchrotron emission, the user needs to specify how the magnetic field is calculated. This is done through the \texttt{B\_FIELD\_CALC} switch which can be set to \texttt{INTERNAL\_E}, where the magnetic energy density is set equal to the internal energy of the outflow, or \texttt{TOTAL\_E}, where the magnetic field is calculated from the total energy of the outflow. If \texttt{B\_FIELD\_CALC} is set to \texttt{TOTAL\_E}, the user needs to set the \texttt{EPSILON\_B} switch, which represents the fraction of the total outflow energy that is in the magnetic field. More information about the implementation of thermal synchrotron emission in the algorithm of the code can be found in section \ref{algorithm}. More information regarding the physics of the implementation of thermal synchrotron emission and absorption can be found in section \ref{synch}. 
+In order to enable the consideration of thermal synchrotron photons in the MCRaT simulation the \texttt{SYNCHROTRON\_SWITCH} needs to be set to \texttt{ON}, otherwise this switch should be set to \texttt{OFF}. If it is set to be \texttt{ON}, the user needs to define other variables. One variable that needs to be defined is \texttt{SYNCHROTRON\_REBIN\_E\_PERC} which provides MCRaT with an upper limit for the number of synchrotron photons to emit. This quantity is calculated as the percentage of the maximum number of photons the user wants injected (see line 17 of the example mc.par file in section \ref{mc.par}). If \texttt{SYNCHROTRON\_REBIN\_E\_PERC} is set to 0.5 and the value of the 17$^\textrm{th}$ line is 3000, the upper limit for the number of synchrotron emitted photons is 1500. This variable also defines the number of energy bins that MCRaT will create when it rebins the synchrotron photons, thus in the aforementioned example, the number of energy bins that the photons will be rebinned into is 1500 as well. MCRaT will also rebin the photons into spatial bins and the size of these bins are specified using the \texttt{SYNCHROTRON\_REBIN\_ANG} variable which has units of degrees. In considering synchrotron emission, the user needs to specify how the magnetic field is calculated. This is done through the \texttt{B\_FIELD\_CALC} switch which can be set to: \texttt{INTERNAL\_E}, where the magnetic energy density is set equal to the internal energy of the outflow, \texttt{TOTAL\_E}, where the magnetic field is calculated from the total energy of the outflow, or \texttt{SIMULATION} where the code uses the magnitude of the magnetic field that is acquired from a simulation. If \texttt{B\_FIELD\_CALC} is set to \texttt{TOTAL\_E} or \texttt{INTERNAL\_E}, the user needs to set the \texttt{EPSILON\_B} switch, which represents the fraction of the total outflow energy that is in the magnetic field. More information about the implementation of thermal synchrotron emission in the algorithm of the code can be found in section \ref{algorithm}. More information regarding the physics of the implementation of thermal synchrotron emission and absorption can be found in section \ref{synch}. 
 
 Another helpful switch is the \texttt{SAVE\_TYPE} switch, with tells MCRaT to include the photon type in the saved datasets. 
 
@@ -124,10 +124,10 @@ SYNCHROTRON\_REBIN\_E\_PERC & (0.0, 1.0] (Default is 0.1)\\
 \hline
 SYNCHROTRON\_REBIN\_ANG &  $(-\infty, +\infty)$ (Default is 0.5 degrees) \\
 \hline
-B\_FIELD\_CALC & INTERNAL\_E \newline TOTAL\_E (Default)\\
+B\_FIELD\_CALC & INTERNAL\_E \newline TOTAL\_E (Default) \newline SIMULATION\\
 \hline
 \hline
-If B\_FIELD\_CALC is TOTAL\_E: & \\
+If B\_FIELD\_CALC is TOTAL\_E or INTERNAL\_E: & \\
 \hline
 EPSILON\_B & (0.0, 1.0] (Default is 0.5)\\
 \hline
@@ -158,7 +158,7 @@ MCRaT requires the user to provide information in the form of a parameter file n
 1000 &   The 16$^\textrm{th}$ line is the minimum number of photons the user wants injected in each frame \\ 
 3000 &    The 17$^\textrm{th}$ line is the maximum number of photons the user wants injected in each frame\\ 
 b &   The 18$^\textrm{th}$ line is the spectrum of the injected photons. ``b''=Blackbody and ``w''=Wein \\ 
-r &    The 19$^\textrm{th}$ line is to tell MCRaT to start a new simulation, ``r'', or continue an old one, ``c'' \\ \newline
+i &    The 19$^\textrm{th}$ line is to tell MCRaT to initalize a new simulation, ``i'', or continue an old one, ``c'' \\ \newline
 \end{tabularx} 
 
 There are values related to photons injected within $2^\circ$ and outside of $2^\circ$ because at this angle, the outflow may become significantly denser (as occurs in Gamma Ray Bursts) and the user may want to increase their radius of injection in order to speed up the computation. In order to match the time in which photon injection will occur at these larger angles means changing the parameters that play a role in the value of the simulation time when the photons begin being injected. 
@@ -173,7 +173,7 @@ t_\mathrm{end}=\frac{\mathrm{f_{start}}+\mathrm{df}}{\mathrm{fps}}-\frac{R_\math
 \]
 where df is the number of frames in which photons are injected, which is line 7. These calculations are the same for photons injected at angles $> 2^\circ$, except you use the \texttt{mc.par} lines that are applicable to those photons in the calculations. 
 
-Line 19 allows the user to continue the MCRaT code from a previous point, if the value is set to ``c'', or it allows the user to restart (by erasing the full working directory of MCRaT) or start a simulation by setting it to ``r''. \hl{\bf This is an important parameter to check to prevent accidentally erasing work that has already been done.}
+Line 19 allows the user to continue the MCRaT code from a previous point, if the value is set to ``c'', or it allows the user to initalize (by erasing the full working directory of MCRaT) or start a simulation by setting it to ``i''. \hl{\bf This is an important parameter to check to prevent accidentally erasing work that has already been done.}
 
 Line 13 should be a value that divides evenly into the angle range provided by lines 12 and 11. In the above example (20-0)/4=5. This is important for MCRaT's parallelism. Another number that MCRaT uses to break up the problem is lines 7 and 8. The way that MCRaT parallelizes the problem will be shown in the next section.
 
@@ -527,26 +527,26 @@ Furthermore, \citeauthor{lundman2014polarization}'s (\citeyear{lundman2014polari
 
 For $\theta_{\mathrm{v}}/\theta_{\mathrm{j}} \gtrsim 1.6$ ($\theta_{\mathrm{v}} \approx 9^\circ$) the MCRaT polarization begins to decrease again, coming into strain with what is expected. This is due to the fact that the simulation files that we impose the analytic jet equations onto have a finite domain. Even when the photons reach the edge of the domain ($2.5 \times 10^{13}$ cm) at $\theta_{\mathrm{v}} \gtrsim 9^\circ$, they haven't fully decoupled from the photosphere (which would be located at $r\sim 1\times 10^{14}$ cm \citep{lundman2014polarization}) thus decreasing the detected polarization. 
 
-\subsection{Thermal Synchrotron Radiation}\label{synch}
-\subsubsection{Emitting Thermal Synchrotron Photons}
-The emission of the thermal synchrotron photons is similar to injecting photons into the outflow. We iteratively calculate the number of photons to emit as synchrotron photons in the frame and assign them random 4 momenta with an energy corresponding to the local cyclotron frequency. We consider the source of thermal synchrotron photons to be constant in time so we emit a constant number and if any synchrotron photon gets upscattered, we replace it with another synchrotron photon. 
+\subsection{Cyclo-synchrotron Radiation}\label{synch}
+\subsubsection{Emitting Cyclo-synchrotron (CS) Photons}
+The emission of the cyclo-synchrotron (CS) photons is similar to injecting photons into the outflow. We iteratively calculate the number of photons to emit as synchrotron photons in the frame and assign them random 4 momenta with an energy corresponding to the local cyclotron frequency. We consider the source of CS photons to be constant in time so we emit a constant number and if any synchrotron photon gets upscattered, we replace it with another synchrotron photon. 
 
-These photons are emitted into a region that the original injected photons are passing through so it accounts for the thermal synchrotron photons that would be upscattered in the flow during the time of interest of the original injected photons.
+These photons are emitted into a region that the original injected photons are passing through so it accounts for the CS photons that would be upscattered in the flow during the time of interest of the original injected photons.
 
-The maximum number of photons that are emitted, $N_{e,max}$, are calculated as the percentage of the maximum number of photons the user wants injected (see line 17 of the example mc.par file in section \ref{mc.par}). For example, if \texttt{SYNCHROTRON\_REBIN\_E\_PERC} is set to 0.5 and the value of the 17$^\textrm{th}$ line is 3000, the upper limit for the number of synchrotron emitted photons is 1500. The number density of thermal synchrotron photons, $n_{s,i}$, in a given cell is acquired by integrating the blackbody photon number spectrum up to the cyclotron frequency, $\nu_B$. We calculate the number density as
+The maximum number of photons that are emitted, $N_{e,max}$, are calculated as the percentage of the maximum number of photons the user wants injected (see line 17 of the example mc.par file in section \ref{mc.par}). For example, if \texttt{SYNCHROTRON\_REBIN\_E\_PERC} is set to 0.5 and the value of the 17$^\textrm{th}$ line is 3000, the upper limit for the number of synchrotron emitted photons is 1500. The number density of CS photons, $n_{s,i}$, in a given cell is acquired by integrating the blackbody photon number spectrum up to the cyclotron frequency, $\nu_B$. We calculate the number density as
 \begin{equation}
 n_{s,i}=\int\limits_{0}^{\nu_B}\frac{u_\nu}{h \nu}d\nu\frac{dV_i}{w}=\int\limits_{0}^{\nu_B}\frac{8\pi \nu^2 }{c^3 (e^\frac{h\nu}{kT_i'}-1 )}d\nu\frac{dV_i}{w}
 \end{equation}
- where w is the weight of each thermal synchrotron photon, $dV_i$ is the volume of the HD cell, $T_i$ is the temperature of the same cell, h is Planck's constant and 
+ where w is the weight of each CS photon, $dV_i$ is the volume of the HD cell, $T_i$ is the temperature of the same cell, h is Planck's constant and 
 \begin{equation}
 \nu_B=\frac{eB}{2\pi m_e c}
 \end{equation}
-where $e$ is the electron charge and $B$ is the magnetic field within the cell. Once $n_{s,i}$ is calculated, we draw a random number from a Poisson distribution with a mean of $n_{s,i}$ to acquire the total actual number of photons that are emitted into the cell. We get the total number of emitted photons, $N_e$, by summing over each cell's $n_{s,i}$. If $N_e > N_{e,max}$, then the $w$ is made larger and then the aforementioned calculations are made. If $N_e \le N_{e,max}$ then the code proceeds to assign the thermal synchrotron photons a random 4 momentum and assigns them to be at the center of their respective hydrodynamic cell.
+where $e$ is the electron charge and $B$ is the magnetic field within the cell. Once $n_{s,i}$ is calculated, we draw a random number from a Poisson distribution with a mean of $n_{s,i}$ to acquire the total actual number of photons that are emitted into the cell. We get the total number of emitted photons, $N_e$, by summing over each cell's $n_{s,i}$. If $N_e > N_{e,max}$, then the $w$ is made larger and then the aforementioned calculations are made. If $N_e \le N_{e,max}$ then the code proceeds to assign the CS photons a random 4 momentum and assigns them to be at the center of their respective hydrodynamic cell.
 
-When a thermal synchrotron photon gets scattered, it is placed randomly within its HD cell and the scattering proceeds as it normally would. Then another thermal synchrotron photon gets added to the pool of photons at the center of their respective HD cell with the proper $\nu_B$.
+When a CS photon gets scattered, it is placed randomly within its HD cell and the scattering proceeds as it normally would. Then another CS photon gets added to the pool of photons at the center of their respective HD cell with the proper $\nu_B$.
 
 \subsubsection{Calculating B}
-MCRaT provides 2 ways to calculate the magnetic field in the outflow, in order to calculate $\nu_B$. It either uses the internal energy fo the flow to calculate B, when the \texttt{INTERNAL\_E} switch is turned \texttt{ON}, or it uses the total energy of the outflow to calculate B, when the \texttt{TOTAL\_E} switch is turned turned \texttt{ON}.
+MCRaT provides 2 ways to calculate the magnetic field in the outflow, in order to calculate $\nu_B$. It either uses the internal energy fo the flow to calculate B, when the \texttt{B\_FIELD\_CALC} switch is set to \texttt{INTERNAL\_E}, or it uses the total energy of the outflow to calculate B, when the \texttt{B\_FIELD\_CALC} switch is set to \texttt{TOTAL\_E}.
 \begin{itemize}
 \item Total Energy
 
@@ -565,8 +565,10 @@ In the internal energy case, the magnetic field energy density is equated to the
 where n is the number density of electrons, k is the boltzmann constant and T is the plasma temperature.
 \end{itemize}
 
-\subsubsection{Rebinning The Scattered Thermal Synchrotron Photons}
-The MCRaT code spatially rebins the thermal synchrotron photons in order to keep the number of photons that it needs to track down to a reasonable amount, which helps decrease computational time. In order to rebin the photons, MCRaT finds the photon with the smallest position in the polar direction, $\theta_\mathrm{min}$,  and the photon with the largest position in the polar direction, $\theta_\mathrm{max}$. These typically correspond to the values that were specified in the \texttt{mc.par} file that is read in by MCRaT. Then the size of each spatial bin, $\Delta \theta$ is set by the user through the \texttt{SYNCHROTRON\_REBIN\_ANG} parameter in the \texttt{mcrat\_input.h} file. The number of spatial bins, $N_\theta$ is then is determined as
+MCRaT can also read in the magnetic field from a magneto-hydrodynamic simulation and use the magnitude of the magnetic field in calculating $\nu_B$. This option is used when \texttt{B\_FIELD\_CALC} is set to \texttt{SIMULATION}.
+
+\subsubsection{Rebinning The Scattered CS Photons}
+The MCRaT code spatially rebins the CS photons in order to keep the number of photons that it needs to track down to a reasonable amount, which helps decrease computational time. In order to rebin the photons, MCRaT finds the photon with the smallest position in the polar direction, $\theta_\mathrm{min}$,  and the photon with the largest position in the polar direction, $\theta_\mathrm{max}$. These typically correspond to the values that were specified in the \texttt{mc.par} file that is read in by MCRaT. Then the size of each spatial bin, $\Delta \theta$ is set by the user through the \texttt{SYNCHROTRON\_REBIN\_ANG} parameter in the \texttt{mcrat\_input.h} file. The number of spatial bins, $N_\theta$ is then is determined as
 \begin{equation}
 N_\theta=\frac{\theta_\mathrm{max}-\theta_\mathrm{min}}{\Delta \theta}
 \end{equation}
@@ -575,7 +577,7 @@ The photons are also binned into energy bins, where the size of the energy bins,
 \begin{equation}
 \Delta E=\frac{\log(E_\mathrm{max})-\log(E_\mathrm{min})}{N_E}
 \end{equation}
-where $E_\mathrm{max}$ and $E_\mathrm{min}$ are the minimum and maximum energies of the thermal synchrotron photons and $N_E$ is the number of energy bins acquired by multiplying the \texttt{SYNCHROTRON\_REBIN\_E\_PERC} value times the value of the 17$^\textrm{th}$ line of the \texttt{mc.par} file, $N_{17}$.
+where $E_\mathrm{max}$ and $E_\mathrm{min}$ are the minimum and maximum energies of the CS photons and $N_E$ is the number of energy bins acquired by multiplying the \texttt{SYNCHROTRON\_REBIN\_E\_PERC} value times the value of the 17$^\textrm{th}$ line of the \texttt{mc.par} file, $N_{17}$.
 
 To ensure that the rebinning is efficient, MCRaT checks that $N_\theta N_E<N_{17}$. If it is not, the the code throws an error. The user can then change either parameter to ensure that the aforementioned condition is met.
 
@@ -594,8 +596,8 @@ where $\theta$ and $\phi$ are the directional angles of the 4 momentum and the $
  where $<r>$ is the average radius of the photons that lie in bin $(i,j)$, $<\theta_p>$ is the average polar angle of the photons with the given bins and , for these same photons, $<\Delta \tilde{\phi_p}>$ is the average displacement angle taken across each photon's 4-momentum azimuthal angle, $\phi$, and its positional azimuthal angle, $\phi_p$, that is $\Delta \tilde{\phi_p}= \phi-\phi_p$. This consideration of the displacement in the positional and 4-momentum azimuthal angles is necessary to ensure that the rebinned photons are still in appropriate equilibrium with the flow. 
 
 
-\subsubsection{Absorption of Thermal Synchrotron Photons}
-At the end of each HD frame, MCRaT proceeds to absorb any photons that have a frequency  $\nu \le \nu_B$ of the HD cell that they are located within. As a result, all of the thermal synchrotron photons that were emitted and never upscattered become absorbed and any photons that have been scattered but still satisfy  $\nu \le \nu_B$ are also absorbed.
+\subsubsection{Absorption of CS Photons}
+At the end of each HD frame, MCRaT proceeds to absorb any photons that have a frequency  $\nu \le \nu_B$ of the HD cell that they are located within. As a result, all of the CS photons that were emitted and never upscattered become absorbed and any photons that have been scattered but still satisfy  $\nu \le \nu_B$ are also absorbed.
 
 
 \bibliography{references}
