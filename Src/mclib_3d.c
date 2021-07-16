@@ -23,11 +23,11 @@
 #define PHI_DIM 280
 
 
-void read_hydro(char hydro_prefix[200], int frame, double r_inj, double **x, double **y,  double **z, double **szx, double **szy, double **r, double **theta, double **phi,\
+void read_hydro(char hydro_prefix[STR_BUFFER], int frame, double r_inj, double **x, double **y,  double **z, double **szx, double **szy, double **r, double **theta, double **phi,\
   double **velx, double **vely, double **velz, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number,  int ph_inj_switch, double min_r, double max_r, double fps, FILE *fPtr)
 {
     FILE *hydroPtr=NULL;
-    char hydrofile[200]="", file_num[200]="", full_file[200]="",file_end[200]=""  ;
+    char hydrofile[STR_BUFFER]="", file_num[STR_BUFFER]="", full_file[STR_BUFFER]="",file_end[STR_BUFFER]=""  ;
     char buf[10]="";
     int i=0, j=0, k=0, elem=0, elem_factor=0;
     int phi_min_index=0, phi_max_index=0, r_min_index=0, r_max_index=0, theta_min_index=0, theta_max_index=0; //all_index_buffer contains phi_min, phi_max, theta_min, theta_max, r_min, r_max indexes to get from grid files
@@ -776,10 +776,10 @@ void phMinMax(struct photon *ph, int ph_num, double *min, double *max, double *m
     *min_theta=temp_theta_min;
 }
 
-int *getIndexesForRadialRemapping(char hydro_prefix[200])
+int *getIndexesForRadialRemapping(char hydro_prefix[STR_BUFFER])
 {
     FILE *hydroPtr=NULL;
-    char hydrofile[200]="";
+    char hydrofile[STR_BUFFER]="";
     char buf[10]="";
     int i=0, j=0;
     int *remapping_start_index=malloc(sizeof(int)*7); //what index out of total range of r does each remapping begin at

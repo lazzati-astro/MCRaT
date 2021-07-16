@@ -63,31 +63,31 @@ int main(int argc, char **argv)
     //compile each time a macro is changed, have to supply the subfolder within the MC_PATH directory as a command line argument to the C program eg. MCRAT 1/
     
 	// Define variables
-	char flash_prefix[200]="";
-	char mc_file[200]="" ;
+	char hydro_prefix[STR_BUFFER]="";
+	char mc_file[STR_BUFFER]="" ;
     char spect;//type of spectrum
     char restrt;//restart or not
     double fps, fps_modified, theta_jmin, theta_jmax,hydro_domain_y, hydro_domain_x ;//frames per second of sim, min opening angle of jet, max opening angle of jet in radians, max y value in hydro domain
-    double inj_radius_small, inj_radius_large,  ph_weight_suggest, ph_weight_small, ph_weight_large ;//radius at chich photons are injected into sim
-    int frm0,last_frm, frm2_small, frm2_large, j=0, min_photons, max_photons, frm0_small, frm0_large ;//frame starting from, last frame of sim, frame of last injection
+    double inj_radius_small, inj_radius_large,  ph_weight_suggest=1e50, ph_weight_small, ph_weight_large, *inj_radius_input=NULL, ph_weight_default=1e50;//radius at chich photons are injected into sim
+    int frm0,last_frm, frm2_small, frm2_large, j=0, min_photons, max_photons, frm0_small, frm0_large, *frm2_input=NULL, *frm0_input=NULL ;//frame starting from, last frame of sim, frame of last injection
     int dim_switch=0;
     int find_nearest_grid_switch=0;
     int increment_inj=1, increment_scatt=1; //increments for injection loop and scattering loop, outer and inner loops respectively, the increment can change for RIKEN 3D hydro files
     
     double inj_radius;
     int frm2,save_chkpt_success=0;
-    char mc_filename[200]="";
-    char mc_filename_2[200]="";
-    char mc_operation[200]="";
-    char mc_dir[200]="" ;
+    char mc_filename[STR_BUFFER]="";
+    char mc_filename_2[STR_BUFFER]="";
+    char mc_operation[STR_BUFFER]="";
+    char mc_dir[STR_BUFFER]="" ;
     int file_count = 0;
     DIR * dirp;
     struct dirent * entry;
     struct stat st = {0};
     double theta_jmin_thread=0, theta_jmax_thread=0;
         
-    char flash_file[200]="";
-    char log_file[200]="";
+    char hydro_file[STR_BUFFER]="";
+    char log_file[STR_BUFFER]="";
     FILE *fPtr=NULL; //pointer to log file for each thread
     double *xPtr=NULL,  *yPtr=NULL,  *rPtr=NULL,  *thetaPtr=NULL,  *velxPtr=NULL,  *velyPtr=NULL,  *densPtr=NULL,  *presPtr=NULL,  *gammaPtr=NULL,  *dens_labPtr=NULL;
     double *szxPtr=NULL,*szyPtr=NULL, *tempPtr=NULL; //pointers to hold data from FLASH files
@@ -98,13 +98,14 @@ int main(int argc, char **argv)
     double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0, ph_vzPtr=0;// *ph_cosanglePtr=NULL ;
     double min_r=0, max_r=0, min_theta=0, max_theta=0, nu_c_scatt=0, n_comptonized=0;
     int frame=0, scatt_frame=0, frame_scatt_cnt=0, frame_abs_cnt=0, scatt_framestart=0, framestart=0;
-    struct photon *phPtr=NULL; //pointer to array of photons 
+    struct photon *phPtr=NULL; //pointer to array of photons
+    struct hydro_dataframe hydrodata; //pointer to array of photons
     
     int angle_count=0, num_cyclosynch_ph_emit=0;
     int num_angles=0, old_num_angle_procs=0; //old_num_angle_procs is to hold the old number of procs in each angle when cont sims, if  restarting sims this gets set to angle_procs
     int *frame_array=NULL, *proc_frame_array=NULL, *element_num=NULL, *sorted_indexes=NULL,  proc_frame_size=0;
     double *thread_theta=NULL; //saves ranges of thetas for each thread to go through
-    double delta_theta=1;
+    double delta_theta=1, num_theta_bins=0;
     
     int myid, numprocs, angle_procs, angle_id, procs_per_angle;
     int temporary[3]={0}, tempo=0;
@@ -130,20 +131,21 @@ int main(int argc, char **argv)
     //the angle and the injection frames will be the names of mc_dir, therefore read mc.par first in MC_XXX directory
     
     //make strings of proper directories etc.
-	snprintf(flash_prefix,sizeof(flash_prefix),"%s%s",FILEPATH,FILEROOT );
-    snprintf(mc_file,sizeof(flash_prefix),"%s%s%s",FILEPATH, MC_PATH,MCPAR);
+	snprintf(hydro_prefix,sizeof(hydro_prefix),"%s%s",FILEPATH,FILEROOT );
+    snprintf(mc_file,sizeof(mc_file),"%s%s%s",FILEPATH, MC_PATH,MCPAR);
 
     
     printf(">> MCRaT:  Reading mc.par: %s\n", mc_file);
     
-    readMcPar(mc_file, &hydro_domain_x, &hydro_domain_y, &fps, &theta_jmin, &theta_jmax, &delta_theta, &inj_radius_small,&inj_radius_large, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &ph_weight_small, &ph_weight_large, &min_photons, &max_photons, &spect, &restrt); //thetas that comes out is in degrees
+    readMcPar(mc_file, &hydrodata, &theta_jmin, &theta_jmax, &num_theta_bins, &inj_radius_input, &frm0_input , &frm2_input, &min_photons, &max_photons, &spect, &restrt); //thetas that comes out is in degrees, need to free input frame and injection radius pointers
     //printf("%c\n", restrt);
     
     //divide up angles and frame injections among threads DONT WANT NUMBER OF THREADS TO BE ODD
     //assign ranges to array that hold them
     
     //leave angles in degrees here
-    num_angles=(int) (((theta_jmax-theta_jmin)/delta_theta)) ;//*(180/M_PI));
+    num_angles= (int) num_theta_bins;
+    delta_theta=((theta_jmax-theta_jmin)/num_theta_bins);
     thread_theta=malloc( num_angles *sizeof(double) );
     *(thread_theta+0)=theta_jmin;//*(180/M_PI);
     //printf("%e\n", *(thread_theta+0));
@@ -160,7 +162,7 @@ int main(int argc, char **argv)
      //comm for angles
      
      procs_per_angle= numprocs/num_angles;
-     //printf("%d\n", procs_per_angle);
+     printf("%d\n", procs_per_angle);
      
      MPI_Comm angle_comm;
      if (restrt==INITALIZE) //uncomment this when I run MCRAT for sims that didnt originally save angle_procs
@@ -169,15 +171,21 @@ int main(int argc, char **argv)
         MPI_Comm_split(MPI_COMM_WORLD, myid/procs_per_angle , myid, &angle_comm);
         MPI_Comm_rank(angle_comm, &angle_id);
         MPI_Comm_size(angle_comm, &angle_procs);
-        
-        //printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d\n", myid, numprocs, angle_id, angle_procs);    
+
+        //printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d\n", myid, numprocs, angle_id, angle_procs);
                 
         theta_jmin_thread= (*(thread_theta+  (myid/procs_per_angle))) *(M_PI/180);
         theta_jmax_thread= theta_jmin_thread+(delta_theta*(M_PI/180));
-        
-        snprintf(mc_dir,sizeof(flash_prefix),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
-        
+
+        snprintf(mc_dir,sizeof(mc_dir),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
+
         old_num_angle_procs=angle_procs;
+         
+        inj_radius= (*(inj_radius_input+(myid/procs_per_angle)));
+        frm2=(*(frm2_input+(myid/procs_per_angle)));
+        frm0=(*(frm0_input+(myid/procs_per_angle)));
+        ph_weight_suggest=ph_weight_default;
+
      }
      else
      {
@@ -227,7 +235,7 @@ int main(int argc, char **argv)
             theta_jmin_thread= (*(thread_theta+  (myid_2/procs_per_angle))) *(M_PI/180);
             theta_jmax_thread= theta_jmin_thread+(delta_theta*(M_PI/180));
         
-            snprintf(mc_dir,sizeof(flash_prefix),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
+            snprintf(mc_dir,sizeof(mc_dir),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
         
             //call the function to count the num of processes for each angle range that need to be con't
             int  count_cont_procs=0, total_cont_procs_angle=0, global_cont_procs=0;
@@ -446,7 +454,7 @@ int main(int argc, char **argv)
         
             angle_id=(*(all_cont_process_idPtr+count+angle_id));
         
-            snprintf(mc_dir,sizeof(flash_prefix),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
+            snprintf(mc_dir,sizeof(mc_dir),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
         }
         else
         {
@@ -460,20 +468,21 @@ int main(int argc, char **argv)
     }
       
     MPI_Barrier(MPI_COMM_WORLD);
+    free(inj_radius_input); free(frm0_input);free(frm2_input); //free input arrays sonce we hav determined which of the values in the arrays are applicable for this process
     
     if ((theta_jmin_thread >= 0) &&  (theta_jmax_thread <= (2*M_PI/180) )) //if within small angle (0-2 degrees) use _small inj_radius and frm2 have to think about this for larger domains
     {
-        inj_radius=inj_radius_small;
+        inj_radius=inj_radius;
         frm2=frm2_small;
         frm0=frm0_small;
-        ph_weight_suggest=ph_weight_small;
+        ph_weight_suggest=ph_weight_default;
     }
     else
     {
-        inj_radius=inj_radius_large;
+        inj_radius=inj_radius;
         frm2=frm2_large;
         frm0=frm0_large;
-        ph_weight_suggest=ph_weight_large;
+        ph_weight_suggest=ph_weight_default;
     }
     
     //make vector to hold the frames we are injecting in, vector should have (frm2-frm0)/angle_procs slots, if fps is const
@@ -553,19 +562,19 @@ int main(int argc, char **argv)
                     
                     if (file_count>0)
                     {
-                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mc_proc_*"); //prepares string to remove *.dat in mc_dir
+                        snprintf(mc_operation,sizeof(mc_operation),"%s%s%s","exec rm ", mc_dir,"mc_proc_*"); //prepares string to remove *.dat in mc_dir
                         system(mc_operation);
                         
-                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mcdata_PW_*"); //prepares string to remove *.dat in mc_dir
+                        snprintf(mc_operation,sizeof(mc_operation),"%s%s%s","exec rm ", mc_dir,"mcdata_PW_*"); //prepares string to remove *.dat in mc_dir
                         system(mc_operation);
                         
-                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mcdata_PW*"); //prepares string to remove *.dat in mc_dir
+                        snprintf(mc_operation,sizeof(mc_operation),"%s%s%s","exec rm ", mc_dir,"mcdata_PW*"); //prepares string to remove *.dat in mc_dir
                         system(mc_operation);
                         
-                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mc_chkpt_*.dat"); //prepares string to remove *.dat in mc_dir
+                        snprintf(mc_operation,sizeof(mc_operation),"%s%s%s","exec rm ", mc_dir,"mc_chkpt_*.dat"); //prepares string to remove *.dat in mc_dir
                         system(mc_operation);
                         
-                        snprintf(mc_operation,sizeof(flash_prefix),"%s%s%s","exec rm ", mc_dir,"mc_output_*.log"); //prepares string to remove *.log in mc_dir
+                        snprintf(mc_operation,sizeof(mc_operation),"%s%s%s","exec rm ", mc_dir,"mc_output_*.log"); //prepares string to remove *.log in mc_dir
                         system(mc_operation);
                         
                     }
@@ -642,23 +651,23 @@ int main(int argc, char **argv)
                         //{
                             //if using FLASH data for 2D
                             //put proper number at the end of the flash file
-                            modifyFlashName(flash_file, flash_prefix, frame);
+                            modifyFlashName(hydro_file, hydro_prefix, frame);
                             
-                            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
+                            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
                             fflush(fPtr);
                             
-                            readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                            readAndDecimate(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                     &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
                         //}
                         //else if (strcmp(pluto_amr_sim, this_sim)==0)
                         #elif SIM_SWITCH == PLUTO_CHOMBO
                         //{
-                            modifyPlutoName(flash_file, flash_prefix, frame);
+                            modifyPlutoName(hydro_file, hydro_prefix, frame);
                             
-                            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
+                            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
                             fflush(fPtr);
                             
-                            readPlutoChombo(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                            readPlutoChombo(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                     &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
                             
                             //exit(0);
@@ -775,17 +784,15 @@ int main(int argc, char **argv)
                     gsl_rng_set(rng, gsl_rng_get(rng));
                     
                    
-                    //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
                     #if DIMENSIONS == 2
                     {
-                        //if (strcmp(flash_sim, this_sim)==0)
                         #if SIM_SWITCH == FLASH
                         {
                             //if using FLASH data for 2D
                             //put proper number at the end of the flash file
-                            modifyFlashName(flash_file, flash_prefix, scatt_frame);
+                            modifyFlashName(hydro_file, hydro_prefix, scatt_frame);
                             phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
-                            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
+                            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
                             fflush(fPtr);
                             
                                 if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE))
@@ -802,17 +809,17 @@ int main(int argc, char **argv)
                                     //printf("NEW: min_r %e max_r %e\n", min_r, max_r);
                                 }
                             
-                            readAndDecimate(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                            readAndDecimate(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                     &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr);
                         }
                         //else if (strcmp(pluto_amr_sim, this_sim)==0)
                         #elif SIM_SWITCH == PLUTO_CHOMBO
                         {
-                            modifyPlutoName(flash_file, flash_prefix, scatt_frame);
-                            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, flash_file);
+                            modifyPlutoName(hydro_file, hydro_prefix, scatt_frame);
+                            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
                             fflush(fPtr);
                             phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
-                            readPlutoChombo(flash_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                            readPlutoChombo(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                     &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr);
                             
                             //exit(0);

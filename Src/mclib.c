@@ -36,12 +36,12 @@
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27, FINE_STRUCT=7.29735308e-3, CHARGE_EL= 4.8032068e-10;
 const double K_B=1.380658e-16, M_P=1.6726231e-24, THOM_X_SECT=6.65246e-25, M_EL=9.1093879e-28 , R_EL=2.817941499892705e-13;
 
-int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200], int angle_rank,  int angle_procs, int last_frame)
+int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[STR_BUFFER], int angle_rank,  int angle_procs, int last_frame)
 {
     int i=0, j=0, val=0, original_num_procs=-1, rand_num=0;
     int frame2=0, framestart=0, scatt_framestart=0, ph_num=0;
     double time=0;
-    char mc_chkpt_files[200]="", restrt=""; //define new variable that wont write over the restrt variable in the main part of the code, when its put into the readCheckpoint function
+    char mc_chkpt_files[STR_BUFFER]="", restrt=""; //define new variable that wont write over the restrt variable in the main part of the code, when its put into the readCheckpoint function
     struct photon *phPtr=NULL; //pointer to array of photons 
     //DIR * dirp;
     //struct dirent * entry;
@@ -92,7 +92,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
     }
     
     int limit= (angle_rank != angle_procs-1) ? (angle_rank+1)*original_num_procs/angle_procs : original_num_procs;
-    //char mc_chkpt_files[200]="";
+    //char mc_chkpt_files[STR_BUFFER]="";
     
     printf("Angle ID: %d, start_num: %d, limit: %d\n", angle_rank, (angle_rank*original_num_procs/angle_procs),  limit);
     
@@ -142,7 +142,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200
 }
 
 
-void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosynch_ph_emit, int num_null_ph, int scatt_cyclosynch_num_ph, int frame,int frame_inj, int frame_last, char dir[200], int angle_rank, FILE *fPtr )
+void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosynch_ph_emit, int num_null_ph, int scatt_cyclosynch_num_ph, int frame,int frame_inj, int frame_last, char dir[STR_BUFFER], int angle_rank, FILE *fPtr )
 {
     //function to save the photons' positions and 4 momentum
     
@@ -157,7 +157,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
     #if defined(_OPENMP)
     int num_thread=omp_get_num_threads();
     #endif
-    char mc_file[200]="", group[200]="", group_weight[200]="", *ph_type=NULL;
+    char mc_file[STR_BUFFER]="", group[200]="", group_weight[200]="", *ph_type=NULL;
     double p0[net_num_ph], p1[net_num_ph], p2[net_num_ph], p3[net_num_ph] , r0[net_num_ph], r1[net_num_ph], r2[net_num_ph], num_scatt[net_num_ph], weight[weight_net_num_ph], global_weight[net_num_ph];
     double s0[net_num_ph], s1[net_num_ph], s2[net_num_ph], s3[net_num_ph], comv_p0[net_num_ph], comv_p1[net_num_ph], comv_p2[net_num_ph], comv_p3[net_num_ph];
     hid_t  file, file_init, dspace, dspace_weight, dspace_global_weight, fspace, mspace, prop, prop_weight, prop_global_weight, group_id;
@@ -217,7 +217,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
     
     //make strings for file name and group
     snprintf(mc_file,sizeof(mc_file),"%s%s%d%s",dir,"mc_proc_", angle_rank, ".h5" );
-    snprintf(group,sizeof(mc_file),"%d",frame );
+    snprintf(group,sizeof(group),"%d",frame );
     
     //see if file exists, if not create it, if it does just open it
     status = H5Eset_auto(NULL, NULL, NULL); //turn off automatic error printing
@@ -258,7 +258,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
     {
         //printf("In IF\n");
         //if the file exists, see if the weight exists
-        //snprintf(group_weight,sizeof(group),"/PW",i );
+        //snprintf(group_weight,sizeof(group_weight),"/PW",i );
         status = H5Eset_auto(NULL, NULL, NULL);
         status_weight = H5Gget_objinfo (file, "/PW", 0, NULL);
         status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
@@ -927,7 +927,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
 
 }
 
-int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph, int last_frame, int angle_rank,int angle_size )
+int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph, int last_frame, int angle_rank,int angle_size )
 {
     //function to save data necessary to restart simulation if it ends
     //need to save all photon data
@@ -1092,11 +1092,11 @@ int saveCheckpoint(char dir[200], int frame, int frame2, int scatt_frame, int ph
     return success;
 }
 
-int readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size )
+int readCheckpoint(char dir[STR_BUFFER], struct photon **ph, int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size )
 {
     //function to read in data from checkpoint file
     FILE *fPtr=NULL;
-    char checkptfile[200]="";
+    char checkptfile[STR_BUFFER]="";
     int i=0;
     int scatt_cyclosynch_num_ph=0;//count the number of scattered synchrotron photons from the previosu frame that were saved
     //int frame, scatt_frame, ph_num, i=0;
@@ -1213,128 +1213,107 @@ int readCheckpoint(char dir[200], struct photon **ph, int *frame2, int *framesta
     return scatt_cyclosynch_num_ph;
 }
 
-void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large, int *last_frm, int *frm2_small,int *frm2_large , double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart)
+void readMcPar(char file[STR_BUFFER], struct hydro_dataframe *hydro_data, double *theta_jmin, double *theta_j, double *n_theta_j, double **inj_radius, int **frm0, int **frm2, int *min_photons, int *max_photons, char *spect, char *restart)
 {
     //function to read mc.par file
 	FILE *fptr=NULL;
-	char buf[100]="";
+    char buf[100]="", buf2[100]="", *value, *context = NULL, copied_str[100]="";
 	double theta_deg;
+    int i, val;
 	
 	//open file
 	fptr=fopen(file,"r");
-	//read in frames per sec and other variables outlined in main()
-    fscanf(fptr, "%lf",fluid_domain_x);
-	//printf("%lf\n", *fluid_domain_x );
-	
-	fgets(buf, 100,fptr);
     
-    fscanf(fptr, "%lf",fluid_domain_y);
-	//printf("%lf\n", *fluid_domain_y );
-	
-	fgets(buf, 100,fptr);
+    //read first block about hydro simulation frame
+    fgets(buf, sizeof(buf), fptr); //reads block info
+    fgets(buf, sizeof(buf),fptr); //reads /n
+    fscanf(fptr, "%lf", &(hydro_data->fps));
+    fgets(buf, sizeof(buf),fptr); //reads until end of line
+    fscanf(fptr, "%d",&(hydro_data->last_frame));
+    fgets(buf, sizeof(buf),fptr); //reads until end of line
+    fscanf(fptr, "%lf", &((hydro_data->r0_domain)[0]) );
+    fscanf(fptr, "%lf", &((hydro_data->r0_domain)[1]) );
+    fgets(buf, sizeof(buf),fptr); //reads until end of line
+    fscanf(fptr, "%lf", &((hydro_data->r1_domain)[0]));
+    fscanf(fptr, "%lf", &((hydro_data->r1_domain)[1]));
+    fgets(buf, sizeof(buf),fptr); //reads until end of line
+    fscanf(fptr, "%lf", &((hydro_data->r2_domain)[0]));
+    fscanf(fptr, "%lf", &((hydro_data->r2_domain)[1]));
+    fgets(buf, sizeof(buf),fptr); //reads until end of line
+
+    //read second block about MCRaT injection angles
+    fgets(buf, sizeof(buf),fptr); //reads block info
+    fgets(buf, sizeof(buf),fptr); //reads /n
+    fscanf(fptr, "%lf",&theta_deg);
+    *theta_jmin=theta_deg;// leave as degrees to manipulate processes
+    fgets(buf, sizeof(buf),fptr);
+    fscanf(fptr, "%lf",&theta_deg);
+    *theta_j=theta_deg;//leave as degrees to manipulate processes
+    fgets(buf, sizeof(buf),fptr);
+    fscanf(fptr, "%lf",&theta_deg);
+    *n_theta_j=theta_deg;
+    fgets(buf, sizeof(buf),fptr); //reads the rest of the line
     
-	fscanf(fptr, "%lf",fps);
-	//printf("%f\n", *fps );
-	
-	fgets(buf, 100,fptr);
-	
-	fscanf(fptr, "%d",frm0_small);
-	//printf("%d\n", *frm0_small );
-	
-	fgets(buf, 100,fptr);
+    //need to read in next line with n_theta_j values for the injection frame start
+    (*inj_radius)=malloc( ((int) *n_theta_j)*sizeof(double) );
+    (*frm0)=malloc(((int) *n_theta_j)*sizeof(int));
+    (*frm2)=malloc(((int) *n_theta_j)*sizeof(int));
     
-    fscanf(fptr, "%d",frm0_large);
-	//printf("%d\n", *frm0_large );
-	
-	fgets(buf, 100,fptr);
-	
-	fscanf(fptr, "%d",last_frm);
-	//printf("%d\n", *last_frm );
+    fgets(buf, sizeof(buf),fptr); //reads the whole line for injection frame start
+    value = strtok_r(buf, " ", &context);
+    for (i=0;i< (int) *n_theta_j;i++)
+    {
+        strcpy(copied_str, value);
+        //printf("i %d Read token: %s\n", i, value);
+        (*frm0)[i]=strtol(copied_str, buf2, 10);
+        value = strtok_r(NULL, " ", &context);
+    }
     
-	
-	fgets(buf, 100,fptr);
-	
-	fscanf(fptr, "%d",frm2_small);
-    *frm2_small+=*frm0_small; //frame to go to is what is given in the file plus the starting frame
-	//printf("%d\n", *frm2_small );
-	
-	fgets(buf, 100,fptr);
-	
-	//fscanf(fptr, "%d",photon_num); remove photon num because we dont need this
-	//printf("%d\n", *photon_num );
+    fgets(buf, sizeof(buf),fptr); //reads the whole line for injection frame end
+    value = strtok_r(buf, " ", &context);
+    for (i=0;i< (int) *n_theta_j;i++)
+    {
+        strcpy(copied_str, value);
+        //printf("i %d Read token: %s\n", i, value);
+        (*frm2)[i]=strtol(copied_str, buf2, 10)+(*frm0)[i];
+        value = strtok_r(NULL, " ", &context);
+    }
     
-    fscanf(fptr, "%d",frm2_large);
-    *frm2_large+=*frm0_large; //frame to go to is what is given in the file plus the starting frame
-    //printf("%d\n", *frm2_large );
-	
-	fgets(buf, 100,fptr);
-	
-	//fgets(buf, 100,fptr);
-	
-	fscanf(fptr, "%lf",inj_radius_small);
-	//printf("%lf\n", *inj_radius_small );
-	
-	fgets(buf, 100,fptr);
+    fgets(buf, sizeof(buf),fptr); //reads the whole line for injection frame start
+    value = strtok_r(buf, " ", &context);
+    for (i=0;i< (int) *n_theta_j;i++)
+    {
+        strcpy(copied_str, value);
+        //printf("i %d Read token: %s\n", i, value);
+        (*inj_radius)[i]=strtof(copied_str, NULL);
+        value = strtok_r(NULL, " ", &context);
+    }
+    fgets(buf, sizeof(buf),fptr); //reads the new line
     
-    fscanf(fptr, "%lf",inj_radius_large);
-	//printf("%lf\n", *inj_radius_large );
-	
-	fgets(buf, 100,fptr);
-    
-	//theta jmin
-	fscanf(fptr, "%lf",&theta_deg);
-	*theta_jmin=theta_deg;//*M_PI/180; leave as degrees to manipulate processes 
-	//printf("%f\n", *theta_jmin );
-	
-	
-	fgets(buf, 100,fptr);
-	
-	fscanf(fptr, "%lf",&theta_deg);
-    *theta_j=theta_deg;//*M_PI/180;
-	//printf("%f\n", *theta_j );
-	
-	fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%lf",d_theta_j);
-    //*theta_j=theta_deg;//*M_PI/180;
-	//printf("%f\n", *theta_j );
-	
-	fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%lf",ph_weight_small);
-    //printf("%f\n", *ph_weight_small );
-    fgets(buf, 100,fptr);
-    
-    fscanf(fptr, "%lf",ph_weight_large);
-    fgets(buf, 100,fptr);
+    //look at the photon block
+    fgets(buf, sizeof(buf),fptr); //reads the block header
+    fgets(buf, sizeof(buf),fptr); //reads the \n
+    *spect=getc(fptr);
+    fgets(buf, sizeof(buf),fptr); //reads the remainder of the line
     
     fscanf(fptr, "%d",min_photons);
     fgets(buf, 100,fptr);
     
     fscanf(fptr, "%d",max_photons);
     fgets(buf, 100,fptr);
-    
-    *spect=getc(fptr);
     fgets(buf, 100,fptr);
-    //printf("%c\n",*spect);
     
+    //read the initialization or continuation char
+    fgets(buf, sizeof(buf),fptr); //reads the block header
+    fgets(buf, sizeof(buf),fptr); //reads the \n
     *restart=getc(fptr);
     fgets(buf, 100,fptr);
-    
-    //dont need this line fo code for MPI 
-    //fscanf(fptr, "%d",num_threads);
-    //printf("MAKE SURE THERE IS NO NUM_THREADS LINE IN THE MC.PAR FILE.\n");
-    //fgets(buf, 100,fptr);
-    
-    //fscanf(fptr, "%d",dim_switch);
-    //printf("MAKE SURE THERE IS NO DIM_SWITCH LINE IN THE MC.PAR FILE.\n");
-    //printf("%d\n",*dim_switch);
     
 	//close file
 	fclose(fptr);
 }
 
-void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
+void readAndDecimate(char flash_file[STR_BUFFER], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
  double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr)
 {
     //function to read in data from FLASH file
@@ -4092,13 +4071,13 @@ void structuredFireballPrep(double *r, double *theta,  double *x, double *y, dou
 }
 
 
-void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, int angle_id, FILE *fPtr )
+void dirFileMerge(char dir[STR_BUFFER], int start_frame, int last_frame, int numprocs, int angle_id, FILE *fPtr )
 {
     //function to merge files in mcdir produced by various threads
     double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *comv_p0=NULL, *comv_p1=NULL, *comv_p2=NULL, *comv_p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;
     int i=0, j=0, k=0, isNotCorrupted=0, num_types=9; //just save lab 4 momentum, position and num_scatt by default
     int increment=1;
-    char filename_k[2000]="", file_no_thread_num[2000]="", cmd[2000]="", mcdata_type[20]="";
+    char filename_k[STR_BUFFER]="", file_no_thread_num[STR_BUFFER]="", cmd[STR_BUFFER]="", mcdata_type[20]="";
     char group[200]="", *ph_type=NULL;
     hid_t  file, file_new, group_id, dspace;
     hsize_t dims[1]={0};
@@ -4635,10 +4614,10 @@ void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs, 
     
 }
 
-void modifyFlashName(char flash_file[200], char prefix[200], int frame)
+void modifyFlashName(char flash_file[STR_BUFFER], char prefix[STR_BUFFER], int frame)
 {
     int lim1=0, lim2=0, lim3=0;
-    char test[200]="" ;
+    char test[STR_BUFFER]="" ;
     //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
     #if DIMENSIONS == 2
     {
@@ -4682,11 +4661,11 @@ void modifyFlashName(char flash_file[200], char prefix[200], int frame)
 }
 
 
-void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r, double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, FILE *fPtr)
+void readHydro2D(char hydro_prefix[STR_BUFFER], int frame, double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r, double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, FILE *fPtr)
 {
     
     FILE *hydroPtr=NULL;
-    char hydrofile[200]="", file_num[200]="", full_file[200]="", file_end[200]=""  ;
+    char hydrofile[STR_BUFFER]="", file_num[STR_BUFFER]="", full_file[STR_BUFFER]="", file_end[STR_BUFFER]=""  ;
     char buf[10]="";
     int i=0, j=0, k=0, elem=0, elem_factor=0;
     int all_index_buffer=0, r_min_index=0, r_max_index=0, theta_min_index=0, theta_max_index=0; //all_index_buffer contains phi_min, phi_max, theta_min, theta_max, r_min, r_max indexes to get from grid files
@@ -5046,3 +5025,106 @@ void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, do
     //fflush(fPtr);
 }
 
+double *mcratCoordinateToHydroCoordinate(double mcrat_r0, double mcrat_r1, double mcrat_r2, double *ph_hydro_coord)
+{
+    //function to convert MCRaT cartesian coordinate in 3D to the proper hydro coordinates
+    double r0=-1, r1=-1, r2=-1;
+    
+    #if DIMENSIONS == 2
+        //can be cartesian (x,z), polar (r,phi), spherical (r,theta), cylindrical (r,z),
+        //for cartesian have to reduce MCRaT x,y to hydro x coord and leave z
+        //(for polar have to reduce MCRaT x,y,z to radius and calculate phi from projected x axis), NOT SUPPORTING POLAR 2D
+        //for spherical do the same as for polar
+        //for cylindrical do the same as cartesian
+        //ASSUME AXISYMMETRIC JET AXIS ALONG SECOND COORDINATE
+    
+        #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
+            r0=sqrt(mcrat_r0*mcrat_r0+mcrat_r1*mcrat_r1); //x coordinate or r coordinate
+            r1=mcrat_r2; //coordinate along jet axis
+        #endif
+    
+        #if GEOMETRY == SPHERICAL
+            r0=sqrt(mcrat_r0*mcrat_r0+mcrat_r1*mcrat_r1+mcrat_r2*mcrat_r2); //r coordinate
+            r1=arccos(mcrat_r2/r0); //cooridinate along jet axis
+        #endif
+        
+    #else
+        //can be cartesian (x,y,z;same as MCRaT), spherical (r, theta, phi), Polar (r, phi, z)
+        #if GEOMETRY == CARTESIAN
+            r0=mcrat_r0; //x coordinate
+            r1=mcrat_r1; // y coordinate
+            r2=mcrat_r2; // z coordinate
+        #endif
+    
+        #if GEOMETRY == SPHERICAL
+            r0=sqrt(mcrat_r0*mcrat_r0+mcrat_r1*mcrat_r1+mcrat_r2*mcrat_r2); // r coordinate
+            r1=arccos(mcrat_r2/r0); //theta cooridinate along jet axis
+            r2=atan2(mcrat_r1, mcrat_r0); // phi coordinate
+        #endif
+
+        #if GEOMETRY == POLAR
+            r0=sqrt(mcrat_r0*mcrat_r0+mcrat_r1*mcrat_r1); // r coordinate
+            r1=atan2(mcrat_r1, mcrat_r0); //phi coordinate along jet axis
+            r2=mcrat_r2; // z coordinate
+        #endif
+
+    #endif
+    
+    *(ph_hydro_coord+0)=r0;
+    *(ph_hydro_coord+1)=r1;
+    *(ph_hydro_coord+2)=r2;
+    
+    return ph_hydro_coord;
+}
+
+double *hydroVectorToCartesian(double v0, double v1, double v2, double x0, double x1, double x2, double *cartesian_vector_3d)
+{
+    //takes the vector <v0, v1, v2> at position (x0, x1, x2) in the hydro coordinate system and converts it to a 3D vector
+    // in 2D for cylindrical, cartesian, and spherical coordinates can just pass in the photon phi for the value of x2 since we are assuming axisymmetry here anyways
+    //may need to modify if PLUTO allows for saving full 3D vectors even when it only considers 2D sims
+    double transformed_vector0=0, transformed_vector1=0, transformed_vector2=0;
+    
+    #if DIMENSIONS == 2
+        
+        #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
+            transformed_vector0=v0*cos(x2); //x coordinate
+            transformed_vector1=v0*sin(x2) ; //y
+            transformed_vector2=v1; //z
+        #endif
+
+        #if GEOMETRY == SPHERICAL
+            v2=0;//no phi hat component of the vector in 2D
+            transformed_vector0=v0*sin(x1)*cos(x2)+v1*cos(x1)*cos(x2)-v2*sin(x2); //x coordinate
+            transformed_vector1=v0*sin(x1)*sin(x2)+v1*cos(x1)*sin(x2)+v2*cos(x2); //y
+            transformed_vector2=v0*cos(x1)-v1*sin(x1); //z
+        #endif
+        
+    #else
+    
+        #if GEOMETRY == CARTESIAN
+            transformed_vector0=v0; //x coordinate
+            transformed_vector1=v1 ; //y
+            transformed_vector2=v2; //z
+        #endif
+
+    
+        #if GEOMETRY == SPHERICAL
+            transformed_vector0=v0*sin(x1)*cos(x2)+v1*cos(x1)*cos(x2)-v2*sin(x2); //x coordinate
+            transformed_vector1=v0*sin(x1)*sin(x2)+v1*cos(x1)*sin(x2)+v2*cos(x2); //y
+            transformed_vector2=v0*cos(x1)-v1*sin(x1); //z
+        #endif
+    
+        #if GEOMETRY == POLAR
+            transformed_vector0=v0*cos(x1)-v1*sin(x1); //x coordinate
+            transformed_vector1=v0*sin(x1)+v1*cos(x1); //y
+            transformed_vector2=v2; //z
+        #endif
+
+    #endif
+    
+    *(cartesian_vector_3d+0)=transformed_vector0;
+    *(cartesian_vector_3d+1)=transformed_vector1;
+    *(cartesian_vector_3d+2)=transformed_vector2;
+    
+    return cartesian_vector_3d;
+}

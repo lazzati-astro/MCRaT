@@ -26,10 +26,10 @@
 #define STRUCTURED_SPHERICAL_OUTFLOW    3
 
 //define the geometries that we can handle
-#define CARTESIAN   0
-#define SPHERICAL   1
-#define CYLINDRICAL 2
-#define POLAR       3
+#define CARTESIAN   0 //2D, 3D
+#define SPHERICAL   1 //2D, 3D
+#define CYLINDRICAL 2 //2D
+#define POLAR       3 //only in 3D, technically Cylindrical coordinates but PLUTO calls this POLAR
 
 //define the types of things that we can assume for the thermal synchrotron emission and how we calculate the B field
 #define INTERNAL_E  0
@@ -60,7 +60,7 @@ extern const double R_EL;
 
 struct photon
 {
-    char type; //was the photon injected as blackbody or wien, 'i', or was it emitted as synchrotron 's', or 'c' is it was a synchrotron photon that was compton scattered
+    char type; //was the photon injected as blackbody or wien, 'i', or was it emitted as cyclo-synchrotron or was it a cyclo-synchrotron photon that was compton scattered
     double p0; //E/c, 4 momentum is in lab frame
     double p1; // p_x
     double p2; //p_y
@@ -69,7 +69,7 @@ struct photon
     double comv_p1; // p_x
     double comv_p2; //p_y
     double comv_p3; //p_z
-    double r0; //x in MCRaT coordinates
+    double r0; //x in MCRaT coordinates these get saved
     double r1; //y
     double r2; //z
     double s0; //stokes I always 1
@@ -80,6 +80,47 @@ struct photon
     double weight; //each photon should have equal weight, sp this shouldnt matter, weight in mc.par file but across injections can have varying weights
     int nearest_block_index; //index that  allows for extraction of information of the hydro grid block closest to the photon
 } ; //structure to hold photon information
+
+struct hydro_dataframe
+{
+    /*
+     Coordinate System  |   Coordinate unit vector order (r0,r1,r2)/(v0,v1,v2)
+     3D Cartesian       |       x, y, z
+     3D Spherical       |       r, theta, phi
+     3D Polar           |       r, phi, z
+     2D Cartesian       |       x, z
+     2D Cylindrical     |       r, z //in PLUTO its possible to save 3D vectors, dont support this for now assume only 2D vectors
+     2D Spherical       |       r, theta
+     */
+    int num_elements; //number of elements in each array
+    double *r0; //coodinates in hydro coodinate system that user provides,
+    double *r1;
+    double *r2;
+    double *r0_size;//size of fluid elements
+    double *r1_size;
+    double *r2_size;
+    double *r;
+    double *theta;
+    double *v0; //velocity in hydro coordinate system
+    double *v1;
+    double *v2;
+    double *dens;
+    double *dens_lab;
+    double *pres;
+    double *temp;
+    double *gamma;
+    double *B0; //magentic field in hydro coordinate system
+    double *B1;
+    double *B2;
+    
+    //also hold global simulation information
+    double r0_domain[2]; //holds min and max values of r0 coordinates for hydro sim
+    double r1_domain[2];
+    double r2_domain[2];
+    double fps; //frames per second of the simulation
+    int frame_number;
+    int last_frame;
+}; // structure to hold all information for a given hydro simulation
 
 #include "mcrat_input.h"
 
@@ -160,12 +201,11 @@ struct photon
 #endif
 
 
-void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosynch_ph_emit, int num_null_ph, int scatt_cyclosynch_num_ph, int frame,int frame_inj, int frame_last, char dir[200], int angle_rank, FILE *fPtr );
+void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosynch_ph_emit, int num_null_ph, int scatt_cyclosynch_num_ph, int frame,int frame_inj, int frame_last, char dir[STR_BUFFER], int angle_rank, FILE *fPtr );
 
-void readMcPar(char file[200], double *fluid_domain_x, double *fluid_domain_y, double *fps, double *theta_jmin, double *theta_j, double *d_theta_j, double *inj_radius_small, double *inj_radius_large, int *frm0_small, int *frm0_large,\
-int *last_frm, int *frm2_small,int *frm2_large, double *ph_weight_small,double *ph_weight_large,int *min_photons, int *max_photons, char *spect, char *restart);
+void readMcPar(char file[STR_BUFFER], struct hydro_dataframe *hydro_data, double *theta_jmin, double *theta_j, double *n_theta_j, double **inj_radius, int **frm0, int **frm2, int *min_photons, int *max_photons, char *spect, char *restart);
 
-void readAndDecimate(char flash_file[200], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
+void readAndDecimate(char flash_file[STR_BUFFER], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
  double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr);
  
  void photonInjection( struct photon **ph, int *ph_num, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, int array_length, double fps, double theta_min, double theta_max,\
@@ -213,11 +253,11 @@ double averagePhotonEnergy(struct photon *ph, int num_ph);
 
 void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg, double *r_avg, FILE *fPtr  );
 
-int saveCheckpoint(char dir[200], int frame,  int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph , int last_frame, int angle_rank, int angle_size);
+int saveCheckpoint(char dir[STR_BUFFER], int frame,  int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph , int last_frame, int angle_rank, int angle_size);
 
-int readCheckpoint(char dir[200], struct photon **ph,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size );
+int readCheckpoint(char dir[STR_BUFFER], struct photon **ph,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size );
 
-void dirFileMerge(char dir[200], int start_frame, int last_frame, int numprocs,  int angle_id, FILE *fPtr);
+void dirFileMerge(char dir[STR_BUFFER], int start_frame, int last_frame, int numprocs,  int angle_id, FILE *fPtr);
 
 void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array);
 
@@ -225,10 +265,14 @@ void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, 
 
 void structuredFireballPrep(double *r, double *theta,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array, FILE *fPtr);
 
-void modifyFlashName(char flash_file[200], char prefix[200], int frame);
+void modifyFlashName(char flash_file[STR_BUFFER], char prefix[STR_BUFFER], int frame);
 
 
-void readHydro2D(char hydro_prefix[200], int frame, double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
+void readHydro2D(char hydro_prefix[STR_BUFFER], int frame, double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
                      double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, FILE *fPtr);
 
-int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[200], int angle_rank,  int angle_procs, int last_frame);
+int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[STR_BUFFER], int angle_rank,  int angle_procs, int last_frame);
+
+double *mcratCoordinateHydroCoordinate(double mcrat_r0, double mcrat_r1, double mcrat_r2, double *ph_hydro_coord);
+
+double *hydroVectorToCartesian(double v0, double v1, double v2, double x0, double x1, double x2, double *cartesian_vector_3d);

@@ -26,7 +26,7 @@
 
 #include <omp.h>
 
-void readPlutoChombo( char pluto_file[200], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
+void readPlutoChombo( char pluto_file[STR_BUFFER], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
 double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr)
 {
     hid_t  file, dset, space, group, attr;
@@ -495,10 +495,10 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
 
 }
 
-void modifyPlutoName(char file[200], char prefix[200], int frame)
+void modifyPlutoName(char file[STR_BUFFER], char prefix[STR_BUFFER], int frame)
 {
     int lim1=0, lim2=0, lim3=0;
-    char test[200]="" ;
+    char test[STR_BUFFER]="" ;
     
     //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
     #if DIMENSIONS == 2
