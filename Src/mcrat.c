@@ -162,7 +162,7 @@ int main(int argc, char **argv)
      //comm for angles
      
      procs_per_angle= numprocs/num_angles;
-     printf("%d\n", procs_per_angle);
+     //printf("%d\n", procs_per_angle);
      
      MPI_Comm angle_comm;
      if (restrt==INITALIZE) //uncomment this when I run MCRAT for sims that didnt originally save angle_procs
@@ -469,21 +469,6 @@ int main(int argc, char **argv)
       
     MPI_Barrier(MPI_COMM_WORLD);
     free(inj_radius_input); free(frm0_input);free(frm2_input); //free input arrays sonce we hav determined which of the values in the arrays are applicable for this process
-    
-    if ((theta_jmin_thread >= 0) &&  (theta_jmax_thread <= (2*M_PI/180) )) //if within small angle (0-2 degrees) use _small inj_radius and frm2 have to think about this for larger domains
-    {
-        inj_radius=inj_radius;
-        frm2=frm2_small;
-        frm0=frm0_small;
-        ph_weight_suggest=ph_weight_default;
-    }
-    else
-    {
-        inj_radius=inj_radius;
-        frm2=frm2_large;
-        frm0=frm0_large;
-        ph_weight_suggest=ph_weight_default;
-    }
     
     //make vector to hold the frames we are injecting in, vector should have (frm2-frm0)/angle_procs slots, if fps is const
     
