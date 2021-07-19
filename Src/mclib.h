@@ -289,13 +289,13 @@ void readHydro2D(char hydro_prefix[STR_BUFFER], int frame, double r_inj, double 
 
 int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[STR_BUFFER], int angle_rank,  int angle_procs, int last_frame);
 
-double *mcratCoordinateHydroCoordinate(double mcrat_r0, double mcrat_r1, double mcrat_r2, double *ph_hydro_coord);
+void mcratCoordinateToHydroCoordinate(double *ph_hydro_coord, double mcrat_r0, double mcrat_r1, double mcrat_r2);
 
-double *hydroVectorToCartesian(double v0, double v1, double v2, double x0, double x1, double x2, double *cartesian_vector_3d);
-
-void hydroCoordinateToSpherical(double r0, double r1, double r2, double *r, double *theta);
+void hydroCoordinateToSpherical(double *r, double *theta, double r0, double r1, double r2);
 
 void fillHydroCoordinateToSpherical(struct hydro_dataframe *hydro_data);
+
+void hydroVectorToCartesian(double *cartesian_vector_3d, double v0, double v1, double v2, double x0, double x1, double x2);
 
 void hydroDataFrameInitialize(struct hydro_dataframe *hydro_data);
 

@@ -5025,7 +5025,7 @@ void readHydro2D(char hydro_prefix[STR_BUFFER], int frame, double r_inj, double 
     //fflush(fPtr);
 }
 
-double *mcratCoordinateToHydroCoordinate(double mcrat_r0, double mcrat_r1, double mcrat_r2, double *ph_hydro_coord)
+void mcratCoordinateToHydroCoordinate(double *ph_hydro_coord, double mcrat_r0, double mcrat_r1, double mcrat_r2)
 {
     //function to convert MCRaT cartesian coordinate in 3D to the proper hydro coordinates
     double r0=-1, r1=-1, r2=-1;
@@ -5074,10 +5074,9 @@ double *mcratCoordinateToHydroCoordinate(double mcrat_r0, double mcrat_r1, doubl
     *(ph_hydro_coord+1)=r1;
     *(ph_hydro_coord+2)=r2;
     
-    return ph_hydro_coord;
 }
 
-void hydroCoordinateToSpherical(double r0, double r1, double r2, double *r, double *theta)
+void hydroCoordinateToSpherical(double *r, double *theta, double r0, double r1, double r2)
 {
     //this function converts hydro coordinates to spherical r and theta coordinates
     int i=0;
@@ -5129,7 +5128,7 @@ void fillHydroCoordinateToSpherical(struct hydro_dataframe *hydro_data)
     
     for (i=0;i<hydro_data->num_elements;i++)
     {
-        hydroCoordinateToSpherical(((hydro_data->r0))[i], ((hydro_data->r1))[i], ((hydro_data->r2))[i], &sph_r, &sph_theta);
+        hydroCoordinateToSpherical(&sph_r, &sph_theta, ((hydro_data->r0))[i], ((hydro_data->r1))[i], ((hydro_data->r2))[i]);
         ((hydro_data->r))[i]=sph_r;
         ((hydro_data->theta))[i]=sph_theta;
 
@@ -5137,7 +5136,7 @@ void fillHydroCoordinateToSpherical(struct hydro_dataframe *hydro_data)
     
 }
 
-double *hydroVectorToCartesian(double v0, double v1, double v2, double x0, double x1, double x2, double *cartesian_vector_3d)
+void hydroVectorToCartesian(double *cartesian_vector_3d, double v0, double v1, double v2, double x0, double x1, double x2)
 {
     //takes the vector <v0, v1, v2> at position (x0, x1, x2) in the hydro coordinate system and converts it to a 3D vector
     // in 2D for cylindrical, cartesian, and spherical coordinates can just pass in the photon phi for the value of x2 since we are assuming axisymmetry here anyways
@@ -5186,7 +5185,6 @@ double *hydroVectorToCartesian(double v0, double v1, double v2, double x0, doubl
     *(cartesian_vector_3d+1)=transformed_vector1;
     *(cartesian_vector_3d+2)=transformed_vector2;
     
-    return cartesian_vector_3d;
 }
 
 

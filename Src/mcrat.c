@@ -610,7 +610,6 @@ int main(int argc, char **argv)
             
             //for a checkpoint implementation, start from the last saved "frame" value and go to the saved "frm2" value
             
-            //#pragma omp for 
             
             for (frame=framestart;frame<=frm2;frame=frame+hydrodata.increment_inj_frame)
             {
@@ -640,12 +639,9 @@ int main(int argc, char **argv)
                 
                 if (restrt==INITALIZE)
                 {
-                    
-                    
-                    //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
+
                     #if DIMENSIONS == 2
                     {
-                        //if (strcmp(flash_sim, this_sim)==0)
                         #if SIM_SWITCH == FLASH
                         //{
                             //if using FLASH data for 2D
@@ -657,7 +653,6 @@ int main(int argc, char **argv)
                             
                             readAndDecimate(hydro_file, &hydrodata, inj_radius, 1, min_r, max_r, min_theta, max_theta, fPtr);
                         //}
-                        //else if (strcmp(pluto_amr_sim, this_sim)==0)
                         #elif SIM_SWITCH == PLUTO_CHOMBO
                         //{
                             modifyPlutoName(hydro_file, hydro_prefix, frame);
@@ -679,7 +674,6 @@ int main(int argc, char **argv)
                         //}
                         #endif
                         fprintf(fPtr, "Number of Hydro Elements %d\n", array_num);
-        //exit(0);
                     }
                     #else
                     {
@@ -695,19 +689,16 @@ int main(int argc, char **argv)
                     fillHydroCoordinateToSpherical(&hydrodata);
                     
                     //check for run type
-                    //if(strcmp(cyl, this_run)==0)
                     #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
                     {
                         //printf("In cylindrical prep\n");
                         cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
                     }
-                    //else if (strcmp(sph, this_run)==0)
                     #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
                     {
                         //printf("In Spherical\n");
                         sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
                     }
-                    //else if (strcmp(struct_sph, this_run)==0)
                     #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
                     {
                         //printf("In Structural Spherical\n");
@@ -738,6 +729,8 @@ int main(int argc, char **argv)
                     //    printf("%e,%e,%e \n",(phPtr+i)->r0, (phPtr+i)->r1, (phPtr+i)->r2 );
                     
                 }
+                
+                freeHydroDataFrame(&hydrodata);//free frame data here since we rewrite over pointers in next loop
                 
                 //scatter photons all the way thoughout the jet
                 //for a checkpoint implmentation, start from the last saved "scatt_frame" value eh start_frame=frame or start_frame=cont_frame
@@ -851,6 +844,9 @@ int main(int argc, char **argv)
                     }
                     #endif
                     fprintf(fPtr, "Number of Hydo Elements %d\n", array_num);
+                    
+                    //convert hydro coordinates to spherical so we can inject photons, overwriting values, etc.
+                    fillHydroCoordinateToSpherical(&hydrodata);
                     
                     
                     //check for run type
