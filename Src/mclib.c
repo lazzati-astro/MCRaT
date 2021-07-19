@@ -1313,8 +1313,7 @@ void readMcPar(char file[STR_BUFFER], struct hydro_dataframe *hydro_data, double
 	fclose(fptr);
 }
 
-void readAndDecimate(char flash_file[STR_BUFFER], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
- double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr)
+void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_data, double r_inj, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr)
 {
     //function to read in data from FLASH file
     hid_t  file,dset, space;
@@ -1325,7 +1324,7 @@ void readAndDecimate(char flash_file[STR_BUFFER], double r_inj, double fps, doub
     int  i,j,count,x1_count, y1_count, r_count, **node_buffer=NULL, num_nodes=0, elem_factor=0;
     double x1[8]={-7.0/16,-5.0/16,-3.0/16,-1.0/16,1.0/16,3.0/16,5.0/16,7.0/16};
     double ph_rmin=0, ph_rmax=0, ph_thetamin=0, ph_thetamax=0, r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0, track_min_r=DBL_MAX, track_max_r=0;
-        #if defined(_OPENMP)
+    #if defined(_OPENMP)
     int num_thread=omp_get_num_threads();
     #endif
     
@@ -1555,7 +1554,7 @@ void readAndDecimate(char flash_file[STR_BUFFER], double r_inj, double fps, doub
                 theta_grid_innercorner = acos( (*(y_unprc+i) - *(szx_unprc+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
                 theta_grid_outercorner = acos( (*(y_unprc+i) + *(szx_unprc+i)/2.0) /r_grid_outercorner);
                 
-                if (((ph_rmin - elem_factor*C_LIGHT/fps) <= r_grid_outercorner) && (r_grid_innercorner  <= (ph_rmax + elem_factor*C_LIGHT/fps) ) && (theta_grid_outercorner >= ph_thetamin) && (theta_grid_innercorner <= ph_thetamax) )
+                if (((ph_rmin - elem_factor*C_LIGHT/hydro_data->fps) <= r_grid_outercorner) && (r_grid_innercorner  <= (ph_rmax + elem_factor*C_LIGHT/hydro_data->fps) ) && (theta_grid_outercorner >= ph_thetamin) && (theta_grid_innercorner <= ph_thetamax) )
                 {
                     r_count++;
                 }
@@ -1571,25 +1570,26 @@ void readAndDecimate(char flash_file[STR_BUFFER], double r_inj, double fps, doub
         }
         //fprintf(fPtr, "r_count: %d count: %d\n", r_count, count);
     }
-    fprintf(fPtr, "Elem factor: %d Ph_rmin: %e rmax: %e Chosen FLASH min_r: %e max_r: %e min_theta: %e degrees max_theta: %e degrees\n", elem_factor, ph_rmin, ph_rmax, ph_rmin - (elem_factor*C_LIGHT/fps), ph_rmax + (elem_factor*C_LIGHT/fps), ph_thetamin*180/M_PI, ph_thetamax*180/M_PI);
+    fprintf(fPtr, "Elem factor: %d Ph_rmin: %e rmax: %e Chosen FLASH min_r: %e max_r: %e min_theta: %e degrees max_theta: %e degrees\n", elem_factor, ph_rmin, ph_rmax, ph_rmin - (elem_factor*C_LIGHT/hydro_data->fps), ph_rmax + (elem_factor*C_LIGHT/hydro_data->fps), ph_thetamin*180/M_PI, ph_thetamax*180/M_PI);
     fflush(fPtr);
     
-    //allocate memory to hold processed data
-    (*pres)=malloc (r_count * sizeof (double ));
-    (*velx)=malloc (r_count * sizeof (double ));
-    (*vely)=malloc (r_count * sizeof (double ));
-    (*dens)=malloc (r_count * sizeof (double ));
-    (*x)=malloc (r_count * sizeof (double ));
-    (*y)=malloc (r_count * sizeof (double ));
-    (*r)=malloc (r_count * sizeof (double ));
-    (*theta)=malloc (r_count * sizeof (double ));
-    (*gamma)=malloc (r_count * sizeof (double ));
-    (*dens_lab)=malloc (r_count * sizeof (double ));
-    (*szx)=malloc (r_count * sizeof (double ));
-    (*szy)=malloc (r_count * sizeof (double ));
-    (*temp)=malloc (r_count * sizeof (double ));
-
+    //allocate memory to hold processed data in the hydro data frame
+    (hydro_data->pres)=malloc (r_count * sizeof (double ));
+    (hydro_data->dens)=malloc (r_count * sizeof (double ));
+    (hydro_data->gamma)=malloc (r_count * sizeof (double ));
+    (hydro_data->dens_lab)=malloc (r_count * sizeof (double ));
+    (hydro_data->temp)=malloc (r_count * sizeof (double ));
     
+    (hydro_data->v0)=malloc (r_count * sizeof (double ));//velx
+    (hydro_data->v1)=malloc (r_count * sizeof (double ));//vely
+    (hydro_data->r0_size)=malloc (r_count * sizeof (double ));//szx
+    (hydro_data->r1_size)=malloc (r_count * sizeof (double ));//szy
+    (hydro_data->r0)=malloc (r_count * sizeof (double ));//x
+    (hydro_data->r1)=malloc (r_count * sizeof (double ));//y
+    (hydro_data->r)=malloc (r_count * sizeof (double ));//r
+    (hydro_data->theta)=malloc (r_count * sizeof (double ));//theta
+
+
     //assign values based on r> 0.95*r_inj
     j=0;
     for (i=0;i<count;i++)
@@ -1602,22 +1602,22 @@ void readAndDecimate(char flash_file[STR_BUFFER], double r_inj, double fps, doub
             theta_grid_innercorner = acos( (*(y_unprc+i) - *(szx_unprc+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
             theta_grid_outercorner = acos( (*(y_unprc+i) + *(szx_unprc+i)/2.0) /r_grid_outercorner);
 
-            if (((ph_rmin - elem_factor*C_LIGHT/fps) <= r_grid_outercorner) && (r_grid_innercorner  <= (ph_rmax + elem_factor*C_LIGHT/fps) ) && (theta_grid_outercorner >= ph_thetamin) && (theta_grid_innercorner <= ph_thetamax))
+            if (((ph_rmin - elem_factor*C_LIGHT/hydro_data->fps) <= r_grid_outercorner) && (r_grid_innercorner  <= (ph_rmax + elem_factor*C_LIGHT/hydro_data->fps) ) && (theta_grid_outercorner >= ph_thetamin) && (theta_grid_innercorner <= ph_thetamax))
             {
-                (*pres)[j]=*(pres_unprc+i);
-                (*velx)[j]=*(velx_unprc+i);
-                (*vely)[j]=*(vely_unprc+i);
+                ((hydro_data->pres))[j]=*(pres_unprc+i);
+                ((hydro_data->v0))[j]=*(velx_unprc+i);
+                ((hydro_data->v1))[j]=*(vely_unprc+i);
                 
-                (*dens)[j]=*(dens_unprc+i);
-                (*x)[j]=*(x_unprc+i);
-                (*y)[j]=*(y_unprc+i);
-                (*r)[j]=*(r_unprc+i);
-                (*szx)[j]=*(szx_unprc+i);
-                (*szy)[j]=*(szy_unprc+i);
-                (*theta)[j]=atan2( *(x_unprc+i) , *(y_unprc+i) );//theta in radians in relation to jet axis
-                (*gamma)[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
-                (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
-                (*temp)[j]=pow(3*(*(pres_unprc+i))/(A_RAD) ,1.0/4.0);
+                ((hydro_data->dens))[j]=*(dens_unprc+i);
+                ((hydro_data->r0))[j]=*(x_unprc+i);
+                ((hydro_data->r1))[j]=*(y_unprc+i);
+                ((hydro_data->r))[j]=*(r_unprc+i);
+                ((hydro_data->r0_size))[j]=*(szx_unprc+i);
+                ((hydro_data->r1_size))[j]=*(szy_unprc+i);
+                ((hydro_data->theta))[j]=atan2( *(x_unprc+i) , *(y_unprc+i) );//theta in radians in relation to jet axis
+                ((hydro_data->gamma))[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
+                ((hydro_data->dens_lab))[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
+                ((hydro_data->temp))[j]=pow(3*(*(pres_unprc+i))/(A_RAD) ,1.0/4.0);
                 j++;
                 /*
                 if (*(r_unprc+i)<track_min_r)
@@ -1636,19 +1636,19 @@ void readAndDecimate(char flash_file[STR_BUFFER], double r_inj, double fps, doub
         {
             if (*(r_unprc+i)> (0.95*r_inj) )
             {
-                (*pres)[j]=*(pres_unprc+i);
-                (*velx)[j]=*(velx_unprc+i);
-                (*vely)[j]=*(vely_unprc+i);
-                (*dens)[j]=*(dens_unprc+i);
-                (*x)[j]=*(x_unprc+i);
-                (*y)[j]=*(y_unprc+i);
-                (*r)[j]=*(r_unprc+i);
-                (*szx)[j]=*(szx_unprc+i);
-                (*szy)[j]=*(szy_unprc+i);
-                (*theta)[j]=atan2( *(x_unprc+i) , *(y_unprc+i) );//theta in radians in relation to jet axis
-                (*gamma)[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
-                (*dens_lab)[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
-                (*temp)[j]=pow(3*(*(pres_unprc+i))/(A_RAD) ,1.0/4.0);
+                ((hydro_data->pres))[j]=*(pres_unprc+i);
+                ((hydro_data->v0))[j]=*(velx_unprc+i);
+                ((hydro_data->v1))[j]=*(vely_unprc+i);
+                ((hydro_data->dens))[j]=*(dens_unprc+i);
+                ((hydro_data->r0))[j]=*(x_unprc+i);
+                ((hydro_data->r1))[j]=*(y_unprc+i);
+                ((hydro_data->r))[j]=*(r_unprc+i);
+                ((hydro_data->r0_size))[j]=*(szx_unprc+i);
+                ((hydro_data->r1_size))[j]=*(szy_unprc+i);
+                ((hydro_data->theta))[j]=atan2( *(x_unprc+i) , *(y_unprc+i) );//theta in radians in relation to jet axis
+                ((hydro_data->gamma))[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
+                ((hydro_data->dens_lab))[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
+                ((hydro_data->temp))[j]=pow(3*(*(pres_unprc+i))/(A_RAD) ,1.0/4.0);
                 j++;
             }
         }
@@ -1657,7 +1657,7 @@ void readAndDecimate(char flash_file[STR_BUFFER], double r_inj, double fps, doub
     //fprintf(fPtr, "Actual Min and Max Flash grid radii are: %e %e\n", track_min_r, track_max_r);
     //fflush(fPtr);
 
-    *number=r_count;
+    hydro_data->num_elements=r_count;
 
     free(pres_unprc); free(velx_unprc);free(vely_unprc);free(dens_unprc);free(x_unprc); free(y_unprc);free(r_unprc);free(szx_unprc);free(szy_unprc);
     //exit(0);
@@ -3974,7 +3974,7 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
 
 void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array)
 {
-    double  gamma_infinity=100, t_comov=1*pow(10, 5), ddensity=3e-7;// the comoving temperature in Kelvin, and the comoving density in g/cm^2
+    double  gamma_infinity=100, t_comov=1e5, ddensity=3e-7;// the comoving temperature in Kelvin, and the comoving density in g/cm^2
     int i=0;
     double vel=pow(1-pow(gamma_infinity, -2.0) ,0.5), lab_dens=gamma_infinity*ddensity;
     
@@ -5077,6 +5077,66 @@ double *mcratCoordinateToHydroCoordinate(double mcrat_r0, double mcrat_r1, doubl
     return ph_hydro_coord;
 }
 
+void hydroCoordinateToSpherical(double r0, double r1, double r2, double *r, double *theta)
+{
+    //this function converts hydro coordinates to spherical r and theta coordinates
+    int i=0;
+    double sph_r, sph_theta;//sph_theta is measured from the assumed jet axis
+    
+    #if DIMENSIONS == 2
+        
+        #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
+            sph_r=pow( r0*r0+r1*r1, 0.5);
+            sph_theta=atan2( r0 , r1 );
+
+        #endif
+
+        #if GEOMETRY == SPHERICAL
+            sph_r=r0;
+            sph_theta=r1;
+        #endif
+        
+    #else
+
+        #if GEOMETRY == CARTESIAN
+            sph_r=pow(  r0 * r0 + r1 * r1 + r2 * r2 , 0.5);
+            sph_theta=acos(  r2 /sph_r );
+        #endif
+
+
+        #if GEOMETRY == SPHERICAL
+            sph_r=r0;
+            sph_theta=r1;
+        #endif
+
+        #if GEOMETRY == POLAR
+            sph_r=pow(  r0 * r0 + r2 * r2 , 0.5);//sqrt(r^2+z^2)
+            sph_theta=acos( r2/sph_r );
+        #endif
+
+    #endif
+    
+    *r=sph_r;
+    *theta=sph_theta;
+    
+}
+
+void fillHydroCoordinateToSpherical(struct hydro_dataframe *hydro_data)
+{
+    //this function fills in the r and theta values in the hydro_data struct, which is used for photon injection, overwriting values, etc
+    int i=0;
+    double sph_r, sph_theta;//sph_theta is measured from the assumed jet axis
+    
+    for (i=0;i<hydro_data->num_elements;i++)
+    {
+        hydroCoordinateToSpherical(((hydro_data->r0))[i], ((hydro_data->r1))[i], ((hydro_data->r2))[i], &sph_r, &sph_theta);
+        ((hydro_data->r))[i]=sph_r;
+        ((hydro_data->theta))[i]=sph_theta;
+
+    }
+    
+}
+
 double *hydroVectorToCartesian(double v0, double v1, double v2, double x0, double x1, double x2, double *cartesian_vector_3d)
 {
     //takes the vector <v0, v1, v2> at position (x0, x1, x2) in the hydro coordinate system and converts it to a 3D vector
@@ -5127,4 +5187,73 @@ double *hydroVectorToCartesian(double v0, double v1, double v2, double x0, doubl
     *(cartesian_vector_3d+2)=transformed_vector2;
     
     return cartesian_vector_3d;
+}
+
+
+void hydroDataFrameInitialize(struct hydro_dataframe *hydro_data)
+{
+    //initialize pointers in hydro dataframe to NULL for debugging
+    hydro_data->r0=NULL;
+    hydro_data->r1=NULL;
+    hydro_data->r2=NULL;
+    hydro_data->r0_size=NULL;
+    hydro_data->r1_size=NULL;
+    hydro_data->r2_size=NULL;
+    hydro_data->r=NULL;
+    hydro_data->theta=NULL;
+    hydro_data->v0=NULL;
+    hydro_data->v1=NULL;
+    hydro_data->v2=NULL;
+    hydro_data->dens=NULL;
+    hydro_data->dens_lab=NULL;
+    hydro_data->pres=NULL;
+    hydro_data->temp=NULL;
+    hydro_data->gamma=NULL;
+    hydro_data->B0=NULL;
+    hydro_data->B1=NULL;
+    hydro_data->B2=NULL;
+}
+
+void freeHydroDataFrame(struct hydro_dataframe *hydro_data)
+{
+    //free pointers in hydro dataframe to NULL for debugging
+    free(hydro_data->r0);
+    free(hydro_data->r1);
+    free(hydro_data->r2);
+    free(hydro_data->r0_size);
+    free(hydro_data->r1_size);
+    free(hydro_data->r2_size);
+    free(hydro_data->r);
+    free(hydro_data->theta);
+    free(hydro_data->v0);
+    free(hydro_data->v1);
+    free(hydro_data->v2);
+    free(hydro_data->dens);
+    free(hydro_data->dens_lab);
+    free(hydro_data->pres);
+    free(hydro_data->temp);
+    free(hydro_data->gamma);
+    free(hydro_data->B0);
+    free(hydro_data->B1);
+    free(hydro_data->B2);
+    
+    hydro_data->r0=NULL;
+    hydro_data->r1=NULL;
+    hydro_data->r2=NULL;
+    hydro_data->r0_size=NULL;
+    hydro_data->r1_size=NULL;
+    hydro_data->r2_size=NULL;
+    hydro_data->r=NULL;
+    hydro_data->theta=NULL;
+    hydro_data->v0=NULL;
+    hydro_data->v1=NULL;
+    hydro_data->v2=NULL;
+    hydro_data->dens=NULL;
+    hydro_data->dens_lab=NULL;
+    hydro_data->pres=NULL;
+    hydro_data->temp=NULL;
+    hydro_data->gamma=NULL;
+    hydro_data->B0=NULL;
+    hydro_data->B1=NULL;
+    hydro_data->B2=NULL;
 }

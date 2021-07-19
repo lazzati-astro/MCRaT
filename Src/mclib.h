@@ -118,8 +118,11 @@ struct hydro_dataframe
     double r1_domain[2];
     double r2_domain[2];
     double fps; //frames per second of the simulation
-    int frame_number;
+    int scatt_frame_number;
+    int inj_frame_number;
     int last_frame;
+    int increment_inj_frame; //the change in between each injection frame which may change if different number of fps is used in each portion of hydro code
+    int increment_scatt_frame; //same as above expect for frames that photons are acattered in
 }; // structure to hold all information for a given hydro simulation
 
 #include "mcrat_input.h"
@@ -181,19 +184,33 @@ struct hydro_dataframe
 
 //throw errors during compilation if other switches are not defined
 #ifndef SIM_SWITCH
-#error Need to define simulation type in mcrat_input.h file using SIM_SWITCH
+#error Need to define hydro simulation type in mcrat_input.h file using SIM_SWITCH
 #endif
 
 #ifndef DIMENSIONS
-#error Need to define simulation dimensions in mcrat_input.h file using DIMENSIONS (should be set to two for this version of MCRaT)
+#error Need to define hydro simulation dimensions in mcrat_input.h file using DIMENSIONS (should be set to two for this version of MCRaT)
 #endif
 
 #ifndef GEOMETRY
-#error Need to define simulation geometry in mcrat_input.h file using GEOMETRY
+#error Need to define hydro simulation geometry in mcrat_input.h file using GEOMETRY
 #endif
 
 #ifndef HYDRO_L_SCALE
-#error Need to define simulation length scaling in mcrat_input.h file using HYDRO_L_SCALE
+#error Need to define hydro simulation length scaling in mcrat_input.h file using HYDRO_L_SCALE
+#endif
+
+#ifndef HYDRO_P_SCALE
+#error Need to define hydro simulation pressure scaling in mcrat_input.h file using HYDRO_P_SCALE
+#endif
+
+#ifndef HYDRO_D_SCALE
+#error Need to define hydro simulation density scaling in mcrat_input.h file using HYDRO_D_SCALE
+#endif
+
+#if B_FIELD_CALC==SIMULATION
+    #ifndef HYDRO_B_SCALE
+    #error Need to define hydro simulation magnetic field scaling in mcrat_input.h file using HYDRO_B_SCALE
+    #endif
 #endif
 
 #ifndef MCPAR
@@ -205,8 +222,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
 
 void readMcPar(char file[STR_BUFFER], struct hydro_dataframe *hydro_data, double *theta_jmin, double *theta_j, double *n_theta_j, double **inj_radius, int **frm0, int **frm2, int *min_photons, int *max_photons, char *spect, char *restart);
 
-void readAndDecimate(char flash_file[STR_BUFFER], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
- double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr);
+void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_data, double r_inj, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr);
  
  void photonInjection( struct photon **ph, int *ph_num, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, int array_length, double fps, double theta_min, double theta_max,\
 double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temps, double *vx, double *vy, gsl_rng * rand, FILE *fPtr);
@@ -276,3 +292,11 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[STR
 double *mcratCoordinateHydroCoordinate(double mcrat_r0, double mcrat_r1, double mcrat_r2, double *ph_hydro_coord);
 
 double *hydroVectorToCartesian(double v0, double v1, double v2, double x0, double x1, double x2, double *cartesian_vector_3d);
+
+void hydroCoordinateToSpherical(double r0, double r1, double r2, double *r, double *theta);
+
+void fillHydroCoordinateToSpherical(struct hydro_dataframe *hydro_data);
+
+void hydroDataFrameInitialize(struct hydro_dataframe *hydro_data);
+
+void freeHydroDataFrame(struct hydro_dataframe *hydro_data);

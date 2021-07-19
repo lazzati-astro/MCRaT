@@ -137,7 +137,10 @@ int main(int argc, char **argv)
     
     printf(">> MCRaT:  Reading mc.par: %s\n", mc_file);
     
+    hydroDataFrameInitialize(&hydrodata);
+    
     readMcPar(mc_file, &hydrodata, &theta_jmin, &theta_jmax, &num_theta_bins, &inj_radius_input, &frm0_input , &frm2_input, &min_photons, &max_photons, &spect, &restrt); //thetas that comes out is in degrees, need to free input frame and injection radius pointers
+    fps=hydrodata.fps;//save this incase we need modifications to fps later on in hydro sim
     //printf("%c\n", restrt);
     
     //divide up angles and frame injections among threads DONT WANT NUMBER OF THREADS TO BE ODD
@@ -444,6 +447,14 @@ int main(int argc, char **argv)
             //reset the angle for each process
             theta_jmin_thread= (*(thread_theta+  color)) *(M_PI/180);
             theta_jmax_thread= theta_jmin_thread+(delta_theta*(M_PI/180));
+            
+//need to double check this///////////////////////////////////////////////////
+            inj_radius= (*(inj_radius_input+color));
+            frm2=(*(frm2_input+color));
+            frm0=(*(frm0_input+color));
+            ph_weight_suggest=ph_weight_default;
+///////////////////////////////////////////////////////////////////////////////
+
                 
             //reset the angle_id for each process
             count=0;
@@ -569,18 +580,21 @@ int main(int argc, char **argv)
             #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
             if (framestart>=3000)
             {
-                increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-                fps_modified=1; //therefore dt between files become 1 second
-                
+                //increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                //fps_modified=1; //therefore dt between files become 1 second
+                hydrodata.increment_inj_frame=10;
+                hydrodata.fps=1;
             }
             #else
             {
-                increment_inj=1;
-                fps_modified=fps;
+                //increment_inj=1;
+                //fps_modified=fps;
+                hydrodata.increment_inj_frame=1;
+                hydrodata.fps=fps; //this is already set in readMcPar function but may need to be modified
             }
             #endif
                         
-            dt_max=1.0/fps_modified;
+            dt_max=1.0/hydrodata.fps;
            
             MPI_Barrier(angle_comm); 
             snprintf(log_file,sizeof(log_file),"%s%s%d%s",mc_dir,"mc_output_", angle_id,".log" );
@@ -598,26 +612,26 @@ int main(int argc, char **argv)
             
             //#pragma omp for 
             
-            for (frame=framestart;frame<=frm2;frame=frame+increment_inj)
+            for (frame=framestart;frame<=frm2;frame=frame+hydrodata.increment_inj_frame)
             {
-                
+                hydrodata.inj_frame_number=frame;
                 #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
                 if (frame>=3000)
                 {
-                    increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-                    fps_modified=1; //therefore dt between files become 1 second
+                    hydrodata.increment_inj_frame=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                    hydrodata.fps=1; //therefore dt between files become 1 second
                     
                 }
                 #else
                 {
-                    increment_inj=1;
-                    fps_modified=fps;
+                    hydrodata.increment_inj_frame=1;
+                    hydrodata.fps=fps;
                 }
                 #endif
                                 
                  if (restrt==INITALIZE)
                  {
-                    time_now=frame/fps; //for a checkpoint implmentation, load the saved "time_now" value when reading the ckeckpoint file otherwise calculate it normally
+                    time_now=frame/hydrodata.fps; //for a checkpoint implmentation, load the saved "time_now" value when reading the ckeckpoint file otherwise calculate it normally
                  }
                 
                 //printf(">> mc.py: Working on Frame %d\n", frame);
@@ -641,8 +655,7 @@ int main(int argc, char **argv)
                             fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
                             fflush(fPtr);
                             
-                            readAndDecimate(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
+                            readAndDecimate(hydro_file, &hydrodata, inj_radius, 1, min_r, max_r, min_theta, max_theta, fPtr);
                         //}
                         //else if (strcmp(pluto_amr_sim, this_sim)==0)
                         #elif SIM_SWITCH == PLUTO_CHOMBO
@@ -678,6 +691,9 @@ int main(int argc, char **argv)
                     }
                     #endif
                     
+                    //convert hydro coordinates to spherical so we can inject photons, overwriting values, etc.
+                    fillHydroCoordinateToSpherical(&hydrodata);
+                    
                     //check for run type
                     //if(strcmp(cyl, this_run)==0)
                     #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
@@ -707,11 +723,11 @@ int main(int argc, char **argv)
                     //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
                     #if DIMENSIONS == 2
                     {
-                        photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng, fPtr );
+                        photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng, fPtr );
                     }
                     #else
                     {
-                        photonInjection3D(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, zPtr, szxPtr, szyPtr,rPtr,thetaPtr, phiPtr, tempPtr, velxPtr, velyPtr, velzPtr, rng, fPtr);
+                        photonInjection3D(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, zPtr, szxPtr, szyPtr,rPtr,thetaPtr, phiPtr, tempPtr, velxPtr, velyPtr, velzPtr, rng, fPtr);
 
                     }
                     #endif
@@ -731,23 +747,25 @@ int main(int argc, char **argv)
                 }
                 
                 num_null_ph=0;
-                for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame=scatt_frame+increment_scatt)
+                hydrodata.increment_scatt_frame=1;
+                for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame=scatt_frame+hydrodata.increment_scatt_frame)
                 {
+                    hydrodata.scatt_frame_number=scatt_frame;
                     #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
                     if (scatt_frame>=3000)
                     {
-                        increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-                        fps_modified=1; //therefore dt between files become 1 second
+                        hydrodata.increment_scatt_frame=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                        hydrodata.fps=1; //therefore dt between files become 1 second
                         
                     }
                     #else
                     {
-                        increment_scatt=1;
-                        fps_modified=fps;
+                        hydrodata.increment_scatt_frame=1;
+                        hydrodata.fps=fps;
                     }
                     #endif
                     
-                    dt_max=1.0/fps_modified; //if working with RIKEN files and scatt_frame>=3000 dt  is 1 second between each subsequent frame
+                    dt_max=1.0/hydrodata.fps; //if working with RIKEN files and scatt_frame>=3000 dt  is 1 second between each subsequent frame
                     
                     fprintf(fPtr,">>\n");
                     fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Working on photons injected at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,frame, frm2);
@@ -785,17 +803,18 @@ int main(int argc, char **argv)
                                     //NEED TO DETERMINE IF min_r or max_r is smaller/larger than the rmin/rmax in photonEmitCyclosynch to properly emit photons in the range that the process is interested in
                                     //printf("OLD: min_r %e max_r %e\n", min_r, max_r);
                                     double test=0;
-                                    test=calcCyclosynchRLimits( scatt_frame, frame, fps_modified,  inj_radius, "min");
+                                    test=calcCyclosynchRLimits( scatt_frame, frame, hydrodata.fps,  inj_radius, "min");
                                     //printf("TEST MIN: %e\n", test);
                                     min_r=(min_r < test) ? min_r : test ;
-                                    test=calcCyclosynchRLimits( scatt_frame, frame, fps_modified,  inj_radius, "max");
+                                    test=calcCyclosynchRLimits( scatt_frame, frame, hydrodata.fps,  inj_radius, "max");
                                     //printf("TEST MAX: %e\n", test);
                                     max_r=(max_r > test ) ? max_r : test ;
                                     //printf("NEW: min_r %e max_r %e\n", min_r, max_r);
                                 }
                             
-                            readAndDecimate(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr);
+                            //readAndDecimate(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr); old function call
+                            readAndDecimate(hydro_file, &hydrodata, inj_radius, 0, min_r, max_r, min_theta, max_theta, fPtr);
                         }
                         //else if (strcmp(pluto_amr_sim, this_sim)==0)
                         #elif SIM_SWITCH == PLUTO_CHOMBO
@@ -880,7 +899,7 @@ int main(int argc, char **argv)
                         #endif
                         
                         phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
-                        num_cyclosynch_ph_emit=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 0, 0, fPtr);
+                        num_cyclosynch_ph_emit=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 0, 0, fPtr);
                         
                         
                         
@@ -898,7 +917,7 @@ int main(int argc, char **argv)
                     num_photons_find_new_element=0;
                     
                     n_comptonized=0;
-                    while (time_now<((scatt_frame+increment_scatt)/fps))
+                    while (time_now<((scatt_frame+hydrodata.increment_scatt_frame)/hydrodata.fps))
                     {
                         //if simulation time is less than the simulation time of the next frame, keep scattering in this frame
                         //for RIKEN hydro data, theres still 10 fps but after frame 3000, file increment is 10 not 1, therefore modify dt_max not fps
@@ -939,7 +958,7 @@ int main(int argc, char **argv)
                                 
                                 //fprintf(fPtr, "num_null_ph %d\n", num_null_ph);
                                 //printf("The previous scattered photon was a seed photon %c.\n", (phPtr+ph_scatt_index)->type);
-                                num_cyclosynch_ph_emit+=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, fps_modified, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 1, ph_scatt_index, fPtr);
+                                num_cyclosynch_ph_emit+=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 1, ph_scatt_index, fPtr);
                                 //fprintf(fPtr, " num_photon: %d\n",num_ph  );
                                 //fflush(fPtr);
                                 
@@ -1072,6 +1091,7 @@ int main(int argc, char **argv)
                     free(gammaPtr);free(dens_labPtr);free(tempPtr);
                     xPtr=NULL; yPtr=NULL;  rPtr=NULL;thetaPtr=NULL;velxPtr=NULL;velyPtr=NULL;densPtr=NULL;presPtr=NULL;gammaPtr=NULL;dens_labPtr=NULL;
                     szxPtr=NULL; szyPtr=NULL; tempPtr=NULL;
+                    freeHydroDataFrame(&hydrodata);
                 }
                 
                 restrt=INITALIZE;//set this to make sure that the next iteration of propogating photons doesnt use the values from the last reading of the checkpoint file
@@ -1095,18 +1115,18 @@ int main(int argc, char **argv)
         //merge files from each worker thread within a directory
         {
             
-             increment_scatt=1;
+             hydrodata.increment_scatt_frame=1;
              file_count=0;
              
              //count number of files
-             for (i=frm0;i<=last_frm;i=i+increment_scatt)
+             for (i=frm0;i<=last_frm;i=i+hydrodata.increment_scatt_frame)
              {
                  
                 //if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
                 #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
                 if (i>=3000)
                 {
-                    increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                    hydrodata.increment_scatt_frame=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
                 }
                 #endif
                 file_count++;
@@ -1128,15 +1148,15 @@ int main(int argc, char **argv)
              }
              
              //make vector with the files in order to pass them to each of the processes
-             increment_scatt=1;
+             hydrodata.increment_scatt_frame=1;
              file_count=0;
-             for (i=frm0;i<=last_frm;i=i+increment_scatt)
+             for (i=frm0;i<=last_frm;i=i+hydrodata.increment_scatt_frame)
              {
                 //if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
                 #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
                 if (i>=3000)
                 {
-                    increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                    hydrodata.increment_scatt_frame=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
                 }
                 #endif
 
@@ -1164,15 +1184,15 @@ int main(int argc, char **argv)
                 #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
                 if (last_frm>=3000)
                 {
-                    increment_scatt=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                    hydrodata.increment_scatt_frame=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
                 }
                 #else
                 {
-                    increment_scatt=1;
+                    hydrodata.increment_scatt_frame=1;
                 }
                 #endif
              
-                last_frm+=increment_scatt;
+                last_frm+=hydrodata.increment_scatt_frame;
                 i++;
              }
              
