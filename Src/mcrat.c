@@ -704,7 +704,8 @@ int main(int argc, char **argv)
                     #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
                     {
                         //printf("In Structural Spherical\n");
-                        structuredFireballPrep(rPtr, thetaPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
+                        //structuredFireballPrep(rPtr, thetaPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
+                        structuredFireballPrep(&hydrodata, fPtr);
                     }
                     #endif
                         
@@ -866,7 +867,8 @@ int main(int argc, char **argv)
                     #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
                     {
                         //printf("In Structural Spherical\n");
-                        structuredFireballPrep(rPtr, thetaPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
+                        //structuredFireballPrep(rPtr, thetaPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
+                        structuredFireballPrep(&hydrodata, fPtr);
                     }
                     #endif
                         //printf("The result of read and decimate are arrays with %d elements\n", array_num);

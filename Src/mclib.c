@@ -4084,23 +4084,23 @@ void sphericalPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)//double *r,  
     
 }
 
-void structuredFireballPrep(double *r, double *theta,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array, FILE *fPtr)
+void structuredFireballPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
 {
     //This model is provided by Lundman, Peer, Ryde 2014, use this to compare our MCRaT polarization to their polarizations
     double  gamma_0=100, lumi=1e52, r00=1e8, theta_j=1e-2, p=4; //theta_j in paper is 1e-2, 3e-2, 1e-1 and p is 1,2,4
     double T_0=pow(lumi/(4*M_PI*r00*r00*A_RAD*C_LIGHT), 1.0/4.0);
-    double eta=0, r_sat=0;
+    double eta=0, r_sat=0, r;
     double vel=0, theta_ratio=0;
     int i=0;
     
-    for (i=0;i<num_array;i++)
+    for (i=0; i<hydro_data->num_elements; i++)
     {
         
         
-        theta_ratio=(*(theta+i))/theta_j;
+        theta_ratio=((hydro_data->theta)[i])/theta_j;
         eta=gamma_0*pow(1+pow(theta_ratio, 2*p) , -0.5);
         
-        if (*(theta+i) >= theta_j*pow(gamma_0/2, 1.0/p))
+        if ((hydro_data->theta)[i] >= theta_j*pow(gamma_0/2, 1.0/p))
         {
             //*(gamma+i)=2; //outside with of shear layer have gamma be 2 like in paper
             eta=2.0;
@@ -4108,23 +4108,59 @@ void structuredFireballPrep(double *r, double *theta,  double *x, double *y, dou
         
         r_sat=eta*r00;
         
-        if ((*(r+i)) >= r_sat)
+        if (((hydro_data->r)[i]) >= r_sat)
         {
-            *(gamma+i)=eta;
-            *(temp+i)=T_0*pow(r_sat/(*(r+i)), 2.0/3.0)/eta;
+            (hydro_data->gamma)[i]=eta;
+            (hydro_data->temp)[i]=T_0*pow(r_sat/((hydro_data->r)[i]), 2.0/3.0)/eta;
         }
         else
         {
-            *(gamma+i)=(*(r+i))/r_sat; //not sure if this is right but it shouldn't matter since we're injecting our photons far from r00
-            *(temp+i)=T_0;
+            (hydro_data->gamma)[i]=((hydro_data->r)[i])/r_sat; //not sure if this is right but it shouldn't matter since we're injecting our photons far from r00
+            (hydro_data->temp)[i]=T_0;
         }
         
-        vel=pow(1-(pow(*(gamma+i), -2.0)) ,0.5);
-        *(vx+i)=(vel*(*(x+i)))/pow(pow(*(x+i), 2)+ pow(*(y+i), 2) ,0.5);
-        *(vy+i)=(vel*(*(y+i)))/pow(pow(*(x+i), 2)+ pow(*(y+i), 2) ,0.5);
-        *(dens+i)=M_P*lumi/(4*M_PI*M_P*C_LIGHT*C_LIGHT*C_LIGHT*eta*vel*(*(gamma+i))*(*(r+i))*(*(r+i))); //equation paper has extra c, but then units dont work out
-        *(dens_lab+i)=(*(dens+i))*(*(gamma+i));
-        *(pres+i)=(A_RAD*pow(*(temp+i), 4.0))/(3);
+        vel=pow(1-(pow((hydro_data->gamma)[i], -2.0)) ,0.5);
+        (hydro_data->dens)[i] = M_P*lumi/(4*M_PI*M_P*C_LIGHT*C_LIGHT*C_LIGHT*eta*vel*((hydro_data->gamma)[i])*((hydro_data->r)[i])*((hydro_data->r)[i])); //equation paper has extra c, but then units dont work out
+        (hydro_data->dens_lab)[i]=((hydro_data->dens)[i])*((hydro_data->gamma)[i]);
+        (hydro_data->pres)[i]=(A_RAD*pow((hydro_data->temp)[i], 4.0))/(3);
+        
+        #if DIMENSIONS == 2
+            
+            #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
+                r=pow(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r1))[i], 2) ,0.5);
+                ((hydro_data->v0))[i]=(vel*(((hydro_data->r0))[i]))/r;
+                ((hydro_data->v1))[i]=(vel*(((hydro_data->r1))[i]))/r; //geometry dependent want this to be radial
+            #endif
+
+            #if GEOMETRY == SPHERICAL
+                ((hydro_data->v0))[i]=vel;//rhat
+                ((hydro_data->v1))[i]=0;//theta hat direction
+            #endif
+            
+        #else
+
+            #if GEOMETRY == CARTESIAN
+                r=pow(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r1))[i], 2)+pow(((hydro_data->r2))[i], 2) ,0.5);
+                ((hydro_data->v0))[i]=(vel*(((hydro_data->r0))[i]))/r;
+                ((hydro_data->v1))[i]=(vel*(((hydro_data->r1))[i]))/r; //geometry dependent want this to be radial
+                ((hydro_data->v2))[i]=(vel*(((hydro_data->r2))[i]))/r;
+            #endif
+
+            #if GEOMETRY == SPHERICAL
+                ((hydro_data->v0))[i]=vel;//rhat
+                ((hydro_data->v1))[i]=0;//theta hat direction
+                ((hydro_data->v2))[i]=0;
+            #endif
+
+            #if GEOMETRY == POLAR
+                r=pow(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r2))[i], 2) ,0.5);
+                ((hydro_data->v0))[i]=(vel*(((hydro_data->r0))[i]))/r;
+                ((hydro_data->v1))[i]=0;
+                ((hydro_data->v2))[i]=(vel*(((hydro_data->r2))[i]))/r;
+            #endif
+
+        #endif
+
         //fprintf(fPtr,"eta: %lf\nr_sat: %lf\nGamma: %lf\nR: %lf\nTheta: %lf\nPres: %e\nvel %lf\nX: %lf\nY %lf\nVx: %lf\nVy: %lf\nDens: %e\nLab_Dens: %e\nTemp: %lf\n\n", eta, r_sat, *(gamma+i), *(r+i), (*(theta+i)), *(pres+i), vel, *(x+i), *(y+i), *(vx+i), *(vy+i), *(dens+i), *(dens_lab+i), *(temp+i));
         
     }
@@ -5105,7 +5141,7 @@ void mcratCoordinateToHydroCoordinate(double *ph_hydro_coord, double mcrat_r0, d
     
         #if GEOMETRY == SPHERICAL
             r0=sqrt(mcrat_r0*mcrat_r0+mcrat_r1*mcrat_r1+mcrat_r2*mcrat_r2); //r coordinate
-            r1=arccos(mcrat_r2/r0); //cooridinate along jet axis
+            r1= acos(mcrat_r2/r0); //cooridinate along jet axis
         #endif
         
     #else
@@ -5118,7 +5154,7 @@ void mcratCoordinateToHydroCoordinate(double *ph_hydro_coord, double mcrat_r0, d
     
         #if GEOMETRY == SPHERICAL
             r0=sqrt(mcrat_r0*mcrat_r0+mcrat_r1*mcrat_r1+mcrat_r2*mcrat_r2); // r coordinate
-            r1=arccos(mcrat_r2/r0); //theta cooridinate along jet axis
+            r1= acos(mcrat_r2/r0); //theta cooridinate along jet axis
             r2=atan2(mcrat_r1, mcrat_r0); // phi coordinate
         #endif
 

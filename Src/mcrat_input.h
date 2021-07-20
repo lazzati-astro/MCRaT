@@ -7,7 +7,7 @@
 //  Created by Tyler Parsotan on 12/9/19.
 //
 
-#define SIMULATION_TYPE SPHERICAL_OUTFLOW
+#define SIMULATION_TYPE STRUCTURED_SPHERICAL_OUTFLOW
 #define FILEPATH "/Users/Tylerparsotan/Documents/16OI_TEST/"
 #define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
 #define MC_PATH "SKN_16OI_SPHERICAL/"

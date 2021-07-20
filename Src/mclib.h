@@ -279,10 +279,9 @@ void cylindricalPrep(struct hydro_dataframe *hydro_data);
 
 void sphericalPrep(struct hydro_dataframe *hydro_data, FILE *fPtr);
 
-void structuredFireballPrep(double *r, double *theta,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array, FILE *fPtr);
+void structuredFireballPrep(struct hydro_dataframe *hydro_data, FILE *fPtr);
 
 void modifyFlashName(char flash_file[STR_BUFFER], char prefix[STR_BUFFER], int frame);
-
 
 void readHydro2D(char hydro_prefix[STR_BUFFER], int frame, double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
                      double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, FILE *fPtr);
