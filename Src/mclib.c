@@ -2418,7 +2418,6 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
                 (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
         
-                //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
                 #if DIMENSIONS == 2
                 {
                     beta=pow((n_vx_tmp*n_vx_tmp)+(n_vy_tmp*n_vy_tmp),0.5);
@@ -2577,18 +2576,7 @@ int compare2 ( const void *a, const void *b, void *ar)
   double *arr=NULL;
   arr=ar;
   
-  //printf("%d, %d\n", aa, bb);
-  //printf("%e, %e\n", arr[aa] , arr[bb]);
-  //return (aa - bb);
-  /*
- if (arr[aa] < arr[bb])
-    return -1; 
-  if (arr[aa] == arr[bb])
-    return 0;
-  if (arr[aa] > arr[bb])
-    return 1;
-    */
-    return ((arr[aa] > arr[bb]) - (arr[aa] < arr[bb]));
+return ((arr[aa] > arr[bb]) - (arr[aa] < arr[bb]));
 }
 
 int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
@@ -3972,53 +3960,126 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
     
 }
 
-void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array)
+void cylindricalPrep(struct hydro_dataframe *hydro_data)//double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array)
 {
     double  gamma_infinity=100, t_comov=1e5, ddensity=3e-7;// the comoving temperature in Kelvin, and the comoving density in g/cm^2
     int i=0;
     double vel=pow(1-pow(gamma_infinity, -2.0) ,0.5), lab_dens=gamma_infinity*ddensity;
     
-    for (i=0; i<num_array;i++)
+    for (i=0; i<hydro_data->num_elements; i++)
     {
-        *(gamma+i)=gamma_infinity;
-        *(vx+i)=0;
-        *(vy+i)=vel;
-        *(dens+i)=ddensity;
-        *(dens_lab+i)=lab_dens;
-        *(pres+i)=(A_RAD*pow(t_comov, 4.0))/(3);
-        *(temp+i)=pow(3*(*(pres+i))/(A_RAD) ,1.0/4.0); //just assign t_comov
+        ((hydro_data->gamma))[i]=gamma_infinity;
+        ((hydro_data->dens))[i]=ddensity;
+        ((hydro_data->dens_lab))[i]=lab_dens;
+        ((hydro_data->pres))[i]=(A_RAD*pow(t_comov, 4.0))/(3);
+        ((hydro_data->temp))[i]=t_comov; //just assign t_comov
+        
+        
+        #if DIMENSIONS == 2
+            
+            #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
+                ((hydro_data->v0))[i]=0;
+                ((hydro_data->v1))[i]=vel; //geometry dependent want this to be parallel to jet axis
+            #endif
+
+            #if GEOMETRY == SPHERICAL
+                ((hydro_data->v0))[i]=vel*cos(((hydro_data->r1))[i]);//rhat
+                ((hydro_data->v1))[i]=-vel*sin(((hydro_data->r1))[i]);//theta hat direction
+            #endif
+            
+        #else
+
+            #if GEOMETRY == CARTESIAN
+                ((hydro_data->v0))[i]=0;
+                ((hydro_data->v1))[i]=0;
+                ((hydro_data->v2))[i]=vel;
+            #endif
+
+
+            #if GEOMETRY == SPHERICAL
+                ((hydro_data->v0))[i]=vel*cos(((hydro_data->r1))[i]);//rhat
+                ((hydro_data->v1))[i]=-vel*sin(((hydro_data->r1))[i]);//theta hat direction
+                ((hydro_data->v2))[i]=0;
+            #endif
+
+            #if GEOMETRY == POLAR
+                ((hydro_data->v0))[i]=0;
+                ((hydro_data->v1))[i]=0;
+                ((hydro_data->v2))[i]=vel;
+            #endif
+
+        #endif
+        
+
     }
     
 }
 
-void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array, FILE *fPtr)
+void sphericalPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)//double *r,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array, FILE *fPtr)
 {
     double  gamma_infinity=100, lumi=1e52, r00=1e8; //shopuld be 10^57
     //double  gamma_infinity=5, lumi=1e52, r00=1e8; //shopuld be 10^57
-    double vel=0;
+    double vel=0, r=0;
     int i=0;
     
-    for (i=0;i<num_array;i++)
+    for (i=0; i<hydro_data->num_elements; i++)
     {
-        if ((*(r+i)) >= (r00*gamma_infinity))
+        if (((hydro_data->r))[i] >= (r00*gamma_infinity))
         {
-            *(gamma+i)=gamma_infinity;
-            *(pres+i)=(lumi*pow(r00, 2.0/3.0)*pow(*(r+i), -8.0/3.0) )/(12.0*M_PI*C_LIGHT*pow(gamma_infinity, 4.0/3.0));
+            ((hydro_data->gamma))[i]=gamma_infinity;
+            ((hydro_data->pres))[i]=(lumi*pow(r00, 2.0/3.0)*pow(((hydro_data->r))[i], -8.0/3.0) )/(12.0*M_PI*C_LIGHT*pow(gamma_infinity, 4.0/3.0));
         }
         else
         {
-            *(gamma+i)=(*(r+i))/r00;
-            *(pres+i)=(lumi*pow(r00, 2.0))/(12.0*M_PI*C_LIGHT*pow(*(r+i), 4.0) );
+            ((hydro_data->gamma))[i]=((hydro_data->r))[i]/r00;
+            ((hydro_data->pres))[i]=(lumi*pow(r00, 2.0))/(12.0*M_PI*C_LIGHT*pow(((hydro_data->r))[i], 4.0) );
         }
         
-        vel=pow(1-(pow(*(gamma+i), -2.0)) ,0.5);
-        *(vx+i)=(vel*(*(x+i)))/pow(pow(*(x+i), 2)+ pow(*(y+i), 2) ,0.5);
-        *(vy+i)=(vel*(*(y+i)))/pow(pow(*(x+i), 2)+ pow(*(y+i), 2) ,0.5);
-        *(dens+i)=lumi/(4*M_PI*pow(*(r+i), 2.0)*pow(C_LIGHT, 3.0)*gamma_infinity*(*(gamma+i)));
-        *(dens_lab+i)=(*(dens+i))*(*(gamma+i));
-        *(temp+i)=pow(3*(*(pres+i))/(A_RAD) ,1.0/4.0);
-        //fprintf(fPtr,"Gamma: %lf\nR: %lf\nPres: %e\nvel %lf\nX: %lf\nY %lf\nVx: %lf\nVy: %lf\nDens: %e\nLab_Dens: %e\nTemp: %lf\n", *(gamma+i), *(r+i), *(pres+i), vel, *(x+i), *(y+i), *(vx+i), *(vy+i), *(dens+i), *(dens_lab+i), *(temp+i));
+        ((hydro_data->dens))[i]=lumi/(4*M_PI*pow(((hydro_data->r))[i], 2.0)*pow(C_LIGHT, 3.0)*gamma_infinity*(((hydro_data->gamma))[i]));
+        ((hydro_data->dens_lab))[i]=(((hydro_data->dens))[i])*(((hydro_data->gamma))[i]);
+        ((hydro_data->temp))[i]=pow(3*(((hydro_data->pres))[i])/(A_RAD) ,1.0/4.0);
+        
+        vel=pow(1-(pow(((hydro_data->gamma))[i], -2.0)) ,0.5);
 
+        #if DIMENSIONS == 2
+            
+            #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
+                r=pow(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r1))[i], 2) ,0.5);
+                ((hydro_data->v0))[i]=(vel*(((hydro_data->r0))[i]))/r;
+                ((hydro_data->v1))[i]=(vel*(((hydro_data->r1))[i]))/r; //geometry dependent want this to be radial
+            #endif
+
+            #if GEOMETRY == SPHERICAL
+                ((hydro_data->v0))[i]=vel;//rhat
+                ((hydro_data->v1))[i]=0;//theta hat direction
+            #endif
+            
+        #else
+
+            #if GEOMETRY == CARTESIAN
+                r=pow(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r1))[i], 2)+pow(((hydro_data->r2))[i], 2) ,0.5);
+                ((hydro_data->v0))[i]=(vel*(((hydro_data->r0))[i]))/r;
+                ((hydro_data->v1))[i]=(vel*(((hydro_data->r1))[i]))/r; //geometry dependent want this to be radial
+                ((hydro_data->v2))[i]=(vel*(((hydro_data->r2))[i]))/r;
+            #endif
+
+
+            #if GEOMETRY == SPHERICAL
+                ((hydro_data->v0))[i]=vel;//rhat
+                ((hydro_data->v1))[i]=0;//theta hat direction
+                ((hydro_data->v2))[i]=0;
+            #endif
+
+            #if GEOMETRY == POLAR
+                r=pow(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r2))[i], 2) ,0.5);
+                ((hydro_data->v0))[i]=(vel*(((hydro_data->r0))[i]))/r; //need to figure this out
+                ((hydro_data->v1))[i]=0;
+                ((hydro_data->v2))[i]=(vel*(((hydro_data->r2))[i]))/r;
+            #endif
+
+        #endif
+
+        //fprintf(fPtr,"Gamma: %lf\nR: %lf\nPres: %e\nvel %lf\nX: %lf\nY %lf\nVx: %lf\nVy: %lf\nDens: %e\nLab_Dens: %e\nTemp: %lf\n", *(gamma+i), *(r+i), *(pres+i), vel, *(x+i), *(y+i), *(vx+i), *(vy+i), *(dens+i), *(dens_lab+i), *(temp+i));
     }
     
 }
@@ -4618,7 +4679,6 @@ void modifyFlashName(char flash_file[STR_BUFFER], char prefix[STR_BUFFER], int f
 {
     int lim1=0, lim2=0, lim3=0;
     char test[STR_BUFFER]="" ;
-    //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
     #if DIMENSIONS == 2
     {
         //2D case

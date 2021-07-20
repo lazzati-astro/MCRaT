@@ -692,12 +692,14 @@ int main(int argc, char **argv)
                     #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
                     {
                         //printf("In cylindrical prep\n");
-                        cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
+                        //cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
+                        cylindricalPrep(&hydrodata);
                     }
                     #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
                     {
                         //printf("In Spherical\n");
-                        sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
+                        //sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
+                        sphericalPrep(&hydrodata, fPtr);
                     }
                     #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
                     {
@@ -850,18 +852,17 @@ int main(int argc, char **argv)
                     
                     
                     //check for run type
-                    //if(strcmp(cyl, this_run)==0)
                     #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
                     {
                         //printf("In cylindrical prep\n");
-                        cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
+                        //cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
+                        cylindricalPrep(&hydrodata);
                     }
-                    //else if (strcmp(sph, this_run)==0)
                     #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
                     {
-                        sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num, fPtr );
+                        //sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num, fPtr );
+                        sphericalPrep(&hydrodata, fPtr);
                     }
-                    //else if (strcmp(struct_sph, this_run)==0)
                     #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
                     {
                         //printf("In Structural Spherical\n");

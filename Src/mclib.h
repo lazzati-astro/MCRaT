@@ -275,9 +275,9 @@ int readCheckpoint(char dir[STR_BUFFER], struct photon **ph,  int *frame2, int *
 
 void dirFileMerge(char dir[STR_BUFFER], int start_frame, int last_frame, int numprocs,  int angle_id, FILE *fPtr);
 
-void cylindricalPrep(double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array);
+void cylindricalPrep(struct hydro_dataframe *hydro_data);
 
-void sphericalPrep(double *r,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array, FILE *fPtr);
+void sphericalPrep(struct hydro_dataframe *hydro_data, FILE *fPtr);
 
 void structuredFireballPrep(double *r, double *theta,  double *x, double *y, double *gamma, double *vx, double *vy, double *dens, double *dens_lab, double *pres, double *temp, int num_array, FILE *fPtr);
 
