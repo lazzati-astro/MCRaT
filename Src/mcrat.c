@@ -106,16 +106,17 @@ int main(int argc, char **argv)
     int *frame_array=NULL, *proc_frame_array=NULL, *element_num=NULL, *sorted_indexes=NULL,  proc_frame_size=0;
     double *thread_theta=NULL; //saves ranges of thetas for each thread to go through
     double delta_theta=1, num_theta_bins=0;
+    double test_cyclosynch_inj_radius=0;
     
     int myid, numprocs, angle_procs, angle_id, procs_per_angle;
     int temporary[3]={0}, tempo=0;
 
     
    
-   //new OpenMPI stuff
-   MPI_Init(NULL,NULL);
-   MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
-   MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+    //new OpenMPI stuff
+    MPI_Init(NULL,NULL);
+    MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myid);
    
   
     //new muliple threads injecting and propagating photons
@@ -141,6 +142,7 @@ int main(int argc, char **argv)
     
     readMcPar(mc_file, &hydrodata, &theta_jmin, &theta_jmax, &num_theta_bins, &inj_radius_input, &frm0_input , &frm2_input, &min_photons, &max_photons, &spect, &restrt); //thetas that comes out is in degrees, need to free input frame and injection radius pointers
     fps=hydrodata.fps;//save this incase we need modifications to fps later on in hydro sim
+    last_frm=hydrodata.last_frame;
     //printf("%c\n", restrt);
     
     //divide up angles and frame injections among threads DONT WANT NUMBER OF THREADS TO BE ODD
@@ -158,14 +160,13 @@ int main(int argc, char **argv)
         *(thread_theta+j)=*(thread_theta+(j-1))+delta_theta;
         //printf("%e\n", *(thread_theta+j));
     }
-
     
 
     //make comm without the procs that deal with angle
-     //comm for angles
+    //comm for angles
      
-     procs_per_angle= numprocs/num_angles;
-     //printf("%d\n", procs_per_angle);
+    procs_per_angle= numprocs/num_angles;
+    //printf("%d\n", procs_per_angle);
      
      MPI_Comm angle_comm;
      if (restrt==INITALIZE) //uncomment this when I run MCRAT for sims that didnt originally save angle_procs
@@ -483,737 +484,730 @@ int main(int argc, char **argv)
     
     //make vector to hold the frames we are injecting in, vector should have (frm2-frm0)/angle_procs slots, if fps is const
     
-        //angle_procs=1;//just for testing purposes
+    //angle_procs=1;//just for testing purposes
+
+    proc_frame_size=ceil((frm2-frm0)/ (float) angle_procs);
+    frame_array=malloc(((frm2-frm0)+1)*sizeof(int));
     
-        proc_frame_size=ceil((frm2-frm0)/ (float) angle_procs);
-        frame_array=malloc(((frm2-frm0)+1)*sizeof(int));
-        
-        for (j=0;j<((frm2-frm0)+1); j++)
-        {
-            *(frame_array+j)=frm0+j ;
-            //printf("proc: %d frame: %d\n", angle_id, *(frame_array+j));
-        }
+    for (j=0;j<((frm2-frm0)+1); j++)
+    {
+        *(frame_array+j)=frm0+j ;
+        //printf("proc: %d frame: %d\n", angle_id, *(frame_array+j));
+    }
        
             
         
-            //set this now incase there is no checkpoint file, then this wont be overwritten and the corretc values will be passed even if the user decides to restart
-            framestart=(*(frame_array +(angle_id*proc_frame_size)));
-            scatt_framestart=framestart;
-                 
-            if (angle_id != (angle_procs-1)) 
-            {
-                frm2=(*(frame_array +((angle_id*proc_frame_size) + proc_frame_size-1) )); //section off blocks of the frame_array to give to each angle_id
-            }
-            else
-            {
-                frm2=(*(frame_array + (frm2-frm0) )); //if angle_id is last give it the last set, even if its uneven
-            }
+    //set this now incase there is no checkpoint file, then this wont be overwritten and the corretc values will be passed even if the user decides to restart
+    framestart=(*(frame_array +(angle_id*proc_frame_size)));
+    scatt_framestart=framestart;
+         
+    if (angle_id != (angle_procs-1))
+    {
+        frm2=(*(frame_array +((angle_id*proc_frame_size) + proc_frame_size-1) )); //section off blocks of the frame_array to give to each angle_id
+    }
+    else
+    {
+        frm2=(*(frame_array + (frm2-frm0) )); //if angle_id is last give it the last set, even if its uneven
+    }
                 
             
-            if (restrt==CONTINUE)
+    if (restrt==CONTINUE)
+    {
+        printf(">> mc.py:  Reading checkpoint\n");
+        //#pragma omp critical
+        
+            scatt_cyclosynch_num_ph=readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs);
+        
+        /*
+        for (i=0;i<num_ph;i++)
+        {
+            printf("%e,%e,%e, %e,%e,%e, %e, %e\n",(phPtr+i)->p0, (phPtr+i)->p1, (phPtr+i)->p2, (phPtr+i)->p3, (phPtr+i)->r0, (phPtr+i)->r1, (phPtr+i)->r2, (phPtr+i)->num_scatt );
+        }
+        */
+        if (restrt==CONTINUE)
+        {
+            printf(">> Rank %d: Starting from photons injected at frame: %d out of %d\n", angle_id,framestart, frm2);
+            printf(">> Rank %d with angles %0.1lf-%0.1lf: Continuing scattering %d photons from frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph, scatt_framestart);
+            printf(">> Rank %d with angles %0.1lf-%0.1lf: The time now is: %e\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,time_now);
+        }
+        else
+        {
+            printf(">> Rank %d with angles %0.1lf-%0.1lf: Continuing simulation by injecting photons at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,framestart, frm2); //starting with new photon injection is same as restarting sim
+        }
+        
+    }
+    else if ((stat(mc_dir, &st) == -1) && (restrt==INITALIZE))
+    {
+        mkdir(mc_dir, 0777); //make the directory with full permissions
+        
+        
+    }
+    else
+    {
+        if (angle_id==0)
+        {
+            printf(">> proc %d with angles %0.1lf-%0.1lf:  Cleaning directory \n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+            dirp = opendir(mc_dir);
+            while ((entry = readdir(dirp)) != NULL)
             {
-                printf(">> mc.py:  Reading checkpoint\n");
-                //#pragma omp critical
-                
-                    scatt_cyclosynch_num_ph=readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs);
-                
-                /*
-                for (i=0;i<num_ph;i++)
-                {
-                    printf("%e,%e,%e, %e,%e,%e, %e, %e\n",(phPtr+i)->p0, (phPtr+i)->p1, (phPtr+i)->p2, (phPtr+i)->p3, (phPtr+i)->r0, (phPtr+i)->r1, (phPtr+i)->r2, (phPtr+i)->num_scatt );
-                }
-                */
-                if (restrt==CONTINUE)
-                {
-                    printf(">> Rank %d: Starting from photons injected at frame: %d out of %d\n", angle_id,framestart, frm2);
-                    printf(">> Rank %d with angles %0.1lf-%0.1lf: Continuing scattering %d photons from frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph, scatt_framestart);
-                    printf(">> Rank %d with angles %0.1lf-%0.1lf: The time now is: %e\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,time_now);
-                }
-                else
-                {
-                    printf(">> Rank %d with angles %0.1lf-%0.1lf: Continuing simulation by injecting photons at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,framestart, frm2); //starting with new photon injection is same as restarting sim
-                }
-                
-            }
-            else if ((stat(mc_dir, &st) == -1) && (restrt==INITALIZE))
-            {
-                mkdir(mc_dir, 0777); //make the directory with full permissions
-                
-                
-            }
-            else 
-            {
-                if (angle_id==0)
-                {
-                    printf(">> proc %d with angles %0.1lf-%0.1lf:  Cleaning directory \n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
-                    dirp = opendir(mc_dir);
-                    while ((entry = readdir(dirp)) != NULL) 
-                    {
-                        if (entry->d_type == DT_REG) { /* If the entry is a regular file */
-                             file_count++; //count how many files are in dorectory
-                        }
-                    }
-                    printf("File count %d\n", file_count);
-                    //file_count=0;
-                    
-                    if (file_count>0)
-                    {
-                        snprintf(mc_operation,sizeof(mc_operation),"%s%s%s","exec rm ", mc_dir,"mc_proc_*"); //prepares string to remove *.dat in mc_dir
-                        system(mc_operation);
-                        
-                        snprintf(mc_operation,sizeof(mc_operation),"%s%s%s","exec rm ", mc_dir,"mcdata_PW_*"); //prepares string to remove *.dat in mc_dir
-                        system(mc_operation);
-                        
-                        snprintf(mc_operation,sizeof(mc_operation),"%s%s%s","exec rm ", mc_dir,"mcdata_PW*"); //prepares string to remove *.dat in mc_dir
-                        system(mc_operation);
-                        
-                        snprintf(mc_operation,sizeof(mc_operation),"%s%s%s","exec rm ", mc_dir,"mc_chkpt_*.dat"); //prepares string to remove *.dat in mc_dir
-                        system(mc_operation);
-                        
-                        snprintf(mc_operation,sizeof(mc_operation),"%s%s%s","exec rm ", mc_dir,"mc_output_*.log"); //prepares string to remove *.log in mc_dir
-                        system(mc_operation);
-                        
-                    }
+                if (entry->d_type == DT_REG) { /* If the entry is a regular file */
+                     file_count++; //count how many files are in dorectory
                 }
             }
+            printf("File count %d\n", file_count);
+            //file_count=0;
+            
+            if (file_count>0)
+            {
+                snprintf(mc_operation,sizeof(mc_operation),"%s%s%s","exec rm ", mc_dir,"mc_proc_*"); //prepares string to remove *.dat in mc_dir
+                system(mc_operation);
+                
+                snprintf(mc_operation,sizeof(mc_operation),"%s%s%s","exec rm ", mc_dir,"mcdata_PW_*"); //prepares string to remove *.dat in mc_dir
+                system(mc_operation);
+                
+                snprintf(mc_operation,sizeof(mc_operation),"%s%s%s","exec rm ", mc_dir,"mcdata_PW*"); //prepares string to remove *.dat in mc_dir
+                system(mc_operation);
+                
+                snprintf(mc_operation,sizeof(mc_operation),"%s%s%s","exec rm ", mc_dir,"mc_chkpt_*.dat"); //prepares string to remove *.dat in mc_dir
+                system(mc_operation);
+                
+                snprintf(mc_operation,sizeof(mc_operation),"%s%s%s","exec rm ", mc_dir,"mc_output_*.log"); //prepares string to remove *.log in mc_dir
+                system(mc_operation);
+                
+            }
+        }
+    }
     
-            #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
-            if (framestart>=3000)
+    #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+    if (framestart>=3000)
+    {
+        //increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+        //fps_modified=1; //therefore dt between files become 1 second
+        hydrodata.increment_inj_frame=10;
+        hydrodata.fps=1;
+    }
+    #else
+    {
+        //increment_inj=1;
+        //fps_modified=fps;
+        hydrodata.increment_inj_frame=1;
+        hydrodata.fps=fps; //this is already set in readMcPar function but may need to be modified
+    }
+    #endif
+                
+    dt_max=1.0/hydrodata.fps;
+   
+    MPI_Barrier(angle_comm);
+    snprintf(log_file,sizeof(log_file),"%s%s%d%s",mc_dir,"mc_output_", angle_id,".log" );
+    printf("%s\n",log_file);
+    fPtr=fopen(log_file, "a");
+    
+    printf( "Im Proc %d with angles %0.1lf-%0.1lf proc_frame_size is %d Starting on Frame: %d Injecting until %d scatt_framestart: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, proc_frame_size, framestart, frm2, scatt_framestart);
+    
+    fprintf(fPtr, "Im Proc %d with angles %0.1lf-%0.1lf  Starting on Frame: %d scatt_framestart: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, framestart, scatt_framestart);
+    fflush(fPtr);
+    
+    free(frame_array);
+    
+    //for a checkpoint implementation, start from the last saved "frame" value and go to the saved "frm2" value
+        
+            
+    for (frame=framestart;frame<=frm2;frame=frame+hydrodata.increment_inj_frame)
+    {
+        hydrodata.inj_frame_number=frame;
+        #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+        if (frame>=3000)
+        {
+            hydrodata.increment_inj_frame=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+            hydrodata.fps=1; //therefore dt between files become 1 second
+            
+        }
+        #else
+        {
+            hydrodata.increment_inj_frame=1;
+            hydrodata.fps=fps;
+        }
+        #endif
+                        
+         if (restrt==INITALIZE)
+         {
+            time_now=frame/hydrodata.fps; //for a checkpoint implmentation, load the saved "time_now" value when reading the ckeckpoint file otherwise calculate it normally
+         }
+        
+        //printf(">> mc.py: Working on Frame %d\n", frame);
+        fprintf(fPtr,"Im Proc: %d with angles %0.1lf - %0.1lf Working on Frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frame);
+        fflush(fPtr);
+        
+        if (restrt==INITALIZE)
+        {
+
+            #if DIMENSIONS == 2
             {
-                //increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-                //fps_modified=1; //therefore dt between files become 1 second
-                hydrodata.increment_inj_frame=10;
-                hydrodata.fps=1;
+                #if SIM_SWITCH == FLASH
+                //{
+                    //if using FLASH data for 2D
+                    //put proper number at the end of the flash file
+                    modifyFlashName(hydro_file, hydro_prefix, frame);
+                    
+                    fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
+                    fflush(fPtr);
+                    
+                    readAndDecimate(hydro_file, &hydrodata, inj_radius, 1, min_r, max_r, min_theta, max_theta, fPtr);
+                //}
+                #elif SIM_SWITCH == PLUTO_CHOMBO
+                //{
+                    modifyPlutoName(hydro_file, hydro_prefix, frame);
+                    
+                    fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
+                    fflush(fPtr);
+                    
+                    readPlutoChombo(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                            &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
+                    
+                    //exit(0);
+                //}
+                #else
+                //{
+                    //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
+                    readHydro2D(FILEPATH, frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
+                    //fprintf(fPtr, "%d\n\n", array_num);
+                //}
+                #endif
+                fprintf(fPtr, "Number of Hydro Elements %d\n", hydrodata.num_elements);
             }
             #else
             {
-                //increment_inj=1;
-                //fps_modified=fps;
-                hydrodata.increment_inj_frame=1;
-                hydrodata.fps=fps; //this is already set in readMcPar function but may need to be modified
+                fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+                fflush(fPtr);
+                
+                read_hydro(FILEPATH, frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
+                           &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fps_modified, fPtr);
             }
             #endif
-                        
-            dt_max=1.0/hydrodata.fps;
-           
-            MPI_Barrier(angle_comm); 
-            snprintf(log_file,sizeof(log_file),"%s%s%d%s",mc_dir,"mc_output_", angle_id,".log" );
-            printf("%s\n",log_file);
-            fPtr=fopen(log_file, "a");
             
-            printf( "Im Proc %d with angles %0.1lf-%0.1lf proc_frame_size is %d Starting on Frame: %d Injecting until %d scatt_framestart: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, proc_frame_size, framestart, frm2, scatt_framestart);
+            //convert hydro coordinates to spherical so we can inject photons, overwriting values, etc.
+            fillHydroCoordinateToSpherical(&hydrodata);
             
-            fprintf(fPtr, "Im Proc %d with angles %0.1lf-%0.1lf  Starting on Frame: %d scatt_framestart: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, framestart, scatt_framestart);
-            fflush(fPtr);
-            
-            free(frame_array);
-            
-            //for a checkpoint implementation, start from the last saved "frame" value and go to the saved "frm2" value
-            
-            
-            for (frame=framestart;frame<=frm2;frame=frame+hydrodata.increment_inj_frame)
+            //check for run type
+            #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
             {
-                hydrodata.inj_frame_number=frame;
-                #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
-                if (frame>=3000)
-                {
-                    hydrodata.increment_inj_frame=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-                    hydrodata.fps=1; //therefore dt between files become 1 second
-                    
-                }
-                #else
-                {
-                    hydrodata.increment_inj_frame=1;
-                    hydrodata.fps=fps;
-                }
-                #endif
-                                
-                 if (restrt==INITALIZE)
-                 {
-                    time_now=frame/hydrodata.fps; //for a checkpoint implmentation, load the saved "time_now" value when reading the ckeckpoint file otherwise calculate it normally
-                 }
-                
-                //printf(">> mc.py: Working on Frame %d\n", frame);
-                fprintf(fPtr,"Im Proc: %d with angles %0.1lf - %0.1lf Working on Frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frame);
-                fflush(fPtr);
-                
-                if (restrt==INITALIZE)
-                {
-
-                    #if DIMENSIONS == 2
-                    {
-                        #if SIM_SWITCH == FLASH
-                        //{
-                            //if using FLASH data for 2D
-                            //put proper number at the end of the flash file
-                            modifyFlashName(hydro_file, hydro_prefix, frame);
-                            
-                            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
-                            fflush(fPtr);
-                            
-                            readAndDecimate(hydro_file, &hydrodata, inj_radius, 1, min_r, max_r, min_theta, max_theta, fPtr);
-                        //}
-                        #elif SIM_SWITCH == PLUTO_CHOMBO
-                        //{
-                            modifyPlutoName(hydro_file, hydro_prefix, frame);
-                            
-                            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
-                            fflush(fPtr);
-                            
-                            readPlutoChombo(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
-                            
-                            //exit(0);
-                        //}
-                        #else
-                        //{
-                            //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
-                            readHydro2D(FILEPATH, frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                        &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
-                            //fprintf(fPtr, "%d\n\n", array_num);
-                        //}
-                        #endif
-                        fprintf(fPtr, "Number of Hydro Elements %d\n", hydrodata.num_elements);
-                    }
-                    #else
-                    {
-                        fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
-                        fflush(fPtr);
-                        
-                        read_hydro(FILEPATH, frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                   &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fps_modified, fPtr);
-                    }
-                    #endif
-                    
-                    //convert hydro coordinates to spherical so we can inject photons, overwriting values, etc.
-                    fillHydroCoordinateToSpherical(&hydrodata);
-                    
-                    //check for run type
-                    #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
-                    {
-                        //printf("In cylindrical prep\n");
-                        //cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
-                        cylindricalPrep(&hydrodata);
-                    }
-                    #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
-                    {
-                        //printf("In Spherical\n");
-                        //sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
-                        sphericalPrep(&hydrodata, fPtr);
-                    }
-                    #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
-                    {
-                        //printf("In Structural Spherical\n");
-                        //structuredFireballPrep(rPtr, thetaPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
-                        structuredFireballPrep(&hydrodata, fPtr);
-                    }
-                    #endif
-                        
-                    //determine where to place photons and how many should go in a given place
-                    //for a checkpoint implmentation, dont need to inject photons, need to load photons' last saved data 
-                    fprintf(fPtr,">>  Proc: %d with angles %0.1lf-%0.1lf: Injecting photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
-                    fflush(fPtr);
-                    
-                    #if DIMENSIONS == 2
-                    {
-                        //photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng, fPtr );
-                        photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, theta_jmin_thread, theta_jmax_thread, &hydrodata,rng, fPtr );
-                    }
-                    #else
-                    {
-                        photonInjection3D(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, zPtr, szxPtr, szyPtr,rPtr,thetaPtr, phiPtr, tempPtr, velxPtr, velyPtr, velzPtr, rng, fPtr);
-
-                    }
-                    #endif
-                    
-                    //printf("This many Photons: %d\n",num_ph); //num_ph is one more photon than i actually have
-                    
-                    //for (i=0;i<num_ph;i++)
-                    //    printf("%e,%e,%e \n",(phPtr+i)->r0, (phPtr+i)->r1, (phPtr+i)->r2 );
-                    
-                }
-                
-                freeHydroDataFrame(&hydrodata);//free frame data here since we rewrite over pointers in next loop
-                
-                //scatter photons all the way thoughout the jet
-                //for a checkpoint implmentation, start from the last saved "scatt_frame" value eh start_frame=frame or start_frame=cont_frame
-                if (restrt==INITALIZE)
-                {
-                    scatt_framestart=frame; //have to make sure that once the inner loop is done and the outer loop is incrememnted by one the inner loop starts at that new value and not the one read by readCheckpoint()
-                }
-                
-                num_null_ph=0;
-                hydrodata.increment_scatt_frame=1;
-                for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame=scatt_frame+hydrodata.increment_scatt_frame)
-                {
-                    hydrodata.scatt_frame_number=scatt_frame;
-                    #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
-                    if (scatt_frame>=3000)
-                    {
-                        hydrodata.increment_scatt_frame=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-                        hydrodata.fps=1; //therefore dt between files become 1 second
-                        
-                    }
-                    #else
-                    {
-                        hydrodata.increment_scatt_frame=1;
-                        hydrodata.fps=fps;
-                    }
-                    #endif
-                    
-                    dt_max=1.0/hydrodata.fps; //if working with RIKEN files and scatt_frame>=3000 dt  is 1 second between each subsequent frame
-                    
-                    fprintf(fPtr,">>\n");
-                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Working on photons injected at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,frame, frm2);
-                    
-                    #if SIMULATION_TYPE == SCIENCE
-                        fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Science - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
-                    #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
-                        fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Spherical Outflow - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
-                    #elif SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
-                        fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Cylindrical Outflow - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
-                    #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
-                        fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Structured Spherical Outflow - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
-                    #endif
-                    
-                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Opening file...\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
-                    fflush(fPtr);
-                    
-                    //set new seed to increase randomness?
-                    gsl_rng_set(rng, gsl_rng_get(rng));
-                    
-                   
-                    #if DIMENSIONS == 2
-                    {
-                        #if SIM_SWITCH == FLASH
-                        {
-                            //if using FLASH data for 2D
-                            //put proper number at the end of the flash file
-                            modifyFlashName(hydro_file, hydro_prefix, scatt_frame);
-                            phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
-                            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
-                            fflush(fPtr);
-                            
-                                if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE))
-                                {
-                                    //NEED TO DETERMINE IF min_r or max_r is smaller/larger than the rmin/rmax in photonEmitCyclosynch to properly emit photons in the range that the process is interested in
-                                    //printf("OLD: min_r %e max_r %e\n", min_r, max_r);
-                                    double test=0;
-                                    test=calcCyclosynchRLimits( scatt_frame, frame, hydrodata.fps,  inj_radius, "min");
-                                    //printf("TEST MIN: %e\n", test);
-                                    min_r=(min_r < test) ? min_r : test ;
-                                    test=calcCyclosynchRLimits( scatt_frame, frame, hydrodata.fps,  inj_radius, "max");
-                                    //printf("TEST MAX: %e\n", test);
-                                    max_r=(max_r > test ) ? max_r : test ;
-                                    //printf("NEW: min_r %e max_r %e\n", min_r, max_r);
-                                }
-                            
-                            //readAndDecimate(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr); old function call
-                            readAndDecimate(hydro_file, &hydrodata, inj_radius, 0, min_r, max_r, min_theta, max_theta, fPtr);
-                        }
-                        //else if (strcmp(pluto_amr_sim, this_sim)==0)
-                        #elif SIM_SWITCH == PLUTO_CHOMBO
-                        {
-                            modifyPlutoName(hydro_file, hydro_prefix, scatt_frame);
-                            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
-                            fflush(fPtr);
-                            phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
-                            readPlutoChombo(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr);
-                            
-                            //exit(0);
-                        }
-                        #else
-                        {
-                            phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
-                            //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
-                            readHydro2D(FILEPATH, scatt_frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                        &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
-                            //fprintf(fPtr, "%d\n\n", array_num);
-                        }
-                        #endif
-                        //fprintf(fPtr, "Number of Hydo Elements %d\n", array_num);
-        //exit(0);
-                    }
-                    #else
-                    {
-                        phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
-                        fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
-                        fflush(fPtr);
-                        
-                        read_hydro(FILEPATH, frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
-                                   &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fps_modified, fPtr);
-                    }
-                    #endif
-                    fprintf(fPtr, "Number of Hydo Elements %d\n", array_num);
-                    
-                    //convert hydro coordinates to spherical so we can inject photons, overwriting values, etc.
-                    fillHydroCoordinateToSpherical(&hydrodata);
-                    
-                    
-                    //check for run type
-                    #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
-                    {
-                        //printf("In cylindrical prep\n");
-                        //cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
-                        cylindricalPrep(&hydrodata);
-                    }
-                    #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
-                    {
-                        //sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num, fPtr );
-                        sphericalPrep(&hydrodata, fPtr);
-                    }
-                    #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
-                    {
-                        //printf("In Structural Spherical\n");
-                        //structuredFireballPrep(rPtr, thetaPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
-                        structuredFireballPrep(&hydrodata, fPtr);
-                    }
-                    #endif
-                        //printf("The result of read and decimate are arrays with %d elements\n", array_num);
-                    
-                    //emit synchrotron photons here
-                    num_cyclosynch_ph_emit=0;
-                    
-                    //by default want to allocat ememory for time_steps and sorted indexes to scatter
-                    all_time_steps=malloc(num_ph*sizeof(double));
-                    sorted_indexes=malloc(num_ph*sizeof(int));
-                    
-                    #if CYCLOSYNCHROTRON_SWITCH == ON
-                    if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //remember to revert back to !=
-                    {
-                        //if injecting synch photons, emit them if continuing simulation from a point where scatt_frame != scatt_framestart
-                        //if necessary, then add memory to then arrays allocated directly above
-                        
-                        
-                        fprintf(fPtr, "Emitting Synchrotron Photons in frame %d\n", scatt_frame);
-                        
-                        #if B_FIELD_CALC == INTERNAL_E
-                            fprintf(fPtr, "Calculating the magnetic field using internal energy.\n", scatt_frame);
-                        #else
-                            //otherwise calculate B from the total energy
-                            fprintf(fPtr, "Calculating the magnetic field using the total energy and epsilon_B is set to %lf.\n", EPSILON_B);
-                        #endif
-                        
-                        phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
-                        num_cyclosynch_ph_emit=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 0, 0, fPtr);
-                        
-                        
-                        
-                        //printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e (phPtr)[72].comv_p0 %e (phPtr)[73].comv_p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0, (phPtr)[72].comv_p0, (phPtr)[73].comv_p0);
-                        
-                    }
-                    #endif
-                    
-                    fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph-num_null_ph);
-                    fflush(fPtr);
-                    
-                    frame_scatt_cnt=0;
-                    frame_abs_cnt=0;
-                    find_nearest_grid_switch=1; // set to true so the function findNearestPropertiesAndMinMFP by default finds the index of the grid block closest to each photon since we just read in a file and the prior index is invalid
-                    num_photons_find_new_element=0;
-                    
-                    n_comptonized=0;
-                    while (time_now<((scatt_frame+hydrodata.increment_scatt_frame)/hydrodata.fps))
-                    {
-                        //if simulation time is less than the simulation time of the next frame, keep scattering in this frame
-                        //for RIKEN hydro data, theres still 10 fps but after frame 3000, file increment is 10 not 1, therefore modify dt_max not fps
-                        
-                        //go through each photon and find blocks closest to each photon and properties of those blocks to calulate mean free path
-                        //and choose the photon with the smallest mfp and calculate the timestep
-                        
-
-                        num_photons_find_new_element+=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, 1, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
-                                                                      all_time_steps, sorted_indexes, rng, find_nearest_grid_switch, fPtr);
-
-                        
-                        find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
-
-                        
-                        //fprintf(fPtr, "In main: %d, %e, Newest Method results: %d, %e\n", ph_scatt_index, time_step, *(sorted_indexes+0), *(all_time_steps+(*(sorted_indexes+0))) );
-                        //fflush(fPtr);
-                        //for (i=1;i<num_ph;i++)
-                        //{
-                        //   fprintf(fPtr, "Newest Method results: %d, %e\n", *(sorted_indexes+i), *(all_time_steps+(*(sorted_indexes+i))) );
-                        //}
-                        
-                        
-                        if (*(all_time_steps+(*(sorted_indexes+0)))<dt_max)
-                        {
-                            //scatter the photon
-                            //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
-
-                            time_step=photonEvent( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );
-                            time_now+=time_step;
-                            
-                            //see if the scattered phton was a seed photon, if so replenish the seed photon
-                            #if CYCLOSYNCHROTRON_SWITCH == ON
-                            if ((phPtr+ph_scatt_index)->type == CS_POOL_PHOTON)
-                            {
-                                n_comptonized+=(phPtr+ph_scatt_index)->weight;
-                                (phPtr+ph_scatt_index)->type = COMPTONIZED_PHOTON; //c for compton scattered synchrotron photon
-                                
-                                //fprintf(fPtr, "num_null_ph %d\n", num_null_ph);
-                                //printf("The previous scattered photon was a seed photon %c.\n", (phPtr+ph_scatt_index)->type);
-                                num_cyclosynch_ph_emit+=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 1, ph_scatt_index, fPtr);
-                                //fprintf(fPtr, " num_photon: %d\n",num_ph  );
-                                //fflush(fPtr);
-                                
-                                scatt_cyclosynch_num_ph++;//keep track of the number of synch photons that have scattered for later in checking of we need to rebin them
-                                //fprintf(fPtr,"photonEmitCyclosynch: scatt_cyclosynch_num_ph Number: %d\n", scatt_cyclosynch_num_ph);
-                                //exit(0);
-                                 
-                            }
-                            #endif
-                            
-                            //phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
-                            
-                            if ((frame_scatt_cnt%1000 == 0) && (frame_scatt_cnt != 0)) //modified this so it doesn't print when all photons get absorbed at first and frame_scatt_cnt=0
-                            {
-                                fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
-                                fprintf(fPtr,"The local temp is: %e K\n", *(tempPtr + (phPtr+ph_scatt_index)->nearest_block_index) );
-                                fprintf(fPtr,"Average photon energy is: %e ergs\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 can then do (1.6e-9) to get keV
-                                fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
-                                //fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
-                                fflush(fPtr);
-                                
-                                #if CYCLOSYNCHROTRON_SWITCH == ON
-                                if (scatt_cyclosynch_num_ph>max_photons)
-                                {
-                                    //if the number of synch photons that have been scattered is too high rebin them
-                                    
-                                    //printf("num_cyclosynch_ph_emit: %d\n", num_cyclosynch_ph_emit);
-                                    rebin2dCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
-
-                                    //fprintf(fPtr, "rebinSynchCompPhotons: scatt_cyclosynch_num_ph: %d\n", scatt_cyclosynch_num_ph);
-                                    //exit(0);
-                                }
-                                #endif
-                           }
-                            //exit(0);
-                        }
-                        else
-                        {
-                            time_now+=dt_max;
-                            
-                            //for each photon update its position based on its momentum
-                            
-                            updatePhotonPosition(phPtr, num_ph, dt_max, fPtr);
-                        }
-                        
-                        //printf("In main 2: %e, %d, %e, %e\n", ((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
-
-                    }
-                    
-                    #if CYCLOSYNCHROTRON_SWITCH == ON
-                    if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //rememebr to change to != also at the other place in the code
-                    {
-                        if (scatt_cyclosynch_num_ph>max_photons)
-                        {
-                            //rebin the photons to ensure that we have a constant amount here
-                            fprintf(fPtr, "Num_ph: %d\n", num_ph);
-                            /*
-                            fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
-                            fflush(fPtr);
-                            */
-                            rebin2dCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
-                          //exit(0);
-                       }
-                                                
-
-                        
-                        //make sure the photons that shou;d be absorbed should be absorbed if we have actually emitted any synchrotron photons
-                        if (num_cyclosynch_ph_emit>0)
-                        {
-                            n_comptonized-=phAbsCyclosynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_cyclosynch_num_ph, tempPtr, densPtr, fPtr);
-                        }
-                        
-                    }
-                    #endif
-                    
-                    //get scattering statistics
-                    phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr);
-                        
-                    fprintf(fPtr,"The number of scatterings in this frame is: %d\n", frame_scatt_cnt);
-                    #if CYCLOSYNCHROTRON_SWITCH == ON
-                        fprintf(fPtr,"The number of photons absorbed in this frame is: %d\n", frame_abs_cnt);
-                    #endif
-                    fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
-                    fprintf(fPtr,"MCRaT had to refind the position of photons %d times in this frame.\n", num_photons_find_new_element);
-                    fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scatterings for a photon is: %d\n", max_scatt, min_scatt);
-                    fprintf(fPtr,"The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
-                    
-                    fflush(fPtr);
-                    
-                    fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Making checkpoint file\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
-                    fflush(fPtr);
-                
-                    fprintf(fPtr, " mc_dir: %s\nframe %d\nfrm2: %d\nscatt_frame: %d\n num_photon: %d\ntime_now: %e\nlast_frame: %d\n", mc_dir, frame, frm2, scatt_frame, num_ph, time_now, last_frm  );
-                    
-                    fprintf(fPtr,"n_comptonized in this frame is: %e\n ", n_comptonized);
-                    fflush(fPtr);
-                    
-                    save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id, old_num_angle_procs);
-                    
-                    if (save_chkpt_success==0)
-                    {
-                        //if we saved the checkpoint successfully also save the photons to the hdf5 file, else there may be something wrong with the file system
-                        printPhotons(phPtr, num_ph, frame_abs_cnt, num_cyclosynch_ph_emit, num_null_ph, scatt_cyclosynch_num_ph, scatt_frame , frame, last_frm, mc_dir, angle_id, fPtr);
-                    }
-                    else
-                    {
-                        fprintf(fPtr, "There is an issue with opening and saving the chkpt file therefore MCRaT is not saving data to the checkpoint or mc_proc files to prevent corruption of those data.\n");
-                        printf("There is an issue with opening and saving the chkpt file therefore MCRaT is not saving data to the checkpoint or mc_proc files to prevent corruption of those data.\n");
-                        fflush(fPtr);
-                        exit(1);
-                    }
-
-                    //if (frame==last_frm)
-                    //{
-                    //    exit(0);
-                    //}
-                    
-                     //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
-                    #if SIM_SWITCH == RIKEN && DIMENSIONS ==3
-                    {
-                        //if (RIKEN_SWITCH==1)
-                        {
-                            free(zPtr);free(phiPtr);free(velzPtr);
-                            zPtr=NULL; phiPtr=NULL; velzPtr=NULL;
-                        }
-                    }
-                    #endif
-                
-                    free(xPtr);free(yPtr);free(szxPtr);free(szyPtr);free(rPtr);free(thetaPtr);free(velxPtr);free(velyPtr);free(densPtr);free(presPtr);
-                    free(gammaPtr);free(dens_labPtr);free(tempPtr);
-                    xPtr=NULL; yPtr=NULL;  rPtr=NULL;thetaPtr=NULL;velxPtr=NULL;velyPtr=NULL;densPtr=NULL;presPtr=NULL;gammaPtr=NULL;dens_labPtr=NULL;
-                    szxPtr=NULL; szyPtr=NULL; tempPtr=NULL;
-                    freeHydroDataFrame(&hydrodata);
-                }
-                
-                restrt=INITALIZE;//set this to make sure that the next iteration of propogating photons doesnt use the values from the last reading of the checkpoint file
-                scatt_cyclosynch_num_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
-                num_null_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
-                free(phPtr); 
-                phPtr=NULL;
-                free(all_time_steps);
-                all_time_steps=NULL;
-                free(sorted_indexes);
-                sorted_indexes=NULL;
-            } 
-            save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, 0, time_now, phPtr, last_frm, angle_id, old_num_angle_procs); //this is for processes using the old code that didnt restart efficiently
-            fprintf(fPtr, "Process %d has completed the MC calculation.\n", angle_id);
-            fflush(fPtr);
-            
-            //exit(0);
-                
-        MPI_Barrier(angle_comm);
-        
-        //merge files from each worker thread within a directory
-        {
-            
-             hydrodata.increment_scatt_frame=1;
-             file_count=0;
-             
-             //count number of files
-             for (i=frm0;i<=last_frm;i=i+hydrodata.increment_scatt_frame)
-             {
-                 
-                //if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
-                #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
-                if (i>=3000)
-                {
-                    hydrodata.increment_scatt_frame=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-                }
-                #endif
-                file_count++;
-             }
-             
-             //holds number of files for each process to merge
-             MPI_Comm_size(angle_comm, &angle_procs); //to get the proper number of processes within the group
-             MPI_Comm_rank(angle_comm, &angle_id); //reset the value of angle_id to what it should actualy be to properly distribute files to merge
-             
-             proc_frame_size=floor(file_count/ (float) angle_procs);
-             frame_array=malloc(file_count*sizeof(int));
-             proc_frame_array=malloc(angle_procs*sizeof(int)); //sets index of each proceesed acquired value
-             element_num=malloc(angle_procs*sizeof(int));
-             
-             for (i=0;i<angle_procs;i++)
-             {
-                *(proc_frame_array+i)=i*proc_frame_size;
-                *(element_num+i)=1;
-             }
-             
-             //make vector with the files in order to pass them to each of the processes
-             hydrodata.increment_scatt_frame=1;
-             file_count=0;
-             for (i=frm0;i<=last_frm;i=i+hydrodata.increment_scatt_frame)
-             {
-                //if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
-                #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
-                if (i>=3000)
-                {
-                    hydrodata.increment_scatt_frame=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-                }
-                #endif
-
-                *(frame_array+file_count)=i ;
-                file_count++;
-                //printf("file_count: %d frame: %d\n",  file_count-1, *(frame_array+file_count-1));
-             }
-             //pass  first frame number that each rpocess should start to merge, can calulate the file it should merge until
-             MPI_Scatterv(frame_array, element_num, proc_frame_array, MPI_INT, &frm0, 1, MPI_INT, 0, angle_comm);
-             
-             //fprintf(fPtr, "Value: last_frm: ,%d\n", file_count);
-             //fflush(fPtr);
-             
-             //make sure all files get merged by giving the rest to the last process
-             if (angle_id==angle_procs-1)
-             {
-                proc_frame_size=file_count-proc_frame_size*(angle_procs-1); //for last process take over the remaining number of files
-             }
-             //calculate what the last file the preocess should merge up to
-             i=0;
-             last_frm=frm0;
-             while(i<proc_frame_size)
-             {
-                //if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (last_frm>=3000))
-                #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
-                if (last_frm>=3000)
-                {
-                    hydrodata.increment_scatt_frame=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-                }
-                #else
-                {
-                    hydrodata.increment_scatt_frame=1;
-                }
-                #endif
-             
-                last_frm+=hydrodata.increment_scatt_frame;
-                i++;
-             }
-             
-             
-            //if (angle_id==0)
-            {
-                //fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
-                fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
-                fflush(fPtr);
-                
-                dirFileMerge(mc_dir, frm0, last_frm, old_num_angle_procs, angle_id, fPtr);
+                //printf("In cylindrical prep\n");
+                //cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
+                cylindricalPrep(&hydrodata);
             }
+            #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
+            {
+                //printf("In Spherical\n");
+                //sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
+                sphericalPrep(&hydrodata, fPtr);
+            }
+            #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
+            {
+                //printf("In Structural Spherical\n");
+                //structuredFireballPrep(rPtr, thetaPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
+                structuredFireballPrep(&hydrodata, fPtr);
+            }
+            #endif
+                
+            //determine where to place photons and how many should go in a given place
+            //for a checkpoint implmentation, dont need to inject photons, need to load photons' last saved data
+            fprintf(fPtr,">>  Proc: %d with angles %0.1lf-%0.1lf: Injecting photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+            fflush(fPtr);
+            
+            #if DIMENSIONS == 2
+            {
+                //photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng, fPtr );
+                photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, theta_jmin_thread, theta_jmax_thread, &hydrodata,rng, fPtr ); //this may also work for 3D
+            }
+            #else
+            {
+                photonInjection3D(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, zPtr, szxPtr, szyPtr,rPtr,thetaPtr, phiPtr, tempPtr, velxPtr, velyPtr, velzPtr, rng, fPtr);
+
+            }
+            #endif
+            
+            //printf("This many Photons: %d\n",num_ph); //num_ph is one more photon than i actually have
+            
+            //for (i=0;i<num_ph;i++)
+            //    printf("%e,%e,%e \n",(phPtr+i)->r0, (phPtr+i)->r1, (phPtr+i)->r2 );
+            
         }
         
-        fprintf(fPtr, "Process %d has completed merging files.\n", angle_id);
-        fflush(fPtr);
+        freeHydroDataFrame(&hydrodata);//free frame data here since we rewrite over pointers in next loop
+        
+        //scatter photons all the way thoughout the jet
+        //for a checkpoint implmentation, start from the last saved "scatt_frame" value eh start_frame=frame or start_frame=cont_frame
+        if (restrt==INITALIZE)
+        {
+            scatt_framestart=frame; //have to make sure that once the inner loop is done and the outer loop is incremented by one the inner loop starts at that new value and not the one read by readCheckpoint()
+        }
+        
+        num_null_ph=0;
+        hydrodata.increment_scatt_frame=1;
+        for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame=scatt_frame+hydrodata.increment_scatt_frame)
+        {
+            hydrodata.scatt_frame_number=scatt_frame;
+            #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+            if (scatt_frame>=3000)
+            {
+                hydrodata.increment_scatt_frame=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+                hydrodata.fps=1; //therefore dt between files become 1 second
+                
+            }
+            #else
+            {
+                hydrodata.increment_scatt_frame=1;
+                hydrodata.fps=fps;
+            }
+            #endif
+            
+            dt_max=1.0/hydrodata.fps; //if working with RIKEN files and scatt_frame>=3000 dt  is 1 second between each subsequent frame
+            
+            fprintf(fPtr,">>\n");
+            fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Working on photons injected at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,frame, frm2);
+            
+            #if SIMULATION_TYPE == SCIENCE
+                fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Science - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
+            #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
+                fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Spherical Outflow - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
+            #elif SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
+                fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Cylindrical Outflow - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
+            #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
+                fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Structured Spherical Outflow - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
+            #endif
+            
+            fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Opening file...\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+            fflush(fPtr);
+            
+            //set new seed to increase randomness?
+            gsl_rng_set(rng, gsl_rng_get(rng));
+            
+            //calc min and max positions of photons
+            phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
+            #if CYCLOSYNCHROTRON_SWITCH == ON
+                if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE))
+                {
+                    //NEED TO DETERMINE IF min_r or max_r is smaller/larger than the rmin/rmax in photonEmitCyclosynch to properly emit photons in the range that the process is interested in
+                    //printf("OLD: min_r %e max_r %e\n", min_r, max_r);
+                    test_cyclosynch_inj_radius=calcCyclosynchRLimits( scatt_frame, frame, hydrodata.fps,  inj_radius, "min");
+                    //printf("TEST MIN: %e\n", test);
+                    min_r=(min_r < test_cyclosynch_inj_radius) ? min_r : test_cyclosynch_inj_radius ;
+                    test_cyclosynch_inj_radius=calcCyclosynchRLimits( scatt_frame, frame, hydrodata.fps,  inj_radius, "max");
+                    //printf("TEST MAX: %e\n", test);
+                    max_r=(max_r > test_cyclosynch_inj_radius ) ? max_r : test_cyclosynch_inj_radius ;
+                    //printf("NEW: min_r %e max_r %e\n", min_r, max_r);
+                }
+            #endif
+
+           
+            #if DIMENSIONS == 2
+            {
+                #if SIM_SWITCH == FLASH
+                {
+                    //if using FLASH data for 2D
+                    //put proper number at the end of the flash file
+                    modifyFlashName(hydro_file, hydro_prefix, scatt_frame);
+                    
+                    fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening FLASH file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
+                    fflush(fPtr);
+                    //readAndDecimate(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                            &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr); old function call
+                    readAndDecimate(hydro_file, &hydrodata, inj_radius, 0, min_r, max_r, min_theta, max_theta, fPtr);
+                }
+                //else if (strcmp(pluto_amr_sim, this_sim)==0)
+                #elif SIM_SWITCH == PLUTO_CHOMBO
+                {
+                    modifyPlutoName(hydro_file, hydro_prefix, scatt_frame);
+                    fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
+                    fflush(fPtr);
+                    phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
+                    readPlutoChombo(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                            &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr);
+                    
+                    //exit(0);
+                }
+                #else
+                {
+                    phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
+                    //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
+                    readHydro2D(FILEPATH, scatt_frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                                &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
+                    //fprintf(fPtr, "%d\n\n", array_num);
+                }
+                #endif
+                //fprintf(fPtr, "Number of Hydo Elements %d\n", array_num);
+    //exit(0);
+            }
+            #else
+            {
+                phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
+                fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+                fflush(fPtr);
+                
+                read_hydro(FILEPATH, frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
+                           &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fps_modified, fPtr);
+            }
+            #endif
+            fprintf(fPtr, "Number of Hydo Elements %d\n", hydrodata.num_elements);
+            
+            //convert hydro coordinates to spherical so we can inject photons, overwriting values, etc.
+            fillHydroCoordinateToSpherical(&hydrodata);
+            
+            
+            //check for run type
+            #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
+            {
+                //printf("In cylindrical prep\n");
+                //cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
+                cylindricalPrep(&hydrodata);
+            }
+            #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
+            {
+                //sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num, fPtr );
+                sphericalPrep(&hydrodata, fPtr);
+            }
+            #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
+            {
+                //printf("In Structural Spherical\n");
+                //structuredFireballPrep(rPtr, thetaPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
+                structuredFireballPrep(&hydrodata, fPtr);
+            }
+            #endif
+                //printf("The result of read and decimate are arrays with %d elements\n", array_num);
+            
+            //emit synchrotron photons here
+            num_cyclosynch_ph_emit=0;
+            
+            //by default want to allocat ememory for time_steps and sorted indexes to scatter
+            all_time_steps=malloc(num_ph*sizeof(double));
+            sorted_indexes=malloc(num_ph*sizeof(int));
+            
+            #if CYCLOSYNCHROTRON_SWITCH == ON
+                if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //remember to revert back to !=
+                {
+                    //if injecting synch photons, emit them if continuing simulation from a point where scatt_frame != scatt_framestart
+                    //if necessary, then add memory to then arrays allocated directly above
+                    
+                    fprintf(fPtr, "Emitting Synchrotron Photons in frame %d\n", scatt_frame);
+                    
+                    #if B_FIELD_CALC == INTERNAL_E
+                        fprintf(fPtr, "Calculating the magnetic field using internal energy and epsilon_B is set to %lf.\n", EPSILON_B);
+                    #elif B_FIELD_CALC == TOTAL_E
+                        //otherwise calculate B from the total energy
+                        fprintf(fPtr, "Calculating the magnetic field using the total energy and epsilon_B is set to %lf.\n", EPSILON_B);
+                    #else
+                    fprintf(fPtr, "Using the magnetic field from the hydro simulation.\n");
+                    #endif
+                    
+                    phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
+                    num_cyclosynch_ph_emit=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 0, 0, fPtr);
+                    //photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 0, 0, fPtr);
+                }
+            #endif
+            
+            fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph-num_null_ph);
+            fflush(fPtr);
+            
+            frame_scatt_cnt=0;
+            frame_abs_cnt=0;
+            find_nearest_grid_switch=1; // set to true so the function findNearestPropertiesAndMinMFP by default finds the index of the grid block closest to each photon since we just read in a file and the prior index is invalid
+            num_photons_find_new_element=0;
+            
+            n_comptonized=0;
+            while (time_now<((scatt_frame+hydrodata.increment_scatt_frame)/hydrodata.fps))
+            {
+                //if simulation time is less than the simulation time of the next frame, keep scattering in this frame
+                //for RIKEN hydro data, theres still 10 fps but after frame 3000, file increment is 10 not 1, therefore modify dt_max not fps
+                
+                //go through each photon and find blocks closest to each photon and properties of those blocks to calulate mean free path
+                //and choose the photon with the smallest mfp and calculate the timestep
+                
+
+                num_photons_find_new_element+=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, 1, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
+                                                              all_time_steps, sorted_indexes, rng, find_nearest_grid_switch, fPtr);
+
+                
+                find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
+
+                
+                //fprintf(fPtr, "In main: %d, %e, Newest Method results: %d, %e\n", ph_scatt_index, time_step, *(sorted_indexes+0), *(all_time_steps+(*(sorted_indexes+0))) );
+                //fflush(fPtr);
+                //for (i=1;i<num_ph;i++)
+                //{
+                //   fprintf(fPtr, "Newest Method results: %d, %e\n", *(sorted_indexes+i), *(all_time_steps+(*(sorted_indexes+i))) );
+                //}
+                
+                
+                if (*(all_time_steps+(*(sorted_indexes+0)))<dt_max)
+                {
+                    //scatter the photon
+                    //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
+
+                    time_step=photonEvent( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );
+                    time_now+=time_step;
+                    
+                    //see if the scattered phton was a seed photon, if so replenish the seed photon
+                    #if CYCLOSYNCHROTRON_SWITCH == ON
+                    if ((phPtr+ph_scatt_index)->type == CS_POOL_PHOTON)
+                    {
+                        n_comptonized+=(phPtr+ph_scatt_index)->weight;
+                        (phPtr+ph_scatt_index)->type = COMPTONIZED_PHOTON; //c for compton scattered synchrotron photon
+                        
+                        //fprintf(fPtr, "num_null_ph %d\n", num_null_ph);
+                        //printf("The previous scattered photon was a seed photon %c.\n", (phPtr+ph_scatt_index)->type);
+                        num_cyclosynch_ph_emit+=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 1, ph_scatt_index, fPtr);
+                        //(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 1, ph_scatt_index, fPtr);
+                        //fprintf(fPtr, " num_photon: %d\n",num_ph  );
+                        //fflush(fPtr);
+                        
+                        scatt_cyclosynch_num_ph++;//keep track of the number of synch photons that have scattered for later in checking of we need to rebin them
+                        //fprintf(fPtr,"photonEmitCyclosynch: scatt_cyclosynch_num_ph Number: %d\n", scatt_cyclosynch_num_ph);
+                        //exit(0);
+                         
+                    }
+                    #endif
+                    
+                    //phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
+                    
+                    if ((frame_scatt_cnt%1000 == 0) && (frame_scatt_cnt != 0)) //modified this so it doesn't print when all photons get absorbed at first and frame_scatt_cnt=0
+                    {
+                        fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
+                        fprintf(fPtr,"The local temp is: %e K\n", *(tempPtr + (phPtr+ph_scatt_index)->nearest_block_index) );
+                        fprintf(fPtr,"Average photon energy is: %e ergs\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 can then do (1.6e-9) to get keV
+                        fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
+                        //fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
+                        fflush(fPtr);
+                        
+                        #if CYCLOSYNCHROTRON_SWITCH == ON
+                        if (scatt_cyclosynch_num_ph>max_photons)
+                        {
+                            //if the number of synch photons that have been scattered is too high rebin them
+                            
+                            //printf("num_cyclosynch_ph_emit: %d\n", num_cyclosynch_ph_emit);
+                            rebin2dCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
+
+                            //fprintf(fPtr, "rebinSynchCompPhotons: scatt_cyclosynch_num_ph: %d\n", scatt_cyclosynch_num_ph);
+                            //exit(0);
+                        }
+                        #endif
+                   }
+                    //exit(0);
+                }
+                else
+                {
+                    time_now+=dt_max;
+                    
+                    //for each photon update its position based on its momentum
+                    
+                    updatePhotonPosition(phPtr, num_ph, dt_max, fPtr);
+                }
+                
+                //printf("In main 2: %e, %d, %e, %e\n", ((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
+
+            }
+            
+            #if CYCLOSYNCHROTRON_SWITCH == ON
+            if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //rememebr to change to != also at the other place in the code
+            {
+                if (scatt_cyclosynch_num_ph>max_photons)
+                {
+                    //rebin the photons to ensure that we have a constant amount here
+                    fprintf(fPtr, "Num_ph: %d\n", num_ph);
+                    /*
+                    fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
+                    fflush(fPtr);
+                    */
+                    rebin2dCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
+                  //exit(0);
+               }
+                                        
+
+                
+                //make sure the photons that shou;d be absorbed should be absorbed if we have actually emitted any synchrotron photons
+                if (num_cyclosynch_ph_emit>0)
+                {
+                    n_comptonized-=phAbsCyclosynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_cyclosynch_num_ph, tempPtr, densPtr, fPtr);
+                }
+                
+            }
+            #endif
+            
+            //get scattering statistics
+            phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr);
+                
+            fprintf(fPtr,"The number of scatterings in this frame is: %d\n", frame_scatt_cnt);
+            #if CYCLOSYNCHROTRON_SWITCH == ON
+                fprintf(fPtr,"The number of photons absorbed in this frame is: %d\n", frame_abs_cnt);
+            #endif
+            fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
+            fprintf(fPtr,"MCRaT had to refind the position of photons %d times in this frame.\n", num_photons_find_new_element);
+            fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scatterings for a photon is: %d\n", max_scatt, min_scatt);
+            fprintf(fPtr,"The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
+            
+            fflush(fPtr);
+            
+            fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Making checkpoint file\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+            fflush(fPtr);
+        
+            fprintf(fPtr, " mc_dir: %s\nframe %d\nfrm2: %d\nscatt_frame: %d\n num_photon: %d\ntime_now: %e\nlast_frame: %d\n", mc_dir, frame, frm2, scatt_frame, num_ph, time_now, last_frm  );
+            
+            fprintf(fPtr,"n_comptonized in this frame is: %e\n ", n_comptonized);
+            fflush(fPtr);
+            
+            save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id, old_num_angle_procs);
+            
+            if (save_chkpt_success==0)
+            {
+                //if we saved the checkpoint successfully also save the photons to the hdf5 file, else there may be something wrong with the file system
+                printPhotons(phPtr, num_ph, frame_abs_cnt, num_cyclosynch_ph_emit, num_null_ph, scatt_cyclosynch_num_ph, scatt_frame , frame, last_frm, mc_dir, angle_id, fPtr);
+            }
+            else
+            {
+                fprintf(fPtr, "There is an issue with opening and saving the chkpt file therefore MCRaT is not saving data to the checkpoint or mc_proc files to prevent corruption of those data.\n");
+                printf("There is an issue with opening and saving the chkpt file therefore MCRaT is not saving data to the checkpoint or mc_proc files to prevent corruption of those data.\n");
+                fflush(fPtr);
+                exit(1);
+            }
+
+            //if (frame==last_frm)
+            //{
+            //    exit(0);
+            //}
+            
+             //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+            #if SIM_SWITCH == RIKEN && DIMENSIONS ==3
+            {
+                //if (RIKEN_SWITCH==1)
+                {
+                    free(zPtr);free(phiPtr);free(velzPtr);
+                    zPtr=NULL; phiPtr=NULL; velzPtr=NULL;
+                }
+            }
+            #endif
+        
+            free(xPtr);free(yPtr);free(szxPtr);free(szyPtr);free(rPtr);free(thetaPtr);free(velxPtr);free(velyPtr);free(densPtr);free(presPtr);
+            free(gammaPtr);free(dens_labPtr);free(tempPtr);
+            xPtr=NULL; yPtr=NULL;  rPtr=NULL;thetaPtr=NULL;velxPtr=NULL;velyPtr=NULL;densPtr=NULL;presPtr=NULL;gammaPtr=NULL;dens_labPtr=NULL;
+            szxPtr=NULL; szyPtr=NULL; tempPtr=NULL;
+            freeHydroDataFrame(&hydrodata);
+        }
+        
+        restrt=INITALIZE;//set this to make sure that the next iteration of propogating photons doesnt use the values from the last reading of the checkpoint file
+        scatt_cyclosynch_num_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
+        num_null_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
+        free(phPtr);
+        phPtr=NULL;
+        free(all_time_steps);
+        all_time_steps=NULL;
+        free(sorted_indexes);
+        sorted_indexes=NULL;
+    }
+    save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, 0, time_now, phPtr, last_frm, angle_id, old_num_angle_procs); //this is for processes using the old code that didnt restart efficiently
+    fprintf(fPtr, "Process %d has completed the MC calculation.\n", angle_id);
+    fflush(fPtr);
+    
+    //exit(0);
+                
+    MPI_Barrier(angle_comm);
+        
+    //merge files from each worker thread within a directory
+
+     hydrodata.increment_scatt_frame=1;
+     file_count=0;
+     
+     //count number of files
+     for (i=frm0;i<=last_frm;i=i+hydrodata.increment_scatt_frame)
+     {
+         
+        //if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
+        #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+        if (i>=3000)
+        {
+            hydrodata.increment_scatt_frame=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+        }
+        #endif
+        file_count++;
+     }
+     
+     //holds number of files for each process to merge
+     MPI_Comm_size(angle_comm, &angle_procs); //to get the proper number of processes within the group
+     MPI_Comm_rank(angle_comm, &angle_id); //reset the value of angle_id to what it should actualy be to properly distribute files to merge
+     
+     proc_frame_size=floor(file_count/ (float) angle_procs);
+     frame_array=malloc(file_count*sizeof(int));
+     proc_frame_array=malloc(angle_procs*sizeof(int)); //sets index of each proceesed acquired value
+     element_num=malloc(angle_procs*sizeof(int));
+     
+     for (i=0;i<angle_procs;i++)
+     {
+        *(proc_frame_array+i)=i*proc_frame_size;
+        *(element_num+i)=1;
+     }
+     
+     //make vector with the files in order to pass them to each of the processes
+     hydrodata.increment_scatt_frame=1;
+     file_count=0;
+     for (i=frm0;i<=last_frm;i=i+hydrodata.increment_scatt_frame)
+     {
+        //if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
+        #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+        if (i>=3000)
+        {
+            hydrodata.increment_scatt_frame=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+        }
+        #endif
+
+        *(frame_array+file_count)=i ;
+        file_count++;
+        //printf("file_count: %d frame: %d\n",  file_count-1, *(frame_array+file_count-1));
+     }
+     //pass  first frame number that each rpocess should start to merge, can calulate the file it should merge until
+     MPI_Scatterv(frame_array, element_num, proc_frame_array, MPI_INT, &frm0, 1, MPI_INT, 0, angle_comm);
+     
+     //fprintf(fPtr, "Value: last_frm: ,%d\n", file_count);
+     //fflush(fPtr);
+     
+     //make sure all files get merged by giving the rest to the last process
+     if (angle_id==angle_procs-1)
+     {
+        proc_frame_size=file_count-proc_frame_size*(angle_procs-1); //for last process take over the remaining number of files
+     }
+     //calculate what the last file the preocess should merge up to
+     i=0;
+     last_frm=frm0;
+     while(i<proc_frame_size)
+     {
+        //if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (last_frm>=3000))
+        #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+        if (last_frm>=3000)
+        {
+            hydrodata.increment_scatt_frame=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+        }
+        #else
+        {
+            hydrodata.increment_scatt_frame=1;
+        }
+        #endif
+     
+        last_frm+=hydrodata.increment_scatt_frame;
+        i++;
+     }
+     
+         
+    //fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
+    fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Merging Files from %d to %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frm0, last_frm);
+    fflush(fPtr);
+    
+    dirFileMerge(mc_dir, frm0, last_frm, old_num_angle_procs, angle_id, fPtr);
+
+    fprintf(fPtr, "Process %d has completed merging files.\n", angle_id);
+    fflush(fPtr);
             
     fclose(fPtr);
     gsl_rng_free (rng);
    	 
     MPI_Finalize();
-    //free(rng);
-    //free(thread_theta);
     
 	return 0;    
 }

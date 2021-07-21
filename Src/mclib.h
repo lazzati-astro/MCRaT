@@ -78,7 +78,7 @@ struct photon
     double s3; //Stokes V/I
     double num_scatt;
     double weight; //each photon should have equal weight, sp this shouldnt matter, weight in mc.par file but across injections can have varying weights
-    int nearest_block_index; //index that  allows for extraction of information of the hydro grid block closest to the photon
+    int nearest_block_index; //index that  allows for extraction of information of the hydro grid block that the photon si located within
 } ; //structure to hold photon information
 
 struct hydro_dataframe

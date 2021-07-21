@@ -1474,14 +1474,15 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
 }
 
 
-int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,   gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr)
+int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr)//(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, int array_length, double fps, double theta_min, double theta_max , int frame_scatt, int frame_inj, double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temp, double *dens, double *vx, double *vy,   gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr)
 {
     double rmin=0, rmax=0, max_photons=CYCLOSYNCHROTRON_REBIN_E_PERC*maximum_photons; //have 10% as default, can change later need to figure out how many photons across simulations I want emitted
     double ph_weight_adjusted=0, position_phi=0;
     double dimlesstheta=0, nu_c=0, el_dens=0, error=0, ph_dens_calc=0, max_jnu=0;
+    double r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
     double el_p[4], ph_p_comv[4];
     double params[3];
-    double fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, com_v_phi=0, com_v_theta=0, position_rand=0;
+    double fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, com_v_phi=0, com_v_theta=0, position_rand=0, position2_rand=0, position3_rand=0, cartesian_position_rand_array[3];
     double *p_comv=NULL, *boost=NULL, *l_boost=NULL; //pointers to hold comov 4 monetum, the fluid vlocity, and the photon 4 momentum in the lab frame
     int status;
     int block_cnt=0, i=0, j=0, k=0, null_ph_count=0, *ph_dens=NULL, ph_tot=0, net_ph=0, min_photons=1;
@@ -1504,28 +1505,35 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
     gsl_function F;
     F.function = &blackbody_ph_spect; //&jnu_ph_spect;
     
-    
     if (inject_single_switch == 0)
     {
-        rmin=calcCyclosynchRLimits( frame_scatt, frame_inj, fps,  r_inj, "min");
-        rmax=calcCyclosynchRLimits( frame_scatt, frame_inj, fps,  r_inj, "max");
+        rmin=calcCyclosynchRLimits(hydro_data->scatt_frame_number,  hydro_data->inj_frame_number, hydro_data->fps,  r_inj, "min");
+        rmax=calcCyclosynchRLimits(hydro_data->scatt_frame_number,  hydro_data->inj_frame_number, hydro_data->fps,  r_inj, "max");
         
         fprintf(fPtr, "rmin %e rmax %e, theta min/max: %e %e\n", rmin, rmax, theta_min, theta_max);
         #pragma omp parallel for num_threads(num_thread) reduction(+:block_cnt)
-        for(i=0;i<array_length;i++)
+        for(i=0;i<hydro_data->num_elements;i++)
         {
-            
             //look at all boxes in width delta r=c/fps and within angles we are interested in NEED TO IMPLEMENT
-            if ((*(r+i)+(*(szx+i))/2.0 >= rmin)  &&   (*(r+i)-(*(szx+i))/2.0  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
+            #if DIMENSIONS == 3
+                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
+                    hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
+            #else
+                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], 0);
+                hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], 0);
+            #endif
+
+            if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  < rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner < theta_max))
             {
                 block_cnt+=1;
             }
+            
         }
         
-        fprintf(fPtr, "Block cnt %d\n", block_cnt);
+        fprintf(fPtr, "MCRaT has chosen %d hydro elements that it will emit cyclosynchrotron photons into.\n", block_cnt);
         fflush(fPtr);
         
-        //min_photons=block_cnt;//do this so we have at least one synch photon in each block that meets the radius requiements, need to double check to see if this changes things or not (I dont expect it to)
+        //min_photons=block_cnt;//do this so we have at least one synch photon in each block that meets the radius requiements, need to double check to see if this changes things or not (I dont expect it to), testing shows that this may not work as block_cnt can be larger than max_photons
         
         if (block_cnt==0)
         {
@@ -1545,43 +1553,39 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
             j=0;
             ph_tot=0;
             
-            for (i=0;i<array_length;i++)
+            for (i=0;i< hydro_data->num_elements;i++)
             {
                 //printf("%d\n",i);
                 //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
-                if ((*(r+i)+(*(szx+i))/2.0 >= rmin)  &&   (*(r+i)-(*(szx+i))/2.0  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
+                #if DIMENSIONS == 3
+                    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
+                        hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
+                #else
+                    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], 0);
+                    hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], 0);
+                #endif
+
+                if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  < rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner < theta_max))
                 {
-                        //set parameters fro integration fo phtoons spectrum
-                        el_dens= (*(dens+i))/M_P;
-                        nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+i)));
-                        dimlesstheta=calcDimlessTheta( *(temp+i));
-                        //fprintf(fPtr, "B field is: %e at r=%e\n", calcB(el_dens,*(temp+i)), *(r+i));
-                        //fflush(fPtr);
+                    //set parameters fro integration fo phtoons spectrum
+                    el_dens= ((hydro_data->dens)[i])/M_P;
+                    nu_c=calcCyclotronFreq(calcB(el_dens,(hydro_data->temp)[i]));
+                    dimlesstheta=calcDimlessTheta( (hydro_data->temp)[i]);
+                    //fprintf(fPtr, "B field is: %e at r=%e\n", calcB(el_dens,*(temp+i)), *(r+i));
+                    //fflush(fPtr);
 
-                        //printf("Temp %e, el_dens %e, B %e, nu_c %e, dimlesstheta %e\n",*(temp+i), el_dens, calcB(el_dens, *(temp+i), epsilon_b), nu_c, dimlesstheta);
+                    //printf("Temp %e, el_dens %e, B %e, nu_c %e, dimlesstheta %e\n",*(temp+i), el_dens, calcB(el_dens, *(temp+i), epsilon_b), nu_c, dimlesstheta);
 
-                        params[0] = *(temp+i); //nu_c;
-                        params[1]=dimlesstheta;
-                        params[2]= el_dens;
-                        F.params = &params;
-                        
-                        //printf("Integrating\n"); //instead integrating from 0 to nu_c
-                        status=gsl_integration_qags(&F, 10, nu_c, 0, 1e-2, 10000, w, &ph_dens_calc, &error); //find number of low energy seed photons in the tail of the BB distribution
-                        //printf ("error: %s\n", gsl_strerror (status));
+                    params[0] = (hydro_data->temp)[i]; //nu_c;
+                    params[1]=dimlesstheta;
+                    params[2]= el_dens;
+                    F.params = &params;
                     
-                    #if DIMENSIONS==2
-                        #if GEOMETRY == CARTESIAN
-                        //printf("ph_dens_calc init=%e\n", ph_dens_calc);
-                            ph_dens_calc*=2*M_PI*(*(x+i))*pow(*(szx+i),2.0)/(ph_weight_adjusted);
-                        #elif GEOMETRY == SPHERICAL
-                            ph_dens_calc*=2*M_PI*pow(*(r+i),2.0)*sin(*(theta+i))*(*(szx+i))*(*(szy+i))/(ph_weight_adjusted);
-                        #endif
-                        //printf("Temp %e, el_dens %e, B %e, nu_c %e, dimlesstheta %e, number of photons to emit %e, error %e, Intervals %zu\n",  *(temp+i), el_dens, calcB(el_dens, *(temp+i), epsilon_b), nu_c, dimlesstheta, ph_dens_calc, error, w->size);
-                        //exit(0);
-                    #else
-                        #error Emitting photons with thermal synchrotron isnt available for non-2D hydro simulations.
-                    #endif
-
+                    //printf("Integrating\n"); //instead integrating from 0 to nu_c
+                    status=gsl_integration_qags(&F, 10, nu_c, 0, 1e-2, 10000, w, &ph_dens_calc, &error); //find number of low energy seed photons in the tail of the BB distribution
+                    //printf ("error: %s\n", gsl_strerror (status));
+                    
+                    ph_dens_calc*=hydroElementVolume(hydro_data, i)/(ph_weight_adjusted);
                     
                     (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
                     
@@ -1607,7 +1611,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
             }
             
             //fprintf(fPtr, "dens: %d, photons: %d, adjusted weight: %e\n", *(ph_dens+(j-1)), ph_tot, ph_weight_adjusted);
-            
+            //fflush(fPtr);
         }
         
         
@@ -1751,14 +1755,22 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
     {
         //go through blocks and assign random energies/locations to proper number of photons
         ph_tot=0;
-        for (i=0;i<array_length;i++)
+        for (i=0;i< hydro_data->num_elements;i++)
         {
-            if ((*(r+i)+(*(szx+i))/2.0 >= rmin)  &&   (*(r+i)-(*(szx+i))/2.0  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
+            #if DIMENSIONS == 3
+                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
+                    hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
+            #else
+                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], 0);
+                hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], 0);
+            #endif
+
+            if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  < rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner < theta_max))
             {
                 
-                el_dens= (*(dens+i))/M_P;
-                nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+i)));
-                dimlesstheta=calcDimlessTheta( *(temp+i));
+                el_dens= ((hydro_data->dens)[i])/M_P;
+                nu_c=calcCyclotronFreq(calcB(el_dens,(hydro_data->temp)[i]));
+                dimlesstheta=calcDimlessTheta( (hydro_data->temp)[i]);
                 max_jnu=2*jnu(nu_c/10, nu_c, dimlesstheta, el_dens);
                 
                 for(j=0;j<( *(ph_dens+k) ); j++ )
@@ -1768,7 +1780,11 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                     fr_dum=nu_c; //set the frequency directly to the cyclotron frequency
                     //fprintf(fPtr, "%lf\n ",fr_dum);
                     //exit(0);
-                    position_phi=gsl_rng_uniform(rand)*2*M_PI;
+                    #if DIMENSIONS == 2
+                        position_phi=gsl_rng_uniform(rand)*2*M_PI;
+                    #else
+                        position_phi=0;//dont need this in 3D
+                    #endif
                     com_v_phi=gsl_rng_uniform(rand)*2*M_PI;
                     com_v_theta=gsl_rng_uniform(rand)*M_PI; //  acos((gsl_rng_uniform(rand)*2)-1) this was for compton scatt, should be isotropic now?
                     //printf("%lf, %lf, %lf\n", position_phi, com_v_phi, com_v_theta);
@@ -1780,9 +1796,20 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                     *(p_comv+3)=(PL_CONST*fr_dum/C_LIGHT)*cos(com_v_theta);
                     
                     //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
-                    *(boost+0)=-1*(*(vx+i))*cos(position_phi);
-                    *(boost+1)=-1*(*(vx+i))*sin(position_phi);
-                    *(boost+2)=-1*(*(vy+i));
+                    //*(boost+0)=-1*((hydro_data->v0)[i])*cos(position_phi);
+                    //*(boost+1)=-1*((hydro_data->v0)[i])*sin(position_phi);
+                    //*(boost+2)=-1*((hydro_data->v1)[i]);
+                    //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
+                    #if DIMENSIONS == 3
+                        hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
+                    #else
+                        //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
+                        hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], 0, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
+                    #endif
+                    (*(boost+0))*=-1;
+                    (*(boost+1))*=-1;
+                    (*(boost+2))*=-1;
+      
                     //printf("%lf, %lf, %lf\n", *(boost+0), *(boost+1), *(boost+2));
                     
                     //boost to lab frame
@@ -1799,11 +1826,16 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                     (*ph_orig)[idx].comv_p1=(*(p_comv+1));
                     (*ph_orig)[idx].comv_p2=(*(p_comv+2));
                     (*ph_orig)[idx].comv_p3=(*(p_comv+3));
-                    //position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
-                    (*ph_orig)[idx].r0= (*(x+i))*cos(position_phi); //put photons @center of the box with random phi
-                    (*ph_orig)[idx].r1=(*(x+i))*sin(position_phi) ;
-                    //position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
-                    (*ph_orig)[idx].r2=(*(y+i)); //y coordinate in flash becomes z coordinate in MCRaT
+                    
+                    #if DIMENSIONS == 3
+                        hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
+                    #else
+                        hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
+                    #endif
+                    (*ph_orig)[idx].r0= cartesian_position_rand_array[0]; //put photons @center of the box with random phi
+                    (*ph_orig)[idx].r1= cartesian_position_rand_array[1] ;
+                    (*ph_orig)[idx].r2= cartesian_position_rand_array[2]; //y coordinate in flash becomes z coordinate in MCRaT
+                    
                     (*ph_orig)[idx].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
                     (*ph_orig)[idx].s1=0;
                     (*ph_orig)[idx].s2=0;
@@ -1820,8 +1852,8 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                     {
                         //if count_null_indexes is 0, then all the null photon spaces are filled with emitted photons
                         //if ph_tot is equal to what it used to be
-                        i=array_length;
-                        printf("Exiting Emitting loop\n");
+                        i= hydro_data->num_elements;
+                        printf("MCRaT has completed emitting the cyclosynchrotron photons.\n");
                     }
                 }
                 k++;
@@ -1835,13 +1867,17 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         idx=(*(null_ph_indexes+count_null_indexes-1));
         i=(*ph_orig)[scatt_ph_index].nearest_block_index;
         
-        el_dens= (*(dens+i))/M_P;
-        nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+i)));
+        el_dens= ((hydro_data->dens)[i])/M_P;
+        nu_c=calcCyclotronFreq(calcB(el_dens,(hydro_data->temp)[i]));
         
         fr_dum=nu_c; //_scatt; //set the frequency directly to the cyclotron frequency
         //fprintf(fPtr, "%lf %d\n ",fr_dum, (*ph_orig)[scatt_ph_index].nearest_block_index);
         //exit(0);
-        position_phi=gsl_rng_uniform(rand)*2*M_PI;
+        #if DIMENSIONS == 2
+            position_phi=gsl_rng_uniform(rand)*2*M_PI;
+        #else
+            position_phi=0;//dont need this in 3D
+        #endif
         com_v_phi=gsl_rng_uniform(rand)*2*M_PI;
         com_v_theta=gsl_rng_uniform(rand)*M_PI; //  acos((gsl_rng_uniform(rand)*2)-1) this was for compton scatt, should be isotropic now?
         
@@ -1852,9 +1888,19 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         *(p_comv+3)=(PL_CONST*fr_dum/C_LIGHT)*cos(com_v_theta);
         
         //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
-        *(boost+0)=-1*(*(vx+i))*cos(position_phi);
-        *(boost+1)=-1*(*(vx+i))*sin(position_phi);
-        *(boost+2)=-1*(*(vy+i));
+        //*(boost+0)=-1*((hydro_data->v0)[i])*cos(position_phi);
+        //*(boost+1)=-1*((hydro_data->v0)[i])*sin(position_phi);
+        //*(boost+2)=-1*((hydro_data->v1)[i]);
+        //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
+        #if DIMENSIONS == 3
+            hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
+        #else
+            //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
+            hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], 0, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
+        #endif
+        (*(boost+0))*=-1;
+        (*(boost+1))*=-1;
+        (*(boost+2))*=-1;
         //printf("%lf, %lf, %lf\n", *(boost+0), *(boost+1), *(boost+2));
         
         //boost to lab frame
@@ -1869,11 +1915,16 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         (*ph_orig)[idx].comv_p1=(*(p_comv+1));
         (*ph_orig)[idx].comv_p2=(*(p_comv+2));
         (*ph_orig)[idx].comv_p3=(*(p_comv+3));
-        //position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
-        (*ph_orig)[idx].r0= (*(x+i))*cos(position_phi); //put photons at center of the box with random phi
-        (*ph_orig)[idx].r1=(*(x+i))*sin(position_phi) ;
-        //position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
-        (*ph_orig)[idx].r2=(*(y+i)); //y coordinate in flash becomes z coordinate in MCRaT
+
+        #if DIMENSIONS == 3
+            hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
+        #else
+            hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
+        #endif
+        (*ph_orig)[idx].r0= cartesian_position_rand_array[0]; //put photons @center of the box with random phi
+        (*ph_orig)[idx].r1= cartesian_position_rand_array[1] ;
+        (*ph_orig)[idx].r2= cartesian_position_rand_array[2]; //y coordinate in flash becomes z coordinate in MCRaT
+
         (*ph_orig)[idx].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
         (*ph_orig)[idx].s1=0;
         (*ph_orig)[idx].s2=0;
@@ -1884,18 +1935,30 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         (*ph_orig)[idx].type=CS_POOL_PHOTON;
         
         //change position of scattered synchrotron photon to be random in the hydro grid
-        position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
-        (*ph_orig)[scatt_ph_index].r0=(*(x+i)+position_rand)*cos(position_phi);
-        (*ph_orig)[scatt_ph_index].r1=(*(x+i)+position_rand)*sin(position_phi);
-        position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0;
-        (*ph_orig)[scatt_ph_index].r2=(*(y+i)+position_rand);
+        /*
+         position_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r0_size)[i])-((hydro_data->r0_size)[i])/2.0; //choose between -size/2 to size/2
+        (*ph_orig)[scatt_ph_index].r0=((hydro_data->r0)[i]+position_rand)*cos(position_phi);
+        (*ph_orig)[scatt_ph_index].r1=((hydro_data->r0)[i]+position_rand)*sin(position_phi);
+        position_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r0_size)[i])-((hydro_data->r0_size)[i])/2.0;
+        (*ph_orig)[scatt_ph_index].r2=((hydro_data->r1)[i]+position_rand);
+         */
+        
+        position_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r0_size)[i])-((hydro_data->r0_size)[i])/2.0; //choose between -size/2 to size/2
+        position2_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r1_size)[i])-((hydro_data->r1_size)[i])/2.0;
+        #if DIMENSIONS == 3
+            position3_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r2_size)[i])-((hydro_data->r2_size)[i])/2.0;
+            hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, (hydro_data->r2)[i]+position3_rand);
+        #else
+            hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, position_phi);
+        #endif
+
+        //assign random position
+        (*ph_orig)[scatt_ph_index].r0=cartesian_position_rand_array[0];
+        (*ph_orig)[scatt_ph_index].r1=cartesian_position_rand_array[1];
+        (*ph_orig)[scatt_ph_index].r2=cartesian_position_rand_array[2];
         
     }
-    
-    
-    //printf("(*ph_orig)[0].p0 %e (*ph_orig)[71].p0 %e (*ph_orig)[72].p0 %e (*ph_orig)[73].p0 %e\n", (*ph_orig)[0].p0, (*ph_orig)[71].p0, (*ph_orig)[96].p0, (*ph_orig)[97].p0);
     //printf("At End of function\n");
-    
     
     {
         free(null_ph_indexes);
@@ -1908,7 +1971,6 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
     gsl_integration_workspace_free (w);
     
     return ph_tot;
-    
 }
 
 double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_cyclosynch_num_ph, double *temp, double *dens, FILE *fPtr)
