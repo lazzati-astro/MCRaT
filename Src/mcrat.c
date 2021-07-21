@@ -673,7 +673,7 @@ int main(int argc, char **argv)
                             //fprintf(fPtr, "%d\n\n", array_num);
                         //}
                         #endif
-                        fprintf(fPtr, "Number of Hydro Elements %d\n", array_num);
+                        fprintf(fPtr, "Number of Hydro Elements %d\n", hydrodata.num_elements);
                     }
                     #else
                     {
@@ -714,10 +714,10 @@ int main(int argc, char **argv)
                     fprintf(fPtr,">>  Proc: %d with angles %0.1lf-%0.1lf: Injecting photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                     fflush(fPtr);
                     
-                    //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
                     #if DIMENSIONS == 2
                     {
-                        photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng, fPtr );
+                        //photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng, fPtr );
+                        photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, theta_jmin_thread, theta_jmax_thread, &hydrodata,rng, fPtr );
                     }
                     #else
                     {
@@ -886,7 +886,6 @@ int main(int argc, char **argv)
                         //if injecting synch photons, emit them if continuing simulation from a point where scatt_frame != scatt_framestart
                         //if necessary, then add memory to then arrays allocated directly above
                         
-                        //printf("(phPtr)[0].p0 %e (phPtr)[71].p0 %e\n", (phPtr)[0].p0, (phPtr)[71].p0);
                         
                         fprintf(fPtr, "Emitting Synchrotron Photons in frame %d\n", scatt_frame);
                         

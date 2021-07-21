@@ -1664,7 +1664,7 @@ void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_
 }
 
 
-void photonInjection( struct photon **ph, int *ph_num, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, int array_length, double fps, double theta_min, double theta_max,\
+void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr)//struct photon **ph, int *ph_num, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, int array_length, double fps, double theta_min, double theta_max,\
 double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temps, double *vx, double *vy, gsl_rng * rand, FILE *fPtr)
 {
     int i=0, block_cnt=0, *ph_dens=NULL, ph_tot=0, j=0,k=0;
@@ -1673,7 +1673,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     double *l_boost=NULL; //pointer to hold array of lorentz boost, to lab frame, values
     float num_dens_coeff;
     double r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
-    double position_rand=0, position2_rand=0;
+    double position_rand=0, position2_rand=0, position3_rand=0, cartesian_position_rand_array[3];
     
     if (spect=='w') //from MCRAT paper, w for wien spectrum 
     {
@@ -1689,27 +1689,20 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     //find how many blocks are near the injection radius within the angles defined in mc.par, get temperatures and calculate number of photons to allocate memory for 
     //and then rcord which blocks have to have "x" amount of photons injected there
     
-    rmin=r_inj - 0.5*C_LIGHT/fps;
-    rmax=r_inj + 0.5*C_LIGHT/fps;
+    rmin=r_inj - 0.5*C_LIGHT/hydro_data->fps;
+    rmax=r_inj + 0.5*C_LIGHT/hydro_data->fps;
     
-    for(i=0;i<array_length;i++)
+    for(i=0; i<hydro_data->num_elements; i++)
     {
-        #if GEOMETRY == CARTESIAN
-            r_grid_innercorner = pow((*(x+i) - *(szx+i)/2.0) * ((*(x+i) - *(szx+i)/2.0))+(*(y+i) - *(szy+i)/2.0) * (*(y+i) - *(szy+i)/2.0),0.5);
-            r_grid_outercorner = pow((*(x+i) + *(szx+i)/2.0) * ((*(x+i) + *(szx+i)/2.0))+(*(y+i) + *(szy+i)/2.0) * (*(y+i) + *(szy+i)/2.0),0.5);
-            
-            theta_grid_innercorner = acos( (*(y+i) - *(szx+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
-            theta_grid_outercorner = acos( (*(y+i) + *(szx+i)/2.0) /r_grid_outercorner);
-        #elif GEOMETRY == SPHERICAL
-            r_grid_innercorner = (*(r+i)) - 0.5 * (*(szx+i));
-            r_grid_outercorner = (*(r+i)) + 0.5 * (*(szx+i));
-            
-            theta_grid_innercorner = (*(theta+i)) - 0.5 * (*(szy+i));
-            theta_grid_outercorner = (*(theta+i)) + 0.5 * (*(szy+i));
+        #if DIMENSIONS == 3
+            hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
+                hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
+        #else
+            hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], 0);
+            hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], 0);
         #endif
-
+        
         //look at all boxes in width delta r=c/fps and within angles we are interested in NEED TO IMPLEMENT
-        //if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
         if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
             {
                 block_cnt++;
@@ -1717,7 +1710,7 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     }
     //printf("Blocks: %d\n", block_cnt);
     
-            //allocate memory to record density of photons for each block
+    //allocate memory to record density of photons for each block
     ph_dens=malloc(block_cnt * sizeof(int));
     
     //calculate the photon density for each block and save it to the array
@@ -1730,47 +1723,31 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
         j=0;
         ph_tot=0;
         
-        for (i=0;i<array_length;i++)
+        for (i=0;i<hydro_data->num_elements;i++)
         {
             //printf("%d\n",i);
             //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
-            #if GEOMETRY == CARTESIAN
-                r_grid_innercorner = pow((*(x+i) - *(szx+i)/2.0) * ((*(x+i) - *(szx+i)/2.0))+(*(y+i) - *(szy+i)/2.0) * (*(y+i) - *(szy+i)/2.0),0.5);
-                r_grid_outercorner = pow((*(x+i) + *(szx+i)/2.0) * ((*(x+i) + *(szx+i)/2.0))+(*(y+i) + *(szy+i)/2.0) * (*(y+i) + *(szy+i)/2.0),0.5);
-                
-                theta_grid_innercorner = acos( (*(y+i) - *(szx+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
-                theta_grid_outercorner = acos( (*(y+i) + *(szx+i)/2.0) /r_grid_outercorner);
-            #elif GEOMETRY == SPHERICAL
-                r_grid_innercorner = (*(r+i)) - 0.5 * (*(szx+i));
-                r_grid_outercorner = (*(r+i)) + 0.5 * (*(szx+i));
-                
-                theta_grid_innercorner = (*(theta+i)) - 0.5 * (*(szy+i));
-                theta_grid_outercorner = (*(theta+i)) + 0.5 * (*(szy+i));
+            #if DIMENSIONS == 3
+                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
+                    hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
+            #else
+                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], 0);
+                hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], 0);
             #endif
 
-            //if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
             if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
-                {
-                    #if GEOMETRY == SPHERICAL
-                    {
-                        ph_dens_calc=(num_dens_coeff*2.0*M_PI*pow(*(r+i),2)*sin(*(theta+i))*pow(*(temps+i),3.0)*(*(szx+i))*(*(szy+i)) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1); //dV=2 *pi* r^2 Sin(theta) dr dtheta
-                    }
-                    #else
-                    {
-                        //using FLASH
-                        ph_dens_calc=(4.0/3.0)*(num_dens_coeff*2.0*M_PI*(*(x+i))*pow(*(temps+i),3.0)*(*(szx+i))*(*(szy+i)) /(ph_weight_adjusted))*pow(pow(1.0-(pow(*(vx+i),2)+pow(*(vy+i),2)),0.5),-1) ; //a*T^3/(weight) dV, dV=2*PI*x*dx^2,
-                    }
-                    #endif
-                    
-                     (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
-                     
-                    //printf("%d, %lf \n",*(ph_dens+j), ph_dens_calc);
-                    
-                     //sum up all the densities to get total number of photons
-                     ph_tot+=(*(ph_dens+j));
-                     
-                     j++;
-                }
+            {
+                ph_dens_calc=(4.0/3.0)*hydroElementVolume(hydro_data, i) *(((hydro_data->gamma)[i]*num_dens_coeff*(hydro_data->temp)[i]*(hydro_data->temp)[i]*(hydro_data->temp)[i])/ph_weight_adjusted); //4 comes from L \propto 4p in the limit radiation pressure is greater than the matter energy density and 3 comes from p=u/3, where u is the energy density
+                
+                (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
+                 
+                //printf("%d, %lf \n",*(ph_dens+j), ph_dens_calc);
+                
+                //sum up all the densities to get total number of photons
+                ph_tot+=(*(ph_dens+j));
+                 
+                j++;
+            }
         }
     
         if (ph_tot>max_photons)
@@ -1802,75 +1779,77 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
     //go through blocks and assign random energies/locations to proper number of photons
     ph_tot=0;
     k=0;
-    for (i=0;i<array_length;i++)
+    for (i=0;i<hydro_data->num_elements;i++)
     {
-        #if GEOMETRY == CARTESIAN
-            r_grid_innercorner = pow((*(x+i) - *(szx+i)/2.0) * ((*(x+i) - *(szx+i)/2.0))+(*(y+i) - *(szy+i)/2.0) * (*(y+i) - *(szy+i)/2.0),0.5);
-            r_grid_outercorner = pow((*(x+i) + *(szx+i)/2.0) * ((*(x+i) + *(szx+i)/2.0))+(*(y+i) + *(szy+i)/2.0) * (*(y+i) + *(szy+i)/2.0),0.5);
-            
-            theta_grid_innercorner = acos( (*(y+i) - *(szx+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
-            theta_grid_outercorner = acos( (*(y+i) + *(szx+i)/2.0) /r_grid_outercorner);
-        #elif GEOMETRY == SPHERICAL
-            r_grid_innercorner = (*(r+i)) - 0.5 * (*(szx+i));
-            r_grid_outercorner = (*(r+i)) + 0.5 * (*(szx+i));
-            
-            theta_grid_innercorner = (*(theta+i)) - 0.5 * (*(szy+i));
-            theta_grid_outercorner = (*(theta+i)) + 0.5 * (*(szy+i));
+        #if DIMENSIONS == 3
+            hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
+                hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
+        #else
+            hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], 0);
+            hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], 0);
         #endif
-        
-        //if ((*(r+i) >= rmin)  &&   (*(r+i)  < rmax  ) && (*(theta+i)< theta_max) && (*(theta+i) >=theta_min) )
+
         if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
         {
 
-            //*(temps+i)=0.76*(*(temps+i));
             for(j=0;j<( *(ph_dens+k) ); j++ )
             {
-                    //have to get random frequency for the photon comoving frequency
-                    y_dum=1; //initalize loop
-                    yfr_dum=0;
-                    while (y_dum>yfr_dum)
+                //have to get random frequency for the photon comoving frequency
+                y_dum=1; //initalize loop
+                yfr_dum=0;
+                while (y_dum>yfr_dum)
+                {
+                    fr_dum=gsl_rng_uniform_pos(rand)*6.3e11*((hydro_data->temp)[i]); //in Hz
+                    //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
+                    y_dum=gsl_rng_uniform_pos(rand);
+                    //printf("%lf ",fr_dum);
+                    
+                    if (spect=='w')
                     {
-                        fr_dum=gsl_rng_uniform_pos(rand)*6.3e11*(*(temps+i)); //in Hz
-                        //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
-                        y_dum=gsl_rng_uniform_pos(rand);
-                        //printf("%lf ",fr_dum);
-                        
-                        if (spect=='w')
-                        {
-                            yfr_dum=(1.0/(1.29e31))*pow((fr_dum/(*(temps+i))),3.0)/(exp((PL_CONST*fr_dum)/(K_B*(*(temps+i)) ))-1); //curve is normalized to maximum
-                        }
-                        else
-                        {
-                            fr_max=(5.88e10)*(*(temps+i));//(C_LIGHT*(*(temps+i)))/(0.29); //max frequency of bb
-                            bb_norm=(PL_CONST*fr_max * pow((fr_max/C_LIGHT),2.0))/(exp(PL_CONST*fr_max/(K_B*(*(temps+i))))-1); //find value of bb at fr_max
-                            yfr_dum=((1.0/bb_norm)*PL_CONST*fr_dum * pow((fr_dum/C_LIGHT),2.0))/(exp(PL_CONST*fr_dum/(K_B*(*(temps+i))))-1); //curve is normalized to vaue of bb @ max frequency
-                        	
-                        }
-                        //printf("%lf, %lf,%lf,%e \n",(*(temps+i)),fr_dum, y_dum, yfr_dum);
+                        yfr_dum=(1.0/(1.29e31))*pow((fr_dum/((hydro_data->temp)[i])),3.0)/(exp((PL_CONST*fr_dum)/(K_B*((hydro_data->temp)[i]) ))-1); //curve is normalized to maximum
+                    }
+                    else
+                    {
+                        fr_max=(5.88e10)*((hydro_data->temp)[i]);//(C_LIGHT*(*(temps+i)))/(0.29); //max frequency of bb
+                        bb_norm=(PL_CONST*fr_max * pow((fr_max/C_LIGHT),2.0))/(exp(PL_CONST*fr_max/(K_B*((hydro_data->temp)[i])))-1); //find value of bb at fr_max
+                        yfr_dum=((1.0/bb_norm)*PL_CONST*fr_dum * pow((fr_dum/C_LIGHT),2.0))/(exp(PL_CONST*fr_dum/(K_B*((hydro_data->temp)[i])))-1); //curve is normalized to vaue of bb @ max frequency
                         
                     }
-                    //printf("i: %d freq:%lf\n ",ph_tot, fr_dum);
-                   position_phi=gsl_rng_uniform(rand)*2*M_PI;
-                   com_v_phi=gsl_rng_uniform(rand)*2*M_PI;
-                   com_v_theta=acos((gsl_rng_uniform(rand)*2)-1);
-                   //printf("%lf, %lf, %lf\n", position_phi, com_v_phi, com_v_theta);
-                   
-                   //populate 4 momentum comoving array
-                   *(p_comv+0)=PL_CONST*fr_dum/C_LIGHT;
-                   *(p_comv+1)=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*cos(com_v_phi);
-                   *(p_comv+2)=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*sin(com_v_phi);
-                   *(p_comv+3)=(PL_CONST*fr_dum/C_LIGHT)*cos(com_v_theta);
+                    //printf("%lf, %lf,%lf,%e \n",(*(temps+i)),fr_dum, y_dum, yfr_dum);
                     
-                   
-                    //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
-                    *(boost+0)=-1*(*(vx+i))*cos(position_phi);
-                    *(boost+1)=-1*(*(vx+i))*sin(position_phi);
-                    *(boost+2)=-1*(*(vy+i));
+                }
+                //printf("i: %d freq:%lf\n ",ph_tot, fr_dum);
+                #if DIMENSIONS == 2
+                    position_phi=gsl_rng_uniform(rand)*2*M_PI;
+                #else
+                    position_phi=0;//dont need this in 3D
+                #endif
+               com_v_phi=gsl_rng_uniform(rand)*2*M_PI;
+               com_v_theta=acos((gsl_rng_uniform(rand)*2)-1);
+               //printf("%lf, %lf, %lf\n", position_phi, com_v_phi, com_v_theta);
+               
+               //populate 4 momentum comoving array
+               *(p_comv+0)=PL_CONST*fr_dum/C_LIGHT;
+               *(p_comv+1)=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*cos(com_v_phi);
+               *(p_comv+2)=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*sin(com_v_phi);
+               *(p_comv+3)=(PL_CONST*fr_dum/C_LIGHT)*cos(com_v_theta);
+                
+               
+                //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
+                #if DIMENSIONS == 3
+                    hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
+                #else
+                    //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
+                    hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], 0, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
+                #endif
+                (*(boost+0))*=-1;
+                (*(boost+1))*=-1;
+                (*(boost+2))*=-1;
                     
-                    //boost to lab frame
-                    lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
-                    //printf("Assignemnt: %e, %e, %e, %e\n", *(l_boost+0), *(l_boost+1), *(l_boost+2),*(l_boost+3));
-                   
+                //boost to lab frame
+                lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
+                //printf("Assignemnt: %e, %e, %e, %e\n", *(l_boost+0), *(l_boost+1), *(l_boost+2),*(l_boost+3));
+               
                 (*ph)[ph_tot].p0=(*(l_boost+0));
                 (*ph)[ph_tot].p1=(*(l_boost+1));
                 (*ph)[ph_tot].p2=(*(l_boost+2));
@@ -1881,21 +1860,19 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                 (*ph)[ph_tot].comv_p3=(*(p_comv+3));
                 
                 //place photons in rand positions within fluid element
-                #if GEOMETRY == CARTESIAN
-                    position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
-                    (*ph)[ph_tot].r0= (*(x+i)+position_rand)*cos(position_phi); //put photons @ center of box that they are supposed to be in with random phi
-                    (*ph)[ph_tot].r1=(*(x+i)+position_rand)*sin(position_phi) ;
-                    position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0;
-                    (*ph)[ph_tot].r2=(*(y+i)+position_rand); //y coordinate in flash becomes z coordinate in MCRaT
-                #elif GEOMETRY == SPHERICAL
-                    position_rand=gsl_rng_uniform_pos(rand)*(*(szx+i))-(*(szx+i))/2.0; //choose between -size/2 to size/2
-                    position2_rand=gsl_rng_uniform_pos(rand)*(*(szy+i))-(*(szy+i))/2.0;
-                
-                    (*ph)[ph_tot].r0= (*(r+i)+position_rand)*sin(*(theta+i)+position2_rand)*cos(position_phi); //put photons @ center of box that they are supposed to be in with random phi
-                    (*ph)[ph_tot].r1=(*(r+i)+position_rand)*sin(*(theta+i)+position2_rand)*sin(position_phi) ;
-                    
-                    (*ph)[ph_tot].r2=(*(r+i)+position_rand)*cos(*(theta+i)+position2_rand); //y coordinate in flash becomes z coordinate in MCRaT
+                position_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r0_size)[i])-((hydro_data->r0_size)[i])/2.0; //choose between -size/2 to size/2
+                position2_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r1_size)[i])-((hydro_data->r1_size)[i])/2.0;
+                #if DIMENSIONS == 3
+                    position3_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r2_size)[i])-((hydro_data->r2_size)[i])/2.0;
+                    hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, (hydro_data->r2)[i]+position3_rand);
+                #else
+                    hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, position_phi);
                 #endif
+                
+                //assign random position
+                (*ph)[ph_tot].r0=cartesian_position_rand_array[0];
+                (*ph)[ph_tot].r1=cartesian_position_rand_array[1];
+                (*ph)[ph_tot].r2=cartesian_position_rand_array[2];
                 
                 (*ph)[ph_tot].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1 
                 (*ph)[ph_tot].s1=0;
@@ -5176,7 +5153,7 @@ void hydroCoordinateToSpherical(double *r, double *theta, double r0, double r1, 
 {
     //this function converts hydro coordinates to spherical r and theta coordinates
     int i=0;
-    double sph_r, sph_theta;//sph_theta is measured from the assumed jet axis
+    double sph_r=0, sph_theta=0;//sph_theta is measured from the assumed jet axis
     
     #if DIMENSIONS == 2
         
@@ -5198,7 +5175,6 @@ void hydroCoordinateToSpherical(double *r, double *theta, double r0, double r1, 
             sph_theta=acos(  r2 /sph_r );
         #endif
 
-
         #if GEOMETRY == SPHERICAL
             sph_r=r0;
             sph_theta=r1;
@@ -5216,15 +5192,67 @@ void hydroCoordinateToSpherical(double *r, double *theta, double r0, double r1, 
     
 }
 
+void hydroCoordinateToMcratCoordinate(double *hydro_mcrat_coord, double hydro_r0, double hydro_r1, double hydro_r2)
+{
+    //converts hydro coordinate to MCRaT coordinate system (3D cartesian)
+    // in 2D for cylindrical, cartesian, and spherical coordinates can just pass in the photon phi for the value of hydro_r2 since we are assuming axisymmetry here anyways
+    
+    double x=0, y=0, z=0;
+    
+    #if DIMENSIONS == 2
+        
+        #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
+            x=hydro_r0*cos(hydro_r2);
+            y=hydro_r0*sin(hydro_r2);
+            z=hydro_r1;
+        #endif
+
+        #if GEOMETRY == SPHERICAL
+            x=hydro_r0*sin(hydro_r1)*cos(hydro_r2);
+            y=hydro_r0*sin(hydro_r1)*sin(hydro_r2);
+            z=hydro_r0*cos(hydro_r1);
+        #endif
+        
+    #else
+
+        #if GEOMETRY == CARTESIAN
+            x=hydro_r0;
+            y=hydro_r1;
+            z=hydro_r2;
+        #endif
+
+        #if GEOMETRY == SPHERICAL
+            x=hydro_r0*sin(hydro_r1)*cos(hydro_r2);
+            y=hydro_r0*sin(hydro_r1)*sin(hydro_r2);
+            z=hydro_r0*cos(hydro_r1);
+        #endif
+
+        #if GEOMETRY == POLAR
+            x=hydro_r0*cos(hydro_r1);
+            y=hydro_r0*sin(hydro_r1);
+            z=hydro_r2;
+        #endif
+
+    #endif
+
+    *(hydro_mcrat_coord+0)=x;
+    *(hydro_mcrat_coord+1)=y;
+    *(hydro_mcrat_coord+2)=z;
+}
+
 void fillHydroCoordinateToSpherical(struct hydro_dataframe *hydro_data)
 {
     //this function fills in the r and theta values in the hydro_data struct, which is used for photon injection, overwriting values, etc
     int i=0;
-    double sph_r, sph_theta;//sph_theta is measured from the assumed jet axis
+    double sph_r=0, sph_theta=0;//sph_theta is measured from the assumed jet axis
     
     for (i=0;i<hydro_data->num_elements;i++)
     {
-        hydroCoordinateToSpherical(&sph_r, &sph_theta, ((hydro_data->r0))[i], ((hydro_data->r1))[i], ((hydro_data->r2))[i]);
+        #if DIMENSIONS == 3
+            hydroCoordinateToSpherical(&sph_r, &sph_theta, ((hydro_data->r0))[i], ((hydro_data->r1))[i], ((hydro_data->r2))[i]);
+        #else
+            hydroCoordinateToSpherical(&sph_r, &sph_theta, ((hydro_data->r0))[i], ((hydro_data->r1))[i], 0);
+        #endif
         ((hydro_data->r))[i]=sph_r;
         ((hydro_data->theta))[i]=sph_theta;
 
@@ -5262,7 +5290,6 @@ void hydroVectorToCartesian(double *cartesian_vector_3d, double v0, double v1, d
             transformed_vector2=v2; //z
         #endif
 
-    
         #if GEOMETRY == SPHERICAL
             transformed_vector0=v0*sin(x1)*cos(x2)+v1*cos(x1)*cos(x2)-v2*sin(x2); //x coordinate
             transformed_vector1=v0*sin(x1)*sin(x2)+v1*cos(x1)*sin(x2)+v2*cos(x2); //y
@@ -5281,6 +5308,49 @@ void hydroVectorToCartesian(double *cartesian_vector_3d, double v0, double v1, d
     *(cartesian_vector_3d+1)=transformed_vector1;
     *(cartesian_vector_3d+2)=transformed_vector2;
     
+}
+
+double hydroElementVolume(struct hydro_dataframe *hydro_data, int index)
+{
+    //calculate the volume of a hydro element assuming axissymmetry in 2D case
+    double V=0, r0_min=0, r0_max=0, r1_min=0, r1_max=0, r2_min=0, r2_max=0;
+    
+    r0_max=(hydro_data->r0)[index]+0.5*(hydro_data->r0_size)[index];
+    r0_min=(hydro_data->r0)[index]-0.5*(hydro_data->r0_size)[index];
+    r1_max=(hydro_data->r1)[index]+0.5*(hydro_data->r1_size)[index];
+    r1_min=(hydro_data->r1)[index]-0.5*(hydro_data->r1_size)[index];
+
+    #if DIMENSIONS == 2
+        
+        #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
+            V=M_PI*(r0_max*r0_max-r0_min*r0_min)*(hydro_data->r1_size)[index];
+        #endif
+
+        #if GEOMETRY == SPHERICAL
+            V=(2.0*M_PI/3.0)*(r0_max*r0_max*r0_max-r0_min*r0_min*r0_min)*(cos(r1_min)-cos(r1_max));//dV=r^2sin(theta)dr dtheta dphi
+        #endif
+        
+    #else
+    
+        r2_max=(hydro_data->r2)[index]+0.5*(hydro_data->r2_size)[index];
+        r2_min=(hydro_data->r2)[index]-0.5*(hydro_data->r2_size)[index];
+
+        #if GEOMETRY == CARTESIAN
+            V=(hydro_data->r0_size)[index]*(hydro_data->r1_size)[index]*(hydro_data->r2_size)[index];
+        #endif
+
+        #if GEOMETRY == SPHERICAL
+            V=(1.0/3.0)*(r0_max*r0_max*r0_max-r0_min*r0_min*r0_min)*(cos(r1_min)-cos(r1_max))*(r2_max-r2_min);//dV=r^2sin(theta)dr dtheta dphi
+        #endif
+
+        #if GEOMETRY == POLAR
+            V=0.5*(r0_max*r0_max-r0_min*r0_min)*(hydro_data->r1_size)[index]*(hydro_data->r2_size)[index];//dV=rdr dphi dz
+        #endif
+
+    #endif
+
+    
+    return V;
 }
 
 

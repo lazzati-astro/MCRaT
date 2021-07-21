@@ -99,7 +99,7 @@ struct hydro_dataframe
     double *r0_size;//size of fluid elements
     double *r1_size;
     double *r2_size;
-    double *r;
+    double *r;//spherical coordinates of fluid elements for photon injection, mdifying fluid value purposes
     double *theta;
     double *v0; //velocity in hydro coordinate system
     double *v1;
@@ -224,7 +224,7 @@ void readMcPar(char file[STR_BUFFER], struct hydro_dataframe *hydro_data, double
 
 void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_data, double r_inj, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr);
  
- void photonInjection( struct photon **ph, int *ph_num, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, int array_length, double fps, double theta_min, double theta_max,\
+void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr);//( struct photon **ph, int *ph_num, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, int array_length, double fps, double theta_min, double theta_max,\
 double *x, double *y, double *szx, double *szy, double *r, double *theta, double *temps, double *vx, double *vy, gsl_rng * rand, FILE *fPtr);
 
 void lorentzBoost(double *boost, double *p_ph, double *result, char object,  FILE *fPtr);
@@ -292,9 +292,13 @@ void mcratCoordinateToHydroCoordinate(double *ph_hydro_coord, double mcrat_r0, d
 
 void hydroCoordinateToSpherical(double *r, double *theta, double r0, double r1, double r2);
 
+void hydroCoordinateToMcratCoordinate(double *hydro_mcrat_coord, double hydro_r0, double hydro_r1, double hydro_r2);
+
 void fillHydroCoordinateToSpherical(struct hydro_dataframe *hydro_data);
 
 void hydroVectorToCartesian(double *cartesian_vector_3d, double v0, double v1, double v2, double x0, double x1, double x2);
+
+double hydroElementVolume(struct hydro_dataframe *hydro_data, int index);
 
 void hydroDataFrameInitialize(struct hydro_dataframe *hydro_data);
 
