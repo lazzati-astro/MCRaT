@@ -2082,27 +2082,27 @@ int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, doubl
     return min_index;
 }
 
-int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, FILE *fPtr)
+int findContainingBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, struct hydro_dataframe *hydro_data, FILE *fPtr)
+//(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, FILE *fPtr)
 {
     int i=0, within_block_index=0;
     bool is_in_block=0; //boolean to determine if the photon is outside of a grid
     
     //can parallelize here to save time?
-    for (i=0;i<array_num;i++)
+    for (i=0;i<hydro_data->num_elements;i++)
     {
         
-            is_in_block=checkInBlock(i,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy);
+        is_in_block=checkInBlock(ph_hydro_r0, ph_hydro_r1, ph_hydro_r2, hydro_data, i); //(i,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy);
         
             if (is_in_block)
             {
                 within_block_index=i;
                 //change for loop index once the block is found so the code doesnt search the rest of the grids to see if the photon is within those grids
-                i=array_num;
+                i=hydro_data->num_elements;
             }
         
     }
     //printf("Within Block Index:  %d\n",within_block_index);
-    //if ((strcmp(DIM_SWITCH, dim_3d_str)==0) || (riken_switch==1))
     #if SIM_SWITCH == RIKEN || DIMENSIONS == 3
     {
         fprintf(fPtr, "3D switch is: %d and SIM switch is: %d\n", DIMENSIONS, SIM_SWITCH);
@@ -2111,7 +2111,11 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
     
     if (is_in_block==0)
     {
-        fprintf(fPtr, "Couldn't find a block that the photon is in\nx: %e y:%e\n", ph_x, ph_y);
+        #if DIMENSIONS == 2
+            fprintf(fPtr, "MCRaT Couldn't find a block for the photon located at r0=%e r1=%e\n", ph_hydro_r0, ph_hydro_r1);
+        #else
+            fprintf(fPtr, "MCRaT Couldn't find a block for the photon located at r0=%e r1=%e r2=%e in the hydro simulation coordinate system.\n", ph_hydro_r0, ph_hydro_r1, ph_hydro_r2);
+        #endif
         fflush(fPtr);
         within_block_index=-1;
     }
@@ -2120,44 +2124,19 @@ int findContainingBlock(int array_num, double ph_x, double ph_y, double ph_z, do
 }
 
 
-
-int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy)
+int checkInBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, struct hydro_dataframe *hydro_data, int block_index)
+//int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy)
 {
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
     double x0=0, x1=0, x2=0, sz_x0=0, sz_x1=0, sz_x2=0; //coordinate and sizes of grid block, in cartesian its x,y,z in spherical its r,theta,phi
     int return_val=0;
 
     
-        //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
-        #if DIMENSIONS == 2
-        {
-            
-            #if GEOMETRY == SPHERICAL
-            {
-                x0=pow(pow((*(x+block_index)),2.0)+pow((*(y+block_index)),2.0), 0.5); //radius
-                x1=atan2((*(x+block_index)), (*(y+block_index))); //theta
-                
-                sz_x0=(*(szx+block_index));
-                sz_x1=(*(szy+block_index));
-                
-                //pow(pow( ph_x, 2.0) + pow(ph_y, 2.0),0.5)      atan2(ph_x, ph_y)
-                is_in_block= (2*fabs( ph_x - x0)- sz_x0 <= 0) && (2*fabs(ph_y - x1 ) - sz_x1 <= 0); //ph_x is ph_r for this geometry
-
-            }
-            #else
-            {
-                x0=(*(x+block_index));
-                x1=(*(y+block_index));
-                
-                sz_x0=(*(szx+block_index));
-                sz_x1=(*(szy+block_index));
-                
-                is_in_block= (2*fabs(ph_x-x0)-sz_x0 <= 0) && (2*fabs(ph_y-x1)-sz_x1 <= 0);
-            }
-            #endif
-            
-        }
-        #endif
+    #if DIMENSIONS == 2
+        is_in_block= (2*fabs( ph_hydro_r0 - (hydro_data->r0)[block_index]) - (hydro_data->r0_size)[block_index] <= 0) && (2*fabs(ph_hydro_r1 - (hydro_data->r1)[block_index] ) - (hydro_data->r1_size)[block_index]  <= 0);
+    #else
+        is_in_block= (2*fabs( ph_hydro_r0 - (hydro_data->r0)[block_index]) - (hydro_data->r0_size)[block_index] <= 0) && (2*fabs(ph_hydro_r1 - (hydro_data->r1)[block_index] ) - (hydro_data->r1_size)[block_index]  <= 0) && (2*fabs(ph_hydro_r2 - (hydro_data->r2)[block_index] ) - (hydro_data->r2_size)[block_index]  <= 0);
+    #endif
         /*
         else
         {
@@ -2179,19 +2158,19 @@ int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double 
         }
         */
         
-        if (is_in_block)
-        {
-            return_val=1;
-        }
-        else
-        {
-            return_val=0;
-        }
+    if (is_in_block)
+    {
+        return_val=1;
+    }
+    else
+    {
+        return_val=0;
+    }
     
     return return_val;
 }
 
-int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y, double epsilon_b, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
+int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)//( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y, double epsilon_b, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
                                    double *temp, double *all_time_steps, int *sorted_indexes, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)
 {
     int i=0, min_index=0, ph_block_index=0, num_thread=1, thread_id=0;
@@ -2209,24 +2188,24 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     int index=0, num_photons_find_new_element=0;
     double mfp=0,min_mfp=0, beta=0;
     double el_p[4];
-    double ph_p_comv[4], ph_p[4], fluid_beta[3];
+    double ph_p_comv[4], ph_p[4], fluid_beta[3], photon_hydro_coord[3];
 
     //initialize gsl random number generator fo each thread
     
-        const gsl_rng_type *rng_t;
-        gsl_rng **rng;
-        gsl_rng_env_setup();
-        rng_t = gsl_rng_ranlxs0;
+    const gsl_rng_type *rng_t;
+    gsl_rng **rng;
+    gsl_rng_env_setup();
+    rng_t = gsl_rng_ranlxs0;
 
-        rng = (gsl_rng **) malloc((num_thread ) * sizeof(gsl_rng *)); 
-        rng[0]=rand;
+    rng = (gsl_rng **) malloc((num_thread ) * sizeof(gsl_rng *));
+    rng[0]=rand;
 
-            //#pragma omp parallel for num_threads(nt)
-        for(i=1;i<num_thread;i++)
-        {
-            rng[i] = gsl_rng_alloc (rng_t);
-            gsl_rng_set(rng[i],gsl_rng_get(rand));
-        }
+        //#pragma omp parallel for num_threads(nt)
+    for(i=1;i<num_thread;i++)
+    {
+        rng[i] = gsl_rng_alloc (rng_t);
+        gsl_rng_set(rng[i],gsl_rng_get(rand));
+    }
        
     //go through each photon and find the blocks around it and then get the distances to all of those blocks and choose the one thats the shortest distance away
     //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
@@ -2248,43 +2227,21 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             ph_block_index=0; // therefore if starting a new frame set index=0 to avoid this issue
         }
         
-        //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
-        #if DIMENSIONS == 2
-        {
-            #if GEOMETRY == SPHERICAL
-                ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to 2d spherical coordinate
-                ph_y=((ph+i)->r2);
-                ph_r=pow(ph_x*ph_x + ph_y*ph_y, 0.5);
-                ph_theta=acos(ph_y/ph_r); //this is actually theta in this context
-                ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
-            #elif GEOMETRY == CARTESIAN
-                ph_x=pow(pow(((ph+i)->r0),2.0)+pow(((ph+i)->r1),2.0), 0.5); //convert back to FLASH x coordinate (2d cartesian hydro coordinates)
-                ph_y=((ph+i)->r2);
-                ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
-                ph_r=pow(ph_x*ph_x + ph_y*ph_y, 0.5);
-            #endif
-            
-        }
-        #else
-        {
-            ph_x=((ph+i)->r0);
-            ph_y=((ph+i)->r1);
-            ph_z=((ph+i)->r2);
-            ph_r=pow(ph_x*ph_x + ph_y*ph_y+ph_z*ph_z, 0.5);
-        }
-        #endif
+        mcratCoordinateToHydroCoordinate(&photon_hydro_coord, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2);//convert the photons coordinate to the hydro sim coordinate system
+        
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         
         //if the location of the photon is less than the domain of the hydro simulation then do all of this, otherwise assing huge mfp value so no scattering occurs and the next frame is loaded
         // absorbed photons have ph_block_index=-1, therefore if this value is not less than 0, calulate the mfp properly but doesnt work when go to new frame and find new indexes (will change b/c will get rid of these photons when printing)
         //alternatively make decision based on 0 weight
-        if (((ph_y<hydro_domain_y) && (ph_x<hydro_domain_x)) && ((ph+i)->nearest_block_index != -1) ) //can use sorted index to see which photons have been absorbed efficiently before printing and get the indexes
+        #if DIMENSIONS == 2
+        if (((photon_hydro_coord[1]<(hydro_data->r1_domain)[1]) && (photon_hydro_coord[0]<(hydro_data->r0_domain)[1])) && ((ph+i)->nearest_block_index != -1) ) //can use sorted index to see which photons have been absorbed efficiently before printing and get the indexes
+        #else
+        if (((photon_hydro_coord[2]<(hydro_data->r2_domain)[1]) && (photon_hydro_coord[1]<(hydro_data->r1_domain)[1]) && (photon_hydro_coord[0]<(hydro_data->r0_domain)[1])) && ((ph+i)->nearest_block_index != -1) )
+        #endif
         {
-            #if GEOMETRY == SPHERICAL
-                is_in_block=checkInBlock(ph_block_index,  ph_r,  ph_theta,  ph_z,  x,   y, z,  szx,  szy);
-            #elif GEOMETRY == CARTESIAN
-                is_in_block=checkInBlock(ph_block_index,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy);
-            #endif
+
+            is_in_block=checkInBlock(photon_hydro_coord[0], photon_hydro_coord[1], photon_hydro_coord[2], hydro_data, ph_block_index);
             
             //when rebinning photons can have comoving 4 momenta=0 and nearest_block_index=0 (and block 0 be the actual block the photon is in making it not refind the proper index and reclaulate the comoving 4 momenta) which can make counting synch scattered photons be thrown off, thus take care of this case by forcing the function to recalc things
             #if CYCLOSYNCHROTRON_SWITCH == ON
@@ -2305,15 +2262,8 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
             
                 //find the new index of the block that the photon is actually in
-                #if DIMENSIONS == 2
-                {
-                    #if GEOMETRY == SPHERICAL
-                        min_index=findContainingBlock(array_num,  ph_r,  ph_theta,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, fPtr);
-                    #elif GEOMETRY == CARTESIAN
-                        min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, fPtr);
-                    #endif
-                    }
-                #endif
+                min_index=findContainingBlock(photon_hydro_coord[0], photon_hydro_coord[1], photon_hydro_coord[2], hydro_data, fPtr); //(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, fPtr);
+                
                 if (min_index != -1)
                 {
                     (ph+i)->nearest_block_index=min_index; //save the index if min_index != -1
@@ -2324,20 +2274,14 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                     ph_p[2]=((ph+i)->p2);
                     ph_p[3]=((ph+i)->p3);
                     
-                    //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
-                    #if DIMENSIONS == 2
-                    {
-                        fluid_beta[0]=(*(velx+min_index))*cos(ph_phi);
-                        fluid_beta[1]=(*(velx+min_index))*sin(ph_phi);
-                        fluid_beta[2]=(*(vely+min_index));
-                    }
+                    #if DIMENSIONS == 3
+                        hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], (hydro_data->v2)[min_index], (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], (hydro_data->r2)[min_index]);
                     #else
-                    {
-                        fluid_beta[0]=(*(velx+min_index));
-                        fluid_beta[1]=(*(vely+min_index));
-                        fluid_beta[2]=(*(velz+min_index));
-                    }
+                        ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
+                        //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
+                        hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], 0, (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], ph_phi);
                     #endif
+
                     
                     lorentzBoost(&fluid_beta, &ph_p, &ph_p_comv, 'p', fPtr);
                     
@@ -2361,90 +2305,28 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 //fprintf(fPtr,"Min Index: %d\n", min_index);
         
                 //save values
-                (n_dens_lab_tmp)= (*(dens_lab+min_index));
-                (n_vx_tmp)= (*(velx+min_index));
-                (n_vy_tmp)= (*(vely+min_index));
-                (n_temp_tmp)= (*(temp+min_index));
+                (n_dens_lab_tmp)= (hydro_data->dens)[min_index];//(*(dens_lab+min_index));
+                (n_temp_tmp)= (hydro_data->temp)[min_index];//(*(temp+min_index));
                 
-
-                //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
                 #if DIMENSIONS == 3
-                {
-                    (n_vz_tmp)= (*(velz+min_index));
-                }
-                #endif
-        
-                //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
-                #if DIMENSIONS == 2
-                {
-                    fl_v_x=(*(velx+min_index))*cos(ph_phi);
-                    fl_v_y=(*(velx+min_index))*sin(ph_phi);
-                    fl_v_z=(*(vely+min_index));
-                }
+                    hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], (hydro_data->v2)[min_index], (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], (hydro_data->r2)[min_index]);
                 #else
-                {
-                    fl_v_x=(*(velx+min_index));
-                    fl_v_y=(*(vely+min_index));
-                    fl_v_z=(*(velz+min_index));
-                }
+                    ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
+                    //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
+                    hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], 0, (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], ph_phi);
                 #endif
                 
-                fl_v_norm=pow(pow(fl_v_x, 2.0)+pow(fl_v_y, 2.0)+pow(fl_v_z, 2.0), 0.5);
-                ph_v_norm=pow(pow(((ph+i)->p1), 2.0)+pow(((ph+i)->p2), 2.0)+pow(((ph+i)->p3), 2.0), 0.5);
+                fl_v_x=fluid_beta[0];
+                fl_v_y=fluid_beta[1];
+                fl_v_x=fluid_beta[2];
+                
+                fl_v_norm=sqrt(fl_v_x*fl_v_x+fl_v_y*fl_v_y+fl_v_z*fl_v_z);
+                ph_v_norm=sqrt(((ph+i)->p1)*((ph+i)->p1)+((ph+i)->p2)*((ph+i)->p2)+((ph+i)->p3)*((ph+i)->p3));
         
                 //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
-                (n_cosangle)=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
-        
-                #if DIMENSIONS == 2
-                {
-                    beta=pow((n_vx_tmp*n_vx_tmp)+(n_vy_tmp*n_vy_tmp),0.5);
-                }
-                #else
-                {
-                    beta=pow((pow((n_vx_tmp),2)+pow((n_vy_tmp),2)+pow((n_vz_tmp),2)),0.5);
-                }
-                #endif
-
-                *(ph_p+0)=((ph+i)->p0);
-                *(ph_p+1)=((ph+i)->p1);
-                *(ph_p+2)=((ph+i)->p2);
-                *(ph_p+3)=((ph+i)->p3);
+                n_cosangle=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
                 
-                //ph_p_comv[0]=((ph+i)->comv_p0);
-                //ph_p_comv[1]=((ph+i)->comv_p1);
-                //ph_p_comv[2]=((ph+i)->comv_p2);
-                //ph_p_comv[3]=((ph+i)->comv_p3);
-                
-                //printf("ph: p0 %e p1 %e p2 %e p3 %e\n",  *(ph_p_comv+0), *(ph_p_comv+1), *(ph_p_comv+2), *(ph_p_comv+3));
-
-                
-                //singleElectron(&el_p[0], n_temp_tmp, &ph_p_comv[0], rng[omp_get_thread_num()], fPtr); //get random electron
-                //printf("after singleElectron n_temp_tmp %e from ptr %e n_dens_tmp %e from ptr %e\n", n_temp_tmp, (*(temp+min_index)), n_dens_tmp, (*(dens+min_index)));
-                
-                //printf("Chosen el: p0 %e p1 %e p2 %e p3 %e\nph: p0 %e p1 %e p2 %e p3 %e\n", *(el_p+0), *(el_p+1), *(el_p+2), *(el_p+3), *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
-                
-                //synch_x_sect=synCrossSection(n_dens_tmp/M_P, n_temp_tmp, ph_p_comv[0]*C_LIGHT/PL_CONST, sqrt((el_p[0]*el_p[0]/(M_EL*M_EL*C_LIGHT*C_LIGHT))-1), epsilon_b);
-                //printf("i: %d flash_array_idx %d synch_x_sect %e freq %e temp %e el_dens %e\n", i, min_index, synch_x_sect, *(ph_p+0)*C_LIGHT/PL_CONST, n_temp_tmp, n_dens_tmp/M_P);
-                
-                //if (synch_x_sect==0)
-                //{
-                //*(will_scatter+i)=1; //this photon will scatter b/c probability of absorption=0
-                //}
-                /*
-                else
-                {
-                    if (gsl_rng_uniform_pos(rng[omp_get_thread_num()])>(THOM_X_SECT/(THOM_X_SECT+synch_x_sect)))
-                    {
-                        //this photon will be absorbed
-                        *(will_scatter+i)=0;
-                    }
-                    else
-                    {
-                        *(will_scatter+i)=1;
-                    }
-                    
-                } photons can onlt scatter now
-                */
+                beta=sqrt(1.0-1.0/((hydro_data->gamma)[min_index]*(hydro_data->gamma)[min_index]));
                 
                 //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
                 rnd_tracker=0;
@@ -2455,14 +2337,9 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
                 rnd_tracker=gsl_rng_uniform_pos(rng[thread_id]);
                 //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
         
-                //mfp=(-1)*log(rnd_tracker)*(M_P/((n_dens_tmp))/(THOM_X_SECT)); ///(1.0-beta*((n_cosangle)))) ; //calulate the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths DO EVERYTHING IN COMOV FRAME NOW
-                mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*((n_cosangle))))*log(rnd_tracker) ;
+                //mfp=(-1)*log(rnd_tracker)*(M_P/((n_dens_tmp))/(THOM_X_SECT)); ///(1.0-beta*((n_cosangle)))) ; // the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths IN COMOV FRAME for reference
+                mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*n_cosangle))*log(rnd_tracker) ;
                 
-                //if (mfp/C_LIGHT < 1e-100)
-                //{
-                //    fprintf("Photon %d has a mfp of %d\n", i, mfp);
-                //    exit(0);
-                //}
                 
             }
             else
@@ -2502,22 +2379,12 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         #error Cannot detect operating system
     #endif
     
-    //for (i=0;i<num_ph;i++)
-    //{
-    //    fprintf(fPtr, "Qsort: %d GSL: %d\n", *(sorted_indexes_2+i), *(sorted_indexes+i));
-    //}
-    //exit(0);
-    
     //print number of times we had to refind the index of the elemtn photons were located in
     if (find_nearest_block_switch!=0)
     {
         num_photons_find_new_element=0; //force this to be 0 since we forced MCRaT to find the indexes for all the photons here
     }
     
-    //fprintf(fPtr, "MCRat had to refind where %d photons were located in the grid\n", num_photons_find_new_element);
-    //(*time_step)=*(all_time_steps+(*(sorted_indexes+0))); //dont need to return index b/c photonEvent doesnt use this, but mcrat.c uses this info
-    //index= *(sorted_indexes+0);//first element of sorted array
-    //free(el_p);free(ph_p_comv);
     return num_photons_find_new_element;
     
 }
@@ -2562,6 +2429,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     /*
      * THIS FUNCTION IS WRITTEN JUST FOR 2D SIMS AS OF NOW, not used
     */
+    /*
     int i=0, j=0, min_index=0, ph_block_index=0, thread_id=0;
     int left_block_index=0, right_block_index=0, bottom_block_index=0, top_block_index=0, all_adjacent_block_indexes[4];
     double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, dist=0, left_dist_min=0, right_dist_min=0, top_dist_min=0, bottom_dist_min=0, dv=0, v=0;
@@ -2644,7 +2512,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
             
             //find the new index of the block that the photon is actually in
-            min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, fPtr);
+            //min_index=findContainingBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, fPtr);
             
             (ph+i)->nearest_block_index=min_index; //save the index
             
@@ -2839,7 +2707,8 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     *(n_temp)= n_temp_min;
     (*time_step)=min_mfp/C_LIGHT;
     return index;
-    
+    */
+    return 0;
 }
 
 

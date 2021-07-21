@@ -136,7 +136,7 @@ int main(int argc, char **argv)
     snprintf(mc_file,sizeof(mc_file),"%s%s%s",FILEPATH, MC_PATH,MCPAR);
 
     
-    printf(">> MCRaT:  Reading mc.par: %s\n", mc_file);
+    printf(">> MCRaT:  Reading parameter file %s\n", mc_file);
     
     hydroDataFrameInitialize(&hydrodata);
     
@@ -377,7 +377,7 @@ int main(int argc, char **argv)
         {
             if (myid != 0 )
             {
-                printf("Proc: %d, Global Cont Procs: %d\n", myid, total_num_to_restart);
+                printf("Proc %d: The total number of processes that still have work to do is: %d\n", myid, total_num_to_restart);
                 //allocate data of appropriate size for all processes to hold the data from MPI_Bcast
                 tmp=realloc(all_cont_process_idPtr,total_num_to_restart *sizeof(int));
                 if (tmp!=NULL)
@@ -408,11 +408,11 @@ int main(int argc, char **argv)
             MPI_Bcast( &old_num_angle_procs, 1, MPI_INT, 0, MPI_COMM_WORLD );
         
             MPI_Barrier(MPI_COMM_WORLD);
-            if (myid==numprocs-1)
-            {
-                printf("Number of processes: %d\n", old_num_angle_procs);
+            //if (myid==numprocs-1)
+            //{
+            //    printf("Number of processes: %d\n", old_num_angle_procs);
                 //printf("restarting process numbers for each angle range: %d, %d, %d\n", *(each_num_to_restart_per_anglePtr), *(each_num_to_restart_per_anglePtr+1), *(each_num_to_restart_per_anglePtr+2));
-            }
+            //}
         
             //assign proper number of processes to each angle range to con't sims and then reset angle_id to original value from when simulation was first started
             color=0; //by default all processes have this value
@@ -425,7 +425,7 @@ int main(int argc, char **argv)
                     color=j;
                 }   
                 count+=(*(each_num_to_restart_per_anglePtr+j));
-                printf("Myid: %d, Color: %d, Count %d, Num To Start Per Angle: %d\n", myid, color, count, (*(each_num_to_restart_per_anglePtr+j)));
+                //printf("Myid: %d, Color: %d, Count %d, Num To Start Per Angle: %d\n", myid, color, count, (*(each_num_to_restart_per_anglePtr+j)));
             }
             
             
@@ -441,7 +441,7 @@ int main(int argc, char **argv)
             MPI_Comm_rank(angle_comm, &angle_id);
             MPI_Comm_size(angle_comm, &angle_procs);
         
-            printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d\n", myid, numprocs, angle_id, angle_procs);
+            //printf("WORLD RANK/SIZE: %d/%d \t ROW RANK/SIZE: %d/%d\n", myid, numprocs, angle_id, angle_procs);
         
             angle_procs=old_num_angle_procs;
         
@@ -513,7 +513,7 @@ int main(int argc, char **argv)
             
     if (restrt==CONTINUE)
     {
-        printf(">> mc.py:  Reading checkpoint\n");
+        printf(">> MCRaT: Reading checkpoint\n");
         //#pragma omp critical
         
             scatt_cyclosynch_num_ph=readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs);
@@ -635,7 +635,7 @@ int main(int argc, char **argv)
          }
         
         //printf(">> mc.py: Working on Frame %d\n", frame);
-        fprintf(fPtr,"Im Proc: %d with angles %0.1lf - %0.1lf Working on Frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frame);
+        fprintf(fPtr,">> Im Proc: %d with angles %0.1lf - %0.1lf Working on Frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frame);
         fflush(fPtr);
         
         if (restrt==INITALIZE)
@@ -674,7 +674,7 @@ int main(int argc, char **argv)
                     //fprintf(fPtr, "%d\n\n", array_num);
                 //}
                 #endif
-                fprintf(fPtr, "Number of Hydro Elements %d\n", hydrodata.num_elements);
+                fprintf(fPtr, "MCRaT: The chosen number of hydro elements is %d\n", hydrodata.num_elements);
             }
             #else
             {
@@ -768,17 +768,17 @@ int main(int argc, char **argv)
             fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Working on photons injected at frame: %d out of %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,frame, frm2);
             
             #if SIMULATION_TYPE == SCIENCE
-                fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Science - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
+                fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Science - Working on scattering photons in frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
             #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
-                fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Spherical Outflow - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
+                fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Spherical Outflow - Working on scattering photons in frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
             #elif SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
-                fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Cylindrical Outflow - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
+                fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Cylindrical Outflow - Working on scattering photons in frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
             #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
-                fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Structured Spherical Outflow - Working on frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
+                fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Structured Spherical Outflow - Working on scattering photons in frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
             #endif
             
-            fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Opening file...\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
-            fflush(fPtr);
+            //fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Opening file...\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+            //fflush(fPtr);
             
             //set new seed to increase randomness?
             gsl_rng_set(rng, gsl_rng_get(rng));
@@ -819,9 +819,9 @@ int main(int argc, char **argv)
                 #elif SIM_SWITCH == PLUTO_CHOMBO
                 {
                     modifyPlutoName(hydro_file, hydro_prefix, scatt_frame);
-                    fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
+                    fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO-Chombo file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
                     fflush(fPtr);
-                    phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
+                    //phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                     readPlutoChombo(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                             &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr);
                     
@@ -829,7 +829,7 @@ int main(int argc, char **argv)
                 }
                 #else
                 {
-                    phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
+                    //phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                     //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
                     readHydro2D(FILEPATH, scatt_frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                 &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
@@ -841,7 +841,7 @@ int main(int argc, char **argv)
             }
             #else
             {
-                phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
+                //phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                 fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                 fflush(fPtr);
                 
@@ -849,7 +849,7 @@ int main(int argc, char **argv)
                            &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fps_modified, fPtr);
             }
             #endif
-            fprintf(fPtr, "Number of Hydo Elements %d\n", hydrodata.num_elements);
+            fprintf(fPtr, "MCRaT: The chosen number of hydro elements is %d\n", hydrodata.num_elements);
             
             //convert hydro coordinates to spherical so we can inject photons, overwriting values, etc.
             fillHydroCoordinateToSpherical(&hydrodata);
@@ -889,7 +889,7 @@ int main(int argc, char **argv)
                     //if injecting synch photons, emit them if continuing simulation from a point where scatt_frame != scatt_framestart
                     //if necessary, then add memory to then arrays allocated directly above
                     
-                    fprintf(fPtr, "Emitting Synchrotron Photons in frame %d\n", scatt_frame);
+                    fprintf(fPtr, "Emitting Cyclosynchrotron Photons in frame %d\n", scatt_frame);
                     
                     #if B_FIELD_CALC == INTERNAL_E
                         fprintf(fPtr, "Calculating the magnetic field using internal energy and epsilon_B is set to %lf.\n", EPSILON_B);
@@ -922,22 +922,11 @@ int main(int argc, char **argv)
                 
                 //go through each photon and find blocks closest to each photon and properties of those blocks to calulate mean free path
                 //and choose the photon with the smallest mfp and calculate the timestep
-                
-
-                num_photons_find_new_element+=findNearestPropertiesAndMinMFP(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, 1, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
+                num_photons_find_new_element+=findNearestPropertiesAndMinMFP(phPtr, num_ph, all_time_steps, sorted_indexes, &hydrodata, rng, find_nearest_grid_switch, fPtr);
+                //(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, 1, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
                                                               all_time_steps, sorted_indexes, rng, find_nearest_grid_switch, fPtr);
 
-                
                 find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
-
-                
-                //fprintf(fPtr, "In main: %d, %e, Newest Method results: %d, %e\n", ph_scatt_index, time_step, *(sorted_indexes+0), *(all_time_steps+(*(sorted_indexes+0))) );
-                //fflush(fPtr);
-                //for (i=1;i<num_ph;i++)
-                //{
-                //   fprintf(fPtr, "Newest Method results: %d, %e\n", *(sorted_indexes+i), *(all_time_steps+(*(sorted_indexes+i))) );
-                //}
-                
                 
                 if (*(all_time_steps+(*(sorted_indexes+0)))<dt_max)
                 {
