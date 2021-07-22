@@ -1617,12 +1617,12 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         
         if (block_cnt!=0)
         {
-            fprintf(fPtr, "Emitting %d cyclo-synch photons with weight %e\n", ph_tot,ph_weight_adjusted );
+            fprintf(fPtr, "Emitting %d cyclosynchrotron photon(s) with weight %e\n", ph_tot,ph_weight_adjusted );
             fflush(fPtr);
         }
         else
         {
-            fprintf(fPtr, "Emitting 0 cyclo-synch photons\n" );
+            fprintf(fPtr, "Emitting 0 cyclosynchrotron photons\n" );
             fflush(fPtr);
 
         }
@@ -1796,10 +1796,6 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                     *(p_comv+3)=(PL_CONST*fr_dum/C_LIGHT)*cos(com_v_theta);
                     
                     //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
-                    //*(boost+0)=-1*((hydro_data->v0)[i])*cos(position_phi);
-                    //*(boost+1)=-1*((hydro_data->v0)[i])*sin(position_phi);
-                    //*(boost+2)=-1*((hydro_data->v1)[i]);
-                    //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
                     #if DIMENSIONS == 3
                         hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
                     #else
@@ -1853,7 +1849,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                         //if count_null_indexes is 0, then all the null photon spaces are filled with emitted photons
                         //if ph_tot is equal to what it used to be
                         i= hydro_data->num_elements;
-                        printf("MCRaT has completed emitting the cyclosynchrotron photons.\n");
+                        //printf("MCRaT has completed emitting the cyclosynchrotron photons.\n");
                     }
                 }
                 k++;
@@ -1887,10 +1883,6 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         *(p_comv+2)=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*sin(com_v_phi);
         *(p_comv+3)=(PL_CONST*fr_dum/C_LIGHT)*cos(com_v_theta);
         
-        //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
-        //*(boost+0)=-1*((hydro_data->v0)[i])*cos(position_phi);
-        //*(boost+1)=-1*((hydro_data->v0)[i])*sin(position_phi);
-        //*(boost+2)=-1*((hydro_data->v1)[i]);
         //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
         #if DIMENSIONS == 3
             hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
@@ -1935,14 +1927,6 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         (*ph_orig)[idx].type=CS_POOL_PHOTON;
         
         //change position of scattered synchrotron photon to be random in the hydro grid
-        /*
-         position_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r0_size)[i])-((hydro_data->r0_size)[i])/2.0; //choose between -size/2 to size/2
-        (*ph_orig)[scatt_ph_index].r0=((hydro_data->r0)[i]+position_rand)*cos(position_phi);
-        (*ph_orig)[scatt_ph_index].r1=((hydro_data->r0)[i]+position_rand)*sin(position_phi);
-        position_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r0_size)[i])-((hydro_data->r0_size)[i])/2.0;
-        (*ph_orig)[scatt_ph_index].r2=((hydro_data->r1)[i]+position_rand);
-         */
-        
         position_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r0_size)[i])-((hydro_data->r0_size)[i])/2.0; //choose between -size/2 to size/2
         position2_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r1_size)[i])-((hydro_data->r1_size)[i])/2.0;
         #if DIMENSIONS == 3
@@ -1973,7 +1957,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
     return ph_tot;
 }
 
-double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_cyclosynch_num_ph, double *temp, double *dens, FILE *fPtr)
+double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_cyclosynch_num_ph, struct hydro_dataframe *hydro_data, FILE *fPtr) //double *temp, double *dens, FILE *fPtr)
 {
     int i=0, count=0, abs_ph_count=0, synch_ph_count=0, num_thread=1;
     int other_count=0;
@@ -1995,8 +1979,8 @@ double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, in
         {
             // if the photon isnt a null photon already, see if it should be absorbed
             
-            el_dens= (*(dens+(*ph_orig)[i].nearest_block_index))/M_P;
-            nu_c=calcCyclotronFreq(calcB(el_dens,*(temp+(*ph_orig)[i].nearest_block_index)));
+            el_dens= (hydro_data->dens)[(*ph_orig)[i].nearest_block_index]/M_P;//(*(dens+(*ph_orig)[i].nearest_block_index))/M_P;
+            nu_c=calcCyclotronFreq(calcB(el_dens, (hydro_data->temp)[(*ph_orig)[i].nearest_block_index])); //*(temp+(*ph_orig)[i].nearest_block_index)));
             //printf("photon %d has lab nu %e comv frequency %e and nu_c %e with FLASH grid number %d\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST, (*ph_orig)[i].comv_p0*C_LIGHT/PL_CONST, nu_c, (*ph_orig)[i].nearest_block_index);
             if (((*ph_orig)[i].comv_p0*C_LIGHT/PL_CONST <= nu_c) || ((*ph_orig)[i].type == CS_POOL_PHOTON))
             {

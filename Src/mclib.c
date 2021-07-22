@@ -1860,10 +1860,10 @@ double *x, double *y, double *szx, double *szy, double *r, double *theta, double
                 (*ph)[ph_tot].comv_p3=(*(p_comv+3));
                 
                 //place photons in rand positions within fluid element
-                position_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r0_size)[i])-((hydro_data->r0_size)[i])/2.0; //choose between -size/2 to size/2
-                position2_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r1_size)[i])-((hydro_data->r1_size)[i])/2.0;
+                position_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r0_size)[i])-0.5*((hydro_data->r0_size)[i]); //choose between -size/2 to size/2
+                position2_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r1_size)[i])-0.5*((hydro_data->r1_size)[i]);
                 #if DIMENSIONS == 3
-                    position3_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r2_size)[i])-((hydro_data->r2_size)[i])/2.0;
+                    position3_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r2_size)[i])-0.5*((hydro_data->r2_size)[i]);
                     hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, (hydro_data->r2)[i]+position3_rand);
                 #else
                     hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, position_phi);
@@ -1920,7 +1920,7 @@ void lorentzBoost(double *boost, double *p_ph, double *result, char object,  FIL
         //fprintf(fPtr,"in If\n");
         //fflush(fPtr);
         beta=gsl_blas_dnrm2(&b.vector);
-        gamma=1.0/sqrt(1-pow(beta, 2.0));
+        gamma=1.0/sqrt(1-beta*beta);
         //fprintf(fPtr,"Beta: %e\tGamma: %e\n",beta,gamma );
         //fflush(fPtr);
         
@@ -2083,7 +2083,6 @@ int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, doubl
 }
 
 int findContainingBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, struct hydro_dataframe *hydro_data, FILE *fPtr)
-//(int array_num, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy, int old_block_index, int find_block_switch, FILE *fPtr)
 {
     int i=0, within_block_index=0;
     bool is_in_block=0; //boolean to determine if the photon is outside of a grid
@@ -2125,7 +2124,6 @@ int findContainingBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_
 
 
 int checkInBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, struct hydro_dataframe *hydro_data, int block_index)
-//int checkInBlock(int block_index, double ph_x, double ph_y, double ph_z, double *x, double  *y, double *z, double *szx, double *szy)
 {
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
     double x0=0, x1=0, x2=0, sz_x0=0, sz_x1=0, sz_x2=0; //coordinate and sizes of grid block, in cartesian its x,y,z in spherical its r,theta,phi
@@ -2170,8 +2168,7 @@ int checkInBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, str
     return return_val;
 }
 
-int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)//( struct photon *ph, int num_ph, int array_num, double hydro_domain_x, double hydro_domain_y, double epsilon_b, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
-                                   double *temp, double *all_time_steps, int *sorted_indexes, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)
+int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)
 {
     int i=0, min_index=0, ph_block_index=0, num_thread=1, thread_id=0;
     double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, ph_r=0, ph_theta=0;
@@ -2728,7 +2725,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
     {
         if (((ph+i)->type != CS_POOL_PHOTON) && ((ph+i)->weight != 0))
         {
-            old_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 ); //uncommented checks since they were not necessary anymore
+            old_position= sqrt(((ph+i)->r0)*((ph+i)->r0)+((ph+i)->r1)*((ph+i)->r1)+((ph+i)->r2)*((ph+i)->r2)); //uncommented checks since they were not necessary anymore
             
             divide_p0=1.0/((ph+i)->p0);
             
@@ -2738,7 +2735,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
             
             ((ph+i)->r2)+=((ph+i)->p3)*divide_p0*C_LIGHT*t;//update z
             
-            new_position= pow(  pow((ph+i)->r0,2)+pow((ph+i)->r1,2)+pow((ph+i)->r2,2), 0.5 );
+            new_position= sqrt(((ph+i)->r0)*((ph+i)->r0)+((ph+i)->r1)*((ph+i)->r1)+((ph+i)->r2)*((ph+i)->r2));
             /*
             if ((new_position-old_position)/t > C_LIGHT)
             {
@@ -2900,7 +2897,7 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
 }
 
 
-double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt, gsl_rng * rand, FILE *fPtr)
+double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt,  gsl_rng * rand, FILE *fPtr)//(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt, gsl_rng * rand, FILE *fPtr)
 {
     //function to perform single photon scattering
     int  i=0, index=0, ph_index=0, event_did_occur=0; //variable event_did_occur is to keep track of wether a scattering or absorption actually occured or not,
@@ -2934,196 +2931,160 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
             //fprintf(fPtr,"i: %d, Photon: %d, Delta t=%e\n", i, ph_index, scatt_time-old_scatt_time);
             //fflush(fPtr);
             
-            //if the photon should scatter then do so, will_scatter==1
-            //if (*(will_scatter+ph_index) != 0 ) ont need b/c all photns are able to scatter and none can be explicitly absorbed
-            //{
             
-                //WHAT IF THE PHOTON MOVES TO A NEW BLOCK BETWEEN WHEN WE CALC MFP AND MOVE IT TO DO THE SCATTERING????
-                //it mostly happens at low optical depth, near the photosphere so we would have a large mfp anyways so we probably wouldn't be in this function in that case
-                index=(ph+ph_index)->nearest_block_index; //the sorted_indexes gives index of photon with smallest time to potentially scatter then extract the index of the block closest to that photon
-        
-                flash_vx=*(all_flash_vx+  index);
-                flash_vy=*(all_flash_vy+  index);
-                fluid_temp=*(all_fluid_temp+  index);
-                //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
-                #if DIMENSIONS == 3
-                {
-                    flash_vz=*(all_flash_vz+  index);
-                }
-                #endif
-        
-                ph_phi=atan2(((ph+ph_index)->r1), (((ph+ph_index)->r0)));
-                
-                /*
-                if (isnan((ph+ph_index)->r0) || isnan((ph+ph_index)->r1) || isnan((ph+ph_index)->r2))
-                {
-                    printf("Not a number\n");
-                }
+            //WHAT IF THE PHOTON MOVES TO A NEW BLOCK BETWEEN WHEN WE CALC MFP AND MOVE IT TO DO THE SCATTERING????
+            //it mostly happens at low optical depth, near the photosphere so we would have a large mfp anyways so we probably wouldn't be in this function in that case
+            index=(ph+ph_index)->nearest_block_index; //the sorted_indexes gives index of photon with smallest time to potentially scatter then extract the index of the block closest to that photon
+    
+            fluid_temp=(hydro_data->temp)[index];
+            //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
+    
+            ph_phi=atan2(((ph+ph_index)->r1), (((ph+ph_index)->r0)));
             
-                
-                fprintf(fPtr,"ph_phi=%e\n", ph_phi);
-                fflush(fPtr);
-                */
+            /*
+            if (isnan((ph+ph_index)->r0) || isnan((ph+ph_index)->r1) || isnan((ph+ph_index)->r2))
+            {
+                printf("Not a number\n");
+            }
+        
+            
+            fprintf(fPtr,"ph_phi=%e\n", ph_phi);
+            fflush(fPtr);
+            */
 
-                //convert flash coordinated into MCRaT coordinates
-                //printf("Getting fluid_beta\n");
+            //convert flash coordinated into MCRaT coordinates
+            //printf("Getting fluid_beta\n");
+            
+            #if DIMENSIONS == 3
+                hydroVectorToCartesian(fluid_beta, (hydro_data->v0)[index], (hydro_data->v1)[index], (hydro_data->v2)[index], (hydro_data->r0)[index], (hydro_data->r1)[index], (hydro_data->r2)[index]);
+            #else
+                //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
+                hydroVectorToCartesian(fluid_beta, (hydro_data->v0)[index], (hydro_data->v1)[index], 0, (hydro_data->r0)[index], (hydro_data->r1)[index], ph_phi);
+            #endif
+
+            
+            /*
+            fprintf(fPtr,"FLASH v: %e, %e\n", flash_vx,flash_vy);
+            fflush(fPtr);
+            */
+    
+            //fill in photon 4 momentum
+            *(ph_p+0)=((ph+ph_index)->p0);
+            *(ph_p+1)=((ph+ph_index)->p1);
+            *(ph_p+2)=((ph+ph_index)->p2);
+            *(ph_p+3)=((ph+ph_index)->p3);
+            
+            //first we bring the photon to the fluid's comoving frame
+            //already have comoving 4 momentum
+            *(ph_p_comov+0)=((ph+ph_index)->comv_p0);
+            *(ph_p_comov+1)=((ph+ph_index)->comv_p1);
+            *(ph_p_comov+2)=((ph+ph_index)->comv_p2);
+            *(ph_p_comov+3)=((ph+ph_index)->comv_p3);
         
-                //if (strcmp(DIM_SWITCH, dim_2d_str)==0)
-                #if DIMENSIONS == 2
-                {
-                    (*(fluid_beta+0))=flash_vx*cos(ph_phi);
-                    (*(fluid_beta+1))=flash_vx*sin(ph_phi);
-                    (*(fluid_beta+2))=flash_vy;
-                }
-                #else
-                {
-                    (*(fluid_beta+0))=flash_vx;
-                    (*(fluid_beta+1))=flash_vy;
-                    (*(fluid_beta+2))=flash_vz;
-                }
-                #endif
-                
-                /*
-                fprintf(fPtr,"FLASH v: %e, %e\n", flash_vx,flash_vy);
-                fflush(fPtr);
-                */
+            //fill in stokes parameters
+            *(s+0)=((ph+ph_index)->s0); //I ==1
+            *(s+1)=((ph+ph_index)->s1); //Q/I
+            *(s+2)=((ph+ph_index)->s2); //U/I
+            *(s+3)=((ph+ph_index)->s3); //V/I
+    
+            /*
+            fprintf(fPtr,"Unscattered Photon in Lab frame: %e, %e, %e,%e, %e, %e, %e\nStokes params %e %e %e %e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3), (ph->r0), (ph->r1), (ph->r2), *(s+0), *(s+1), *(s+2), *(s+3));
+            fflush(fPtr);
+            fprintf(fPtr,"Fluid Beta: %e, %e, %e\n", *(fluid_beta+0),*(fluid_beta+1), *(fluid_beta+2));
+            fflush(fPtr);
+            */
+            
+            
+            /*
+            fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
+            fflush(fPtr);
+     
+            fprintf(fPtr, "Before Scattering, In Comov_frame:\n");
+            fflush(fPtr);
+            fprintf(fPtr, "ph_comov: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+            fflush(fPtr);
+            */
         
-                //fill in photon 4 momentum
-                //printf("filling in 4 momentum in photonScatter for photon index %d\n", ph_index);
-                //if ((ph+ph_index)->type == CS_POOL_PHOTON)
-                {
-                    //printf("The scattering photon is a seed photon w/ comv freq %e Hz.\n", ((ph+ph_index)->comv_p0)*C_LIGHT/PL_CONST);
-                    //*nu_c_scatt=((ph+ph_index)->comv_p0)*C_LIGHT/PL_CONST;//dont need this anymore b/c the CS_POOL_PHOTON photon doesnt move from its cell
+            //then rotate the stokes plane by some angle such that we are in the stokes coordinat eystsem after the lorentz boost
+            #if STOKES_SWITCH == ON
+            {
+
+                stokesRotation(fluid_beta, (ph_p+1), (ph_p_comov+1), s, fPtr);
                 
-                }
+            }
+            #endif
             
-            
-                *(ph_p+0)=((ph+ph_index)->p0);
-                *(ph_p+1)=((ph+ph_index)->p1);
-                *(ph_p+2)=((ph+ph_index)->p2);
-                *(ph_p+3)=((ph+ph_index)->p3);
-                
-                *(ph_p_comov+0)=((ph+ph_index)->comv_p0);
-                *(ph_p_comov+1)=((ph+ph_index)->comv_p1);
-                *(ph_p_comov+2)=((ph+ph_index)->comv_p2);
-                *(ph_p_comov+3)=((ph+ph_index)->comv_p3);
-            
-                //fill in stokes parameters
-                *(s+0)=((ph+ph_index)->s0); //I ==1
-                *(s+1)=((ph+ph_index)->s1); //Q/I
-                *(s+2)=((ph+ph_index)->s2); //U/I
-                *(s+3)=((ph+ph_index)->s3); //V/I
+            //exit(0);
+            //second we generate a thermal electron at the correct temperature
+            singleElectron(el_p_comov, fluid_temp, ph_p_comov, rand, fPtr);
+    
+            //fprintf(fPtr,"el_comov: %e, %e, %e,%e\n", *(el_p_comov+0), *(el_p_comov+1), *(el_p_comov+2), *(el_p_comov+3));
+            //fflush(fPtr);
+     
+    
+            //third we perform the scattering and save scattered photon 4 monetum in ph_p_comov @ end of function
+            event_did_occur=singleScatter(el_p_comov, ph_p_comov, s, rand, fPtr);
         
-                /*
-                fprintf(fPtr,"Unscattered Photon in Lab frame: %e, %e, %e,%e, %e, %e, %e\nStokes params %e %e %e %e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3), (ph->r0), (ph->r1), (ph->r2), *(s+0), *(s+1), *(s+2), *(s+3));
-                fflush(fPtr);
-                fprintf(fPtr,"Fluid Beta: %e, %e, %e\n", *(fluid_beta+0),*(fluid_beta+1), *(fluid_beta+2));
-                fflush(fPtr);
-                */
-                
-                
-                //first we bring the photon to the fluid's comoving frame
-                //lorentzBoost(fluid_beta, ph_p, ph_p_comov, 'p', fPtr);
-                //*(ph_p_comov+0)=((ph+ph_index)->comv_p0);
-                //*(ph_p_comov+1)=((ph+ph_index)->comv_p1);
-                //*(ph_p_comov+2)=((ph+ph_index)->comv_p2);
-                //*(ph_p_comov+3)=((ph+ph_index)->comv_p3);
-                
-                /*
-                fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
-                fflush(fPtr);
-         
-                fprintf(fPtr, "Before Scattering, In Comov_frame:\n");
-                fflush(fPtr);
-                fprintf(fPtr, "ph_comov: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
-                fflush(fPtr);
-                */
-                        
-                //fprintf(fPtr, "Theta: %e Phi %e Lab: x_tilde: %e, %e, %e, y_tilde: %e %e %e\n", theta, phi, *(x_tilde+0), *(x_tilde+1), *(x_tilde+2), *(y_tilde+0), *(y_tilde+1), *(y_tilde+2));
+    
+            //fprintf(fPtr,"After Scattering, After Lorentz Boost to Comov frame: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+            //fflush(fPtr);
+            if (event_did_occur==1)
+            {
+                //fprintf(fPtr,"Within the if!\n");
+                //fflush(fPtr);
             
-                //then rotate the stokes plane by some angle such that we are in the stokes coordinat eystsem after the lorentz boost
-                //if (STOKES_SWITCH != 0)
+                //if the scattering occured have to uodate the phtoon 4 momentum. if photon didnt scatter nothing changes
+                //fourth we bring the photon back to the lab frame
+                *(negative_fluid_beta+0)=-1*( *(fluid_beta+0));
+                *(negative_fluid_beta+1)=-1*( *(fluid_beta+1));
+                *(negative_fluid_beta+2)=-1*( *(fluid_beta+2));
+                lorentzBoost(negative_fluid_beta, ph_p_comov, ph_p, 'p',  fPtr);
+                //fprintf(fPtr,"Scattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
+                //fflush(fPtr);
+                
                 #if STOKES_SWITCH == ON
                 {
-
-                    stokesRotation(fluid_beta, (ph_p+1), (ph_p_comov+1), s, fPtr);
+                    stokesRotation(negative_fluid_beta, (ph_p_comov+1), (ph_p+1), s, fPtr); //rotate to boost back to lab frame
                     
+                    //save stokes parameters
+                    ((ph+ph_index)->s0)= *(s+0); //I ==1
+                    ((ph+ph_index)->s1)= *(s+1);
+                    ((ph+ph_index)->s2)= *(s+2);
+                    ((ph+ph_index)->s3)= *(s+3);
                 }
                 #endif
-                
-                //exit(0);
-                //second we generate a thermal electron at the correct temperature
-                singleElectron(el_p_comov, fluid_temp, ph_p_comov, rand, fPtr);
-        
-                //fprintf(fPtr,"el_comov: %e, %e, %e,%e\n", *(el_p_comov+0), *(el_p_comov+1), *(el_p_comov+2), *(el_p_comov+3));
-                //fflush(fPtr);
-         
-        
-                //third we perform the scattering and save scattered photon 4 monetum in ph_p_comov @ end of function
-                event_did_occur=singleScatter(el_p_comov, ph_p_comov, s, rand, fPtr);
             
-        
-                //fprintf(fPtr,"After Scattering, After Lorentz Boost to Comov frame: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
-                //fflush(fPtr);
-                //event_did_occur=0;
-                if (event_did_occur==1)
+
+                if (((*(ph_p+0))*C_LIGHT/1.6e-9) > 1e4)
                 {
-                    //fprintf(fPtr,"Within the if!\n");
-                    //fflush(fPtr);
-                
-                    //if the scattering occured have to uodate the phtoon 4 momentum. if photon didnt scatter nothing changes
-                    //fourth we bring the photon back to the lab frame
-                    *(negative_fluid_beta+0)=-1*( *(fluid_beta+0));
-                    *(negative_fluid_beta+1)=-1*( *(fluid_beta+1));
-                    *(negative_fluid_beta+2)=-1*( *(fluid_beta+2));
-                    lorentzBoost(negative_fluid_beta, ph_p_comov, ph_p, 'p',  fPtr);
-                    //fprintf(fPtr,"Scattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
-                    //fflush(fPtr);
-                    
-                    #if STOKES_SWITCH == ON
-                    {
-                        stokesRotation(negative_fluid_beta, (ph_p_comov+1), (ph_p+1), s, fPtr); //rotate to boost back to lab frame
-                        
-                        //save stokes parameters
-                        ((ph+ph_index)->s0)= *(s+0); //I ==1
-                        ((ph+ph_index)->s1)= *(s+1);
-                        ((ph+ph_index)->s2)= *(s+2);
-                        ((ph+ph_index)->s3)= *(s+3);
-                    }
-                    #endif
-                
-
-                    if (((*(ph_p+0))*C_LIGHT/1.6e-9) > 1e4)
-                    {
-                        fprintf(fPtr,"Extremely High Photon Energy!!!!!!!!\n");
-                        fflush(fPtr);
-                    }
-                    
-                    //fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
-                    //fprintf(fPtr, "Old: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
-                    
-        
-                    //assign the photon its new lab 4 momentum
-                    ((ph+ph_index)->p0)=(*(ph_p+0));
-                    ((ph+ph_index)->p1)=(*(ph_p+1));
-                    ((ph+ph_index)->p2)=(*(ph_p+2));
-                    ((ph+ph_index)->p3)=(*(ph_p+3));
-                    
-                    //assign it the comoving frame 4 momentum
-                    ((ph+ph_index)->comv_p0)=(*(ph_p_comov+0));
-                    ((ph+ph_index)->comv_p1)=(*(ph_p_comov+1));
-                    ((ph+ph_index)->comv_p2)=(*(ph_p_comov+2));
-                    ((ph+ph_index)->comv_p3)=(*(ph_p_comov+3));
-                    
-                    //printf("Done assigning values to original struct\n");
-        
-                    //incremement that photons number of scatterings
-                    ((ph+ph_index)->num_scatt)+=1;
-                    *frame_scatt_cnt+=1; //incrememnt total number of scatterings
-                    
-
-                
+                    //energy greater than 1e4 keV
+                    fprintf(fPtr,"Extremely High Photon Energy!!!!!!!!\n");
+                    fflush(fPtr);
                 }
+                
+                //fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
+                //fprintf(fPtr, "Old: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+                
+    
+                //assign the photon its new lab 4 momentum
+                ((ph+ph_index)->p0)=(*(ph_p+0));
+                ((ph+ph_index)->p1)=(*(ph_p+1));
+                ((ph+ph_index)->p2)=(*(ph_p+2));
+                ((ph+ph_index)->p3)=(*(ph_p+3));
+                
+                //assign it the comoving frame 4 momentum
+                ((ph+ph_index)->comv_p0)=(*(ph_p_comov+0));
+                ((ph+ph_index)->comv_p1)=(*(ph_p_comov+1));
+                ((ph+ph_index)->comv_p2)=(*(ph_p_comov+2));
+                ((ph+ph_index)->comv_p3)=(*(ph_p_comov+3));
+                
+                //printf("Done assigning values to original struct\n");
+    
+                //incremement that photons number of scatterings
+                ((ph+ph_index)->num_scatt)+=1;
+                *frame_scatt_cnt+=1; //incrememnt total number of scatterings
+            
+            }
                 
         }
         else
@@ -3170,7 +3131,7 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
     if (temp>= 1e7)
     {
         //printf("In if\n");
-        factor=K_B*temp/(M_EL*pow(C_LIGHT,2.0));
+        factor=K_B*temp/(M_EL*C_LIGHT*C_LIGHT);
         y_dum=1; //initalize loop to get a random gamma from the distribution of electron velocities
         f_x_dum=0;
         while ((isnan(f_x_dum) !=0) || (y_dum>f_x_dum) )
@@ -3190,14 +3151,14 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
     {
 
         //printf("In else\n");
-        factor=pow(K_B*temp/M_EL,0.5);
+        factor=sqrt(K_B*temp/M_EL);
         //calculate a random gamma from 3 random velocities drawn from a gaussian distribution with std deviation of "factor"
-        gamma=pow( 1- (pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)+ pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)+pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)  ) ,-0.5); //each vel direction is normal distribution -> maxwellian when multiplied
+        gamma=1.0/sqrt( 1- (pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)+ pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)+pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)  )); //each vel direction is normal distribution -> maxwellian when multiplied
     }
     
     //fprintf(fPtr,"Chosen Gamma: %e\n",gamma);
     
-    beta=pow( 1- (1/pow(  gamma,2.0 ))  ,0.5);
+    beta=sqrt( 1- (1/(gamma*gamma)) );
     //printf("Beta is: %e in singleElectron\n", beta);
     phi=gsl_rng_uniform(rand)*2*M_PI;
     
@@ -3616,7 +3577,7 @@ int comptonScatter(double *theta, double *phi, gsl_rng * rand, FILE *fPtr)
         {
             y_dum=gsl_rng_uniform(rand)*1.09;
             x_dum=gsl_rng_uniform(rand)*M_PI;
-            f_x_dum=sin(x_dum)*(1+pow(cos(x_dum),2));
+            f_x_dum=sin(x_dum)*(1+cos(x_dum)*cos(x_dum));
         }
         *theta=x_dum;
         
@@ -3658,7 +3619,7 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
         }
         *theta=acos(cos_theta_dum);
         mu=1+energy_ratio*(1-cos(*theta));
-        f_theta_dum=(pow(mu, -1.0) + pow(mu, -3.0) - pow(mu, -2.0)*pow(sin(*theta), 2.0))*sin(*theta);
+        f_theta_dum=(pow(mu, -1.0) + pow(mu, -3.0) - pow(mu, -2.0)*sin(*theta)*sin(*theta))*sin(*theta);
         
         while ((phi_y_dum>f_phi_dum) )
         {
@@ -3685,13 +3646,13 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
                 {
                     //if we are considering polarization calulate the norm for the distributiion to be between 1 and 0
                     phi_max=abs(atan2(-u,q))/2.0;
-                    norm=(f_theta_dum + pow(mu, -2.0)*pow(sin(*theta), 3.0) * (q*cos(2*phi_max)-u*sin(2*phi_max)));
+                    norm=(f_theta_dum + pow(mu, -2.0)*sin(*theta)*sin(*theta)*sin(*theta) * (q*cos(2*phi_max)-u*sin(2*phi_max)));
                     //fprintf(fPtr,"norm: %e\n", norm);
                     //fflush(fPtr);
                     
                     phi_y_dum=gsl_rng_uniform(rand);
                     phi_dum=gsl_rng_uniform(rand)*2*M_PI;
-                    f_phi_dum=(f_theta_dum + pow(mu, -2.0)*pow(sin(*theta), 3.0) * (q*cos(2*phi_dum)-u*sin(2*phi_dum)))/norm; //signs on q and u based on Lundman/ McMaster
+                    f_phi_dum=(f_theta_dum + pow(mu, -2.0)*sin(*theta)*sin(*theta)*sin(*theta) * (q*cos(2*phi_dum)-u*sin(2*phi_dum)))/norm; //signs on q and u based on Lundman/ McMaster
                     
                     //fprintf(fPtr,"phi_y_dum: %e, theta_dum: %e, mu: %e, f_theta_dum: %e, phi_dum: %e, f_phi_dum: %e, u: %e, q: %e\n", phi_y_dum, theta_dum, mu, f_theta_dum, phi_dum, f_phi_dum, u, q);
                     //fflush(fPtr);
@@ -3754,7 +3715,7 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
         #endif
         {
             sum+=((ph+i)->num_scatt);
-            avg_r_sum+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
+            avg_r_sum+=sqrt(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2));
             
             //printf("%d %c  %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt);
             
@@ -3773,13 +3734,13 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
             
             if (((ph+i)->type) == INJECTED_PHOTON )
             {
-                avg_r_sum_inject+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
+                avg_r_sum_inject+=sqrt(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2));
                 count_i++;
             }
                         
             if ((((ph+i)->type) == COMPTONIZED_PHOTON) || (((ph+i)->type) == UNABSORBED_CS_PHOTON))
             {
-                avg_r_sum_comp+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
+                avg_r_sum_comp+=sqrt(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2));
                 count_comp++;
             }
             
@@ -3789,7 +3750,7 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
         
         if (((ph+i)->type) == CS_POOL_PHOTON )
         {
-            avg_r_sum_synch+=pow(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2), 0.5);
+            avg_r_sum_synch+=sqrt(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2));
             count_synch++;
         }
 

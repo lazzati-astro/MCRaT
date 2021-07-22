@@ -425,7 +425,7 @@ int main(int argc, char **argv)
                     color=j;
                 }   
                 count+=(*(each_num_to_restart_per_anglePtr+j));
-                //printf("Myid: %d, Color: %d, Count %d, Num To Start Per Angle: %d\n", myid, color, count, (*(each_num_to_restart_per_anglePtr+j)));
+                printf("Myid: %d, Color: %d, Count %d, Num To Start Per Angle: %d\n", myid, color, count, (*(each_num_to_restart_per_anglePtr+j)));
             }
             
             
@@ -449,13 +449,10 @@ int main(int argc, char **argv)
             theta_jmin_thread= (*(thread_theta+  color)) *(M_PI/180);
             theta_jmax_thread= theta_jmin_thread+(delta_theta*(M_PI/180));
             
-//need to double check this///////////////////////////////////////////////////
             inj_radius= (*(inj_radius_input+color));
             frm2=(*(frm2_input+color));
             frm0=(*(frm0_input+color));
             ph_weight_suggest=ph_weight_default;
-///////////////////////////////////////////////////////////////////////////////
-
                 
             //reset the angle_id for each process
             count=0;
@@ -480,7 +477,7 @@ int main(int argc, char **argv)
     }
       
     MPI_Barrier(MPI_COMM_WORLD);
-    free(inj_radius_input); free(frm0_input);free(frm2_input); //free input arrays sonce we hav determined which of the values in the arrays are applicable for this process
+    free(inj_radius_input); free(frm0_input);free(frm2_input); free(thread_theta); //free input arrays sonce we hav determined which of the values in the arrays are applicable for this process
     
     //make vector to hold the frames we are injecting in, vector should have (frm2-frm0)/angle_procs slots, if fps is const
     
@@ -608,6 +605,7 @@ int main(int argc, char **argv)
     fflush(fPtr);
     
     free(frame_array);
+    frame_array=NULL;
     
     //for a checkpoint implementation, start from the last saved "frame" value and go to the saved "frm2" value
         
@@ -693,19 +691,16 @@ int main(int argc, char **argv)
             #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
             {
                 //printf("In cylindrical prep\n");
-                //cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
                 cylindricalPrep(&hydrodata);
             }
             #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
             {
                 //printf("In Spherical\n");
-                //sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
                 sphericalPrep(&hydrodata, fPtr);
             }
             #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
             {
                 //printf("In Structural Spherical\n");
-                //structuredFireballPrep(rPtr, thetaPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
                 structuredFireballPrep(&hydrodata, fPtr);
             }
             #endif
@@ -717,8 +712,9 @@ int main(int argc, char **argv)
             
             #if DIMENSIONS == 2
             {
-                //photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, velxPtr, velyPtr,rng, fPtr );
-                photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, theta_jmin_thread, theta_jmax_thread, &hydrodata,rng, fPtr ); //this may also work for 3D
+//need to double check this
+                photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, theta_jmin_thread, theta_jmax_thread, &hydrodata,rng, fPtr );
+//this may also work for 3D//////////////////////////////////////////
             }
             #else
             {
@@ -815,7 +811,6 @@ int main(int argc, char **argv)
                             &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, min_theta, max_theta, fPtr); old function call
                     readAndDecimate(hydro_file, &hydrodata, inj_radius, 0, min_r, max_r, min_theta, max_theta, fPtr);
                 }
-                //else if (strcmp(pluto_amr_sim, this_sim)==0)
                 #elif SIM_SWITCH == PLUTO_CHOMBO
                 {
                     modifyPlutoName(hydro_file, hydro_prefix, scatt_frame);
@@ -829,7 +824,6 @@ int main(int argc, char **argv)
                 }
                 #else
                 {
-                    //phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                     //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
                     readHydro2D(FILEPATH, scatt_frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
                                 &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 0, min_r, max_r, fPtr);
@@ -841,7 +835,6 @@ int main(int argc, char **argv)
             }
             #else
             {
-                //phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
                 fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
                 fflush(fPtr);
                 
@@ -859,18 +852,15 @@ int main(int argc, char **argv)
             #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
             {
                 //printf("In cylindrical prep\n");
-                //cylindricalPrep(gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num);
                 cylindricalPrep(&hydrodata);
             }
             #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
             {
-                //sphericalPrep(rPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num, fPtr );
                 sphericalPrep(&hydrodata, fPtr);
             }
             #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
             {
                 //printf("In Structural Spherical\n");
-                //structuredFireballPrep(rPtr, thetaPtr, xPtr, yPtr,gammaPtr, velxPtr, velyPtr, densPtr, dens_labPtr, presPtr, tempPtr, array_num , fPtr);
                 structuredFireballPrep(&hydrodata, fPtr);
             }
             #endif
@@ -902,7 +892,6 @@ int main(int argc, char **argv)
                     
                     phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
                     num_cyclosynch_ph_emit=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 0, 0, fPtr);
-                    //photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 0, 0, fPtr);
                 }
             #endif
             
@@ -923,8 +912,6 @@ int main(int argc, char **argv)
                 //go through each photon and find blocks closest to each photon and properties of those blocks to calulate mean free path
                 //and choose the photon with the smallest mfp and calculate the timestep
                 num_photons_find_new_element+=findNearestPropertiesAndMinMFP(phPtr, num_ph, all_time_steps, sorted_indexes, &hydrodata, rng, find_nearest_grid_switch, fPtr);
-                //(phPtr, num_ph, array_num, hydro_domain_x, hydro_domain_y, 1, xPtr,  yPtr, zPtr, szxPtr, szyPtr, velxPtr,  velyPtr,  velzPtr, dens_labPtr, tempPtr,\
-                                                              all_time_steps, sorted_indexes, rng, find_nearest_grid_switch, fPtr);
 
                 find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
                 
@@ -933,7 +920,7 @@ int main(int argc, char **argv)
                     //scatter the photon
                     //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
-                    time_step=photonEvent( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, velxPtr, velyPtr,  velzPtr, tempPtr,  &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );
+                    time_step=photonEvent( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, &hydrodata, &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );
                     time_now+=time_step;
                     
                     //see if the scattered phton was a seed photon, if so replenish the seed photon
@@ -946,7 +933,6 @@ int main(int argc, char **argv)
                         //fprintf(fPtr, "num_null_ph %d\n", num_null_ph);
                         //printf("The previous scattered photon was a seed photon %c.\n", (phPtr+ph_scatt_index)->type);
                         num_cyclosynch_ph_emit+=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 1, ph_scatt_index, fPtr);
-                        //(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, scatt_frame, frame, xPtr, yPtr, szxPtr, szyPtr,rPtr,thetaPtr, tempPtr, densPtr, velxPtr, velyPtr, rng, 1, ph_scatt_index, fPtr);
                         //fprintf(fPtr, " num_photon: %d\n",num_ph  );
                         //fflush(fPtr);
                         
@@ -956,13 +942,11 @@ int main(int argc, char **argv)
                          
                     }
                     #endif
-                    
-                    //phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r);
-                    
+                                        
                     if ((frame_scatt_cnt%1000 == 0) && (frame_scatt_cnt != 0)) //modified this so it doesn't print when all photons get absorbed at first and frame_scatt_cnt=0
                     {
                         fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
-                        fprintf(fPtr,"The local temp is: %e K\n", *(tempPtr + (phPtr+ph_scatt_index)->nearest_block_index) );
+                        fprintf(fPtr,"The local temp is: %e K\n", *(hydrodata.temp + (phPtr+ph_scatt_index)->nearest_block_index) );
                         fprintf(fPtr,"Average photon energy is: %e ergs\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 can then do (1.6e-9) to get keV
                         fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                         //fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
@@ -1007,6 +991,7 @@ int main(int argc, char **argv)
                     fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
                     fflush(fPtr);
                     */
+//need to double check this for 3D simulation
                     rebin2dCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
                   //exit(0);
                }
@@ -1016,7 +1001,7 @@ int main(int argc, char **argv)
                 //make sure the photons that shou;d be absorbed should be absorbed if we have actually emitted any synchrotron photons
                 if (num_cyclosynch_ph_emit>0)
                 {
-                    n_comptonized-=phAbsCyclosynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_cyclosynch_num_ph, tempPtr, densPtr, fPtr);
+                    n_comptonized-=phAbsCyclosynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_cyclosynch_num_ph, &hydrodata, fPtr);//(&phPtr, &num_ph, &frame_abs_cnt, &scatt_cyclosynch_num_ph, tempPtr, densPtr, fPtr);
                 }
                 
             }
@@ -1027,7 +1012,7 @@ int main(int argc, char **argv)
                 
             fprintf(fPtr,"The number of scatterings in this frame is: %d\n", frame_scatt_cnt);
             #if CYCLOSYNCHROTRON_SWITCH == ON
-                fprintf(fPtr,"The number of photons absorbed in this frame is: %d\n", frame_abs_cnt);
+                fprintf(fPtr,"The number of cyclosynchrotron photons absorbed in this frame is: %d\n", frame_abs_cnt);
             #endif
             fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
             fprintf(fPtr,"MCRaT had to refind the position of photons %d times in this frame.\n", num_photons_find_new_element);
@@ -1039,10 +1024,10 @@ int main(int argc, char **argv)
             fprintf(fPtr, ">> Proc %d with angles %0.1lf-%0.1lf: Making checkpoint file\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
             fflush(fPtr);
         
-            fprintf(fPtr, " mc_dir: %s\nframe %d\nfrm2: %d\nscatt_frame: %d\n num_photon: %d\ntime_now: %e\nlast_frame: %d\n", mc_dir, frame, frm2, scatt_frame, num_ph, time_now, last_frm  );
+            //fprintf(fPtr, " mc_dir: %s\nframe %d\nfrm2: %d\nscatt_frame: %d\n num_photon: %d\ntime_now: %e\nlast_frame: %d\n", mc_dir, frame, frm2, scatt_frame, num_ph, time_now, last_frm  );
             
-            fprintf(fPtr,"n_comptonized in this frame is: %e\n ", n_comptonized);
-            fflush(fPtr);
+            //fprintf(fPtr,"n_comptonized in this frame is: %e\n ", n_comptonized);
+            //fflush(fPtr);
             
             save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id, old_num_angle_procs);
             
@@ -1058,16 +1043,9 @@ int main(int argc, char **argv)
                 fflush(fPtr);
                 exit(1);
             }
-
-            //if (frame==last_frm)
-            //{
-            //    exit(0);
-            //}
             
-             //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
             #if SIM_SWITCH == RIKEN && DIMENSIONS ==3
             {
-                //if (RIKEN_SWITCH==1)
                 {
                     free(zPtr);free(phiPtr);free(velzPtr);
                     zPtr=NULL; phiPtr=NULL; velzPtr=NULL;
@@ -1079,6 +1057,10 @@ int main(int argc, char **argv)
             free(gammaPtr);free(dens_labPtr);free(tempPtr);
             xPtr=NULL; yPtr=NULL;  rPtr=NULL;thetaPtr=NULL;velxPtr=NULL;velyPtr=NULL;densPtr=NULL;presPtr=NULL;gammaPtr=NULL;dens_labPtr=NULL;
             szxPtr=NULL; szyPtr=NULL; tempPtr=NULL;
+            free(all_time_steps); //malloc is called in for loop therefore free memory at th end of the loop
+            all_time_steps=NULL;
+            free(sorted_indexes);
+            sorted_indexes=NULL;
             freeHydroDataFrame(&hydrodata);
         }
         
@@ -1195,7 +1177,10 @@ int main(int argc, char **argv)
             
     fclose(fPtr);
     gsl_rng_free (rng);
-   	 
+    
+    free(frame_array);
+    free(proc_frame_array);
+    
     MPI_Finalize();
     
 	return 0;    
