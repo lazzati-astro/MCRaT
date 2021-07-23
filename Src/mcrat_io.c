@@ -1183,16 +1183,19 @@ int readCheckpoint(char dir[STR_BUFFER], struct photon **ph, int *frame2, int *f
     return scatt_cyclosynch_num_ph;
 }
 
-void readMcPar(char file[STR_BUFFER], struct hydro_dataframe *hydro_data, double *theta_jmin, double *theta_j, double *n_theta_j, double **inj_radius, int **frm0, int **frm2, int *min_photons, int *max_photons, char *spect, char *restart)
+void readMcPar(struct hydro_dataframe *hydro_data, double *theta_jmin, double *theta_j, double *n_theta_j, double **inj_radius, int **frm0, int **frm2, int *min_photons, int *max_photons, char *spect, char *restart)
 {
     //function to read mc.par file
+    char mc_file[STR_BUFFER]="" ;
     FILE *fptr=NULL;
     char buf[100]="", buf2[100]="", *value, *context = NULL, copied_str[100]="";
     double theta_deg;
     int i, val;
     
     //open file
-    fptr=fopen(file,"r");
+    snprintf(mc_file,sizeof(mc_file),"%s%s%s",FILEPATH, MC_PATH,MCPAR);
+    printf(">> MCRaT:  Reading parameter file %s\n", mc_file);
+    fptr=fopen(mc_file,"r");
     
     //read first block about hydro simulation frame
     fgets(buf, sizeof(buf), fptr); //reads block info
@@ -1894,4 +1897,63 @@ void freeHydroDataFrame(struct hydro_dataframe *hydro_data)
     hydro_data->B2=NULL;
 }
 
-//void getHydroData(struct hydro_dataframe *hydro_data, int frame, )
+int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radius, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr)
+{
+    //wrapper function that collects the hydro data based on the defined parameters from the user
+    char hydro_file[STR_BUFFER]="";
+    char hydro_prefix[STR_BUFFER]="";
+    
+    snprintf(hydro_prefix,sizeof(hydro_prefix),"%s%s",FILEPATH,FILEROOT );
+
+    #if DIMENSIONS == 2
+    
+        #if SIM_SWITCH == FLASH
+            //if using FLASH data for 2D
+            //put proper number at the end of the flash file
+            modifyFlashName(hydro_file, hydro_prefix, frame);
+            
+            fprintf(fPtr,">> MCRaT is opening FLASH file %s\n", hydro_file);
+            fflush(fPtr);
+            
+            readAndDecimate(hydro_file, hydro_data, inj_radius, 1, min_r, max_r, min_theta, max_theta, fPtr);
+        #elif SIM_SWITCH == PLUTO_CHOMBO
+            modifyPlutoName(hydro_file, hydro_prefix, frame);
+            
+            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
+            fflush(fPtr);
+            
+            readPlutoChombo(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
+            
+        #else
+            //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
+            readHydro2D(FILEPATH, frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                        &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
+            //fprintf(fPtr, "%d\n\n", array_num);
+        #endif
+        
+    #else
+    
+        fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
+        fflush(fPtr);
+
+        read_hydro(FILEPATH, frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
+                   &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fps_modified, fPtr);
+    #endif
+        
+    fprintf(fPtr, "MCRaT: The chosen number of hydro elements is %d\n", hydro_data->num_elements);
+
+    //convert hydro coordinates to spherical so we can inject photons, overwriting values, etc.
+    fillHydroCoordinateToSpherical(hydro_data);
+
+    //check for run type
+    #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
+        cylindricalPrep(hydro_data);
+    #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
+        sphericalPrep(hydro_data, fPtr);
+    #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
+        structuredFireballPrep(hydro_data, fPtr);
+    #endif
+        
+    return 0;
+}

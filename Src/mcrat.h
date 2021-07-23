@@ -168,6 +168,7 @@ struct hydro_dataframe
 #include "mclib.h"
 #include "mclib_riken.h"
 #include "mclib_pluto.h"
+#include "mclib_flash.h"
 #include "mc_cyclosynch.h"
 #include "geometry.h"
 #include "mcrat_scattering.h"

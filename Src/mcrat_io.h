@@ -13,10 +13,12 @@ int saveCheckpoint(char dir[STR_BUFFER], int frame,  int frame2, int scatt_frame
 
 int readCheckpoint(char dir[STR_BUFFER], struct photon **ph,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size );
 
-void readMcPar(char file[STR_BUFFER], struct hydro_dataframe *hydro_data, double *theta_jmin, double *theta_j, double *n_theta_j, double **inj_radius, int **frm0, int **frm2, int *min_photons, int *max_photons, char *spect, char *restart);
+void readMcPar(struct hydro_dataframe *hydro_data, double *theta_jmin, double *theta_j, double *n_theta_j, double **inj_radius, int **frm0, int **frm2, int *min_photons, int *max_photons, char *spect, char *restart);
 
 void dirFileMerge(char dir[STR_BUFFER], int start_frame, int last_frame, int numprocs,  int angle_id, FILE *fPtr);
 
 void hydroDataFrameInitialize(struct hydro_dataframe *hydro_data);
 
 void freeHydroDataFrame(struct hydro_dataframe *hydro_data);
+
+int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radius, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr);

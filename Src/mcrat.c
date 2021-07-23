@@ -119,15 +119,13 @@ int main(int argc, char **argv)
     //the angle and the injection frames will be the names of mc_dir, therefore read mc.par first in MC_XXX directory
     
     //make strings of proper directories etc.
-	snprintf(hydro_prefix,sizeof(hydro_prefix),"%s%s",FILEPATH,FILEROOT );
     snprintf(mc_file,sizeof(mc_file),"%s%s%s",FILEPATH, MC_PATH,MCPAR);
 
-    
     printf(">> MCRaT:  Reading parameter file %s\n", mc_file);
     
     hydroDataFrameInitialize(&hydrodata);
     
-    readMcPar(mc_file, &hydrodata, &theta_jmin, &theta_jmax, &num_theta_bins, &inj_radius_input, &frm0_input , &frm2_input, &min_photons, &max_photons, &spect, &restrt); //thetas that comes out is in degrees, need to free input frame and injection radius pointers
+    readMcPar(&hydrodata, &theta_jmin, &theta_jmax, &num_theta_bins, &inj_radius_input, &frm0_input , &frm2_input, &min_photons, &max_photons, &spect, &restrt); //thetas that comes out is in degrees, need to free input frame and injection radius pointers
     fps=hydrodata.fps;//save this incase we need modifications to fps later on in hydro sim
     last_frm=hydrodata.last_frame;
     //printf("%c\n", restrt);
@@ -874,11 +872,11 @@ int main(int argc, char **argv)
                         //otherwise calculate B from the total energy
                         fprintf(fPtr, "Calculating the magnetic field using the total energy and epsilon_B is set to %lf.\n", EPSILON_B);
                     #else
-                    fprintf(fPtr, "Using the magnetic field from the hydro simulation.\n");
+                        fprintf(fPtr, "Using the magnetic field from the hydro simulation.\n");
                     #endif
                     
                     phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
-//need to double check this for 3D simulation
+//need to double check this for 3D simulation and modify to use B field magnitude
                     num_cyclosynch_ph_emit=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 0, 0, fPtr);
                 }
             #endif
@@ -946,7 +944,7 @@ int main(int argc, char **argv)
                             //if the number of synch photons that have been scattered is too high rebin them
                             
                             //printf("num_cyclosynch_ph_emit: %d\n", num_cyclosynch_ph_emit);
-//need to double check this for 3D simulation
+//need to double check this for 3D simulation, will probably also need to bin in spherical phi
                             rebin2dCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
 
                             //fprintf(fPtr, "rebinSynchCompPhotons: scatt_cyclosynch_num_ph: %d\n", scatt_cyclosynch_num_ph);
@@ -980,7 +978,7 @@ int main(int argc, char **argv)
                     fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
                     fflush(fPtr);
                     */
-//need to double check this for 3D simulation
+//need to double check this for 3D simulation and modify to use B field magnitude
                     rebin2dCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
                   //exit(0);
                }
