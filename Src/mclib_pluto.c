@@ -5,26 +5,7 @@
 //  Created by Tyler Parsotan on 11/26/19.
 //
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <dirent.h>
-#include <limits.h>
-#include "hdf5.h"
-#include <math.h>
-#include <time.h>
-#include <gsl/gsl_math.h>
-#include <gsl/gsl_rng.h>
-#include <gsl/gsl_randist.h>
-#include <gsl/gsl_blas.h>
-#include <gsl/gsl_vector.h>
-#include <gsl/gsl_matrix.h>
-#include <gsl/gsl_sf_bessel.h>
-#include "mclib.h"
-
-#include <omp.h>
+#include "mcrat.h"
 
 void readPlutoChombo( char pluto_file[STR_BUFFER], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
 double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr)

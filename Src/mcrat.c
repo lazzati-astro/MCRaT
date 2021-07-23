@@ -43,20 +43,7 @@
 * Version 9.1 late 2018 including synchrotron absorption and emission
 */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <dirent.h>
-#include <math.h>
-#include <gsl/gsl_rng.h>
-#include "mclib.h"
-//#include "mclib_3d.h"
-//#include "mclib_pluto.h"
-#include <omp.h>
-#include "mpi.h"
+#include "mcrat.h"
 
 int main(int argc, char **argv)
 {
@@ -891,6 +878,7 @@ int main(int argc, char **argv)
                     #endif
                     
                     phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
+//need to double check this for 3D simulation
                     num_cyclosynch_ph_emit=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 0, 0, fPtr);
                 }
             #endif
@@ -958,6 +946,7 @@ int main(int argc, char **argv)
                             //if the number of synch photons that have been scattered is too high rebin them
                             
                             //printf("num_cyclosynch_ph_emit: %d\n", num_cyclosynch_ph_emit);
+//need to double check this for 3D simulation
                             rebin2dCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
 
                             //fprintf(fPtr, "rebinSynchCompPhotons: scatt_cyclosynch_num_ph: %d\n", scatt_cyclosynch_num_ph);
