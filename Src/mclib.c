@@ -35,7 +35,7 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
     
     for(i=0; i<hydro_data->num_elements; i++)
     {
-        #if DIMENSIONS == 3
+        #if DIMENSIONS == THREE
             hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
                 hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
         #else
@@ -68,7 +68,7 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
         {
             //printf("%d\n",i);
             //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
-            #if DIMENSIONS == 3
+            #if DIMENSIONS == THREE
                 hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
                     hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
             #else
@@ -122,7 +122,7 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
     k=0;
     for (i=0;i<hydro_data->num_elements;i++)
     {
-        #if DIMENSIONS == 3
+        #if DIMENSIONS == THREE
             hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
                 hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
         #else
@@ -160,7 +160,7 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
                     
                 }
                 //printf("i: %d freq:%lf\n ",ph_tot, fr_dum);
-                #if DIMENSIONS == 2
+                #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
                     position_phi=gsl_rng_uniform(rand)*2*M_PI;
                 #else
                     position_phi=0;//dont need this in 3D
@@ -177,8 +177,10 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
                 
                
                 //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
-                #if DIMENSIONS == 3
+                #if DIMENSIONS == THREE
                     hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
+                #elif DIMENSIONS == TWO_POINT_FIVE
+                    hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
                 #else
                     //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
                     hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], 0, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
@@ -203,7 +205,7 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
                 //place photons in rand positions within fluid element
                 position_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r0_size)[i])-0.5*((hydro_data->r0_size)[i]); //choose between -size/2 to size/2
                 position2_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r1_size)[i])-0.5*((hydro_data->r1_size)[i]);
-                #if DIMENSIONS == 3
+                #if DIMENSIONS == THREE
                     position3_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r2_size)[i])-0.5*((hydro_data->r2_size)[i]);
                     hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, (hydro_data->r2)[i]+position3_rand);
                 #else
@@ -434,7 +436,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
         //if the location of the photon is less than the domain of the hydro simulation then do all of this, otherwise assing huge mfp value so no scattering occurs and the next frame is loaded
         // absorbed photons have ph_block_index=-1, therefore if this value is not less than 0, calulate the mfp properly but doesnt work when go to new frame and find new indexes (will change b/c will get rid of these photons when printing)
         //alternatively make decision based on 0 weight
-        #if DIMENSIONS == 2
+        #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
         if (((photon_hydro_coord[1]<(hydro_data->r1_domain)[1]) && (photon_hydro_coord[0]<(hydro_data->r0_domain)[1])) && ((ph+i)->nearest_block_index != -1) ) //can use sorted index to see which photons have been absorbed efficiently before printing and get the indexes
         #else
         if (((photon_hydro_coord[2]<(hydro_data->r2_domain)[1]) && (photon_hydro_coord[1]<(hydro_data->r1_domain)[1]) && (photon_hydro_coord[0]<(hydro_data->r0_domain)[1])) && ((ph+i)->nearest_block_index != -1) )
@@ -474,8 +476,11 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
                     ph_p[2]=((ph+i)->p2);
                     ph_p[3]=((ph+i)->p3);
                     
-                    #if DIMENSIONS == 3
+                    #if DIMENSIONS == THREE
                         hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], (hydro_data->v2)[min_index], (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], (hydro_data->r2)[min_index]);
+                    #elif DIMENSIONS == TWO_POINT_FIVE
+                        ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
+                        hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], (hydro_data->v2)[min_index], (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], ph_phi);
                     #else
                         ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
                         //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
@@ -508,8 +513,11 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
                 (n_dens_lab_tmp)= (hydro_data->dens)[min_index];//(*(dens_lab+min_index));
                 (n_temp_tmp)= (hydro_data->temp)[min_index];//(*(temp+min_index));
                 
-                #if DIMENSIONS == 3
+                #if DIMENSIONS == THREE
                     hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], (hydro_data->v2)[min_index], (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], (hydro_data->r2)[min_index]);
+                #elif DIMENSIONS == TWO_POINT_FIVE
+                    ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
+                    hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], (hydro_data->v2)[min_index], (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], ph_phi);
                 #else
                     ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
                     //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
@@ -1021,8 +1029,10 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
             //convert flash coordinated into MCRaT coordinates
             //printf("Getting fluid_beta\n");
             
-            #if DIMENSIONS == 3
+            #if DIMENSIONS == THREE
                 hydroVectorToCartesian(fluid_beta, (hydro_data->v0)[index], (hydro_data->v1)[index], (hydro_data->v2)[index], (hydro_data->r0)[index], (hydro_data->r1)[index], (hydro_data->r2)[index]);
+            #elif DIMENSIONS == TWO_POINT_FIVE
+                hydroVectorToCartesian(fluid_beta, (hydro_data->v0)[index], (hydro_data->v1)[index], (hydro_data->v2)[index], (hydro_data->r0)[index], (hydro_data->r1)[index], ph_phi);
             #else
                 //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
                 hydroVectorToCartesian(fluid_beta, (hydro_data->v0)[index], (hydro_data->v1)[index], 0, (hydro_data->r0)[index], (hydro_data->r1)[index], ph_phi);
@@ -1398,7 +1408,7 @@ void cylindricalPrep(struct hydro_dataframe *hydro_data)
         ((hydro_data->temp))[i]=t_comov; //just assign t_comov
         
         
-        #if DIMENSIONS == 2
+        #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
             
             #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
                 ((hydro_data->v0))[i]=0;
@@ -1464,7 +1474,7 @@ void sphericalPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
         
         vel=pow(1-(pow(((hydro_data->gamma))[i], -2.0)) ,0.5);
 
-        #if DIMENSIONS == 2
+        #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
             
             #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
                 r=pow(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r1))[i], 2) ,0.5);
@@ -1547,7 +1557,7 @@ void structuredFireballPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
         (hydro_data->dens_lab)[i]=((hydro_data->dens)[i])*((hydro_data->gamma)[i]);
         (hydro_data->pres)[i]=(A_RAD*pow((hydro_data->temp)[i], 4.0))/(3);
         
-        #if DIMENSIONS == 2
+        #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
             
             #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
                 r=pow(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r1))[i], 2) ,0.5);

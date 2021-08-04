@@ -11,7 +11,7 @@ void modifyRikenHydroName(char flash_file[STR_BUFFER], char prefix[STR_BUFFER], 
 {
     int lim1=0, lim2=0, lim3=0;
     char test[STR_BUFFER]="" ;
-    #if DIMENSIONS == 2
+    #if DIMENSIONS == TWO
     {
         //2D case
         lim1=10;

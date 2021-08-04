@@ -38,6 +38,11 @@
 #define CYLINDRICAL 2 //2D
 #define POLAR       3 //only in 3D, technically Cylindrical coordinates but PLUTO calls this POLAR
 
+//define the hydro dimensions that we can handle
+#define TWO                 0
+#define TWO_POINT_FIVE      1
+#define THREE               2
+
 //define the types of things that we can assume for the thermal synchrotron emission and how we calculate the B field
 #define INTERNAL_E  0
 #define TOTAL_E     1
@@ -95,8 +100,8 @@ struct hydro_dataframe
      3D Spherical       |       r, theta, phi
      3D Polar           |       r, phi, z
      2D Cartesian       |       x, z
-     2D Cylindrical     |       r, z //in PLUTO its possible to save 3D vectors, dont support this for now assume only 2D vectors
-     2D Spherical       |       r, theta
+     2D Cylindrical     |       r, z (phi) //in PLUTO its possible to save 3D vectors  in 2.5 dims where the final unit vector is phi hat
+     2D Spherical       |       r, theta, (phi)
      */
     int num_elements; //number of elements in each array
     double *r0; //coodinates in hydro coodinate system that user provides,

@@ -12,7 +12,7 @@ void mcratCoordinateToHydroCoordinate(double *ph_hydro_coord, double mcrat_r0, d
     //function to convert MCRaT cartesian coordinate in 3D to the proper hydro coordinates
     double r0=-1, r1=-1, r2=-1;
     
-    #if DIMENSIONS == 2
+    #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
         //can be cartesian (x,z), polar (r,phi), spherical (r,theta), cylindrical (r,z),
         //for cartesian have to reduce MCRaT x,y to hydro x coord and leave z
         //(for polar have to reduce MCRaT x,y,z to radius and calculate phi from projected x axis), NOT SUPPORTING POLAR 2D
@@ -64,7 +64,7 @@ void hydroCoordinateToSpherical(double *r, double *theta, double r0, double r1, 
     int i=0;
     double sph_r=0, sph_theta=0;//sph_theta is measured from the assumed jet axis
     
-    #if DIMENSIONS == 2
+    #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
         
         #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
             sph_r=pow( r0*r0+r1*r1, 0.5);
@@ -108,7 +108,7 @@ void hydroCoordinateToMcratCoordinate(double *hydro_mcrat_coord, double hydro_r0
     
     double x=0, y=0, z=0;
     
-    #if DIMENSIONS == 2
+    #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
         
         #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
             x=hydro_r0*cos(hydro_r2);
@@ -157,7 +157,7 @@ void fillHydroCoordinateToSpherical(struct hydro_dataframe *hydro_data)
     
     for (i=0;i<hydro_data->num_elements;i++)
     {
-        #if DIMENSIONS == 3
+        #if DIMENSIONS == THREE
             hydroCoordinateToSpherical(&sph_r, &sph_theta, ((hydro_data->r0))[i], ((hydro_data->r1))[i], ((hydro_data->r2))[i]);
         #else
             hydroCoordinateToSpherical(&sph_r, &sph_theta, ((hydro_data->r0))[i], ((hydro_data->r1))[i], 0);
@@ -176,7 +176,7 @@ void hydroVectorToCartesian(double *cartesian_vector_3d, double v0, double v1, d
     //may need to modify if PLUTO allows for saving full 3D vectors even when it only considers 2D sims
     double transformed_vector0=0, transformed_vector1=0, transformed_vector2=0;
     
-    #if DIMENSIONS == 2
+    #if DIMENSIONS == TWO
         
         #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
             transformed_vector0=v0*cos(x2); //x coordinate
@@ -186,6 +186,21 @@ void hydroVectorToCartesian(double *cartesian_vector_3d, double v0, double v1, d
 
         #if GEOMETRY == SPHERICAL
             v2=0;//no phi hat component of the vector in 2D
+            transformed_vector0=v0*sin(x1)*cos(x2)+v1*cos(x1)*cos(x2)-v2*sin(x2); //x coordinate
+            transformed_vector1=v0*sin(x1)*sin(x2)+v1*cos(x1)*sin(x2)+v2*cos(x2); //y
+            transformed_vector2=v0*cos(x1)-v1*sin(x1); //z
+        #endif
+    
+    #elif DIMENSIONS == TWO_POINT_FIVE
+    
+        #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
+            //switched v1 and v2 and x1 and x2 b/c in 2.5D have r,z, phi instead of normal 3D r, phi, z
+            transformed_vector0=v0*cos(x2)-v2*sin(x2); //x coordinate
+            transformed_vector1=v0*sin(x2)+v2*cos(x2); //y
+            transformed_vector2=v1; //z
+        #endif
+
+        #if GEOMETRY == SPHERICAL
             transformed_vector0=v0*sin(x1)*cos(x2)+v1*cos(x1)*cos(x2)-v2*sin(x2); //x coordinate
             transformed_vector1=v0*sin(x1)*sin(x2)+v1*cos(x1)*sin(x2)+v2*cos(x2); //y
             transformed_vector2=v0*cos(x1)-v1*sin(x1); //z
@@ -229,7 +244,7 @@ double hydroElementVolume(struct hydro_dataframe *hydro_data, int index)
     r1_max=(hydro_data->r1)[index]+0.5*(hydro_data->r1_size)[index];
     r1_min=(hydro_data->r1)[index]-0.5*(hydro_data->r1_size)[index];
 
-    #if DIMENSIONS == 2
+    #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
         
         #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
             V=M_PI*(r0_max*r0_max-r0_min*r0_min)*(hydro_data->r1_size)[index];
@@ -275,7 +290,7 @@ int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, doubl
         for(j=0;j<array_num;j++)
         {
             //if the distance between them is within 3e9, to restrict number of possible calculations,  calulate the total distance between the box and photon
-            #if DIMENSIONS == 2
+            #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
                 if ((fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
                 {
                     
@@ -293,7 +308,7 @@ int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, doubl
                     }
                     
                 }
-            #elif DIMENSIONS == 3
+            #elif DIMENSIONS == THREE
                 if ((fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist) && (fabs(ph_z- (*(z+j)))<block_dist))
                 {
                     dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)),2.0 ) + pow(ph_z- (*(z+j)) , 2.0),0.5);
@@ -334,7 +349,7 @@ int findContainingBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_
         
     }
     //printf("Within Block Index:  %d\n",within_block_index);
-    #if SIM_SWITCH == RIKEN || DIMENSIONS == 3
+    #if SIM_SWITCH == RIKEN || DIMENSIONS == THREE
     {
         fprintf(fPtr, "3D switch is: %d and SIM switch is: %d\n", DIMENSIONS, SIM_SWITCH);
     }
@@ -342,7 +357,7 @@ int findContainingBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_
     
     if (is_in_block==0)
     {
-        #if DIMENSIONS == 2
+        #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
             fprintf(fPtr, "MCRaT Couldn't find a block for the photon located at r0=%e r1=%e\n", ph_hydro_r0, ph_hydro_r1);
         #else
             fprintf(fPtr, "MCRaT Couldn't find a block for the photon located at r0=%e r1=%e r2=%e in the hydro simulation coordinate system.\n", ph_hydro_r0, ph_hydro_r1, ph_hydro_r2);
@@ -362,7 +377,7 @@ int checkInBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, str
     int return_val=0;
 
     
-    #if DIMENSIONS == 2
+    #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
         is_in_block= (2*fabs( ph_hydro_r0 - (hydro_data->r0)[block_index]) - (hydro_data->r0_size)[block_index] <= 0) && (2*fabs(ph_hydro_r1 - (hydro_data->r1)[block_index] ) - (hydro_data->r1_size)[block_index]  <= 0);
     #else
         is_in_block= (2*fabs( ph_hydro_r0 - (hydro_data->r0)[block_index]) - (hydro_data->r0_size)[block_index] <= 0) && (2*fabs(ph_hydro_r1 - (hydro_data->r1)[block_index] ) - (hydro_data->r1_size)[block_index]  <= 0) && (2*fabs(ph_hydro_r2 - (hydro_data->r2)[block_index] ) - (hydro_data->r2_size)[block_index]  <= 0);

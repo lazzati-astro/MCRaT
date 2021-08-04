@@ -1095,7 +1095,7 @@ int readCheckpoint(char dir[STR_BUFFER], struct photon **ph, int *frame2, int *f
             fread(scatt_framestart, sizeof(int), 1, fPtr);
             
             //if ((riken_switch==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && ((*scatt_framestart)>=3000))
-            #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+            #if SIM_SWITCH == RIKEN && DIMENSIONS == THREE
             if ((*scatt_framestart)>=3000)
             {
                 *scatt_framestart+=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
@@ -1156,7 +1156,7 @@ int readCheckpoint(char dir[STR_BUFFER], struct photon **ph, int *frame2, int *f
         else
         {
             //if ((riken_switch==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && ((*framestart)>=3000))
-            #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+            #if SIM_SWITCH == RIKEN && DIMENSIONS == THREE
             if ((*framestart)>=3000)
             {
                 *framestart+=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
@@ -1329,7 +1329,7 @@ void dirFileMerge(char dir[STR_BUFFER], int start_frame, int last_frame, int num
         fprintf(fPtr, "Merging files for frame: %d\n", i);
         fflush(fPtr);
         
-        #if SIM_SWITCH == RIKEN && DIMENSIONS == 3
+        #if SIM_SWITCH == RIKEN && DIMENSIONS == THREE
         if (i>=3000)
         {
             increment=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
@@ -1905,7 +1905,7 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
     
     snprintf(hydro_prefix,sizeof(hydro_prefix),"%s%s",FILEPATH,FILEROOT );
 
-    #if DIMENSIONS == 2
+    #if DIMENSIONS == TWO
     
         #if SIM_SWITCH == FLASH
             //if using FLASH data for 2D
@@ -1915,30 +1915,42 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
             fprintf(fPtr,">> MCRaT is opening FLASH file %s\n", hydro_file);
             fflush(fPtr);
             
-            readAndDecimate(hydro_file, hydro_data, inj_radius, 1, min_r, max_r, min_theta, max_theta, fPtr);
+            readAndDecimate(hydro_file, hydro_data, inj_radius, ph_inj_switch, min_r, max_r, min_theta, max_theta, fPtr);
         #elif SIM_SWITCH == PLUTO_CHOMBO
             modifyPlutoName(hydro_file, hydro_prefix, frame);
             
-            fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf: Opening PLUTO file %s\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, hydro_file);
+            fprintf(fPtr,">> MCRaT is opening PLUTO-Chombo file %s\n", hydro_file);
             fflush(fPtr);
             
-            readPlutoChombo(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, min_theta, max_theta, fPtr);
+            //readPlutoChombo(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
+                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, ph_inj_switch, min_r, max_r, min_theta, max_theta, fPtr);
+            readPlutoChombo(hydro_file, hydro_data, inj_radius, ph_inj_switch, min_r, max_r, min_theta, max_theta, fPtr);
+        #elif SIM_SWITCH == PLUTO
+            modifyPlutoName(hydro_file, hydro_prefix, frame);
+    
+            //read in 2D PLUTO data
+            fprintf(fPtr,">> MCRaT is opening PLUTO file %s\n", hydro_file);
+            fflush(fPtr);
             
         #else
             //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
             readHydro2D(FILEPATH, frame, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                        &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fPtr);
+                        &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, ph_inj_switch, min_r, max_r, fPtr);
             //fprintf(fPtr, "%d\n\n", array_num);
         #endif
         
     #else
-    
-        fprintf(fPtr,">> Im Proc: %d with angles %0.1lf-%0.1lf\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
-        fflush(fPtr);
-
-        read_hydro(FILEPATH, frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
-                   &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, 1, min_r, max_r, fps_modified, fPtr);
+        #if SIM_SWITCH == FLASH
+            
+        #elif SIM_SWITCH == PLUTO_CHOMBO
+            
+        #elif SIM_SWITCH == PLUTO
+            
+        #else
+            //RKEN Data files
+            read_hydro(FILEPATH, frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
+                       &thetaPtr, &phiPtr, &velxPtr,  &velyPtr, &velzPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, ph_inj_switch, min_r, max_r, fps_modified, fPtr);
+        #endif
     #endif
         
     fprintf(fPtr, "MCRaT: The chosen number of hydro elements is %d\n", hydro_data->num_elements);
@@ -1946,7 +1958,7 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
     //convert hydro coordinates to spherical so we can inject photons, overwriting values, etc.
     fillHydroCoordinateToSpherical(hydro_data);
 
-    //check for run type
+    //check for run type see if we need to rewrite any data
     #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
         cylindricalPrep(hydro_data);
     #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
@@ -1955,5 +1967,40 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
         structuredFireballPrep(hydro_data, fPtr);
     #endif
         
+    return 0;
+}
+
+int printHydroGeometry(FILE *fPtr)
+{
+    
+    #if DIMENSIONS == TWO
+        char dim[]="2D";
+    #elif DIMENSIONS == TWO_POINT_FIVE
+        char dim[]="2.5D";
+    #else
+        char dim[]="3D";
+    #endif
+    
+    #if SIM_SWITCH == FLASH
+        char sim[]="Flash";
+    #elif SIM_SWITCH == PLUTO_CHOMBO
+        char sim[]="PLUTO-Chombo";
+    #elif SIM_SWITCH == PLUTO
+        char sim[]="PLUTO";
+    #endif
+    
+    #if GEOMETRY == CARTESIAN
+        char geo[]="Cartesian";
+    #elif GEOMETRY == CYLINDRICAL
+        char geo[]="Cylindrical";
+    #elif GEOMETRY == SPHERICAL
+        char geo[]="Spherical";
+    #elif GEOMETRY == POLAR
+        char geo[]="Polar";
+    #endif
+    
+    fprintf(fPtr, "MCRaT is working on a %s %s %s simulation.\n", dim, geo, sim );
+    fflush(fPtr);
+    
     return 0;
 }

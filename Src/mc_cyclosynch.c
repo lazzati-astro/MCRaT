@@ -1490,7 +1490,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         for(i=0;i<hydro_data->num_elements;i++)
         {
             //look at all boxes in width delta r=c/fps and within angles we are interested in NEED TO IMPLEMENT
-            #if DIMENSIONS == 3
+            #if DIMENSIONS == THREE
                 hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
                     hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
             #else
@@ -1532,7 +1532,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
             {
                 //printf("%d\n",i);
                 //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
-                #if DIMENSIONS == 3
+                #if DIMENSIONS == THREE
                     hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
                         hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
                 #else
@@ -1552,8 +1552,8 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                     //printf("Temp %e, el_dens %e, B %e, nu_c %e, dimlesstheta %e\n",*(temp+i), el_dens, calcB(el_dens, *(temp+i), epsilon_b), nu_c, dimlesstheta);
 
                     params[0] = (hydro_data->temp)[i]; //nu_c;
-                    params[1]=dimlesstheta;
-                    params[2]= el_dens;
+                    params[1] = dimlesstheta;
+                    params[2] = el_dens;
                     F.params = &params;
                     
                     //printf("Integrating\n"); //instead integrating from 0 to nu_c
@@ -1732,7 +1732,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         ph_tot=0;
         for (i=0;i< hydro_data->num_elements;i++)
         {
-            #if DIMENSIONS == 3
+            #if DIMENSIONS == THREE
                 hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
                     hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
             #else
@@ -1755,7 +1755,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                     fr_dum=nu_c; //set the frequency directly to the cyclotron frequency
                     //fprintf(fPtr, "%lf\n ",fr_dum);
                     //exit(0);
-                    #if DIMENSIONS == 2
+                    #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
                         position_phi=gsl_rng_uniform(rand)*2*M_PI;
                     #else
                         position_phi=0;//dont need this in 3D
@@ -1771,8 +1771,10 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                     *(p_comv+3)=(PL_CONST*fr_dum/C_LIGHT)*cos(com_v_theta);
                     
                     //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
-                    #if DIMENSIONS == 3
+                    #if DIMENSIONS == THREE
                         hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
+                    #elif DIMENSIONS == TWO_POINT_FIVE
+                        hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
                     #else
                         //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
                         hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], 0, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
@@ -1798,7 +1800,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                     (*ph_orig)[idx].comv_p2=(*(p_comv+2));
                     (*ph_orig)[idx].comv_p3=(*(p_comv+3));
                     
-                    #if DIMENSIONS == 3
+                    #if DIMENSIONS == THREE
                         hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
                     #else
                         hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
@@ -1844,7 +1846,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         fr_dum=nu_c; //_scatt; //set the frequency directly to the cyclotron frequency
         //fprintf(fPtr, "%lf %d\n ",fr_dum, (*ph_orig)[scatt_ph_index].nearest_block_index);
         //exit(0);
-        #if DIMENSIONS == 2
+        #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
             position_phi=gsl_rng_uniform(rand)*2*M_PI;
         #else
             position_phi=0;//dont need this in 3D
@@ -1859,8 +1861,10 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         *(p_comv+3)=(PL_CONST*fr_dum/C_LIGHT)*cos(com_v_theta);
         
         //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
-        #if DIMENSIONS == 3
+        #if DIMENSIONS == THREE
             hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
+        #elif DIMENSIONS == TWO_POINT_FIVE
+            hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
         #else
             //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
             hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], 0, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
@@ -1883,7 +1887,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         (*ph_orig)[idx].comv_p2=(*(p_comv+2));
         (*ph_orig)[idx].comv_p3=(*(p_comv+3));
 
-        #if DIMENSIONS == 3
+        #if DIMENSIONS == THREE
             hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
         #else
             hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
@@ -1904,7 +1908,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         //change position of scattered synchrotron photon to be random in the hydro grid
         position_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r0_size)[i])-((hydro_data->r0_size)[i])/2.0; //choose between -size/2 to size/2
         position2_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r1_size)[i])-((hydro_data->r1_size)[i])/2.0;
-        #if DIMENSIONS == 3
+        #if DIMENSIONS == THREE
             position3_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r2_size)[i])-((hydro_data->r2_size)[i])/2.0;
             hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, (hydro_data->r2)[i]+position3_rand);
         #else

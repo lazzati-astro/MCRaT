@@ -22,3 +22,5 @@ void hydroDataFrameInitialize(struct hydro_dataframe *hydro_data);
 void freeHydroDataFrame(struct hydro_dataframe *hydro_data);
 
 int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radius, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr);
+
+int printHydroGeometry(FILE *fPtr);
