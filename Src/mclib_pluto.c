@@ -7,28 +7,30 @@
 
 #include "mcrat.h"
 
+#define PLUTO_VAR_LENGTH 5
+
 void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, double r_inj, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr)
-//( char pluto_file[STR_BUFFER], double r_inj, double fps, double **x, double **y, double **szx, double **szy, double **r,\
-double **theta, double **velx, double **vely, double **dens, double **pres, double **gamma, double **dens_lab, double **temp, int *number, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr)
 {
-    hid_t  file, dset, space, group, attr;
+    hid_t  file, dset, space, group, attr, filetype, memtype;
     herr_t status;
     hsize_t dims[1]={0}; //hold number of processes in each level
-    int i=0, j=0, k=0, l=0, m=0, r_count=0, num_dims=0, num_levels=0, num_vars=4, logr=0;
+    size_t  sdim=0;
+    int i=0, j=0, k=0, l=0, m=0, n=0, r_count=0, num_dims=0, num_levels=0, num_vars=4, logr=0;
     int nbx=0, nby=0, nbz=0, total_size=0, total_box_size=0, offset=0, elem_factor=0;
     #if DIMENSIONS == THREE
         box2d prob_domain[1]={0,0,0,0,0,0};
     #else
         box2d prob_domain[1]={0,0,0,0};
     #endif
-    char level[200]="";
+    char level[200]="", component_num[200]="";
     double ph_rmin=0, ph_rmax=0, ph_thetamin=0, ph_thetamax=0, r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
     int *level_dims=NULL, *box_offset=NULL;
-    double *radii=NULL, *angles=NULL, *dradii=NULL, *dangles=NULL;
+    double *x1_array=NULL, *x2_array=NULL, *dx1_array=NULL, *dx2_array=NULL, *x3_array=NULL, *dx3_array=NULL;
     double *dombeg1=NULL, *dombeg2=NULL, *dombeg3=NULL, *dx=NULL, *g_x2stretch=NULL, *g_x3stretch=NULL;
     double *all_data=NULL, *x1_buffer=NULL, *x2_buffer=NULL, *x3_buffer=NULL, *dx1_buffer=NULL, *dx2_buffer=NULL, *dx3_buffer=NULL;
     double *dens_buffer=NULL, *pres_buffer=NULL, *vel_x2_buffer=NULL, *vel_x1_buffer=NULL, *vel_x3_buffer=NULL;
     double *B_x2_buffer=NULL, *B_x1_buffer=NULL, *B_x3_buffer=NULL;
+    char **var_strings=NULL;
     
     if (ph_inj_switch==0)
     {
@@ -85,11 +87,38 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
     g_x3stretch=malloc(num_levels*sizeof(double));
     level_dims=malloc(num_levels*sizeof(int));
     
-    //3. get number of variables to read in (should be 4 in non-MHD case)
+    //3. get number of variables to read in (should be 4 in non-MHD case) and read in variable type and order
     attr = H5Aopen (file, "num_components", H5P_DEFAULT);
     status = H5Aread (attr, H5T_NATIVE_INT, &num_vars);
-    
     status = H5Aclose (attr);
+    
+    var_strings = malloc(num_vars * sizeof(char*));
+    for (i=0;i<num_vars;i++)
+    {
+        //create name of component in hdf5 and malloc the memory to read variable string name
+        snprintf(component_num,sizeof(component_num), "component_%d",i);
+        
+        attr = H5Aopen (file, component_num, H5P_DEFAULT);
+        
+        //Get the datatype and its size and allocate memory
+        filetype = H5Aget_type (attr);
+        sdim = H5Tget_size (filetype);
+        sdim++;                         /* Make room for null terminator */
+        var_strings[i] = malloc(sdim * sizeof(char));
+
+
+        //Create the memory datatype.
+        memtype = H5Tcopy (H5T_C_S1);
+        status = H5Tset_size (memtype, sdim);
+
+        //Read the data.
+        status = H5Aread (attr, memtype, var_strings[i]);
+        
+        status = H5Aclose (attr);
+        status = H5Tclose (filetype);
+        status = H5Tclose (memtype);
+    }
+    
     //printf("readPlutoChombo num_vars: %d\n", num_vars);
     
     //get the total number of values that I need to allocate memory for
@@ -129,21 +158,24 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
     dens_buffer= malloc ((total_size/num_vars) * sizeof (double));
     pres_buffer=malloc ((total_size/num_vars) * sizeof (double));
     
-    #if B_FIELD_CALC==SIMULATION
+//NEED TO IMPLEMENT THIS BELOW
+    #if B_FIELD_CALC == SIMULATION
         B_x1_buffer= malloc ((total_size/num_vars) * sizeof (double));
         B_x2_buffer=malloc ((total_size/num_vars) * sizeof (double));
     #endif
 
     
-    #if DIMENSIONS == THREE || DIMENSIONS == TWO_POINT_FIVE
+    #if DIMENSIONS == THREE
         x3_buffer=malloc((total_size/num_vars)*sizeof (double));
         dx3_buffer=malloc((total_size/num_vars)*sizeof (double));
+    #endif
+    
+    #if DIMENSIONS == THREE || DIMENSIONS == TWO_POINT_FIVE
         vel_x3_buffer=malloc ((total_size/num_vars) * sizeof (double));
         #if B_FIELD_CALC==SIMULATION
             B_x3_buffer= malloc ((total_size/num_vars) * sizeof (double));
         #endif
     #endif
-
     
     offset=0;
     //read in the data
@@ -196,21 +228,17 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
         *(dombeg2+i)=0;
         *(dombeg3+i)=0;
         
-        if (num_dims==2)
-        {
-            attr = H5Aopen (group, "g_x2stretch", H5P_DEFAULT);
-            status = H5Aread (attr, H5T_NATIVE_DOUBLE, (g_x2stretch+i));
-            status = H5Aclose (attr);
-            //printf("g_x2stretch %e\n", *(g_x2stretch+i));
-            
-            attr = H5Aopen (group, "domBeg2", H5P_DEFAULT);
-            status = H5Aread (attr, H5T_NATIVE_DOUBLE, (dombeg2+i));
-            status = H5Aclose (attr);
-            //printf("dombeg2 %e\n", *(dombeg2+i));
+        attr = H5Aopen (group, "g_x2stretch", H5P_DEFAULT);
+        status = H5Aread (attr, H5T_NATIVE_DOUBLE, (g_x2stretch+i));
+        status = H5Aclose (attr);
+        //printf("g_x2stretch %e\n", *(g_x2stretch+i));
+        
+        attr = H5Aopen (group, "domBeg2", H5P_DEFAULT);
+        status = H5Aread (attr, H5T_NATIVE_DOUBLE, (dombeg2+i));
+        status = H5Aclose (attr);
+        //printf("dombeg2 %e\n", *(dombeg2+i));
 
-        }
-        else if (num_dims==3)
-        {
+        #if DIMENSIONS == THREE
             attr = H5Aopen (group, "g_x3stretch", H5P_DEFAULT);
             status = H5Aread (attr, H5T_NATIVE_DOUBLE, (g_x3stretch+i));
             status = H5Aclose (attr);
@@ -218,7 +246,7 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
             attr = H5Aopen (group, "domBeg3", H5P_DEFAULT);
             status = H5Aread (attr, H5T_NATIVE_DOUBLE, (dombeg3+i));
             status = H5Aclose (attr);
-        }
+        #endif
                
         //read in the boxes
         dset= H5Dopen(group, "boxes", H5P_DEFAULT);
@@ -233,87 +261,169 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
         status = H5Sclose (space);
         H5Dclose(dset);
         
-        radii=malloc( (prob_domain->hi_i - prob_domain->lo_i +1) * sizeof (double ));
-        angles=malloc( (prob_domain->hi_j - prob_domain->lo_j +1) * sizeof (double ));
-        dradii=malloc( (prob_domain->hi_i - prob_domain->lo_i +1) * sizeof (double ));
-        dangles=malloc( (prob_domain->hi_j - prob_domain->lo_j +1) * sizeof (double ));
+        x1_array=malloc( (prob_domain->hi_i - prob_domain->lo_i +1) * sizeof (double ));
+        x2_array=malloc( (prob_domain->hi_j - prob_domain->lo_j +1) * sizeof (double ));
+        dx1_array=malloc( (prob_domain->hi_i - prob_domain->lo_i +1) * sizeof (double ));
+        dx2_array=malloc( (prob_domain->hi_j - prob_domain->lo_j +1) * sizeof (double ));
+        #if DIMENSIONS == THREE
+            x3_array=malloc( (prob_domain->hi_k - prob_domain->lo_k +1) * sizeof (double ));
+            dx3_array=malloc( (prob_domain->hi_k - prob_domain->lo_k +1) * sizeof (double ));
+        #endif
 
         //create the arrays that hold the refinement level radii and angles
         for (j=0;j<(prob_domain->hi_i - prob_domain->lo_i +1);j++)
         {
             if (logr==0)
             {
-                *(radii+j)=(*(dombeg1+i)) + (*(dx+i)) * (prob_domain->lo_i + j + 0.5);
-                *(dradii+j)=(*(dx+i));
+                *(x1_array+j)=(*(dombeg1+i)) + (*(dx+i)) * (prob_domain->lo_i + j + 0.5);
+                *(dx1_array+j)=(*(dx+i));
             }
             else
             {
-                *(radii+j)=(*(dombeg1+i)) * 0.5 * (exp((*(dx+i)) * (prob_domain->lo_i + j + 1)) + exp((*(dx+i)) * (prob_domain->lo_i + j))   );
-                *(dradii+j)=(*(dombeg1+i)) * (exp((*(dx+i)) * (prob_domain->lo_i + j + 1)) - exp((*(dx+i)) * (prob_domain->lo_i + j))   );
+                *(x1_array+j)=(*(dombeg1+i)) * 0.5 * (exp((*(dx+i)) * (prob_domain->lo_i + j + 1)) + exp((*(dx+i)) * (prob_domain->lo_i + j))   );
+                *(dx1_array+j)=(*(dombeg1+i)) * (exp((*(dx+i)) * (prob_domain->lo_i + j + 1)) - exp((*(dx+i)) * (prob_domain->lo_i + j))   );
             }
-            //if (i==2) printf("radii: %0.8e dr: %0.8e\n", *(radii+j), *(dradii+j));
+            //if (i==2) printf("x1_array: %0.8e dr: %0.8e\n", *(x1_array+j), *(dx1_array+j));
         }
         
         for (j=0;j<(prob_domain->hi_j - prob_domain->lo_j +1);j++)
         {
-            *(angles+j)=(*(dombeg2+i)) + (*(dx+i)) * (*(g_x2stretch+i)) * (prob_domain->lo_j + j + 0.5);
-            *(dangles+j)=(*(dx+i))*(*(g_x2stretch+i));
+            *(x2_array+j)=(*(dombeg2+i)) + (*(dx+i)) * (*(g_x2stretch+i)) * (prob_domain->lo_j + j + 0.5);
+            *(dx2_array+j)=(*(dx+i))*(*(g_x2stretch+i));
         }
         
         #if DIMENSIONS == THREE
             for (j=0;j<(prob_domain->hi_k - prob_domain->lo_k +1);j++)
             {
-                *(angles+j)=(*(dombeg3+i)) + (*(dx+i)) * (*(g_x3stretch+i)) * (prob_domain->lo_k + j + 0.5);
-                *(dangles+j)=(*(dx+i))*(*(g_x3stretch+i));
+                *(x3_array+j)=(*(dombeg3+i)) + (*(dx+i)) * (*(g_x3stretch+i)) * (prob_domain->lo_k + j + 0.5);
+                *(dx3_array+j)=(*(dx+i))*(*(g_x3stretch+i));
             }
         #endif
         
-        //go through the boxes to create the r and theta arrays
+        //go through the boxes to create the buffer arrays
         total_box_size=0;
         for (j=0; j<dims[0]; j++)
         {
             //printf("i %d %d %d %d %d \n", j, box_data[j].lo_i, box_data[j].lo_j, box_data[j].hi_i, box_data[j].hi_j);
             nbx=box_data[j].hi_i-box_data[j].lo_i+1;
-            nby=1;
+            nby=box_data[j].hi_j-box_data[j].lo_j+1;
             nbz=1;
             
-            if (num_dims >1)
-            {
-                nby=box_data[j].hi_j-box_data[j].lo_j+1;
-            }
             #if DIMENSIONS == THREE
-                else if (num_dims >2)
-                {
-                    nbz=box_data[j].hi_k-box_data[j].lo_k+1;
-                }
+                nbz=box_data[j].hi_k-box_data[j].lo_k+1;
             #endif
             
             //loop over each variable values of box
             for (k=0;k<num_vars;k++)
             {
-                //loop over the radii
-                for (l=0; l<nby; l++)
+                //loop over the x1, x2, x3 variables
+                for (l=0; l<nbz; l++)
                 {
-                    //loop over the angles
-                    for (m=0 ;m<nbx ;m++)
+                    //loop over the theta
+                    for (m=0 ;m<nby ;m++)
                     {
-                        switch (k)
+                        //loop over radii
+                        for (n=0; n< nbx;n++)
+                        {
+                        
+                            *(x1_buffer+offset/num_vars+(*(box_offset+j))/num_vars+ l*nbx*nby + m*nbx + n )= (*(x1_array+box_data[j].lo_i+n));
+                            *(x2_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx*nby + m*nbx + n )=(*(x2_array+box_data[j].lo_j+m));
+                            *(dx1_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx*nby + m*nbx + n)=(*(dx1_array+box_data[j].lo_i+n));
+                            *(dx2_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx*nby + m*nbx + n )=(*(dx2_array+box_data[j].lo_j+m));
+                            #if DIMENSIONS == THREE
+    //NEED TO FIGURE OUT INDEXES HERE and elsewhere in this loop for the 3D case
+                                *(x3_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx*nby + m*nbx + n )=(*(x3_array+box_data[j].lo_k+l));
+                                *(dx3_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx*nby + m*nbx + n )=(*(dx3_array+box_data[j].lo_k+l));
+                            #endif
+                            
+                            //multipy by hydro caling factors
+                            *(x1_buffer+offset/num_vars+(*(box_offset+j))/num_vars+ l*nbx*nby + m*nbx + n ) *= HYDRO_L_SCALE;
+                            *(dx1_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx*nby + m*nbx + n) *= HYDRO_L_SCALE;
+                            
+                            #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
+                                *(x2_buffer+offset/num_vars+(*(box_offset+j))/num_vars+ l*nbx*nby + m*nbx + n  ) *= HYDRO_L_SCALE;
+                                *(dx2_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx*nby + m*nbx + n) *= HYDRO_L_SCALE;
+                            #endif
+                            
+                            #if DIMENSIONS == THREE
+                                #if GEOMETRY == CARTESIAN || GEOMETRY == POLAR
+                                    *(x3_buffer+offset/num_vars+(*(box_offset+j))/num_vars+ l*nbx*nby + m*nbx + n) *= HYDRO_L_SCALE;
+                                    *(dx3_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx*nby + m*nbx + n) *= HYDRO_L_SCALE;
+                                #endif
+                            #endif
+
+                            
+                            if (strcmp(var_strings[k], "rho") == 0)
+                            {
+                                *(dens_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx*nby + m*nbx + n)=(*(all_data+offset+(*(box_offset+j))+ k*nbx*nby*nbz + l*nbx*nby + m*nbx + n))*HYDRO_D_SCALE;
+                            }
+                            else if (strcmp(var_strings[k], "vx1") == 0)
+                            {
+                                *(vel_x1_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx*nby + m*nbx + n)=(*(all_data+offset+(*(box_offset+j))+ k*nbx*nby*nbz + l*nbx*nby + m*nbx + n  ));
+                            }
+                            else if (strcmp(var_strings[k], "vx2") == 0)
+                            {
+                                *(vel_x2_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx*nby + m*nbx + n)=(*(all_data+offset+(*(box_offset+j))+ k*nbx*nby*nbz + l*nbx*nby + m*nbx + n  ));
+                            }
+                            else if (strcmp(var_strings[k], "prs") == 0)
+                            {
+                                *(pres_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx*nby + m*nbx + n)=(*(all_data+offset+(*(box_offset+j))+ k*nbx*nby*nbz + l*nbx*nby + m*nbx + n  ))*HYDRO_P_SCALE;
+                            }
+                            #if B_FIELD_CALC == SIMULATION
+                                else if (strcmp(var_strings[k], "bx1") == 0)
+                                {
+                                    *(B_x1_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx*nby + m*nbx + n) = (*(all_data+offset+(*(box_offset+j))+ k*nbx*nby*nbz + l*nbx*nby + m*nbx + n  ))*HYDRO_B_SCALE;
+                                }
+                                else if (strcmp(var_strings[k], "bx2") == 0)
+                                {
+                                    *(B_x2_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx*nby + m*nbx + n)=(*(all_data+offset+(*(box_offset+j))+ k*nbx*nby*nbz + l*nbx*nby + m*nbx + n  ))*HYDRO_B_SCALE;
+                                }
+                            #endif
+                            #if DIMENSIONS == THREE || DIMENSIONS == TWO_POINT_FIVE
+                                else if (strcmp(var_strings[k], "vx3") == 0)
+                                {
+                                    *(vel_x3_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx*nby + m*nbx + n)=(*(all_data+offset+(*(box_offset+j))+ k*nbx*nby*nbz + l*nbx*nby + m*nbx + n  ));
+                                }
+                                #if B_FIELD_CALC==SIMULATION
+                                    else if (strcmp(var_strings[k], "bx3") == 0)
+                                    {
+                                        *(B_x3_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx*nby + m*nbx + n)=(*(all_data+offset+(*(box_offset+j))+ k*nbx*nby*nbz + l*nbx*nby + m*nbx + n  ))*HYDRO_B_SCALE;
+                                    }
+                                #endif
+                            #endif
+                            
+                        /*
+                        switch (k) //instead compare string from component string to 'prs', 'vx1', etc
                         {
                             case 0:
                                 //when k is 0 save the radii, caus eonly need to do once and also save the densities
-                                #if GEOMETRY == SPHERICAL
-                                    *(x1_buffer+offset/num_vars+(*(box_offset+j))/num_vars+ l*nbx +m  )= (*(radii+box_data[j].lo_i+m))*HYDRO_L_SCALE;
-                                    *(x2_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx +m )=(*(angles+box_data[j].lo_j+l));
-                                    *(dx1_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx +m)=(*(dradii+box_data[j].lo_i+m))*HYDRO_L_SCALE;
-                                    *(dx2_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx +m )=(*(dangles+box_data[j].lo_j+l));
-                                #elif GEOMETRY == CARTESIAN
-                                    *(x1_buffer+offset/num_vars+(*(box_offset+j))/num_vars+ l*nbx +m  )= (*(radii+box_data[j].lo_i+m))*HYDRO_L_SCALE;
-                                    *(x2_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx +m )=(*(angles+box_data[j].lo_j+l))*HYDRO_L_SCALE;
-                                    *(dx1_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx +m)=(*(dradii+box_data[j].lo_i+m))*HYDRO_L_SCALE;
-                                    *(dx2_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx +m )=(*(dangles+box_data[j].lo_j+l))*HYDRO_L_SCALE;
+                                *(x1_buffer+offset/num_vars+(*(box_offset+j))/num_vars+ l*nbx +m  )= (*(x1_array+box_data[j].lo_i+m));
+                                *(x2_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx +m )=(*(x2_array+box_data[j].lo_j+l));
+                                *(dx1_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx +m)=(*(dx1_array+box_data[j].lo_i+m));
+                                *(dx2_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx +m )=(*(dx2_array+box_data[j].lo_j+l));
+                                #if DIMENSIONS == THREE
+//NEED TO FIGURE OUT INDEXES HERE and elsewhere in this loop for the 3D case
+                                    *(x3_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx +m )=(*(x3_array+box_data[j].lo_j+l));
+                                    *(dx3_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx +m )=(*(dx3_array+box_data[j].lo_j+l));
                                 #endif
                                 
-                                *(dens_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx +m)=(*(all_data+offset+(*(box_offset+j))+ k*nbx*nby + l*nbx +m  ));
+                                //multipy by hydro caling factors
+                                *(x1_buffer+offset/num_vars+(*(box_offset+j))/num_vars+ l*nbx +m  ) *= HYDRO_L_SCALE;
+                                *(dx1_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx +m) *= HYDRO_L_SCALE;
+                                
+                                #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
+                                    *(x2_buffer+offset/num_vars+(*(box_offset+j))/num_vars+ l*nbx +m  ) *= HYDRO_L_SCALE;
+                                    *(dx2_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx +m) *= HYDRO_L_SCALE;
+                                #endif
+                                
+                                #if DIMENSIONS == THREE
+                                    #if GEOMETRY == CARTESIAN || GEOMETRY == POLAR
+                                        *(x3_buffer+offset/num_vars+(*(box_offset+j))/num_vars+ l*nbx +m  ) *= HYDRO_L_SCALE;
+                                        *(dx3_buffer+(offset+(*(box_offset+j)))/num_vars + l*nbx +m) *= HYDRO_L_SCALE;
+                                    #endif
+                                #endif
+                                
+                                *(dens_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx +m)=(*(all_data+offset+(*(box_offset+j))+ k*nbx*nby + l*nbx +m  ))*HYDRO_D_SCALE;
                                 break;
                             case 1:
                                 *(vel_x1_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx +m)=(*(all_data+offset+(*(box_offset+j))+ k*nbx*nby + l*nbx +m  ));
@@ -322,12 +432,13 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
                                 *(vel_x2_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx +m)=(*(all_data+offset+(*(box_offset+j))+ k*nbx*nby + l*nbx +m  ));
                                 break;
                             case 3:
-                                *(pres_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx +m)=(*(all_data+offset+(*(box_offset+j))+ k*nbx*nby + l*nbx +m  ));
+                                *(pres_buffer+ (offset+(*(box_offset+j)))/num_vars + l*nbx +m)=(*(all_data+offset+(*(box_offset+j))+ k*nbx*nby + l*nbx +m  ))*HYDRO_P_SCALE;
                                 break;
                             default:
                                 break;
                         }
-                                              
+                        */
+                        }
                     }
                 }
             }
@@ -368,11 +479,17 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
         offset+=(*(level_dims+i));
         
         H5Gclose(group);
-        free(radii); free(angles); free(dradii); free(dangles); free(box_offset);
+        free(x1_array); free(x2_array); free(x3_array); free(dx1_array); free(dx2_array); free(dx3_array); free(box_offset);
         
     }
     status = H5Fclose (file);
     free(dombeg1); free(dombeg2); free(dombeg3); free(dx); free(g_x2stretch); free(g_x3stretch); free(all_data);
+    
+    for (i=0;i<num_vars;i++)
+    {
+        free(var_strings[i]);
+    }
+    free(var_strings);
     
     //have all the data so need to go through and decide which values we will be keeping based on phtoon ranges we want to keep
     //fill in radius array and find in how many places r > injection radius
@@ -390,22 +507,6 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
         {
             if (ph_inj_switch==0)
             {
-                /*
-                #if GEOMETRY == SPHERICAL
-                    r_grid_innercorner = (*(x1_buffer+i)) - 0.5 * (*(dx1_buffer+i));
-                    r_grid_outercorner = (*(x1_buffer+i)) + 0.5 * (*(dx1_buffer+i));
-                    
-                    theta_grid_innercorner = (*(x2_buffer+i)) - 0.5 * (*(dx2_buffer+i));
-                    theta_grid_outercorner = (*(x2_buffer+i)) + 0.5 * (*(dx2_buffer+i));
-                #elif GEOMETRY == CARTESIAN
-                    r_grid_innercorner = pow((*(x1_buffer+i) - *(dx1_buffer+i)/2.0) * ((*(x1_buffer+i) - *(dx1_buffer+i)/2.0))+(*(x2_buffer+i) - *(dx2_buffer+i)/2.0) * (*(x2_buffer+i) - *(dx2_buffer+i)/2.0),0.5);
-                    r_grid_outercorner = pow((*(x1_buffer+i) + *(dx1_buffer+i)/2.0) * ((*(x1_buffer+i) + *(dx1_buffer+i)/2.0))+(*(x2_buffer+i) + *(dx2_buffer+i)/2.0) * (*(x2_buffer+i) + *(dx2_buffer+i)/2.0),0.5);
-                    
-                    theta_grid_innercorner = acos( (*(x2_buffer+i) - *(dx2_buffer+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
-                    theta_grid_outercorner = acos( (*(x2_buffer+i) + *(dx2_buffer+i)/2.0) /r_grid_outercorner);
-                #endif
-                 */
-                
                 #if DIMENSIONS == THREE
                     hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (*(x1_buffer+i))-0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))-0.5*((*(dx2_buffer+i))), (*(x3_buffer+i))-0.5*(*(dx3_buffer+i)));
                         hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (*(x1_buffer+i))+0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))+0.5*((*(dx2_buffer+i))), (*(x3_buffer+i))+0.5*(*(dx3_buffer+i)));
@@ -422,7 +523,13 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
             }
             else
             {
-                if ((*(x1_buffer+i)) > (0.95*r_inj) )
+                #if DIMENSIONS == THREE
+                    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (*(x1_buffer+i)), (*(x2_buffer+i)), (*(x3_buffer+i)) );
+                #else
+                    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (*(x1_buffer+i)), (*(x2_buffer+i)), 0);
+                #endif
+
+                if ( r_grid_innercorner > (0.95*r_inj) )
                 {
                     r_count++;
                 }
@@ -449,16 +556,18 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
    (hydro_data->r1_size)=malloc (r_count * sizeof (double ));
    (hydro_data->temp)=malloc (r_count * sizeof (double ));
   
-//NEED TO IMPLEMENT THIS BELOW
-    #if B_FIELD_CALC==SIMULATION
+    #if B_FIELD_CALC == SIMULATION
        (hydro_data->B0)= malloc (r_count * sizeof (double));
        (hydro_data->B1)= malloc (r_count * sizeof (double));
     #endif
 
 
-    #if DIMENSIONS == THREE || DIMENSIONS == TWO_POINT_FIVE
+    #if DIMENSIONS == THREE
        (hydro_data->r2)=malloc(r_count*sizeof (double));
        (hydro_data->r2_size)=malloc(r_count*sizeof (double));
+    #endif
+                                               
+    #if DIMENSIONS == THREE || DIMENSIONS == TWO_POINT_FIVE
        (hydro_data->v2)=malloc (r_count * sizeof (double));
         #if B_FIELD_CALC==SIMULATION
            (hydro_data->B2)= malloc (r_count * sizeof (double));
@@ -472,21 +581,6 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
     {
         if (ph_inj_switch==0)
         {
-            /*
-           #if GEOMETRY == SPHERICAL
-               r_grid_innercorner = (*(x1_buffer+i)) - 0.5 * (*(dx1_buffer+i));
-               r_grid_outercorner = (*(x1_buffer+i)) + 0.5 * (*(dx1_buffer+i));
-               
-               theta_grid_innercorner = (*(x2_buffer+i)) - 0.5 * (*(dx2_buffer+i));
-               theta_grid_outercorner = (*(x2_buffer+i)) + 0.5 * (*(dx2_buffer+i));
-           #elif GEOMETRY == CARTESIAN
-               r_grid_innercorner = pow((*(x1_buffer+i) - *(dx1_buffer+i)/2.0) * ((*(x1_buffer+i) - *(dx1_buffer+i)/2.0))+(*(x2_buffer+i) - *(dx2_buffer+i)/2.0) * (*(x2_buffer+i) - *(dx2_buffer+i)/2.0),0.5);
-               r_grid_outercorner = pow((*(x1_buffer+i) + *(dx1_buffer+i)/2.0) * ((*(x1_buffer+i) + *(dx1_buffer+i)/2.0))+(*(x2_buffer+i) + *(dx2_buffer+i)/2.0) * (*(x2_buffer+i) + *(dx2_buffer+i)/2.0),0.5);
-               
-               theta_grid_innercorner = acos( (*(x2_buffer+i) - *(dx2_buffer+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
-               theta_grid_outercorner = acos( (*(x2_buffer+i) + *(dx2_buffer+i)/2.0) /r_grid_outercorner);
-           #endif
-             */
             #if DIMENSIONS == THREE
                 hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (*(x1_buffer+i))-0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))-0.5*((*(dx2_buffer+i))), (*(x3_buffer+i))-0.5*(*(dx3_buffer+i)));
                     hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (*(x1_buffer+i))+0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))+0.5*((*(dx2_buffer+i))), (*(x3_buffer+i))+0.5*(*(dx3_buffer+i)));
@@ -506,20 +600,38 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
                 ((hydro_data->r0))[j]=(*(x1_buffer+i)); //*sin((*(x2_buffer+i)));
                 ((hydro_data->r1))[j]=(*(x2_buffer+i));//*cos((*(x2_buffer+i)));
                 ((hydro_data->r))[j]=(*(x1_buffer+i));
-                ((hydro_data->theta))[j]=(*(x2_buffer+i));//theta in radians in relation to jet axis
+                ((hydro_data->theta))[j]=(*(x2_buffer+i));//theta in radians in relation to jet axis,will be written over
 
                 ((hydro_data->r0_size))[j]=(*(dx1_buffer+i));
                 ((hydro_data->r1_size))[j]=(*(dx2_buffer+i));
                 ((hydro_data->gamma))[j]=1/pow(1.0-( (*(vel_x1_buffer+i))*(*(vel_x1_buffer+i)) + (*(vel_x2_buffer+i))*(*(vel_x2_buffer+i)) ),0.5); //v is in units of c
                 ((hydro_data->dens_lab))[j]= (*(dens_buffer+i)) /pow(1.0-( (*(vel_x1_buffer+i))*(*(vel_x1_buffer+i)) + (*(vel_x2_buffer+i))*(*(vel_x2_buffer+i)) ),0.5);
                 ((hydro_data->temp))[j]=pow(3*(*(pres_buffer+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                
+                #if B_FIELD_CALC == SIMULATION
+                    (hydro_data->B0)[j]= (*(B_x1_buffer+i));
+                    (hydro_data->B1)[j]= (*(B_x2_buffer+i));
+                #endif
+
+                #if DIMENSIONS == THREE
+                    (hydro_data->r2)[j]=(*(x3_buffer+i));
+                    (hydro_data->r2_size)[j]=(*(dx3_buffer+i));
+                #endif
+                                                           
+                #if DIMENSIONS == THREE || DIMENSIONS == TWO_POINT_FIVE
+                    (hydro_data->v2)[j]=(*(vel_x3_buffer+i));
+                    #if B_FIELD_CALC==SIMULATION
+                       (hydro_data->B2)[j]= (*(B_x3_buffer+i));
+                    #endif
+                #endif
+                
                 j++;
             }
         }
         else
         {
             #if DIMENSIONS == THREE
-                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, ((*(x1_buffer+i)), (*(x2_buffer+i)), (*(x3_buffer+i)) );
+                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (*(x1_buffer+i)), (*(x2_buffer+i)), (*(x3_buffer+i)) );
             #else
                 hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (*(x1_buffer+i)), (*(x2_buffer+i)), 0);
             #endif
@@ -534,13 +646,31 @@ double **theta, double **velx, double **vely, double **dens, double **pres, doub
                 ((hydro_data->r0))[j]=(*(x1_buffer+i)); //*sin((*(x2_buffer+i)));
                 ((hydro_data->r1))[j]=(*(x2_buffer+i));//*cos((*(x2_buffer+i)));
                 ((hydro_data->r))[j]=(*(x1_buffer+i));
-                ((hydro_data->theta))[j]=(*(x2_buffer+i));//theta in radians in relation to jet axis
+                ((hydro_data->theta))[j]=(*(x2_buffer+i));//theta in radians in relation to jet axis, will be written over
 
                 ((hydro_data->r0_size))[j]=(*(dx1_buffer+i));
                 ((hydro_data->r1_size))[j]=(*(dx2_buffer+i));
                 ((hydro_data->gamma))[j]=1/pow(1.0-( (*(vel_x1_buffer+i))*(*(vel_x1_buffer+i)) + (*(vel_x2_buffer+i))*(*(vel_x2_buffer+i)) ),0.5); //v is in units of c
                 ((hydro_data->dens_lab))[j]= (*(dens_buffer+i)) /pow(1.0-( (*(vel_x1_buffer+i))*(*(vel_x1_buffer+i)) + (*(vel_x2_buffer+i))*(*(vel_x2_buffer+i)) ),0.5);
                 ((hydro_data->temp))[j]=pow(3*(*(pres_buffer+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                    
+                #if B_FIELD_CALC == SIMULATION
+                    (hydro_data->B0)[j]= (*(B_x1_buffer+i));
+                    (hydro_data->B1)[j]= (*(B_x2_buffer+i));
+                #endif
+
+                #if DIMENSIONS == THREE
+                    (hydro_data->r2)[j]=(*(x3_buffer+i));
+                    (hydro_data->r2_size)[j]=(*(dx3_buffer+i));
+                #endif
+                                                           
+                #if DIMENSIONS == THREE || DIMENSIONS == TWO_POINT_FIVE
+                    (hydro_data->v2)[j]=(*(vel_x3_buffer+i));
+                    #if B_FIELD_CALC==SIMULATION
+                       (hydro_data->B2)[j]= (*(B_x3_buffer+i));
+                    #endif
+                #endif
+
                 j++;
             }
         }

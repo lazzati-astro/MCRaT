@@ -1419,6 +1419,11 @@ void cylindricalPrep(struct hydro_dataframe *hydro_data)
                 ((hydro_data->v0))[i]=vel*cos(((hydro_data->r1))[i]);//rhat
                 ((hydro_data->v1))[i]=-vel*sin(((hydro_data->r1))[i]);//theta hat direction
             #endif
+        
+            #if DIMENSIONS == TWO_POINT_FIVE
+                //have to make sure that the 3rd vctro direction is set to 0 in 2.5D case
+                ((hydro_data->v2))[i]=0;
+            #endif
             
         #else
 
@@ -1485,6 +1490,11 @@ void sphericalPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
             #if GEOMETRY == SPHERICAL
                 ((hydro_data->v0))[i]=vel;//rhat
                 ((hydro_data->v1))[i]=0;//theta hat direction
+            #endif
+        
+            #if DIMENSIONS == TWO_POINT_FIVE
+                //have to make sure that the 3rd vctro direction is set to 0 in 2.5D case
+                ((hydro_data->v2))[i]=0;
             #endif
             
         #else
@@ -1569,7 +1579,12 @@ void structuredFireballPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
                 ((hydro_data->v0))[i]=vel;//rhat
                 ((hydro_data->v1))[i]=0;//theta hat direction
             #endif
-            
+        
+            #if DIMENSIONS == TWO_POINT_FIVE
+                //have to make sure that the 3rd vctro direction is set to 0 in 2.5D case
+                ((hydro_data->v2))[i]=0;
+            #endif
+
         #else
 
             #if GEOMETRY == CARTESIAN

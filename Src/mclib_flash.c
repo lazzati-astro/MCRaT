@@ -64,7 +64,7 @@ void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_
     herr_t status;
     hsize_t dims[2]={0,0}; //hold dimension size for coordinate data set (mostly interested in dims[0])
     double **vel_x_buffer=NULL, **vel_y_buffer=NULL, **dens_buffer=NULL, **pres_buffer=NULL, **coord_buffer=NULL, **block_sz_buffer=NULL;
-    double *velx_unprc=NULL, *vely_unprc=NULL, *dens_unprc=NULL, *pres_unprc=NULL, *x_unprc=NULL, *y_unprc=NULL, *r_unprc=NULL, *szx_unprc=NULL, *szy_unprc=NULL;
+    double *velx_unprc=NULL, *vely_unprc=NULL, *dens_unprc=NULL, *pres_unprc=NULL, *x_unprc=NULL, *y_unprc=NULL, *z_unprc=NULL, *r_unprc=NULL, *szx_unprc=NULL, *szy_unprc=NULL, *szz_unprc=NULL;
     int  i,j,count,x1_count, y1_count, r_count, **node_buffer=NULL, num_nodes=0, elem_factor=0;
     double x1[8]={-7.0/16,-5.0/16,-3.0/16,-1.0/16,1.0/16,3.0/16,5.0/16,7.0/16};
     double ph_rmin=0, ph_rmax=0, ph_thetamin=0, ph_thetamax=0, r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0, track_min_r=DBL_MAX, track_max_r=0;
@@ -292,19 +292,13 @@ void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_
             
             if (ph_inj_switch==0)
             {
-                r_grid_innercorner = pow((*(x_unprc+i) - *(szx_unprc+i)/2.0) * ((*(x_unprc+i) - *(szx_unprc+i)/2.0))+(*(y_unprc+i) - *(szx_unprc+i)/2.0) * (*(y_unprc+i) - *(szx_unprc+i)/2.0),0.5);
-                r_grid_outercorner = pow((*(x_unprc+i) + *(szx_unprc+i)/2.0) * ((*(x_unprc+i) + *(szx_unprc+i)/2.0))+(*(y_unprc+i) + *(szx_unprc+i)/2.0) * (*(y_unprc+i) + *(szx_unprc+i)/2.0),0.5);
-                
-                theta_grid_innercorner = acos( (*(y_unprc+i) - *(szx_unprc+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
-                theta_grid_outercorner = acos( (*(y_unprc+i) + *(szx_unprc+i)/2.0) /r_grid_outercorner);
-                
-#if DIMENSIONS == THREE
-    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
-        hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
-#else
-    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], 0);
-    hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], 0);
-#endif
+                #if DIMENSIONS == THREE
+                    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, *(x_unprc+i) - *(szx_unprc+i)/2.0, *(y_unprc+i) - *(szy_unprc+i)/2.0, *(z_unprc+i) - *(szz_unprc+i)/2.0);
+                    hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, *(x_unprc+i) + *(szx_unprc+i)/2.0, *(y_unprc+i) + *(szy_unprc+i)/2.0, *(z_unprc+i) + *(szz_unprc+i)/2.0);
+                #else
+                    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, *(x_unprc+i) - *(szx_unprc+i)/2.0, *(y_unprc+i) - *(szy_unprc+i)/2.0, 0);
+                    hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, *(x_unprc+i) + *(szx_unprc+i)/2.0, *(y_unprc+i) + *(szy_unprc+i)/2.0, 0);
+                #endif
 
                 
                 if (((ph_rmin - elem_factor*C_LIGHT/hydro_data->fps) <= r_grid_outercorner) && (r_grid_innercorner  <= (ph_rmax + elem_factor*C_LIGHT/hydro_data->fps) ) && (theta_grid_outercorner >= ph_thetamin) && (theta_grid_innercorner <= ph_thetamax) )
@@ -315,7 +309,13 @@ void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_
             }
             else
             {
-                if (*(r_unprc+i)> (0.95*r_inj) )
+                #if DIMENSIONS == THREE
+                    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, *(x_unprc+i), *(y_unprc+i), *(z_unprc+i));
+                #else
+                    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, *(x_unprc+i), *(y_unprc+i), 0);
+                #endif
+
+                if (r_grid_innercorner > (0.95*r_inj) )
                 {
                     r_count++;
                 }
@@ -349,11 +349,13 @@ void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_
     {
         if (ph_inj_switch==0)
         {
-            r_grid_innercorner = pow((*(x_unprc+i) - *(szx_unprc+i)/2.0) * ((*(x_unprc+i) - *(szx_unprc+i)/2.0))+(*(y_unprc+i) - *(szx_unprc+i)/2.0) * (*(y_unprc+i) - *(szx_unprc+i)/2.0),0.5);
-            r_grid_outercorner = pow((*(x_unprc+i) + *(szx_unprc+i)/2.0) * ((*(x_unprc+i) + *(szx_unprc+i)/2.0))+(*(y_unprc+i) + *(szx_unprc+i)/2.0) * (*(y_unprc+i) + *(szx_unprc+i)/2.0),0.5);
-            
-            theta_grid_innercorner = acos( (*(y_unprc+i) - *(szx_unprc+i)/2.0) /r_grid_innercorner); //arccos of y/r for the bottom left corner
-            theta_grid_outercorner = acos( (*(y_unprc+i) + *(szx_unprc+i)/2.0) /r_grid_outercorner);
+            #if DIMENSIONS == THREE
+                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, *(x_unprc+i) - *(szx_unprc+i)/2.0, *(y_unprc+i) - *(szy_unprc+i)/2.0, *(z_unprc+i) - *(szz_unprc+i)/2.0);
+                hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, *(x_unprc+i) + *(szx_unprc+i)/2.0, *(y_unprc+i) + *(szy_unprc+i)/2.0, *(z_unprc+i) + *(szz_unprc+i)/2.0);
+            #else
+                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, *(x_unprc+i) - *(szx_unprc+i)/2.0, *(y_unprc+i) - *(szy_unprc+i)/2.0, 0);
+                hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, *(x_unprc+i) + *(szx_unprc+i)/2.0, *(y_unprc+i) + *(szy_unprc+i)/2.0, 0);
+            #endif
 
             if (((ph_rmin - elem_factor*C_LIGHT/hydro_data->fps) <= r_grid_outercorner) && (r_grid_innercorner  <= (ph_rmax + elem_factor*C_LIGHT/hydro_data->fps) ) && (theta_grid_outercorner >= ph_thetamin) && (theta_grid_innercorner <= ph_thetamax))
             {
@@ -387,7 +389,13 @@ void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_
         }
         else
         {
-            if (*(r_unprc+i)> (0.95*r_inj) )
+            #if DIMENSIONS == THREE
+                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, *(x_unprc+i), *(y_unprc+i), *(z_unprc+i));
+            #else
+                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, *(x_unprc+i), *(y_unprc+i), 0);
+            #endif
+
+            if (r_grid_innercorner > (0.95*r_inj) )
             {
                 ((hydro_data->pres))[j]=*(pres_unprc+i);
                 ((hydro_data->v0))[j]=*(velx_unprc+i);
@@ -412,6 +420,8 @@ void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_
 
     hydro_data->num_elements=r_count;
 
-    free(pres_unprc); free(velx_unprc);free(vely_unprc);free(dens_unprc);free(x_unprc); free(y_unprc);free(r_unprc);free(szx_unprc);free(szy_unprc);
+    free(pres_unprc);free(velx_unprc);free(vely_unprc);free(dens_unprc);
+    free(x_unprc);free(z_unprc);free(y_unprc);free(r_unprc);free(szx_unprc);
+    free(szy_unprc);free(szz_unprc);
     //exit(0);
 }

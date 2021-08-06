@@ -619,7 +619,7 @@ int main(int argc, char **argv)
         
         if (restrt==INITALIZE)
         {
-//need to modify plutochombo and FLASH read function for 3D and B field data
+//need to modify plutochombo and FLASH read function for 3D/2.5D and B field data
             getHydroData(&hydrodata, frame, inj_radius, 1, min_r, max_r, min_theta, max_theta, fPtr);
                 
             //determine where to place photons and how many should go in a given place

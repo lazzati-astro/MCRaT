@@ -1922,8 +1922,6 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
             fprintf(fPtr,">> MCRaT is opening PLUTO-Chombo file %s\n", hydro_file);
             fflush(fPtr);
             
-            //readPlutoChombo(hydro_file, inj_radius, fps_modified, &xPtr,  &yPtr,  &szxPtr, &szyPtr, &rPtr,\
-                    &thetaPtr, &velxPtr,  &velyPtr,  &densPtr,  &presPtr,  &gammaPtr,  &dens_labPtr, &tempPtr, &array_num, ph_inj_switch, min_r, max_r, min_theta, max_theta, fPtr);
             readPlutoChombo(hydro_file, hydro_data, inj_radius, ph_inj_switch, min_r, max_r, min_theta, max_theta, fPtr);
         #elif SIM_SWITCH == PLUTO
             modifyPlutoName(hydro_file, hydro_prefix, frame);
@@ -1943,7 +1941,13 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
         #if SIM_SWITCH == FLASH
             
         #elif SIM_SWITCH == PLUTO_CHOMBO
+            modifyPlutoName(hydro_file, hydro_prefix, frame);
             
+            fprintf(fPtr,">> MCRaT is opening PLUTO-Chombo file %s\n", hydro_file);
+            fflush(fPtr);
+            
+            readPlutoChombo(hydro_file, hydro_data, inj_radius, ph_inj_switch, min_r, max_r, min_theta, max_theta, fPtr);
+
         #elif SIM_SWITCH == PLUTO
             
         #else
