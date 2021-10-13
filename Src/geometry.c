@@ -345,6 +345,8 @@ int findContainingBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_
                 within_block_index=i;
                 //change for loop index once the block is found so the code doesnt search the rest of the grids to see if the photon is within those grids
                 i=hydro_data->num_elements;
+                //fprintf(fPtr, "Photon is in block: %d with location and size %e %e: %e %e with log density %e\n", i, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r0_size)[i], (hydro_data->r1_size)[i], log10((hydro_data->dens)[i]));
+                //fflush(fPtr);
             }
         
     }

@@ -15,12 +15,12 @@
 //#define     GEOMETRY                    CARTESIAN
 //#define     DIMENSIONS                  TWO
 
-#define FILEPATH "/Users/Tylerparsotan/Documents/CHOMBO_TEST/CHOMBO_2D/"
+#define FILEPATH "/Users/Tylerparsotan/Documents/HYDRO_SIMS/3D_MHD_SIMULATION_FRAMES/"
 #define FILEROOT "data."
 #define MC_PATH "MCRAT_TEST/"
-#define     SIM_SWITCH                  PLUTO_CHOMBO
+#define     SIM_SWITCH                  PLUTO
 #define     GEOMETRY                    SPHERICAL
-#define     DIMENSIONS                  TWO
+#define     DIMENSIONS                  THREE
 
 #define     STOKES_SWITCH               ON
 #define     COMV_SWITCH                 ON

@@ -1925,10 +1925,10 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
             readPlutoChombo(hydro_file, hydro_data, inj_radius, ph_inj_switch, min_r, max_r, min_theta, max_theta, fPtr);
         #elif SIM_SWITCH == PLUTO
             modifyPlutoName(hydro_file, hydro_prefix, frame);
-    
             //read in 2D PLUTO data
             fprintf(fPtr,">> MCRaT is opening PLUTO file %s\n", hydro_file);
             fflush(fPtr);
+            readPluto(hydro_file, hydro_data, inj_radius, ph_inj_switch, min_r, max_r, min_theta, max_theta, fPtr);
             
         #else
             //if using RIKEN hydro data for 2D szx becomes delta r szy becomes delta theta
@@ -1949,7 +1949,10 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
             readPlutoChombo(hydro_file, hydro_data, inj_radius, ph_inj_switch, min_r, max_r, min_theta, max_theta, fPtr);
 
         #elif SIM_SWITCH == PLUTO
-            
+            modifyPlutoName(hydro_file, hydro_prefix, frame);
+            fprintf(fPtr,">> MCRaT is opening PLUTO file %s\n", hydro_file);
+            fflush(fPtr);
+            readPluto(hydro_file, hydro_data, inj_radius, ph_inj_switch, min_r, max_r, min_theta, max_theta, fPtr);
         #else
             //RKEN Data files
             read_hydro(FILEPATH, frame, inj_radius, &xPtr,  &yPtr, &zPtr,  &szxPtr, &szyPtr, &rPtr,\
@@ -1963,6 +1966,7 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
     fillHydroCoordinateToSpherical(hydro_data);
 
     //check for run type see if we need to rewrite any data
+    
     #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
         cylindricalPrep(hydro_data);
     #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
