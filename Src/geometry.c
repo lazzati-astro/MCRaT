@@ -169,6 +169,19 @@ void fillHydroCoordinateToSpherical(struct hydro_dataframe *hydro_data)
     
 }
 
+double vectorMagnitude(double v0, double v1, double v2)
+{
+    //calculate magnitude by taking the dot product of the vector with itself
+    double magnitude=0;
+    #if DIMENSIONS == TWO
+        magnitude=sqrt(v0*v0+v1*v1);
+    #else
+        magnitude=sqrt(v0*v0+v1*v1+v2*v2);
+    #endif
+    
+    return magnitude;
+}
+
 void hydroVectorToCartesian(double *cartesian_vector_3d, double v0, double v1, double v2, double x0, double x1, double x2)
 {
     //takes the vector <v0, v1, v2> at position (x0, x1, x2) in the hydro coordinate system and converts it to a 3D vector

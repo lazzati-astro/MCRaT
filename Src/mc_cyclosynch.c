@@ -35,7 +35,7 @@ double calcB(double el_dens, double temp)
     //assume equipartition here
     #if B_FIELD_CALC == INTERNAL_E
         return sqrt(EPSILON_B*8*M_PI*3*el_dens*K_B*temp/2);
-    #else
+    #elif B_FIELD_CALC == TOTAL_E
         //otherwise calculate B from the total energy
         return sqrt(8*M_PI*EPSILON_B*(el_dens*M_P*C_LIGHT*C_LIGHT+4*A_RAD*temp*temp*temp*temp/3));
     #endif
@@ -163,7 +163,7 @@ double G_prime(double gamma_el, double p_el)
 double synCrossSection(double el_dens, double T, double nu_ph, double p_el)
 {
     double b_cr=FINE_STRUCT*sqrt(M_EL*C_LIGHT*C_LIGHT/pow(R_EL,3.0));
-    double B=calcB(el_dens, T);
+    double B=calcB(el_dens, T); 
     double nu_c=calcCyclotronFreq(B);
     double gamma_el=sqrt(p_el*p_el+1);
     
@@ -1453,7 +1453,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
 {
     double rmin=0, rmax=0, max_photons=CYCLOSYNCHROTRON_REBIN_E_PERC*maximum_photons; //have 10% as default, can change later need to figure out how many photons across simulations I want emitted
     double ph_weight_adjusted=0, position_phi=0;
-    double dimlesstheta=0, nu_c=0, el_dens=0, error=0, ph_dens_calc=0, max_jnu=0;
+    double dimlesstheta=0, nu_c=0, el_dens=0, error=0, ph_dens_calc=0, max_jnu=0, b_field=0;
     double r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
     double el_p[4], ph_p_comv[4];
     double params[3];
@@ -1544,7 +1544,16 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                 {
                     //set parameters fro integration fo phtoons spectrum
                     el_dens= ((hydro_data->dens)[i])/M_P;
-                    nu_c=calcCyclotronFreq(calcB(el_dens,(hydro_data->temp)[i]));
+                    #if B_FIELD_CALC == TOTAL_E || B_FIELD_CALC == INTERNAL_E
+                        b_field=calcB(el_dens,(hydro_data->temp)[i]);
+                    #else
+                        #if DIMENSIONS == TWO
+                            b_field=vectorMagnitude((hydro_data->B0)[i], (hydro_data->B1)[i], 0);
+                        #else
+                            b_field=vectorMagnitude((hydro_data->B0)[i], (hydro_data->B1)[i], (hydro_data->B2)[i]);
+                        #endif
+                    #endif
+                    nu_c=calcCyclotronFreq(b_field);
                     dimlesstheta=calcDimlessTheta( (hydro_data->temp)[i]);
                     //fprintf(fPtr, "B field is: %e at r=%e\n", calcB(el_dens,*(temp+i)), *(r+i));
                     //fflush(fPtr);
@@ -1744,7 +1753,17 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
             {
                 
                 el_dens= ((hydro_data->dens)[i])/M_P;
-                nu_c=calcCyclotronFreq(calcB(el_dens,(hydro_data->temp)[i]));
+                #if B_FIELD_CALC == TOTAL_E || B_FIELD_CALC == INTERNAL_E
+                    b_field=calcB(el_dens,(hydro_data->temp)[i]);
+                #else
+                    #if DIMENSIONS == TWO
+                        b_field=vectorMagnitude((hydro_data->B0)[i], (hydro_data->B1)[i], 0);
+                    #else
+                        b_field=vectorMagnitude((hydro_data->B0)[i], (hydro_data->B1)[i], (hydro_data->B2)[i]);
+                    #endif
+                #endif
+                nu_c=calcCyclotronFreq(b_field);
+
                 dimlesstheta=calcDimlessTheta( (hydro_data->temp)[i]);
                 max_jnu=2*jnu(nu_c/10, nu_c, dimlesstheta, el_dens);
                 
@@ -1841,7 +1860,16 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         i=(*ph_orig)[scatt_ph_index].nearest_block_index;
         
         el_dens= ((hydro_data->dens)[i])/M_P;
-        nu_c=calcCyclotronFreq(calcB(el_dens,(hydro_data->temp)[i]));
+        #if B_FIELD_CALC == TOTAL_E || B_FIELD_CALC == INTERNAL_E
+            b_field=calcB(el_dens,(hydro_data->temp)[i]);
+        #else
+            #if DIMENSIONS == TWO
+                b_field=vectorMagnitude((hydro_data->B0)[i], (hydro_data->B1)[i], 0);
+            #else
+                b_field=vectorMagnitude((hydro_data->B0)[i], (hydro_data->B1)[i], (hydro_data->B2)[i]);
+            #endif
+        #endif
+        nu_c=calcCyclotronFreq(b_field);
         
         fr_dum=nu_c; //_scatt; //set the frequency directly to the cyclotron frequency
         //fprintf(fPtr, "%lf %d\n ",fr_dum, (*ph_orig)[scatt_ph_index].nearest_block_index);
@@ -1944,14 +1972,14 @@ double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, in
     num_thread=omp_get_num_threads();
     #endif
 
-    double el_dens=0, nu_c=0, abs_count=0;
+    double el_dens=0, nu_c=0, abs_count=0, b_field=0;
     //struct photon tmp_ph;//hold temporay photon to move its data
     
     fprintf(fPtr, "In phAbsCyclosynch func begin: abs_ph_count: %d synch_ph_count: %d scatt_cyclosynch_num_ph: %d num_threads: %d\n", abs_ph_count, synch_ph_count, *scatt_cyclosynch_num_ph, num_thread);
     
     *scatt_cyclosynch_num_ph=0;//set thsi equal to 0, to recount in this function and get prepared for the next frame
     
-    #pragma omp parallel for num_threads(num_thread) firstprivate(el_dens, nu_c) reduction(+:abs_ph_count)
+    #pragma omp parallel for num_threads(num_thread) firstprivate(b_field, el_dens, nu_c) reduction(+:abs_ph_count)
     for (i=0;i<*num_ph;i++)
     {
         if (((*ph_orig)[i].weight != 0) && ((*ph_orig)[i].nearest_block_index != -1))
@@ -1959,7 +1987,18 @@ double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, in
             // if the photon isnt a null photon already, see if it should be absorbed
             
             el_dens= (hydro_data->dens)[(*ph_orig)[i].nearest_block_index]/M_P;//(*(dens+(*ph_orig)[i].nearest_block_index))/M_P;
-            nu_c=calcCyclotronFreq(calcB(el_dens, (hydro_data->temp)[(*ph_orig)[i].nearest_block_index])); //*(temp+(*ph_orig)[i].nearest_block_index)));
+            #if B_FIELD_CALC == TOTAL_E || B_FIELD_CALC == INTERNAL_E
+                b_field=calcB(el_dens,(hydro_data->temp)[(*ph_orig)[i].nearest_block_index]);
+            #else
+                #if DIMENSIONS == TWO
+                    b_field=vectorMagnitude((hydro_data->B0)[(*ph_orig)[i].nearest_block_index], (hydro_data->B1)[(*ph_orig)[i].nearest_block_index], 0);
+                #else
+                    b_field=vectorMagnitude((hydro_data->B0)[(*ph_orig)[i].nearest_block_index], (hydro_data->B1)[(*ph_orig)[i].nearest_block_index], (hydro_data->B2)[(*ph_orig)[i].nearest_block_index]);
+                #endif
+            #endif
+            nu_c=calcCyclotronFreq(b_field);
+
+            //nu_c=calcCyclotronFreq(calcB(el_dens, (hydro_data->temp)[(*ph_orig)[i].nearest_block_index])); old way //*(temp+(*ph_orig)[i].nearest_block_index)));
             //printf("photon %d has lab nu %e comv frequency %e and nu_c %e with FLASH grid number %d\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST, (*ph_orig)[i].comv_p0*C_LIGHT/PL_CONST, nu_c, (*ph_orig)[i].nearest_block_index);
             if (((*ph_orig)[i].comv_p0*C_LIGHT/PL_CONST <= nu_c) || ((*ph_orig)[i].type == CS_POOL_PHOTON))
             {
