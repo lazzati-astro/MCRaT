@@ -351,14 +351,15 @@ int findContainingBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_
         
     }
     //printf("Within Block Index:  %d\n",within_block_index);
-    #if SIM_SWITCH == RIKEN || DIMENSIONS == THREE
-    {
-        fprintf(fPtr, "3D switch is: %d and SIM switch is: %d\n", DIMENSIONS, SIM_SWITCH);
-    }
-    #endif
     
     if (is_in_block==0)
     {
+        #if SIM_SWITCH == RIKEN || DIMENSIONS == THREE
+        {
+            fprintf(fPtr, "3D switch is: %d and SIM switch is: %d\n", DIMENSIONS, SIM_SWITCH);
+        }
+        #endif
+
         #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
             fprintf(fPtr, "MCRaT Couldn't find a block for the photon located at r0=%e r1=%e\n", ph_hydro_r0, ph_hydro_r1);
         #else

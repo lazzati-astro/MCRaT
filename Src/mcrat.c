@@ -714,7 +714,7 @@ int main(int argc, char **argv)
                 }
             #endif
 
-            getHydroData(&hydrodata, frame, inj_radius, 0, min_r, max_r, min_theta, max_theta, fPtr);
+            getHydroData(&hydrodata, scatt_frame, inj_radius, 0, min_r, max_r, min_theta, max_theta, fPtr);
             
             //emit synchrotron photons here
             num_cyclosynch_ph_emit=0;

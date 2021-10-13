@@ -433,13 +433,21 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
         
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         
-        //if the location of the photon is less than the domain of the hydro simulation then do all of this, otherwise assing huge mfp value so no scattering occurs and the next frame is loaded
+        //if the location of the photon is inside the domain of the hydro simulation then do all of this, otherwise assign huge mfp value so no scattering occurs and the next frame is loaded
         // absorbed photons have ph_block_index=-1, therefore if this value is not less than 0, calulate the mfp properly but doesnt work when go to new frame and find new indexes (will change b/c will get rid of these photons when printing)
         //alternatively make decision based on 0 weight
         #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
-        if (((photon_hydro_coord[1]<(hydro_data->r1_domain)[1]) && (photon_hydro_coord[0]<(hydro_data->r0_domain)[1])) && ((ph+i)->nearest_block_index != -1) ) //can use sorted index to see which photons have been absorbed efficiently before printing and get the indexes
+        if (((photon_hydro_coord[1]<(hydro_data->r1_domain)[1]) &&
+             (photon_hydro_coord[1]>(hydro_data->r1_domain)[0]) &&
+             (photon_hydro_coord[0]<(hydro_data->r0_domain)[1]) &&
+             (photon_hydro_coord[0]>(hydro_data->r0_domain)[0]))) && ((ph+i)->nearest_block_index != -1) ) //can use sorted index to see which photons have been absorbed efficiently before printing and get the indexes
         #else
-        if (((photon_hydro_coord[2]<(hydro_data->r2_domain)[1]) && (photon_hydro_coord[1]<(hydro_data->r1_domain)[1]) && (photon_hydro_coord[0]<(hydro_data->r0_domain)[1])) && ((ph+i)->nearest_block_index != -1) )
+        if (((photon_hydro_coord[2]<(hydro_data->r2_domain)[1]) &&
+             (photon_hydro_coord[2]>(hydro_data->r2_domain)[0]) &&
+             (photon_hydro_coord[1]<(hydro_data->r1_domain)[1]) &&
+             (photon_hydro_coord[1]>(hydro_data->r1_domain)[0]) &&
+             (photon_hydro_coord[0]<(hydro_data->r0_domain)[1]) &&
+             (photon_hydro_coord[0]>(hydro_data->r0_domain)[0])) && ((ph+i)->nearest_block_index != -1) )
         #endif
         {
 

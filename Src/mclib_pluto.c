@@ -490,7 +490,7 @@ void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro
         }
         //printf( "r_count: %d\n", r_count);
     }
-    fprintf(fPtr, "Elem factor: %d Ph_rmin: %e rmax: %e Chosen FLASH min_r: %e max_r: %e min_theta: %e degrees max_theta: %e degrees\n", elem_factor, ph_rmin, ph_rmax, ph_rmin - (elem_factor*C_LIGHT/hydro_data->fps), ph_rmax + (elem_factor*C_LIGHT/hydro_data->fps), ph_thetamin*180/M_PI, ph_thetamax*180/M_PI);
+    fprintf(fPtr, "Elem factor: %d Ph_rmin: %e rmax: %e Chosen hydro min_r: %e max_r: %e min_theta: %e degrees max_theta: %e degrees\n", elem_factor, ph_rmin, ph_rmax, ph_rmin - (elem_factor*C_LIGHT/hydro_data->fps), ph_rmax + (elem_factor*C_LIGHT/hydro_data->fps), ph_thetamin*180/M_PI, ph_thetamax*180/M_PI);
     fflush(fPtr);
 
     
@@ -986,6 +986,9 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
     //nz=2; //for testing
     //ny=2;
     //num_vars=2;
+    fprintf(fPtr, ">> MCRaT is processing the read in data.\n");
+    fflush(fPtr);
+    
     for (i=0;i<num_vars;i++)
     {
         //fprintf(fPtr,"%s grid_size:%d\n", var_strings[i], grid_size);
@@ -1134,7 +1137,7 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
             }
             //printf( "r_count: %d\n", r_count);
         }
-        fprintf(fPtr, "Elem factor: %d Ph_rmin: %e rmax: %e Chosen FLASH min_r: %e max_r: %e min_theta: %e degrees max_theta: %e degrees\n", elem_factor, ph_rmin, ph_rmax, ph_rmin - (elem_factor*C_LIGHT/hydro_data->fps), ph_rmax + (elem_factor*C_LIGHT/hydro_data->fps), ph_thetamin*180/M_PI, ph_thetamax*180/M_PI);
+        fprintf(fPtr, "Elem factor: %d Ph_rmin: %e rmax: %e Chosen hydro min_r: %e max_r: %e min_theta: %e degrees max_theta: %e degrees\n", elem_factor, ph_rmin, ph_rmax, ph_rmin - (elem_factor*C_LIGHT/hydro_data->fps), ph_rmax + (elem_factor*C_LIGHT/hydro_data->fps), ph_thetamin*180/M_PI, ph_thetamax*180/M_PI);
         fflush(fPtr);
     
         //allocate memory to hold processed data
@@ -1169,7 +1172,10 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
                (hydro_data->B2)= malloc (r_count * sizeof (double));
             #endif
         #endif
-    
+        
+        fprintf(fPtr, ">> MCRaT is saving the necessary data to memory.\n");
+        fflush(fPtr);
+
         //assign values based on r> 0.95*r_inj
         j=0;
         for (i=0;i<grid_size;i++)
