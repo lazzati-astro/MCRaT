@@ -440,7 +440,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
         if (((photon_hydro_coord[1]<(hydro_data->r1_domain)[1]) &&
              (photon_hydro_coord[1]>(hydro_data->r1_domain)[0]) &&
              (photon_hydro_coord[0]<(hydro_data->r0_domain)[1]) &&
-             (photon_hydro_coord[0]>(hydro_data->r0_domain)[0]))) && ((ph+i)->nearest_block_index != -1) ) //can use sorted index to see which photons have been absorbed efficiently before printing and get the indexes
+             (photon_hydro_coord[0]>(hydro_data->r0_domain)[0])) && ((ph+i)->nearest_block_index != -1) ) //can use sorted index to see which photons have been absorbed efficiently before printing and get the indexes
         #else
         if (((photon_hydro_coord[2]<(hydro_data->r2_domain)[1]) &&
              (photon_hydro_coord[2]>(hydro_data->r2_domain)[0]) &&

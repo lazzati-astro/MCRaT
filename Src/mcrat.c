@@ -619,7 +619,7 @@ int main(int argc, char **argv)
         
         if (restrt==INITALIZE)
         {
-//need to modify plutochombo and FLASH read function for 3D/2.5D and B field data
+            //can read FLASH 2D (no B field) and plutochombo and pluto dbl files in 2/2.5/3D with B field
             getHydroData(&hydrodata, frame, inj_radius, 1, min_r, max_r, min_theta, max_theta, fPtr);
                 
             //determine where to place photons and how many should go in a given place
@@ -741,7 +741,7 @@ int main(int argc, char **argv)
                     #endif
                     
                     phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
-//need to double check this for 3D simulation and modify to use B field magnitude, also have to modify reading B fields in reading in hydro data
+//need to double check this for 3D simulation
                     num_cyclosynch_ph_emit=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 0, 0, fPtr);
                 }
             #endif
@@ -843,7 +843,7 @@ int main(int argc, char **argv)
                     fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
                     fflush(fPtr);
                     */
-//need to double check this for 3D simulation and modify to use B field magnitude
+//need to double check this for 3D simulation 
                     rebin2dCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
                   //exit(0);
                }

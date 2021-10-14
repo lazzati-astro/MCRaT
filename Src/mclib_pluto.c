@@ -723,8 +723,8 @@ void readGridFile(char gridfile[STR_BUFFER], double **grid_x1, double **grid_x2,
 //        fflush(fPtr);
 
     }
-//    fprintf(fPtr, "Test: %d\n", array_size[0] );
-//    fflush(fPtr);
+    //fprintf(fPtr, "Test: %d\n", array_size[0] );
+    //fflush(fPtr);
     
     //get the number of x2 grid points
     fgets(buf, sizeof(buf), fileptr);
@@ -745,8 +745,8 @@ void readGridFile(char gridfile[STR_BUFFER], double **grid_x1, double **grid_x2,
 //        fflush(fPtr);
 
     }
-//    fprintf(fPtr, "Test: %d\n", array_size[1] );
-//    fflush(fPtr);
+    //fprintf(fPtr, "Test: %d\n", array_size[1] );
+    //fflush(fPtr);
     
     #if DIMENSIONS == THREE
         //get the number of x3 grid points
@@ -918,15 +918,16 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
     //still need to read the grid.out file to get the size of the grid
     snprintf(out_file,sizeof(out_file),"%sgrid.out",FILEPATH );
     readGridFile( out_file, &grid_x1, &grid_x2, &grid_x3, &grid_dx1, &grid_dx2, &grid_dx3, &array_size, fPtr);
-    //fprintf(fPtr,"%d %d %d %lf %lf %e %e\n", array_size[0], array_size[1], array_size[2], *(grid_x1+0), *(grid_x2+0),*(grid_x3+0), *(grid_dx3+0));
-    //fflush(fPtr);
+    //fprintf(fPtr,"%d %d %lf %lf %e %e\n", array_size[0], array_size[1], *(grid_x1+0), *(grid_x2+0),*(grid_x3+0), *(grid_dx3+0));
+    fprintf(fPtr,"%d %d %lf %lf\n", array_size[0], array_size[1], *(grid_x1+0), *(grid_x2+0));
+    fflush(fPtr);
     
     //get the number of variables and their order
     snprintf(out_file,sizeof(out_file),"%sdbl.out",FILEPATH );
     readDblOutFile(out_file, &num_vars, &var_strings, fPtr);
     
     //allocate space for buffer arrays
-    #if DIMENSIONS == TWO
+    #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
         grid_size=array_size[0]*array_size[1];
     #else
         grid_size=array_size[0]*array_size[1]*array_size[2];
@@ -934,8 +935,8 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
     
     //num_vars=2;// for testing
     size_t total_size=(size_t)num_vars*(size_t)grid_size; //set as size_t to handle large data sets
-    //fprintf(fPtr,"%zd\n", total_size);
-    //fflush(fPtr);
+    fprintf(fPtr,"Total:%zd Numvar:%d grid_size:%d\n", total_size, num_vars, grid_size);
+    fflush(fPtr);
     all_data=malloc(total_size*sizeof (double));
     x1_buffer=malloc((grid_size)*sizeof (double));
     x2_buffer=malloc((grid_size)*sizeof (double));

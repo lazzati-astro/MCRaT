@@ -15,16 +15,16 @@
 //#define     GEOMETRY                    CARTESIAN
 //#define     DIMENSIONS                  TWO
 
-#define FILEPATH "/Users/Tylerparsotan/Documents/HYDRO_SIMS/3D_MHD_SIMULATION_FRAMES/"
+#define FILEPATH "/Users/Tylerparsotan/Documents/HYDRO_SIMS/LEO_2.5D_MHD_PLUTO/BPT5/"
 #define FILEROOT "data."
 #define MC_PATH "MCRAT_TEST/"
 #define     SIM_SWITCH                  PLUTO
-#define     GEOMETRY                    CARTESIAN
-#define     DIMENSIONS                  THREE
+#define     GEOMETRY                    CYLINDRICAL
+#define     DIMENSIONS                  TWO_POINT_FIVE
 
 #define     STOKES_SWITCH               ON
 #define     COMV_SWITCH                 ON
-#define     HYDRO_L_SCALE               1e10
+#define     HYDRO_L_SCALE               1e12
 #define     HYDRO_P_SCALE               C_LIGHT*C_LIGHT
 #define     HYDRO_D_SCALE               1
 #define     CYCLOSYNCHROTRON_SWITCH     ON
