@@ -627,18 +627,7 @@ int main(int argc, char **argv)
             fprintf(fPtr,">>  Proc: %d with angles %0.1lf-%0.1lf: Injecting photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
             fflush(fPtr);
             
-            //#if DIMENSIONS == 2
-            //{
-//need to double check this
-                photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, theta_jmin_thread, theta_jmax_thread, &hydrodata,rng, fPtr );
-//this may also work for 3D//////////////////////////////////////////
-            //}
-            //#else
-            //{
-            //    photonInjection3D(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, array_num, hydrodata.fps, theta_jmin_thread, theta_jmax_thread, xPtr, yPtr, zPtr, szxPtr, szyPtr,rPtr,thetaPtr, phiPtr, tempPtr, velxPtr, velyPtr, velzPtr, rng, fPtr);
-
-            //}
-            //#endif
+            photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, theta_jmin_thread, theta_jmax_thread, &hydrodata,rng, fPtr );
             
             //printf("This many Photons: %d\n",num_ph); //num_ph is one more photon than i actually have
             
@@ -700,7 +689,8 @@ int main(int argc, char **argv)
             //calc min and max positions of photons
             phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
             #if CYCLOSYNCHROTRON_SWITCH == ON
-                if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE))
+                //if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE))
+                if ((scatt_frame == scatt_framestart) || (restrt==CONTINUE))//for testing
                 {
                     //NEED TO DETERMINE IF min_r or max_r is smaller/larger than the rmin/rmax in photonEmitCyclosynch to properly emit photons in the range that the process is interested in
                     //printf("OLD: min_r %e max_r %e\n", min_r, max_r);
@@ -724,7 +714,8 @@ int main(int argc, char **argv)
             sorted_indexes=malloc(num_ph*sizeof(int));
             
             #if CYCLOSYNCHROTRON_SWITCH == ON
-                if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //remember to revert back to !=
+                //if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //remember to revert back to !=
+                if ((scatt_frame == scatt_framestart) || (restrt==CONTINUE))//for testing
                 {
                     //if injecting synch photons, emit them if continuing simulation from a point where scatt_frame != scatt_framestart
                     //if necessary, then add memory to then arrays allocated directly above

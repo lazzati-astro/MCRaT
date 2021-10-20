@@ -55,7 +55,7 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
                 block_cnt++;
             }
     }
-    printf("Blocks: %d\n", block_cnt);
+    //printf("Blocks: %d\n", block_cnt);
     
     //allocate memory to record density of photons for each block
     ph_dens=malloc(block_cnt * sizeof(int));
@@ -236,7 +236,7 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
                 (*ph)[ph_tot].r1=cartesian_position_rand_array[1];
                 (*ph)[ph_tot].r2=cartesian_position_rand_array[2];
                 
-                fprintf(fPtr,"%d %e %e %e\n", ph_tot, (*ph)[ph_tot].r0, (*ph)[ph_tot].r1, (*ph)[ph_tot].r2);
+                //fprintf(fPtr,"%d %e %e %e\n", ph_tot, (*ph)[ph_tot].r0, (*ph)[ph_tot].r1, (*ph)[ph_tot].r2);
                 
                 (*ph)[ph_tot].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1 
                 (*ph)[ph_tot].s1=0;
@@ -256,7 +256,7 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
     *ph_num=ph_tot; //save number of photons
     //printf(" %d: %d\n", *(ph_dens+(k-1)), *ph_num);
     free(ph_dens); free(p_comv);free(boost); free(l_boost);
-    exit(0);
+    //exit(0);
 }
 
 void lorentzBoost(double *boost, double *p_ph, double *result, char object,  FILE *fPtr)

@@ -994,7 +994,7 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
     
     for (i=0;i<num_vars;i++)
     {
-        //fprintf(fPtr,"%s grid_size:%d\n", var_strings[i], grid_size);
+        fprintf(fPtr,"%s grid_size:%d\n", var_strings[i], grid_size);
         count=0;//this loops though the grid in order to save info into the buffer arrays
         for (j=0;j<nz;j++)
         {
@@ -1049,11 +1049,12 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
                         *(pres_buffer+count)=(*(all_data+idx))*HYDRO_P_SCALE;
                     }
                     #if B_FIELD_CALC == SIMULATION
-                        else if (strcmp(var_strings[i], "bx1") == 0)
+                        //pluto 4.2 used lowercase B while later versions used uppercase
+                        else if ((strcmp(var_strings[i], "bx1") == 0) || (strcmp(var_strings[i], "Bx1") == 0))
                         {
                             *(B_x1_buffer+count) = (*(all_data+idx))*HYDRO_B_SCALE;
                         }
-                        else if (strcmp(var_strings[i], "bx2") == 0)
+                        else if ((strcmp(var_strings[i], "bx2") == 0) || (strcmp(var_strings[i], "Bx2") == 0))
                         {
                             *(B_x2_buffer+count)=(*(all_data+idx))*HYDRO_B_SCALE;
                         }
@@ -1064,7 +1065,7 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
                             *(vel_x3_buffer+count)=(*(all_data+idx));
                         }
                         #if B_FIELD_CALC==SIMULATION
-                            else if (strcmp(var_strings[i], "bx3") == 0)
+                            else if ((strcmp(var_strings[i], "bx3") == 0) || (strcmp(var_strings[i], "Bx3") == 0))
                             {
                                 *(B_x3_buffer+count)=(*(all_data+idx))*HYDRO_B_SCALE;
                             }

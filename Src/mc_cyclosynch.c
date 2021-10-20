@@ -1557,7 +1557,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                     #endif
                     nu_c=calcCyclotronFreq(b_field);
                     dimlesstheta=calcDimlessTheta( (hydro_data->temp)[i]);
-                    //fprintf(fPtr, "B field is: %e at r=%e\n", calcB(el_dens,*(temp+i)), *(r+i));
+                    //fprintf(fPtr, "B field is:%e %e %e with magnitude %e nu_c is %e at r=%e\n", (hydro_data->B0)[i], (hydro_data->B1)[i], (hydro_data->B2)[i], b_field, nu_c, (hydro_data->r)[i]);
                     //fflush(fPtr);
 
                     //printf("Temp %e, el_dens %e, B %e, nu_c %e, dimlesstheta %e\n",*(temp+i), el_dens, calcB(el_dens, *(temp+i), epsilon_b), nu_c, dimlesstheta);
@@ -1831,6 +1831,9 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                     (*ph_orig)[idx].r1= cartesian_position_rand_array[1] ;
                     (*ph_orig)[idx].r2= cartesian_position_rand_array[2]; //y coordinate in flash becomes z coordinate in MCRaT
                     
+                    fprintf(fPtr,"%d %e %e %e\n", ph_tot, (*ph_orig)[idx].r0, (*ph_orig)[idx].r1, (*ph_orig)[idx].r2);
+                    fflush(fPtr);
+                    
                     (*ph_orig)[idx].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
                     (*ph_orig)[idx].s1=0;
                     (*ph_orig)[idx].s2=0;
@@ -1953,12 +1956,9 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         
     }
     //printf("At End of function\n");
-    
-    {
-        free(null_ph_indexes);
-    }
-    
-    //exit(0);
+    exit(0);
+
+    free(null_ph_indexes);
     free(ph_dens); free(p_comv); free(boost); free(l_boost);
     //free(ph_emit);
     

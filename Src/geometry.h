@@ -13,6 +13,8 @@ void hydroCoordinateToMcratCoordinate(double *hydro_mcrat_coord, double hydro_r0
 
 void fillHydroCoordinateToSpherical(struct hydro_dataframe *hydro_data);
 
+double vectorMagnitude(double v0, double v1, double v2);
+
 void hydroVectorToCartesian(double *cartesian_vector_3d, double v0, double v1, double v2, double x0, double x1, double x2);
 
 double hydroElementVolume(struct hydro_dataframe *hydro_data, int index);
