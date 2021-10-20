@@ -293,8 +293,9 @@ void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_
             if (ph_inj_switch==0)
             {
                 #if DIMENSIONS == THREE
-                    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, *(x_unprc+i) - *(szx_unprc+i)/2.0, *(y_unprc+i) - *(szy_unprc+i)/2.0, *(z_unprc+i) - *(szz_unprc+i)/2.0);
-                    hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, *(x_unprc+i) + *(szx_unprc+i)/2.0, *(y_unprc+i) + *(szy_unprc+i)/2.0, *(z_unprc+i) + *(szz_unprc+i)/2.0);
+                //want inner corner to be close to origin, therfore ned to have abs for 3D cartesian with negative coordinates, shouldnt affect the other geometry systems since theyre all defined from r=0, theta=0, phi=0
+                    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, fabs(*(x_unprc+i)) - *(szx_unprc+i)/2.0, fabs(*(y_unprc+i)) - *(szy_unprc+i)/2.0, fabs(*(z_unprc+i)) - *(szz_unprc+i)/2.0);
+                    hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, fabs(*(x_unprc+i)) + *(szx_unprc+i)/2.0, fabs(*(y_unprc+i)) + *(szy_unprc+i)/2.0, fabs(*(z_unprc+i)) + *(szz_unprc+i)/2.0);
                 #else
                     hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, *(x_unprc+i) - *(szx_unprc+i)/2.0, *(y_unprc+i) - *(szy_unprc+i)/2.0, 0);
                     hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, *(x_unprc+i) + *(szx_unprc+i)/2.0, *(y_unprc+i) + *(szy_unprc+i)/2.0, 0);
@@ -350,8 +351,8 @@ void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_
         if (ph_inj_switch==0)
         {
             #if DIMENSIONS == THREE
-                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, *(x_unprc+i) - *(szx_unprc+i)/2.0, *(y_unprc+i) - *(szy_unprc+i)/2.0, *(z_unprc+i) - *(szz_unprc+i)/2.0);
-                hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, *(x_unprc+i) + *(szx_unprc+i)/2.0, *(y_unprc+i) + *(szy_unprc+i)/2.0, *(z_unprc+i) + *(szz_unprc+i)/2.0);
+                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, fabs(*(x_unprc+i)) - *(szx_unprc+i)/2.0, fabs(*(y_unprc+i)) - *(szy_unprc+i)/2.0, fabs(*(z_unprc+i)) - *(szz_unprc+i)/2.0);
+                hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, fabs(*(x_unprc+i)) + *(szx_unprc+i)/2.0, fabs(*(y_unprc+i)) + *(szy_unprc+i)/2.0, fabs(*(z_unprc+i)) + *(szz_unprc+i)/2.0);
             #else
                 hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, *(x_unprc+i) - *(szx_unprc+i)/2.0, *(y_unprc+i) - *(szy_unprc+i)/2.0, 0);
                 hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, *(x_unprc+i) + *(szx_unprc+i)/2.0, *(y_unprc+i) + *(szy_unprc+i)/2.0, 0);

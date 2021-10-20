@@ -461,8 +461,9 @@ void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro
             if (ph_inj_switch==0)
             {
                 #if DIMENSIONS == THREE
-                    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (*(x1_buffer+i))-0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))-0.5*((*(dx2_buffer+i))), (*(x3_buffer+i))-0.5*(*(dx3_buffer+i)));
-                        hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (*(x1_buffer+i))+0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))+0.5*((*(dx2_buffer+i))), (*(x3_buffer+i))+0.5*(*(dx3_buffer+i)));
+                    //want inner corner to be close to origin, therfore ned to have abs for 3D cartesian with negative coordinates, shouldnt affect the other geometry systems since theyre all defined from r=0, theta=0, phi=0
+                    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, fabs(*(x1_buffer+i))-0.5*(*(dx1_buffer+i)), fabs(*(x2_buffer+i))-0.5*((*(dx2_buffer+i))), fabs(*(x3_buffer+i))-0.5*(*(dx3_buffer+i)));
+                    hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, fabs(*(x1_buffer+i))+0.5*(*(dx1_buffer+i)), fabs(*(x2_buffer+i))+0.5*((*(dx2_buffer+i))), fabs(*(x3_buffer+i))+0.5*(*(dx3_buffer+i)));
                 #else
                     hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (*(x1_buffer+i))-0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))-0.5*((*(dx2_buffer+i))), 0);
                     hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (*(x1_buffer+i))+0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))+0.5*((*(dx2_buffer+i))), 0);
@@ -535,8 +536,9 @@ void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro
         if (ph_inj_switch==0)
         {
             #if DIMENSIONS == THREE
-                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (*(x1_buffer+i))-0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))-0.5*((*(dx2_buffer+i))), (*(x3_buffer+i))-0.5*(*(dx3_buffer+i)));
-                    hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (*(x1_buffer+i))+0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))+0.5*((*(dx2_buffer+i))), (*(x3_buffer+i))+0.5*(*(dx3_buffer+i)));
+                //want inner corner to be close to origin, therfore ned to have abs for 3D cartesian with negative coordinates, shouldnt affect the other geometry systems since theyre all defined from r=0, theta=0, phi=0
+                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, fabs(*(x1_buffer+i))-0.5*(*(dx1_buffer+i)), fabs(*(x2_buffer+i))-0.5*((*(dx2_buffer+i))), fabs(*(x3_buffer+i))-0.5*(*(dx3_buffer+i)));
+                hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, fabs(*(x1_buffer+i))+0.5*(*(dx1_buffer+i)), fabs(*(x2_buffer+i))+0.5*((*(dx2_buffer+i))), fabs(*(x3_buffer+i))+0.5*(*(dx3_buffer+i)));
             #else
                 hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (*(x1_buffer+i))-0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))-0.5*((*(dx2_buffer+i))), 0);
                 hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (*(x1_buffer+i))+0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))+0.5*((*(dx2_buffer+i))), 0);
@@ -919,8 +921,8 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
     snprintf(out_file,sizeof(out_file),"%sgrid.out",FILEPATH );
     readGridFile( out_file, &grid_x1, &grid_x2, &grid_x3, &grid_dx1, &grid_dx2, &grid_dx3, &array_size, fPtr);
     //fprintf(fPtr,"%d %d %lf %lf %e %e\n", array_size[0], array_size[1], *(grid_x1+0), *(grid_x2+0),*(grid_x3+0), *(grid_dx3+0));
-    fprintf(fPtr,"%d %d %lf %lf\n", array_size[0], array_size[1], *(grid_x1+0), *(grid_x2+0));
-    fflush(fPtr);
+    //fprintf(fPtr,"%d %d %lf %lf\n", array_size[0], array_size[1], *(grid_x1+0), *(grid_x2+0));
+    //fflush(fPtr);
     
     //get the number of variables and their order
     snprintf(out_file,sizeof(out_file),"%sdbl.out",FILEPATH );
@@ -935,8 +937,8 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
     
     //num_vars=2;// for testing
     size_t total_size=(size_t)num_vars*(size_t)grid_size; //set as size_t to handle large data sets
-    fprintf(fPtr,"Total:%zd Numvar:%d grid_size:%d\n", total_size, num_vars, grid_size);
-    fflush(fPtr);
+    //fprintf(fPtr,"Total:%zd Numvar:%d grid_size:%d\n", total_size, num_vars, grid_size);
+    //fflush(fPtr);
     all_data=malloc(total_size*sizeof (double));
     x1_buffer=malloc((grid_size)*sizeof (double));
     x2_buffer=malloc((grid_size)*sizeof (double));
@@ -1109,8 +1111,9 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
                 if (ph_inj_switch==0)
                 {
                     #if DIMENSIONS == THREE
-                        hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (*(x1_buffer+i))-0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))-0.5*((*(dx2_buffer+i))), (*(x3_buffer+i))-0.5*(*(dx3_buffer+i)));
-                            hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (*(x1_buffer+i))+0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))+0.5*((*(dx2_buffer+i))), (*(x3_buffer+i))+0.5*(*(dx3_buffer+i)));
+                    //want inner corner to be close to origin, therfore ned to have abs for 3D cartesian with negative coordinates, shouldnt affect the other geometry systems since theyre all defined from r=0, theta=0, phi=0
+                        hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, fabs(*(x1_buffer+i))-0.5*(*(dx1_buffer+i)), fabs(*(x2_buffer+i))-0.5*((*(dx2_buffer+i))), fabs(*(x3_buffer+i))-0.5*(*(dx3_buffer+i)));
+                        hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, fabs(*(x1_buffer+i))+0.5*(*(dx1_buffer+i)), fabs(*(x2_buffer+i))+0.5*((*(dx2_buffer+i))), fabs(*(x3_buffer+i))+0.5*(*(dx3_buffer+i)));
                     #else
                         hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (*(x1_buffer+i))-0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))-0.5*((*(dx2_buffer+i))), 0);
                         hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (*(x1_buffer+i))+0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))+0.5*((*(dx2_buffer+i))), 0);
@@ -1184,8 +1187,9 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
             if (ph_inj_switch==0)
             {
                 #if DIMENSIONS == THREE
-                    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (*(x1_buffer+i))-0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))-0.5*((*(dx2_buffer+i))), (*(x3_buffer+i))-0.5*(*(dx3_buffer+i)));
-                        hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (*(x1_buffer+i))+0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))+0.5*((*(dx2_buffer+i))), (*(x3_buffer+i))+0.5*(*(dx3_buffer+i)));
+                    //want inner corner to be close to origin, therfore ned to have abs for 3D cartesian with negative coordinates, shouldnt affect the other geometry systems since theyre all defined from r=0, theta=0, phi=0
+                    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, fabs(*(x1_buffer+i))-0.5*(*(dx1_buffer+i)), fabs(*(x2_buffer+i))-0.5*((*(dx2_buffer+i))), fabs(*(x3_buffer+i))-0.5*(*(dx3_buffer+i)));
+                    hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, fabs(*(x1_buffer+i))+0.5*(*(dx1_buffer+i)), fabs(*(x2_buffer+i))+0.5*((*(dx2_buffer+i))), fabs(*(x3_buffer+i))+0.5*(*(dx3_buffer+i)));
                 #else
                     hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (*(x1_buffer+i))-0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))-0.5*((*(dx2_buffer+i))), 0);
                     hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (*(x1_buffer+i))+0.5*(*(dx1_buffer+i)), (*(x2_buffer+i))+0.5*((*(dx2_buffer+i))), 0);
