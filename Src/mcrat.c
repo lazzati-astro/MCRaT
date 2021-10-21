@@ -714,8 +714,8 @@ int main(int argc, char **argv)
             sorted_indexes=malloc(num_ph*sizeof(int));
             
             #if CYCLOSYNCHROTRON_SWITCH == ON
-                //if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //remember to revert back to !=
-                if ((scatt_frame == scatt_framestart) || (restrt==CONTINUE))//for testing
+                if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //remember to revert back to !=
+                //if ((scatt_frame == scatt_framestart) || (restrt==CONTINUE))//for testing
                 {
                     //if injecting synch photons, emit them if continuing simulation from a point where scatt_frame != scatt_framestart
                     //if necessary, then add memory to then arrays allocated directly above
@@ -730,7 +730,7 @@ int main(int argc, char **argv)
                     #else
                         fprintf(fPtr, "Using the magnetic field from the hydro simulation.\n");
                     #endif
-                    fprintf(fPtr, "HYDRO_B_SCALE %lf.\n", HYDRO_B_SCALE);
+                    //fprintf(fPtr, "HYDRO_B_SCALE %lf.\n", HYDRO_B_SCALE);
                     
                     phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
 
@@ -826,6 +826,7 @@ int main(int argc, char **argv)
             
             #if CYCLOSYNCHROTRON_SWITCH == ON
             if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //rememebr to change to != also at the other place in the code
+            //if ((scatt_frame == scatt_framestart) || (restrt==CONTINUE)) //for testing
             {
                 if (scatt_cyclosynch_num_ph>max_photons)
                 {
