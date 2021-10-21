@@ -67,7 +67,7 @@ void hydroCoordinateToSpherical(double *r, double *theta, double r0, double r1, 
     #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
         
         #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
-            sph_r=pow( r0*r0+r1*r1, 0.5);
+            sph_r=sqrt( r0*r0+r1*r1);
             sph_theta=atan2( r0 , r1 );
 
         #endif
@@ -80,7 +80,7 @@ void hydroCoordinateToSpherical(double *r, double *theta, double r0, double r1, 
     #else
 
         #if GEOMETRY == CARTESIAN
-            sph_r=pow(  r0 * r0 + r1 * r1 + r2 * r2 , 0.5);
+            sph_r=sqrt(  r0 * r0 + r1 * r1 + r2 * r2 );
             sph_theta=acos(  r2 /sph_r );
         #endif
 
@@ -90,7 +90,7 @@ void hydroCoordinateToSpherical(double *r, double *theta, double r0, double r1, 
         #endif
 
         #if GEOMETRY == POLAR
-            sph_r=pow(  r0 * r0 + r2 * r2 , 0.5);//sqrt(r^2+z^2)
+            sph_r=sqrt(  r0 * r0 + r2 * r2 );//sqrt(r^2+z^2)
             sph_theta=acos( r2/sph_r );
         #endif
 
@@ -307,7 +307,7 @@ int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, doubl
                 if ((fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist))
                 {
                     
-                    dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)) , 2.0),0.5);
+                    dist= sqrt(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)) , 2.0));
                     //fprintf(fPtr,"Dist calculated as: %e, index: %d\n", dist, j);
                     //printf("In outer if statement, OLD: %e, %d\n", dist_min, min_index);
                     
@@ -324,7 +324,7 @@ int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, doubl
             #elif DIMENSIONS == THREE
                 if ((fabs(ph_x- (*(x+j)))<block_dist) && (fabs(ph_y- (*(y+j)))<block_dist) && (fabs(ph_z- (*(z+j)))<block_dist))
                 {
-                    dist= pow(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)),2.0 ) + pow(ph_z- (*(z+j)) , 2.0),0.5);
+                    dist= sqrt(pow(ph_x- (*(x+j)), 2.0) + pow(ph_y- (*(y+j)),2.0 ) + pow(ph_z- (*(z+j)) , 2.0));
                     if((dist<dist_min))
                     {
                         //printf("In innermost if statement, OLD: %e, %d\n", dist_min, min_index);

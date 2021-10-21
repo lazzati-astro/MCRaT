@@ -38,8 +38,6 @@ double synCrossSection(double el_dens, double T, double nu_ph, double p_el);
 
 double calcCyclosynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_inj, char *min_or_max);
 
-int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph, int *num_null_ph, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr);
-
 int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_ph, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr);
 
 int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr);

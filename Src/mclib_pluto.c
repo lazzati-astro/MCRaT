@@ -561,7 +561,7 @@ void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro
                 ((hydro_data->r1_size))[j]=(*(dx2_buffer+i));
                 ((hydro_data->gamma))[j]=1/pow(1.0-( (*(vel_x1_buffer+i))*(*(vel_x1_buffer+i)) + (*(vel_x2_buffer+i))*(*(vel_x2_buffer+i)) ),0.5); //v is in units of c
                 ((hydro_data->dens_lab))[j]= (*(dens_buffer+i)) /pow(1.0-( (*(vel_x1_buffer+i))*(*(vel_x1_buffer+i)) + (*(vel_x2_buffer+i))*(*(vel_x2_buffer+i)) ),0.5);
-                ((hydro_data->temp))[j]=pow(3*(*(pres_buffer+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                ((hydro_data->temp))[j]=pow(3*(*(pres_buffer+i))/(A_RAD) ,1.0/4.0);
                 
                 #if B_FIELD_CALC == SIMULATION
                     (hydro_data->B0)[j]= (*(B_x1_buffer+i));
@@ -1211,9 +1211,9 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
 
                     ((hydro_data->r0_size))[j]=(*(dx1_buffer+i));
                     ((hydro_data->r1_size))[j]=(*(dx2_buffer+i));
-                    ((hydro_data->gamma))[j]=1/pow(1.0-( (*(vel_x1_buffer+i))*(*(vel_x1_buffer+i)) + (*(vel_x2_buffer+i))*(*(vel_x2_buffer+i)) ),0.5); //v is in units of c
-                    ((hydro_data->dens_lab))[j]= (*(dens_buffer+i)) /pow(1.0-( (*(vel_x1_buffer+i))*(*(vel_x1_buffer+i)) + (*(vel_x2_buffer+i))*(*(vel_x2_buffer+i)) ),0.5);
-                    ((hydro_data->temp))[j]=pow(3*(*(pres_buffer+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                    ((hydro_data->gamma))[j]=1/sqrt(1.0-( (*(vel_x1_buffer+i))*(*(vel_x1_buffer+i)) + (*(vel_x2_buffer+i))*(*(vel_x2_buffer+i)) )); //v is in units of c
+                    ((hydro_data->dens_lab))[j]= (*(dens_buffer+i)) /sqrt(1.0-( (*(vel_x1_buffer+i))*(*(vel_x1_buffer+i)) + (*(vel_x2_buffer+i))*(*(vel_x2_buffer+i)) ));
+                    ((hydro_data->temp))[j]=pow(3*(*(pres_buffer+i))/(A_RAD) ,1.0/4.0);
                     
                     #if B_FIELD_CALC == SIMULATION
                         (hydro_data->B0)[j]= (*(B_x1_buffer+i));
@@ -1257,9 +1257,9 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
 
                     ((hydro_data->r0_size))[j]=(*(dx1_buffer+i));
                     ((hydro_data->r1_size))[j]=(*(dx2_buffer+i));
-                    ((hydro_data->gamma))[j]=1/pow(1.0-( (*(vel_x1_buffer+i))*(*(vel_x1_buffer+i)) + (*(vel_x2_buffer+i))*(*(vel_x2_buffer+i)) ),0.5); //v is in units of c
-                    ((hydro_data->dens_lab))[j]= (*(dens_buffer+i)) /pow(1.0-( (*(vel_x1_buffer+i))*(*(vel_x1_buffer+i)) + (*(vel_x2_buffer+i))*(*(vel_x2_buffer+i)) ),0.5);
-                    ((hydro_data->temp))[j]=pow(3*(*(pres_buffer+i))*pow(C_LIGHT,2.0)/(A_RAD) ,1.0/4.0);
+                    ((hydro_data->gamma))[j]=1/sqrt(1.0-( (*(vel_x1_buffer+i))*(*(vel_x1_buffer+i)) + (*(vel_x2_buffer+i))*(*(vel_x2_buffer+i)) )); //v is in units of c
+                    ((hydro_data->dens_lab))[j]= (*(dens_buffer+i)) /sqrt(1.0-( (*(vel_x1_buffer+i))*(*(vel_x1_buffer+i)) + (*(vel_x2_buffer+i))*(*(vel_x2_buffer+i)) ));
+                    ((hydro_data->temp))[j]=pow(3*(*(pres_buffer+i))/(A_RAD) ,1.0/4.0);
                         
                     #if B_FIELD_CALC == SIMULATION
                         (hydro_data->B0)[j]= (*(B_x1_buffer+i));

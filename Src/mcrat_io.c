@@ -133,7 +133,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
     hid_t  file, file_init, dspace, dspace_weight, dspace_global_weight, fspace, mspace, prop, prop_weight, prop_global_weight, group_id;
     hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_2, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_ph_type;
     herr_t status, status_group, status_weight, status_weight_2;
-    hsize_t dims[1]={net_num_ph}, dims_weight[1]={weight_net_num_ph}, dims_old[1]={0}; //1 is the number of dimansions for the dataset, called rank
+    hsize_t dims[1]={net_num_ph}, dims_weight[1]={net_num_ph}, dims_old[1]={0}; //1 is the number of dimansions for the dataset, called rank
 
     
     hsize_t maxdims[1]={H5S_UNLIMITED};
