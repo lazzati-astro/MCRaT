@@ -1939,7 +1939,7 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
         
     #else
         #if SIM_SWITCH == FLASH
-            
+            #error 3D FLASH simulations are not supported in MCRaT yet.
         #elif SIM_SWITCH == PLUTO_CHOMBO
             modifyPlutoName(hydro_file, hydro_prefix, frame);
             

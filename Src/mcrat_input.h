@@ -33,11 +33,9 @@
 #define     STOKES_SWITCH               ON
 #define     COMV_SWITCH                 ON
 #define     HYDRO_L_SCALE               1e12
-#define     HYDRO_P_SCALE               C_LIGHT*C_LIGHT
 #define     HYDRO_D_SCALE               1
 
 #define     B_FIELD_CALC                SIMULATION
-#define     HYDRO_B_SCALE               1
 #define     CYCLOSYNCHROTRON_SWITCH     ON
 #define     SAVE_TYPE                   ON
 

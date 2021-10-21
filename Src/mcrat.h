@@ -179,6 +179,15 @@ struct hydro_dataframe
 #include "mcrat_scattering.h"
 #include "mcrat_io.h"
 
+//set default hydro v scale to be the speed of light
+#define HYDRO_V_SCALE C_LIGHT
+
+//take care of hydro scales in pressure, magnetic field, etc
+#define HYDRO_P_SCALE   HYDRO_D_SCALE*HYDRO_V_SCALE*HYDRO_V_SCALE
+#if B_FIELD_CALC==SIMULATION
+    #define HYDRO_B_SCALE sqrt(4*M_PI*HYDRO_P_SCALE)
+#endif
+
 //take care of default PLUTO file types here
 #ifdef PLUTO
     #ifndef PLUTO_FILETYPE
@@ -247,18 +256,8 @@ struct hydro_dataframe
 #error Need to define hydro simulation length scaling in mcrat_input.h file using HYDRO_L_SCALE
 #endif
 
-#ifndef HYDRO_P_SCALE
-#error Need to define hydro simulation pressure scaling in mcrat_input.h file using HYDRO_P_SCALE
-#endif
-
 #ifndef HYDRO_D_SCALE
 #error Need to define hydro simulation density scaling in mcrat_input.h file using HYDRO_D_SCALE
-#endif
-
-#if B_FIELD_CALC==SIMULATION
-    #ifndef HYDRO_B_SCALE
-    #error Need to define hydro simulation magnetic field scaling in mcrat_input.h file using HYDRO_B_SCALE
-    #endif
 #endif
 
 #ifndef MCPAR

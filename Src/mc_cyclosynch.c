@@ -1025,7 +1025,7 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
                         //if the photon nu falls in the count bin of the nu histogram then add it to the phi_theta 2d hist
                         if ((log10((*ph_orig)[i].p0)< max_range  ) && (log10((*ph_orig)[i].p0)>=min_range) && (ph_theta < max_range_theta) && (ph_theta >= min_range_theta))
                         {
-                            //not doing average values, choosing random photon instead
+                            //doing average values
                             avg_values[0] += ph_r*(*ph_orig)[i].weight; // doing r, theta averages in space
                             avg_values[1] += ph_theta*(*ph_orig)[i].weight;
                             avg_values[2] += ((atan((*ph_orig)[i].p2/((*ph_orig)[i].p1))*180/M_PI)-(atan(((*ph_orig)[i].r1)/ ((*ph_orig)[i].r0))*180/M_PI))*(*ph_orig)[i].weight;// look at delta \phi between the 4 mometum and its location
@@ -1036,7 +1036,7 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
                             avg_values[7] += (*ph_orig)[i].num_scatt*(*ph_orig)[i].weight;
                             avg_values[8] += (*ph_orig)[i].weight;
                             
-                            //get theta and phi of random photon
+                            //get avg theta and phi
                             {
                                 avg_values[9] += fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1))*180/M_PI + 360.0,360.0) *(*ph_orig)[i].weight;
                                 avg_values[10] += (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
@@ -1831,8 +1831,8 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                     (*ph_orig)[idx].r1= cartesian_position_rand_array[1] ;
                     (*ph_orig)[idx].r2= cartesian_position_rand_array[2]; //y coordinate in flash becomes z coordinate in MCRaT
                     
-                    fprintf(fPtr,"%d %e %e %e\n", ph_tot, (*ph_orig)[idx].r0, (*ph_orig)[idx].r1, (*ph_orig)[idx].r2);
-                    fflush(fPtr);
+                    //fprintf(fPtr,"%d %e %e %e\n", ph_tot, (*ph_orig)[idx].r0, (*ph_orig)[idx].r1, (*ph_orig)[idx].r2);
+                    //fflush(fPtr);
                     
                     (*ph_orig)[idx].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
                     (*ph_orig)[idx].s1=0;
@@ -1956,7 +1956,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         
     }
     //printf("At End of function\n");
-    exit(0);
+    //exit(0);
 
     free(null_ph_indexes);
     free(ph_dens); free(p_comv); free(boost); free(l_boost);

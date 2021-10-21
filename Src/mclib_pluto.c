@@ -994,7 +994,7 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
     
     for (i=0;i<num_vars;i++)
     {
-        fprintf(fPtr,"%s grid_size:%d\n", var_strings[i], grid_size);
+        //fprintf(fPtr,"%s grid_size:%d\n", var_strings[i], grid_size);
         count=0;//this loops though the grid in order to save info into the buffer arrays
         for (j=0;j<nz;j++)
         {

@@ -730,9 +730,10 @@ int main(int argc, char **argv)
                     #else
                         fprintf(fPtr, "Using the magnetic field from the hydro simulation.\n");
                     #endif
+                    fprintf(fPtr, "HYDRO_B_SCALE %lf.\n", HYDRO_B_SCALE);
                     
                     phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
-//need to double check this for 3D simulation
+
                     num_cyclosynch_ph_emit=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 0, 0, fPtr);
                 }
             #endif
