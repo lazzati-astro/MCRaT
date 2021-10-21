@@ -288,7 +288,7 @@ void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_
         elem_factor++;
         for (i=0;i<count;i++)
         {
-            *(r_unprc+i)=pow((*(x_unprc+i))*(*(x_unprc+i))+(*(y_unprc+i))*(*(y_unprc+i)),0.5);
+            *(r_unprc+i)=sqrt((*(x_unprc+i))*(*(x_unprc+i))+(*(y_unprc+i))*(*(y_unprc+i)));
             
             if (ph_inj_switch==0)
             {
@@ -371,8 +371,8 @@ void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_
                 ((hydro_data->r0_size))[j]=*(szx_unprc+i);
                 ((hydro_data->r1_size))[j]=*(szy_unprc+i);
                 ((hydro_data->theta))[j]=atan2( *(x_unprc+i) , *(y_unprc+i) );//theta in radians in relation to jet axis
-                ((hydro_data->gamma))[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
-                ((hydro_data->dens_lab))[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
+                ((hydro_data->gamma))[j]=1/sqrt(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2))); //v is in units of c
+                ((hydro_data->dens_lab))[j]= (*(dens_unprc+i))/sqrt(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)));
                 ((hydro_data->temp))[j]=pow(3*(*(pres_unprc+i))/(A_RAD) ,1.0/4.0);
                 j++;
                 /*
@@ -408,8 +408,8 @@ void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_
                 ((hydro_data->r0_size))[j]=*(szx_unprc+i);
                 ((hydro_data->r1_size))[j]=*(szy_unprc+i);
                 ((hydro_data->theta))[j]=atan2( *(x_unprc+i) , *(y_unprc+i) );//theta in radians in relation to jet axis
-                ((hydro_data->gamma))[j]=pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1); //v is in units of c
-                ((hydro_data->dens_lab))[j]= (*(dens_unprc+i)) * (pow(pow(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)),0.5),-1));
+                ((hydro_data->gamma))[j]=1/sqrt(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2))); //v is in units of c
+                ((hydro_data->dens_lab))[j]= (*(dens_unprc+i))/ sqrt(1.0-(pow(*(velx_unprc+i),2)+pow(*(vely_unprc+i),2)));
                 ((hydro_data->temp))[j]=pow(3*(*(pres_unprc+i))/(A_RAD) ,1.0/4.0);
                 j++;
             }

@@ -1243,10 +1243,10 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
         {
             
             x_dum=gsl_rng_uniform_pos(rand)*(1+100*factor);
-            beta_x_dum=pow(1-(pow(x_dum, -2.0)) ,0.5);
+            beta_x_dum=sqrt(1-(1/(x_dum*x_dum)));
             y_dum=gsl_rng_uniform(rand)/2.0;
             
-            f_x_dum=pow(x_dum,2)*(beta_x_dum/gsl_sf_bessel_Kn (2, 1.0/factor))*exp(-1*x_dum/factor); //
+            f_x_dum=x_dum*x_dum*(beta_x_dum/gsl_sf_bessel_Kn (2, 1.0/factor))*exp(-1*x_dum/factor); //
             //fprintf(fPtr,"Choosing a Gamma: xdum: %e, f_x_dum: %e, y_dum: %e\n", x_dum, f_x_dum, y_dum);
         }
         gamma=x_dum;
@@ -1290,7 +1290,7 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
     
     //find angles of photon NOT SURE WHY WERE CHANGING REFERENCE FRAMES HERE???!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ph_phi=atan2(*(ph_p+2), *(ph_p+3)); //Double Check
-    ph_theta=atan2(pow( pow(*(ph_p+2),2)+  pow(*(ph_p+3),2) , 0.5) , (*(ph_p+1)) );
+    ph_theta=atan2(sqrt( pow(*(ph_p+2),2)+  pow(*(ph_p+3),2)) , (*(ph_p+1)) );
     
     //printf("Calculated Photon phi and theta in singleElectron:%e, %e\n", ph_phi, ph_theta);
     
@@ -1426,7 +1426,7 @@ void cylindricalPrep(struct hydro_dataframe *hydro_data)
 {
     double  gamma_infinity=100, t_comov=1e5, ddensity=3e-7;// the comoving temperature in Kelvin, and the comoving density in g/cm^2
     int i=0;
-    double vel=pow(1-pow(gamma_infinity, -2.0) ,0.5), lab_dens=gamma_infinity*ddensity;
+    double vel=sqrt(1-pow(gamma_infinity, -2.0)), lab_dens=gamma_infinity*ddensity;
     
     for (i=0; i<hydro_data->num_elements; i++)
     {
@@ -1506,12 +1506,12 @@ void sphericalPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
         ((hydro_data->dens_lab))[i]=(((hydro_data->dens))[i])*(((hydro_data->gamma))[i]);
         ((hydro_data->temp))[i]=pow(3*(((hydro_data->pres))[i])/(A_RAD) ,1.0/4.0);
         
-        vel=pow(1-(pow(((hydro_data->gamma))[i], -2.0)) ,0.5);
+        vel=sqrt(1-(pow(((hydro_data->gamma))[i], -2.0)));
 
         #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
             
             #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
-                r=pow(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r1))[i], 2) ,0.5);
+                r=sqrt(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r1))[i], 2));
                 ((hydro_data->v0))[i]=(vel*(((hydro_data->r0))[i]))/r;
                 ((hydro_data->v1))[i]=(vel*(((hydro_data->r1))[i]))/r; //geometry dependent want this to be radial
             #endif
@@ -1529,7 +1529,7 @@ void sphericalPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
         #else
 
             #if GEOMETRY == CARTESIAN
-                r=pow(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r1))[i], 2)+pow(((hydro_data->r2))[i], 2) ,0.5);
+                r=sqrt(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r1))[i], 2)+pow(((hydro_data->r2))[i], 2));
                 ((hydro_data->v0))[i]=(vel*(((hydro_data->r0))[i]))/r;
                 ((hydro_data->v1))[i]=(vel*(((hydro_data->r1))[i]))/r; //geometry dependent want this to be radial
                 ((hydro_data->v2))[i]=(vel*(((hydro_data->r2))[i]))/r;
@@ -1543,7 +1543,7 @@ void sphericalPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
             #endif
 
             #if GEOMETRY == POLAR
-                r=pow(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r2))[i], 2) ,0.5);
+                r=sqrt(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r2))[i], 2));
                 ((hydro_data->v0))[i]=(vel*(((hydro_data->r0))[i]))/r; //need to figure this out
                 ((hydro_data->v1))[i]=0;
                 ((hydro_data->v2))[i]=(vel*(((hydro_data->r2))[i]))/r;
@@ -1570,7 +1570,7 @@ void structuredFireballPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
         
         
         theta_ratio=((hydro_data->theta)[i])/theta_j;
-        eta=gamma_0*pow(1+pow(theta_ratio, 2*p) , -0.5);
+        eta=gamma_0/sqrt(1+pow(theta_ratio, 2*p));
         
         if ((hydro_data->theta)[i] >= theta_j*pow(gamma_0/2, 1.0/p))
         {
@@ -1591,7 +1591,7 @@ void structuredFireballPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
             (hydro_data->temp)[i]=T_0;
         }
         
-        vel=pow(1-(pow((hydro_data->gamma)[i], -2.0)) ,0.5);
+        vel=sqrt(1-(pow((hydro_data->gamma)[i], -2.0)));
         (hydro_data->dens)[i] = M_P*lumi/(4*M_PI*M_P*C_LIGHT*C_LIGHT*C_LIGHT*eta*vel*((hydro_data->gamma)[i])*((hydro_data->r)[i])*((hydro_data->r)[i])); //equation paper has extra c, but then units dont work out
         (hydro_data->dens_lab)[i]=((hydro_data->dens)[i])*((hydro_data->gamma)[i]);
         (hydro_data->pres)[i]=(A_RAD*pow((hydro_data->temp)[i], 4.0))/(3);
@@ -1599,7 +1599,7 @@ void structuredFireballPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
         #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
             
             #if GEOMETRY == CARTESIAN || GEOMETRY == CYLINDRICAL
-                r=pow(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r1))[i], 2) ,0.5);
+                r=sqrt(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r1))[i], 2));
                 ((hydro_data->v0))[i]=(vel*(((hydro_data->r0))[i]))/r;
                 ((hydro_data->v1))[i]=(vel*(((hydro_data->r1))[i]))/r; //geometry dependent want this to be radial
             #endif
@@ -1617,7 +1617,7 @@ void structuredFireballPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
         #else
 
             #if GEOMETRY == CARTESIAN
-                r=pow(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r1))[i], 2)+pow(((hydro_data->r2))[i], 2) ,0.5);
+                r=sqrt(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r1))[i], 2)+pow(((hydro_data->r2))[i], 2));
                 ((hydro_data->v0))[i]=(vel*(((hydro_data->r0))[i]))/r;
                 ((hydro_data->v1))[i]=(vel*(((hydro_data->r1))[i]))/r; //geometry dependent want this to be radial
                 ((hydro_data->v2))[i]=(vel*(((hydro_data->r2))[i]))/r;
@@ -1630,7 +1630,7 @@ void structuredFireballPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
             #endif
 
             #if GEOMETRY == POLAR
-                r=pow(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r2))[i], 2) ,0.5);
+                r=sqrt(pow(((hydro_data->r0))[i], 2)+ pow(((hydro_data->r2))[i], 2));
                 ((hydro_data->v0))[i]=(vel*(((hydro_data->r0))[i]))/r;
                 ((hydro_data->v1))[i]=0;
                 ((hydro_data->v2))[i]=(vel*(((hydro_data->r2))[i]))/r;
@@ -1658,7 +1658,7 @@ void phMinMax(struct photon *ph, int ph_num, double *min, double *max, double *m
     {
         if ((ph+i)->weight != 0)
         {
-            ph_r=pow(pow( ((ph+i)->r0), 2.0) + pow(((ph+i)->r1),2.0 ) + pow(((ph+i)->r2) , 2.0),0.5);
+            ph_r=sqrt(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2));
             ph_theta=acos(((ph+i)->r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
             if (ph_r > temp_r_max )
             {
