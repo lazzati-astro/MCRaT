@@ -237,18 +237,10 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
         /* Modify dataset creation properties, i.e. enable chunking  */
         prop = H5Pcreate (H5P_DATASET_CREATE);
         status = H5Pset_chunk (prop, rank, dims);
-        
-        #if CYCLOSYNCHROTRON_SWITCH == ON
-        {
-            prop_weight= H5Pcreate (H5P_DATASET_CREATE);
-            status = H5Pset_chunk (prop_weight, rank, dims_weight);
-        }
-        #endif
-        
-        if ((frame==frame_last))
-        {
-            status = H5Pset_chunk (prop, rank, dims);
-        }
+
+        prop_weight= H5Pcreate (H5P_DATASET_CREATE);
+        status = H5Pset_chunk (prop_weight, rank, dims_weight);
+
     
         /* Create the data space with unlimited dimensions. */
         dspace = H5Screate_simple (rank, dims, maxdims);
@@ -319,19 +311,9 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
         dset_num_scatt = H5Dcreate2 (group_id, "NS", H5T_NATIVE_DOUBLE, dspace,
                             H5P_DEFAULT, prop, H5P_DEFAULT);
                             
-        #if CYCLOSYNCHROTRON_SWITCH == ON
-        {
-            dset_weight_2 = H5Dcreate2 (group_id, "PW", H5T_NATIVE_DOUBLE, dspace_weight,
+        dset_weight_2 = H5Dcreate2 (group_id, "PW", H5T_NATIVE_DOUBLE, dspace_weight,
                             H5P_DEFAULT, prop_weight, H5P_DEFAULT); //save the new injected photons' weights
-        }
-        #endif
-        
-        if ((frame==frame_last))
-        {
-            //if saving the injected photons weight dont have to worry about the major ph_weight thats not in a group
-            dset_weight = H5Dcreate2 (file, "PW", H5T_NATIVE_DOUBLE, dspace,
-                                      H5P_DEFAULT, prop, H5P_DEFAULT);
-        }
+
                          
         /* Write data to dataset */
         status = H5Dwrite (dset_p0, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
@@ -398,24 +380,12 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
         status = H5Dwrite (dset_num_scatt, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
                         H5P_DEFAULT, num_scatt);
         
-        //if ((frame==frame_inj) || (scatt_cyclosynch_num_ph > 0))
-        #if CYCLOSYNCHROTRON_SWITCH == ON
-        {
-            status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-                            H5P_DEFAULT, weight);
-            
-            status = H5Pclose (prop_weight);
-            status = H5Dclose (dset_weight_2);
-        }
-        #endif
+        status = H5Dwrite (dset_weight_2, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
+                        H5P_DEFAULT, weight);
         
-        if ((frame==frame_last))
-        {
-            //printf("Before write\n");
-            status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL,
-                               H5P_DEFAULT, global_weight);
-            //printf("After write\n");
-        }
+        status = H5Pclose (prop_weight);
+        status = H5Dclose (dset_weight_2);
+
         
         status = H5Pclose (prop);
     }
@@ -731,42 +701,13 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
         status = H5Sclose (dspace);
         status = H5Sclose (mspace);
         status = H5Sclose (fspace);
-
-        if (frame==frame_last)
-        {
-            //make sure to append the newly injected/emitted photons from the most recent set of injected photons to the global weights
-        
-            dset_weight = H5Dopen (file, "PW", H5P_DEFAULT); //open dataset
-    
-            //get dimensions of array and save it
-            dspace = H5Dget_space (dset_weight);
-    
-            status=H5Sget_simple_extent_dims(dspace, dims_old, NULL); //save dimesnions in dims
-        
-            //extend the dataset
-            size[0] = dims_weight[0]+ dims_old[0];
-            status = H5Dset_extent (dset_weight, size);
-        
-            /* Select a hyperslab in extended portion of dataset  */
-            fspace = H5Dget_space (dset_weight);
-            offset[0] = dims_old[0];
-            status = H5Sselect_hyperslab (fspace, H5S_SELECT_SET, offset, NULL,
-                                  dims_weight, NULL);
-            
-            /* Define memory space */
-            mspace = H5Screate_simple (rank, dims_weight, NULL);
-        
-            /* Write the data to the extended portion of dataset  */
-            status = H5Dwrite (dset_weight, H5T_NATIVE_DOUBLE, mspace, fspace,
-                            H5P_DEFAULT, weight);
-        }
         
         if (status_weight >= 0)
         {
             //will have to create the weight dataset for the new set of phtons that have been injected, although it may already be created since emitting photons now
             //see if the group exists
             status = H5Eset_auto(NULL, NULL, NULL);
-            status_weight_2 = H5Gget_objinfo (group_id, "/PW", 0, NULL);
+            status_weight_2 = H5Gget_objinfo (group_id, "PW", 0, NULL);
             status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
             
             if (status_weight_2 < 0)
@@ -869,17 +810,12 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
     #endif
     
     status = H5Dclose (dset_num_scatt);
-
-    if ((frame==frame_last))
-    {
-        status = H5Dclose (dset_weight);
-    }
     
     /* Close the group. */
-   status = H5Gclose(group_id);
+    status = H5Gclose(group_id);
     
     /* Terminate access to the file. */
-      status = H5Fclose(file);
+    status = H5Fclose(file);
     
 
 }
@@ -1563,15 +1499,7 @@ void dirFileMerge(char dir[STR_BUFFER], int start_frame, int last_frame, int num
                     
                     dset_num_scatt = H5Dopen (group_id, "NS", H5P_DEFAULT);
                     
-                    #if CYCLOSYNCHROTRON_SWITCH == ON
-                    {
-                        dset_weight = H5Dopen (group_id, "PW", H5P_DEFAULT); // have to account for this only being used for synchrotron emission switch being on
-                    }
-                    #else
-                    {
-                        dset_weight = H5Dopen (file, "PW", H5P_DEFAULT); //for non synch runs look at the global /PW dataset
-                    }
-                    #endif
+                    dset_weight = H5Dopen (group_id, "PW", H5P_DEFAULT); // have to account for this only being used for synchrotron emission switch being on
                     
                     #if SAVE_TYPE == ON
                     {

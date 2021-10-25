@@ -394,7 +394,7 @@ int checkInBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, str
 
     
     #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
-        is_in_block= (2*fabs( ph_hydro_r0 - (hydro_data->r0)[block_index]) - (hydro_data->r0_size)[block_index] <= 0) && (2*fabs(ph_hydro_r1 - (hydro_data->r1)[block_index] ) - (hydro_data->r1_size)[block_index]  <= 0);
+        is_in_block= (2*fabs( ph_hydro_r0 - (hydro_data->r0)[block_index]) - (hydro_data->r0_size)[block_index] <= 0) && (2*fabs(ph_hydro_r1 - (hydro_data->r1)[block_index] ) - (hydro_data->r1_size)[block_index]  <= 0);//are both in same coordinate systems?
     #else
         is_in_block= (2*fabs( ph_hydro_r0 - (hydro_data->r0)[block_index]) - (hydro_data->r0_size)[block_index] <= 0) && (2*fabs(ph_hydro_r1 - (hydro_data->r1)[block_index] ) - (hydro_data->r1_size)[block_index]  <= 0) && (2*fabs(ph_hydro_r2 - (hydro_data->r2)[block_index] ) - (hydro_data->r2_size)[block_index]  <= 0);
     #endif

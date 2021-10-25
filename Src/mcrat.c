@@ -689,8 +689,8 @@ int main(int argc, char **argv)
             //calc min and max positions of photons
             phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
             #if CYCLOSYNCHROTRON_SWITCH == ON
-                //if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE))
-                if ((scatt_frame == scatt_framestart) || (restrt==CONTINUE))//for testing
+                if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE))
+                //if ((scatt_frame == scatt_framestart) || (restrt==CONTINUE))//for testing
                 {
                     //NEED TO DETERMINE IF min_r or max_r is smaller/larger than the rmin/rmax in photonEmitCyclosynch to properly emit photons in the range that the process is interested in
                     //printf("OLD: min_r %e max_r %e\n", min_r, max_r);
@@ -889,7 +889,7 @@ int main(int argc, char **argv)
                 exit(1);
             }
             
-            #if SIM_SWITCH == RIKEN && DIMENSIONS ==3
+            #if SIM_SWITCH == RIKEN && DIMENSIONS == THREE
             {
                 {
                     free(zPtr);free(phiPtr);free(velzPtr);

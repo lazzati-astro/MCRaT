@@ -8,7 +8,7 @@
 //
 
 #define SIMULATION_TYPE SPHERICAL_OUTFLOW
-//#define FILEPATH "/Users/Tylerparsotan/Documents/16OI_TEST/"
+//#define FILEPATH "/Users/Tylerparsotan/Documents/HYDRO_SIMS/16OI_TEST/"
 //#define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
 //#define MC_PATH "SKN_16OI_SPHERICAL_flash/"
 //#define     SIM_SWITCH                  FLASH
@@ -21,6 +21,7 @@
 //#define     SIM_SWITCH                  PLUTO
 //#define     GEOMETRY                    CARTESIAN
 //#define     DIMENSIONS                  THREE
+//#define     B_FIELD_CALC                SIMULATION
 
 #define FILEPATH "/Users/Tylerparsotan/Documents/HYDRO_SIMS/LEO_2.5D_MHD_PLUTO/BPT5/"
 #define FILEROOT "data."
@@ -28,6 +29,8 @@
 #define     SIM_SWITCH                  PLUTO
 #define     GEOMETRY                    CYLINDRICAL
 #define     DIMENSIONS                  TWO_POINT_FIVE
+#define     B_FIELD_CALC                SIMULATION
+
 
 
 #define     STOKES_SWITCH               ON
@@ -35,7 +38,6 @@
 #define     HYDRO_L_SCALE               1e12
 #define     HYDRO_D_SCALE               1
 
-#define     B_FIELD_CALC                SIMULATION
 #define     CYCLOSYNCHROTRON_SWITCH     ON
 #define     SAVE_TYPE                   ON
 

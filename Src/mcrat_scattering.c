@@ -567,7 +567,7 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
                 else
                 {
                     //if we are considering polarization calulate the norm for the distributiion to be between 1 and 0
-                    phi_max=abs(atan2(-u,q))/2.0;
+                    phi_max=fabs(atan2(-u,q))/2.0;
                     norm=(f_theta_dum + pow(mu, -2.0)*sin(*theta)*sin(*theta)*sin(*theta) * (q*cos(2*phi_max)-u*sin(2*phi_max)));
                     //fprintf(fPtr,"norm: %e\n", norm);
                     //fflush(fPtr);
