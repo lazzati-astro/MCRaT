@@ -957,9 +957,12 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                 ph_weight_adjusted*=0.5;
                 
             }
+            else
+            {
             
-            //fprintf(fPtr, "dens: %d, photons: %d, adjusted weight: %e\n", *(ph_dens+(j-1)), ph_tot, ph_weight_adjusted);
-            //fflush(fPtr);
+            fprintf(fPtr, "dens: %d, photons: %d, adjusted weight: %e\n", *(ph_dens+(j-1)), ph_tot, ph_weight_adjusted);
+            fflush(fPtr);
+            }
         }
         
         
@@ -1130,7 +1133,6 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                 nu_c=calcCyclotronFreq(b_field);
 
                 dimlesstheta=calcDimlessTheta( (hydro_data->temp)[i]);
-                max_jnu=2*jnu(nu_c/10, nu_c, dimlesstheta, el_dens);
                 
                 for(j=0;j<( *(ph_dens+k) ); j++ )
                 {

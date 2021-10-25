@@ -17,7 +17,7 @@
 #include <math.h>
 #include <gsl/gsl_rng.h>
 #include "hdf5.h"
-#include "mclib.h"
+#include "mcrat.h"
 #include "mpi.h"
 
 int main(int argc, char **argv)
@@ -25,7 +25,7 @@ int main(int argc, char **argv)
     double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *comv_p0=NULL, *comv_p1=NULL, *comv_p2=NULL, *comv_p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;
     double *p0_p=NULL, *p1_p=NULL, *p2_p=NULL, *p3_p=NULL, *comv_p0_p=NULL, *comv_p1_p=NULL, *comv_p2_p=NULL, *comv_p3_p=NULL, *r0_p=NULL, *r1_p=NULL, *r2_p=NULL, *s0_p=NULL, *s1_p=NULL, *s2_p=NULL, *s3_p=NULL, *num_scatt_p=NULL, *weight_p=NULL;
     int num_angle_dirs=0, i=0, j=0, k=0, l=0, num_types=12;
-    int *num_procs_per_dir=NULL, frm0_small, frm0_large, last_frm, frm2_small, frm2_large, small_frm, large_frm, frm=0, all_photons;
+    int *num_procs_per_dir=NULL, frm0_small, frm0_large, last_frm, frm2_small, frm2_large, small_frm=INT_MAX, large_frm=INT_MIN, frm=0, all_photons;
     int *frm_array=NULL, *each_subdir_number=NULL, *displPtr=NULL;
     int myid, numprocs, subdir_procs, subdir_id, frames_to_merge, start_count, end_count ;
     int  count=0, index=0,  isNotCorrupted=0;
@@ -42,6 +42,9 @@ int main(int argc, char **argv)
     DIR * dirp;
     struct dirent * entry;
     DIR* srcdir = opendir(argv[1]);
+    struct hydro_dataframe hydrodata; //pointer to structure that holds info on the hydro sim
+    double *inj_radius_input=NULL, num_theta_bins=0;
+    int *frm2_input=NULL, *frm0_input=NULL;
     
     MPI_Datatype stype;
     hid_t       file, file_id, group_id, dspace, fspace, mspace;         /* file and dataset identifiers */
@@ -168,12 +171,32 @@ int main(int argc, char **argv)
     
     //get the last and initial hydro file in sim
     snprintf(mc_file,sizeof(mc_file),"%s%s",argv[1],MCPAR);
-    readMcPar(mc_file, &garbage, &garbage, &garbage,&garbage, &garbage, &garbage, &garbage,&garbage, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &garbage, &garbage, &i, &i, &i,&i); //thetas that comes out is in degrees
+    //readMcPar(mc_file, &garbage, &garbage, &garbage,&garbage, &garbage, &garbage, &garbage,&garbage, &frm0_small,&frm0_large, &last_frm ,&frm2_small, &frm2_large, &garbage, &garbage, &i, &i, &i,&i); //thetas that comes out is in degrees
         //printf("%s frm_0small: %d frm_0large: %d, last: %d\n", mc_file, frm0_small,frm0_large, last_frm);
+    readMcPar(&hydrodata, &garbage, &garbage, &num_theta_bins, &inj_radius_input, &frm0_input , &frm2_input, &i, &i, &i, &i);
+    last_frm=hydrodata.last_frame;
+    free(inj_radius_input);//dont care about this
+    
+    //go through the frame 0 and frm2 input arrays to find the smallest and largest values
+    for (i=0;i<num_theta_bins;i++)
+    {
+        if (frm0_input[i]<small_frm)
+        {
+            small_frm=frm0_input[i];
+        }
+        
+        if (frm2_input[i]>large_frm)
+        {
+            large_frm=frm2_input[i];
+        }
+    }
+    
+    free(frm0_input); free(frm2_input);
+    
     
     //with all the info make array of all the files that need to be created
-    small_frm= (frm0_small < frm0_large) ? frm0_small : frm0_large;
-    large_frm= (frm2_small > frm2_large) ? frm2_small : frm2_large;
+    //small_frm= (frm0_small < frm0_large) ? frm0_small : frm0_large;
+    //large_frm= (frm2_small > frm2_large) ? frm2_small : frm2_large;
     frm_array=malloc(sizeof(int)*(last_frm-small_frm+1));
     count=0;
     for (i=small_frm;i<last_frm+1;i++)
@@ -208,8 +231,6 @@ int main(int argc, char **argv)
         //printf("in If\n");
         end_count=*(frm_array+(count-1))+1;
     }
-    
-    
     
     
     printf("subdir_id %d, subdir_procs %d subdir %s, num of frames to merge %d, index %d\n", subdir_id, subdir_procs, dirs[subdir_id], frames_to_merge, index );
@@ -464,11 +485,7 @@ int main(int argc, char **argv)
             }
             
             //order data based on which processes injected photons 1st
-            #if SYNCHROTRON_SWITCH == ON
             l=i;
-            #else
-            for (l=small_frm;l<frm+1;l++)
-            #endif
             {
                 //printf("\n\n %d\n\n",l);
                 //read the data in from each process in a given subdir, use max_num_procs_per_dir in case one directory used more processes than the others and deal with it in code
@@ -523,11 +540,7 @@ int main(int argc, char **argv)
                     //#endif
                     {
                         //read in the number of injected photons first
-                        #if SYNCHROTRON_SWITCH == ON
-                            snprintf(group,sizeof(group),"%d",i );
-                        #else
-                            snprintf(group,sizeof(group),"%d",l );
-                        #endif
+                        snprintf(group,sizeof(group),"%d",i );
                         group_id = H5Gopen2(file, group, H5P_DEFAULT);
                         dset_weight = H5Dopen (group_id, "PW", H5P_DEFAULT);
                         dspace = H5Dget_space (dset_weight);
@@ -572,15 +585,7 @@ int main(int argc, char **argv)
                         
                         dset_num_scatt = H5Dopen (group_id, "NS", H5P_DEFAULT);
                         
-                        #if SYNCHROTRON_SWITCH == ON
-                        {
-                            dset_weight = H5Dopen (group_id, "PW", H5P_DEFAULT);
-                        }
-                        #else
-                        {
-                            dset_weight = H5Dopen (file, "PW", H5P_DEFAULT);//for non synch runs look at the global /PW dataset
-                        }
-                        #endif
+                        dset_weight = H5Dopen (group_id, "PW", H5P_DEFAULT);
                         
                         #if SAVE_TYPE == ON
                         {
@@ -618,15 +623,7 @@ int main(int argc, char **argv)
                         
                         //printf("file %d frame: %d, process  %d start: %d, j: %d\n", i, l, k, *(photon_injection_count+k), dims[0]);
                         
-                        #if SYNCHROTRON_SWITCH == ON
-                        {
-                            offset[0]=0;
-                        }
-                        #else
-                        {
-                            offset[0]=*(photon_injection_count+k);
-                        }
-                        #endif
+                        offset[0]=0;
                         
                         //have to read in the data from *(photon_injection_count+k) to *(photon_injection_count+k)+j
                         mspace = H5Screate_simple (1, dims, NULL);
@@ -891,11 +888,7 @@ int main(int argc, char **argv)
                     
                     dims[0]=all_photons;
                     //if ((k==0)  && (all_photons>0))
-                    #if SYNCHROTRON_SWITCH == ON
                     if ((l==i) && (k==0) && (all_photons>0))
-                    #else
-                    if ((l==small_frm)  && (all_photons>0))
-                    #endif
                     {
                         //printf("IN THE IF STATEMENT\n");
                         //set up new dataset
@@ -1092,11 +1085,7 @@ int main(int argc, char **argv)
                         H5Pclose(plist_id_data);
                         
                     }
-                    #if SYNCHROTRON_SWITCH == ON
                     else
-                    #else
-                    else if ((l>small_frm) && (all_photons>0))
-                    #endif
                     {
                         //printf("IN THE ELSE IF STATEMENT\n"); if ((k>0)  && (all_photons>0))
                         plist_id_data = H5Pcreate (H5P_DATASET_XFER);

@@ -86,7 +86,7 @@ int main(int argc, char **argv)
     double min_r=0, max_r=0, min_theta=0, max_theta=0, nu_c_scatt=0, n_comptonized=0;
     int frame=0, scatt_frame=0, frame_scatt_cnt=0, frame_abs_cnt=0, scatt_framestart=0, framestart=0;
     struct photon *phPtr=NULL; //pointer to array of photons
-    struct hydro_dataframe hydrodata; //pointer to array of photons
+    struct hydro_dataframe hydrodata; //pointer to array of hydro data
     
     int angle_count=0, num_cyclosynch_ph_emit=0;
     int num_angles=0, old_num_angle_procs=0; //old_num_angle_procs is to hold the old number of procs in each angle when cont sims, if  restarting sims this gets set to angle_procs

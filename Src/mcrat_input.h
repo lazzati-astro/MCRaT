@@ -38,7 +38,7 @@
 #define     HYDRO_L_SCALE               1e12
 #define     HYDRO_D_SCALE               1
 
-#define     CYCLOSYNCHROTRON_SWITCH     ON
+#define     CYCLOSYNCHROTRON_SWITCH     OFF
 #define     SAVE_TYPE                   ON
 
 #define     MCPAR                   "mc.par"

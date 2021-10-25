@@ -1091,23 +1091,28 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
             *(s+1)=((ph+ph_index)->s1); //Q/I
             *(s+2)=((ph+ph_index)->s2); //U/I
             *(s+3)=((ph+ph_index)->s3); //V/I
-    
             
+            /*
+            if (((ph+ph_index)->type) == COMPTONIZED_PHOTON)
+            {
             fprintf(fPtr,"Unscattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3), (ph->r0), (ph->r1), (ph->r2), *(s+0), *(s+1), *(s+2), *(s+3));
             fflush(fPtr);
             fprintf(fPtr,"Fluid Beta: %e, %e, %e\n", *(fluid_beta+0),*(fluid_beta+1), *(fluid_beta+2));
             fflush(fPtr);
+            }
             
-            
-            /*
             fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
             fflush(fPtr);
+             
+            if (((ph+ph_index)->type) == COMPTONIZED_PHOTON)
+            {
+                fprintf(fPtr, "Before Scattering, In Comov_frame:\n");
+                fflush(fPtr);
+                fprintf(fPtr, "ph_comov: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+                fflush(fPtr);
+            }
              */
-            fprintf(fPtr, "Before Scattering, In Comov_frame:\n");
-            fflush(fPtr);
-            fprintf(fPtr, "ph_comov: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
-            fflush(fPtr);
-            
+
         
             //then rotate the stokes plane by some angle such that we are in the stokes coordinat eystsem after the lorentz boost
             #if STOKES_SWITCH == ON
@@ -1121,17 +1126,26 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
             //exit(0);
             //second we generate a thermal electron at the correct temperature
             singleElectron(el_p_comov, fluid_temp, ph_p_comov, rand, fPtr);
-    
-            fprintf(fPtr,"el_comov: %e, %e, %e,%e\n", *(el_p_comov+0), *(el_p_comov+1), *(el_p_comov+2), *(el_p_comov+3));
-            fflush(fPtr);
-     
+            
+            /*
+            if (((ph+ph_index)->type) == COMPTONIZED_PHOTON)
+            {
+                fprintf(fPtr,"el_comov: %e, %e, %e,%e\n", *(el_p_comov+0), *(el_p_comov+1), *(el_p_comov+2), *(el_p_comov+3));
+                fflush(fPtr);
+            }
+             */
     
             //third we perform the scattering and save scattered photon 4 monetum in ph_p_comov @ end of function
             event_did_occur=singleScatter(el_p_comov, ph_p_comov, s, rand, fPtr);
         
-    
-            fprintf(fPtr,"After Scattering, After Lorentz Boost to Comov frame: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
-            fflush(fPtr);
+            /*
+            if (((ph+ph_index)->type) == COMPTONIZED_PHOTON)
+            {
+                fprintf(fPtr,"After Scattering, After Lorentz Boost to Comov frame: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
+                fflush(fPtr);
+            }
+            */
+            
             if (event_did_occur==1)
             {
                 //fprintf(fPtr,"Within the if!\n");
@@ -1143,8 +1157,14 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
                 *(negative_fluid_beta+1)=-1*( *(fluid_beta+1));
                 *(negative_fluid_beta+2)=-1*( *(fluid_beta+2));
                 lorentzBoost(negative_fluid_beta, ph_p_comov, ph_p, 'p',  fPtr);
-                fprintf(fPtr,"Scattered Photon in Lab frame: %e, %e, %e,%e\n\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
-                fflush(fPtr);
+                
+                /*
+                if (((ph+ph_index)->type) == COMPTONIZED_PHOTON)
+                {
+                    fprintf(fPtr,"Scattered Photon in Lab frame: %e, %e, %e,%e\n\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
+                    fflush(fPtr);
+                }
+                 */
                 
                 #if STOKES_SWITCH == ON
                 {
