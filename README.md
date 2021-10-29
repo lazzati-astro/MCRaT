@@ -195,7 +195,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 <!-- CONTACT -->
 ## Contact
 
-Tyler Parsotan - [Personal Website](https://http://sites.science.oregonstate.edu/~parsotat/) - parsotat@oregonstate.edu
+Tyler Parsotan - [Personal Website](https://http://sites.science.oregonstate.edu/~parsotat/) - parsotat@umbc.edu
 
 Project Link: [https://github.com/lazzati-astro/MCRaT](https://github.com/lazzati-astro/MCRaT)
 
