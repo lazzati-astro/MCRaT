@@ -40,7 +40,7 @@
  version 8.0 added 3D capabilities for RIKEN hydro data  and 2D capablities for RIKEN 2D hydro data and made it more efficient with grid selection to speed it up
  
 * Version 9.0 late 2017 included full Klein Nishina Cross Section and polarization with stokes parameters
-* Version 9.1 late 2018 including synchrotron absorption and emission
+* Version 9.1 late 2018 including cyclosynchrotron absorption and emission
 */
 
 #include "mcrat.h"
@@ -282,7 +282,6 @@ int main(int argc, char **argv)
             
             //each root for angle_comm has the number of processes each angle range needs to restart and the array of what the IDs of those processes used to be
             //now have to combine all that info for rank 0 in MPI_COMM_WORLD and then end it to all processes in MPI_COMM_WORLD
-            //if (myid==0)
             {
                 free(displPtr);
                 displPtr=NULL;
@@ -802,7 +801,7 @@ int main(int argc, char **argv)
                             
                             //printf("num_cyclosynch_ph_emit: %d\n", num_cyclosynch_ph_emit);
 //need to double check this for 3D simulation, will probably also need to bin in spherical phi
-                            rebin2dCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
+                            rebinCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
 
                             //fprintf(fPtr, "rebinSynchCompPhotons: scatt_cyclosynch_num_ph: %d\n", scatt_cyclosynch_num_ph);
                             //exit(0);
@@ -837,7 +836,7 @@ int main(int argc, char **argv)
                     fflush(fPtr);
                     */
 //need to double check this for 3D simulation 
-                    rebin2dCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
+                    rebinCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
                   //exit(0);
                }
                                         
@@ -965,7 +964,6 @@ int main(int argc, char **argv)
      file_count=0;
      for (i=frm0;i<=last_frm;i=i+hydrodata.increment_scatt_frame)
      {
-        //if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (i>=3000))
         #if SIM_SWITCH == RIKEN && DIMENSIONS == THREE
         if (i>=3000)
         {
@@ -993,7 +991,6 @@ int main(int argc, char **argv)
      last_frm=frm0;
      while(i<proc_frame_size)
      {
-        //if ((RIKEN_SWITCH==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && (last_frm>=3000))
         #if SIM_SWITCH == RIKEN && DIMENSIONS == THREE
         if (last_frm>=3000)
         {

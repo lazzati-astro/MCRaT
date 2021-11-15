@@ -191,22 +191,27 @@ double calcCyclosynchRLimits(int frame_scatt, int frame_inj, double fps,  double
     return val;
 }
 
-int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_ph, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
+int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_ph, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
 {
-    int i=0, j=0, k=0, count=0, count_x=0, count_y=0, count_c_ph=0, end_count=(*scatt_cyclosynch_num_ph), idx=0, num_thread=1;
+    int i=0, j=0, k=0, count=0, count_x=0, count_y=0, count_z=0, count_c_ph=0, end_count=(*scatt_cyclosynch_num_ph), idx=0, num_thread=1;
     #if defined(_OPENMP)
     num_thread=omp_get_num_threads();
     #endif
     int synch_comp_photon_count=0, synch_photon_count=0, num_avg=12, num_bins=(CYCLOSYNCHROTRON_REBIN_E_PERC)*max_photons; //some factor of the max number of photons that is specified in the mc.par file, num bins is also in test function
     double dtheta_bin=CYCLOSYNCHROTRON_REBIN_ANG*M_PI/180; //the size of the bin that we want to produce for spatial binning in theta
     int num_bins_theta=(thread_theta_max-thread_theta_min)/dtheta_bin;//try this many bins such that we have 0.5 degree resolution, can also try to do adaptive binning with constant SNR
+    int num_bins_phi=1;//calculate this based on where photons are located in phi, can also try to do adaptive binning with constant SNR
+    #if DIMENSIONS == THREE
+        double dphi_bin=CYCLOSYNCHROTRON_REBIN_ANG_PHI; //the size of the bin that we want to produce for spatial binning in phi, this one is in degrees
+        double ph_phi=0, temp_phi_max=0, temp_phi_min=DBL_MAX, min_range_phi=0, max_range_phi=0;
+    #endif
     double avg_values[12]={0}; //number of averages that'll be taken is given by num_avg in above line
     double p0_min=DBL_MAX, p0_max=0, log_p0_min=0, log_p0_max=0;//look at p0 of photons not by frequency since its just nu=p0*C_LIGHT/PL_CONST
     double rand1=0, rand2=0, phi=0, theta=0;
     double min_range=0, max_range=0, min_range_theta=0, max_range_theta=0, energy=0;
     double ph_r=0, ph_theta=0, temp_theta_max=0, temp_theta_min=DBL_MAX;
     //int *synch_comp_photon_idx=NULL; make this an array b/c had issue with deallocating this memory for some reason
-    int synch_comp_photon_idx[*scatt_cyclosynch_num_ph];
+    int synch_comp_photon_idx[*scatt_cyclosynch_num_ph], total_bins=0;
     //struct photon *rebin_ph=malloc(num_bins* sizeof (struct photon ));
     int num_null_rebin_ph=0, num_in_bin=0;
     struct photon *tmp=NULL;
@@ -254,7 +259,21 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
                 temp_theta_min=ph_theta;
                 //fprintf(fPtr, "The new min is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_min, i, ((ph+i)->r0), (ph+i)->r1, (ph+i)->r2);
             }
-
+            
+            #if DIMENSIONS == THREE
+                ph_phi=fmod(atan(((*ph_orig)[i].r1)/ ((*ph_orig)[i].r0))*180/M_PI + 360.0,360.0);//want phi to be from 0 to 360 deg
+                if (ph_phi > temp_phi_max )
+                {
+                    temp_phi_max=ph_phi;
+                    //fprintf(fPtr, "The new max is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_max, i, ((ph+i)->r0), (ph+i)->r1, (ph+i)->r2);
+                }
+                
+                if (ph_phi<temp_phi_min)
+                {
+                    temp_phi_min=ph_phi;
+                    //fprintf(fPtr, "The new min is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_min, i, ((ph+i)->r0), (ph+i)->r1, (ph+i)->r2);
+                }
+            #endif
             
             // also save the index of these photons because they wil become null later on
             synch_comp_photon_idx[count]=i;
@@ -274,10 +293,17 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
     }
     
     
-    num_bins_theta=1+(temp_theta_max-temp_theta_min)/dtheta_bin;
+    num_bins_theta=ceil((temp_theta_max-temp_theta_min)/dtheta_bin);
+    #if DIMENSIONS == THREE
+        num_bins_phi=ceil((temp_phi_max-temp_phi_min)/dphi_bin);
+        num_avg=13;
+    #endif
     
     fprintf(fPtr, "Rebin: min, max (keV): %e %e log p0 min, max: %e %e idx: %d %d\n", p0_min*C_LIGHT/1.6e-9,p0_max*C_LIGHT/1.6e-9 , log10(p0_min), log10(p0_max), min_idx, max_idx );
     fprintf(fPtr, "Rebin: min, max (theta in deg): %e %e number of bins %d count: %d\n", temp_theta_min*180/M_PI, temp_theta_max*180/M_PI, num_bins_theta, count );
+    #if DIMENSIONS == THREE
+        fprintf(fPtr, "Rebin: min, max (phi in deg): %e %e number of bins %d count: %d\n", temp_phi_min, temp_phi_max, num_bins_phi, count );
+    #endif
     fflush(fPtr);
     
     if (count != end_count)
@@ -287,24 +313,43 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
         fflush(fPtr);
     }
     
-    if (num_bins_theta*num_bins>=max_photons)
+    #if DIMENSIONS == THREE
+        total_bins=num_bins_phi*num_bins_theta*num_bins;
+    #else
+        total_bins=num_bins_theta*num_bins;
+    #endif
+    
+    if (total_bins>=max_photons)
     {
-        fprintf(fPtr, "The number of rebinned photons, %d, is larger than max_photons %d and will not rebin efficiently. Adjust the parameters such that the number of bins in theta and energy are less than the number of photons that will lead to rebinning.\n",  num_bins_theta*num_bins, max_photons);
+        fprintf(fPtr, "The number of rebinned photons, %d, is larger than max_photons %d and will not rebin efficiently. Adjust the parameters such that the number of bins in theta and energy are less than the number of photons that will lead to rebinning.\n",  total_bins, max_photons);
         fflush(fPtr);
         
         printf("Rebin: min, max (theta in deg): %e %e number of bins %d count: %d\n", temp_theta_min*180/M_PI, temp_theta_max*180/M_PI, num_bins_theta, count );
-        printf( "In angle range: %e-%e: The number of rebinned photons, %d, is larger than max_photons %d and will not rebin efficiently. Adjust the parameters such that the number of bins in theta and energy are less than the number of photons that will lead to rebinning.\n",  thread_theta_min*180/M_PI, thread_theta_max*180/M_PI, num_bins_theta*num_bins, max_photons);
+        #if DIMENSIONS == THREE
+            printf("Rebin: min, max (phi in deg): %e %e number of bins %d count: %d\n", temp_phi_min, temp_phi_max, num_bins_phi, count );
+        #endif
+        printf( "In angle range: %e-%e: The number of rebinned photons, %d, is larger than max_photons %d and will not rebin efficiently. Adjust the parameters such that the number of bins in theta and energy are less than the number of photons that will lead to rebinning.\n",  thread_theta_min*180/M_PI, thread_theta_max*180/M_PI, total_bins, max_photons);
         exit(1);
 
     }
 
         
-    struct photon *rebin_ph=malloc(num_bins*num_bins_theta* sizeof (struct photon ));
+    struct photon *rebin_ph=malloc(total_bins* sizeof (struct photon ));
     struct photon *synch_ph=malloc(synch_photon_count* sizeof (struct photon ));
     int synch_photon_idx[synch_photon_count];
     
     gsl_histogram2d * h_energy_theta = gsl_histogram2d_alloc (num_bins, num_bins_theta); //x is for energy  and y is for spatial theta, goes from 0 to pi
-    gsl_histogram2d_set_ranges_uniform (h_energy_theta, log10(p0_min), log10(p0_max*(1+1e-6)), temp_theta_min, temp_theta_max+dtheta_bin);
+    gsl_histogram2d_set_ranges_uniform (h_energy_theta, log10(p0_min), log10(p0_max*(1+1e-6)), temp_theta_min, temp_theta_max*(1+1e-6));
+    
+    #if DIMENSIONS == THREE
+        //make 2D histograms for the other combinations of (phi, theta) and (phi, energy)
+        gsl_histogram2d * h_energy_phi = gsl_histogram2d_alloc (num_bins, num_bins_phi); //x is for energy  and y is for spatial theta, goes from 0 to pi
+        gsl_histogram2d_set_ranges_uniform (h_energy_phi, log10(p0_min), log10(p0_max*(1+1e-6)), temp_phi_min, temp_phi_max*(1+1e-6));
+    
+        gsl_histogram2d * h_theta_phi = gsl_histogram2d_alloc (num_bins_theta, num_bins_phi); //x is for energy  and y is for spatial theta, goes from 0 to pi
+        gsl_histogram2d_set_ranges_uniform (h_theta_phi, temp_theta_min, temp_theta_max*(1+1e-6), temp_phi_min, temp_phi_max*(1+1e-6));
+    #endif
+
 
     //populate histogram for photons with nu that falss within the proper histogram bin
     //may not need this loop, can just check if the photon nu falls within the bin edges and do averages etc within next loop
@@ -318,6 +363,12 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
             ph_theta=acos(((*ph_orig)[i].r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
             
             gsl_histogram2d_increment(h_energy_theta, log10((*ph_orig)[i].p0), ph_theta);
+            
+            #if DIMENSIONS == THREE
+                ph_phi=fmod(atan(((*ph_orig)[i].r1)/ ((*ph_orig)[i].r0))*180/M_PI + 360.0,360.0);//want phi to be from 0 to 360 deg
+                gsl_histogram2d_increment(h_energy_phi, log10((*ph_orig)[i].p0), ph_phi);
+                gsl_histogram2d_increment(h_theta_phi, ph_theta, ph_phi);
+            #endif
             
             count_weight+=(*ph_orig)[i].weight;
 
@@ -352,189 +403,356 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
     
     //fprintf(fPtr, "counted_weight 1 %e\n", count_weight);
     //fflush(fPtr);
-    //count_weight=0;
+    count_weight=0;
     //gsl_histogram2d_fprintf(fPtr, h_energy_theta, "%g", "%g");
-        
-    for (count_x=0;count_x<num_bins;count_x++)
+    /*
+    //nested loop may not be necessary see next loop below
+    for (count_z=0;count_z<num_bins_phi;count_z++)//will only be 0 if this is 2D
     {
-        for (count_y=0;count_y<num_bins_theta;count_y++)
+        for (count_x=0;count_x<num_bins;count_x++)
         {
-            count=count_x*num_bins_theta+count_y;
-            gsl_histogram2d_get_xrange(h_energy_theta, count_x, &min_range, &max_range);
-            gsl_histogram2d_get_yrange(h_energy_theta, count_y, &min_range_theta, &max_range_theta);
-            
-            num_in_bin=gsl_histogram2d_get(h_energy_theta, count_x, count_y);
-            
-            if (num_in_bin > 1)
+            for (count_y=0;count_y<num_bins_theta;count_y++)
             {
+                count=count_z*num_bins*num_bins_theta+count_x*num_bins_theta+count_y; //count_z=0 so if this is 2D case otherwise
+                gsl_histogram2d_get_xrange(h_energy_theta, count_x, &min_range, &max_range);
+                gsl_histogram2d_get_yrange(h_energy_theta, count_y, &min_range_theta, &max_range_theta);
                 
-                rand1=gsl_rng_uniform(rand)*num_in_bin;//random photon to choose theta and phi of 4 mometum for rebinned photon
+                num_in_bin=gsl_histogram2d_get(h_energy_theta, count_x, count_y);
                 
-                for (j=0;j<num_avg;j++)
-                {
-                    avg_values[j]=0;
-                }
-                
-                //loop over the number of photons
-                j=0; //to compare to rand1 for choosing the photon
-                for (i=0;i<*num_ph;i++)
-                {
-                    if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON)) && ((*ph_orig)[i].p0 > 0))
-                    {
-                        ph_r=sqrt(((*ph_orig)[i].r0)*((*ph_orig)[i].r0) + ((*ph_orig)[i].r1)*((*ph_orig)[i].r1) + ((*ph_orig)[i].r2)*((*ph_orig)[i].r2));
-                        ph_theta=acos(((*ph_orig)[i].r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
+                #if DIMENSIONS == THREE
+                    num_in_bin+=gsl_histogram2d_get(h_energy_phi, count_x, count_z);
+                    num_in_bin+=gsl_histogram2d_get(h_theta_phi, count_y, count_z);
+                    gsl_histogram2d_get_yrange(h_energy_phi, count_z, &min_range_phi, &max_range_phi);
+                #endif
 
-                        //if the photon nu falls in the count bin of the nu histogram then add it to the phi_theta 2d hist
-                        if ((log10((*ph_orig)[i].p0)< max_range  ) && (log10((*ph_orig)[i].p0)>=min_range) && (ph_theta < max_range_theta) && (ph_theta >= min_range_theta))
+                
+                if (num_in_bin > 1)
+                {
+                    
+                    rand1=gsl_rng_uniform(rand)*num_in_bin;//random photon to choose theta and phi of 4 mometum for rebinned photon
+                    
+                    for (j=0;j<num_avg;j++)
+                    {
+                        avg_values[j]=0;
+                    }
+                    
+                    //loop over the number of photons
+                    j=0; //to compare to rand1 for choosing the photon
+                    for (i=0;i<*num_ph;i++)
+                    {
+                        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON)) && ((*ph_orig)[i].p0 > 0))
                         {
-                            //doing average values
-                            avg_values[0] += ph_r*(*ph_orig)[i].weight; // doing r, theta averages in space
-                            avg_values[1] += ph_theta*(*ph_orig)[i].weight;
-                            avg_values[2] += ((atan((*ph_orig)[i].p2/((*ph_orig)[i].p1))*180/M_PI)-(atan(((*ph_orig)[i].r1)/ ((*ph_orig)[i].r0))*180/M_PI))*(*ph_orig)[i].weight;// look at delta \phi between the 4 mometum and its location
-                            avg_values[3] += (*ph_orig)[i].s0*(*ph_orig)[i].weight;
-                            avg_values[4] += (*ph_orig)[i].s1*(*ph_orig)[i].weight;
-                            avg_values[5] += (*ph_orig)[i].s2*(*ph_orig)[i].weight;
-                            avg_values[6] += (*ph_orig)[i].s3*(*ph_orig)[i].weight;
-                            avg_values[7] += (*ph_orig)[i].num_scatt*(*ph_orig)[i].weight;
-                            avg_values[8] += (*ph_orig)[i].weight;
-                            
-                            //get avg theta and phi
+                            ph_r=sqrt(((*ph_orig)[i].r0)*((*ph_orig)[i].r0) + ((*ph_orig)[i].r1)*((*ph_orig)[i].r1) + ((*ph_orig)[i].r2)*((*ph_orig)[i].r2));
+                            ph_theta=acos(((*ph_orig)[i].r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
+
+                            //if the photon nu falls in the count bin of the nu histogram then add it to the phi_theta 2d hist
+                            if ((log10((*ph_orig)[i].p0)< max_range  ) && (log10((*ph_orig)[i].p0)>=min_range) && (ph_theta < max_range_theta) && (ph_theta >= min_range_theta))
                             {
-                                avg_values[9] += fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1))*180/M_PI + 360.0,360.0) *(*ph_orig)[i].weight;
-                                avg_values[10] += (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
+                                //doing average values
+                                avg_values[0] += ph_r*(*ph_orig)[i].weight; // doing r, theta averages in space
+                                avg_values[1] += ph_theta*(*ph_orig)[i].weight;
+                                avg_values[2] += ((atan((*ph_orig)[i].p2/((*ph_orig)[i].p1))*180/M_PI)-(atan(((*ph_orig)[i].r1)/ ((*ph_orig)[i].r0))*180/M_PI))*(*ph_orig)[i].weight;// look at delta \phi between the 4 mometum and its location
+                                avg_values[3] += (*ph_orig)[i].s0*(*ph_orig)[i].weight;
+                                avg_values[4] += (*ph_orig)[i].s1*(*ph_orig)[i].weight;
+                                avg_values[5] += (*ph_orig)[i].s2*(*ph_orig)[i].weight;
+                                avg_values[6] += (*ph_orig)[i].s3*(*ph_orig)[i].weight;
+                                avg_values[7] += (*ph_orig)[i].num_scatt*(*ph_orig)[i].weight;
+                                avg_values[8] += (*ph_orig)[i].weight;
+                                
+                                //get avg theta and phi
+                                {
+                                    avg_values[9] += fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1))*180/M_PI + 360.0,360.0) *(*ph_orig)[i].weight;
+                                    avg_values[10] += (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
 
+                                }
+                                
+                                avg_values[11] +=(*ph_orig)[i].p0*(*ph_orig)[i].weight;
+                                
+                                j++;
+                                
                             }
-                            
-                            avg_values[11] +=(*ph_orig)[i].p0*(*ph_orig)[i].weight;
-                            
-                            j++;
-                            
                         }
                     }
+                                                   
+                    
+                    energy=avg_values[11]/avg_values[8];
+                    
+                    
+                    phi=avg_values[9]/avg_values[8];
+                    theta=avg_values[10]/avg_values[8];
+                    
+                    (rebin_ph+count)->type = COMPTONIZED_PHOTON;
+                                    
+                    
+                    (rebin_ph+count)->p0=energy;
+                    (rebin_ph+count)->p1=energy*sin(theta*M_PI/180)*cos(phi*M_PI/180);
+                    (rebin_ph+count)->p2=energy*sin(theta*M_PI/180)*sin(phi*M_PI/180);
+                    (rebin_ph+count)->p3=energy*cos(theta*M_PI/180);
+                    (rebin_ph+count)->comv_p0=0;
+                    (rebin_ph+count)->comv_p1=0;
+                    (rebin_ph+count)->comv_p2=0;
+                    (rebin_ph+count)->comv_p3=0;
+                    
+                    //calculate the rebinned photon's positional phi as a displacement from its 4-momentum phi direction
+                    rand1=(M_PI/180)*(phi-avg_values[2]/avg_values[8]);
+                    
+                    
+                    (rebin_ph+count)->r0= (avg_values[0]/avg_values[8])*sin(avg_values[1]/avg_values[8])*cos(rand1); //avg_values[0]/avg_values[8]; now do avg r * avg theta * random phi
+                    (rebin_ph+count)->r1= (avg_values[0]/avg_values[8])*sin(avg_values[1]/avg_values[8])*sin(rand1); //avg_values[1]/avg_values[8];
+                    (rebin_ph+count)->r2= (avg_values[0]/avg_values[8])*cos(avg_values[1]/avg_values[8]); //avg_values[2]/avg_values[8];
+
+                    (rebin_ph+count)->s0=avg_values[3]/avg_values[8]; // stokes parameterized are normalized such that I always =1
+                    (rebin_ph+count)->s1=avg_values[4]/avg_values[8];
+                    (rebin_ph+count)->s2=avg_values[5]/avg_values[8];
+                    (rebin_ph+count)->s3=avg_values[6]/avg_values[8];
+                    (rebin_ph+count)->num_scatt=avg_values[7]/avg_values[8];
+                    (rebin_ph+count)->weight=avg_values[8];
+                    (rebin_ph+count)->nearest_block_index=0; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
+                    
+                    //fprintf(fPtr, "bin %e-%e, %e-%e has %e photons: Theta of averages photon is: %e\n",pow(10, min_range)*C_LIGHT/1.6e-9, pow(10,max_range)*C_LIGHT/1.6e-9, min_range_theta, max_range_theta, gsl_histogram2d_get(h_energy_theta, count_x, count_y), ph_theta);
+                    //fflush(fPtr);
+                    
+                    count_weight+=(rebin_ph+count)->weight;
+                                    
                 }
-                                               
-                
-                energy=avg_values[11]/avg_values[8];
-                
-                
-                phi=avg_values[9]/avg_values[8];
-                theta=avg_values[10]/avg_values[8];
-                
-                (rebin_ph+count)->type = COMPTONIZED_PHOTON;
-                                
-                
-                (rebin_ph+count)->p0=energy;
-                (rebin_ph+count)->p1=energy*sin(theta*M_PI/180)*cos(phi*M_PI/180);
-                (rebin_ph+count)->p2=energy*sin(theta*M_PI/180)*sin(phi*M_PI/180);
-                (rebin_ph+count)->p3=energy*cos(theta*M_PI/180);
-                (rebin_ph+count)->comv_p0=0;
-                (rebin_ph+count)->comv_p1=0;
-                (rebin_ph+count)->comv_p2=0;
-                (rebin_ph+count)->comv_p3=0;
-                
-                //calculate the rebinned photon's positional phi as a displacement from its 4-momentum phi direction
-                rand1=(M_PI/180)*(phi-avg_values[2]/avg_values[8]);
-                
-                
-                (rebin_ph+count)->r0= (avg_values[0]/avg_values[8])*sin(avg_values[1]/avg_values[8])*cos(rand1); //avg_values[0]/avg_values[8]; now do avg r * avg theta * random phi
-                (rebin_ph+count)->r1= (avg_values[0]/avg_values[8])*sin(avg_values[1]/avg_values[8])*sin(rand1); //avg_values[1]/avg_values[8];
-                (rebin_ph+count)->r2= (avg_values[0]/avg_values[8])*cos(avg_values[1]/avg_values[8]); //avg_values[2]/avg_values[8];
-
-                (rebin_ph+count)->s0=avg_values[3]/avg_values[8]; // stokes parameterized are normalized such that I always =1
-                (rebin_ph+count)->s1=avg_values[4]/avg_values[8];
-                (rebin_ph+count)->s2=avg_values[5]/avg_values[8];
-                (rebin_ph+count)->s3=avg_values[6]/avg_values[8];
-                (rebin_ph+count)->num_scatt=avg_values[7]/avg_values[8];
-                (rebin_ph+count)->weight=avg_values[8];
-                (rebin_ph+count)->nearest_block_index=0; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
-                
-                //fprintf(fPtr, "bin %e-%e, %e-%e has %e photons: Theta of averages photon is: %e\n",pow(10, min_range)*C_LIGHT/1.6e-9, pow(10,max_range)*C_LIGHT/1.6e-9, min_range_theta, max_range_theta, gsl_histogram2d_get(h_energy_theta, count_x, count_y), ph_theta);
-                //fflush(fPtr);
-                
-                count_weight+=(rebin_ph+count)->weight;
-                                
-            }
-            else if (num_in_bin == 1)
-            {
-                //fprintf(fPtr, "bin %e-%e has %e photons\n", pow(10, min_range)*C_LIGHT/1.6e-9, pow(10,max_range)*C_LIGHT/1.6e-9, 1.0);
-
-                //for thr case of just 1 hoton being in the bin just set the rebinned photon to the one photons parameters
-                for (i=0;i<*num_ph;i++)
+                else if (num_in_bin == 1)
                 {
-                    if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON))&& ((*ph_orig)[i].p0 > 0))
+                    //fprintf(fPtr, "bin %e-%e has %e photons\n", pow(10, min_range)*C_LIGHT/1.6e-9, pow(10,max_range)*C_LIGHT/1.6e-9, 1.0);
+
+                    //for thr case of just 1 hoton being in the bin just set the rebinned photon to the one photons parameters
+                    for (i=0;i<*num_ph;i++)
                     {
-                        ph_r=sqrt(((*ph_orig)[i].r0)*((*ph_orig)[i].r0) + ((*ph_orig)[i].r1)*((*ph_orig)[i].r1) + ((*ph_orig)[i].r2)*((*ph_orig)[i].r2));
-                        ph_theta=acos(((*ph_orig)[i].r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
-
-                        //if the photon nu falls in the count bin of the nu histogram then add it to the phi_theta 2d hist
-                        if ((log10((*ph_orig)[i].p0)< max_range  ) && (log10((*ph_orig)[i].p0)>=min_range) && (ph_theta < max_range_theta) && (ph_theta >= min_range_theta))
+                        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON))&& ((*ph_orig)[i].p0 > 0))
                         {
-                            (rebin_ph+count)->p0=(*ph_orig)[i].p0;
-                            (rebin_ph+count)->p1=(*ph_orig)[i].p1;
-                            (rebin_ph+count)->p2=(*ph_orig)[i].p2;
-                            (rebin_ph+count)->p3=(*ph_orig)[i].p3;
-                            (rebin_ph+count)->comv_p0=(*ph_orig)[i].comv_p0;
-                            (rebin_ph+count)->comv_p1=(*ph_orig)[i].comv_p1;
-                            (rebin_ph+count)->comv_p2=(*ph_orig)[i].comv_p2;
-                            (rebin_ph+count)->comv_p3=(*ph_orig)[i].comv_p3;
-                            (rebin_ph+count)->r0=(*ph_orig)[i].r0;
-                            (rebin_ph+count)->r1= (*ph_orig)[i].r1;
-                            (rebin_ph+count)->r2=(*ph_orig)[i].r2; //y coordinate in flash becomes z coordinate in MCRaT
-                            (rebin_ph+count)->s0=(*ph_orig)[i].s0; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
-                            (rebin_ph+count)->s1=(*ph_orig)[i].s1;
-                            (rebin_ph+count)->s2=(*ph_orig)[i].s2;
-                            (rebin_ph+count)->s3=(*ph_orig)[i].s3;
-                            (rebin_ph+count)->num_scatt=(*ph_orig)[i].num_scatt;
-                            (rebin_ph+count)->weight=(*ph_orig)[i].weight;
-                            (rebin_ph+count)->nearest_block_index=(*ph_orig)[i].nearest_block_index; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
-                            
-                            (rebin_ph+count)->type = COMPTONIZED_PHOTON;
-                            
-                            count_weight+=(rebin_ph+count)->weight;
+                            ph_r=sqrt(((*ph_orig)[i].r0)*((*ph_orig)[i].r0) + ((*ph_orig)[i].r1)*((*ph_orig)[i].r1) + ((*ph_orig)[i].r2)*((*ph_orig)[i].r2));
+                            ph_theta=acos(((*ph_orig)[i].r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
 
-                            i=*num_ph;
+                            //if the photon nu falls in the count bin of the nu histogram then add it to the phi_theta 2d hist
+                            if ((log10((*ph_orig)[i].p0)< max_range  ) && (log10((*ph_orig)[i].p0)>=min_range) && (ph_theta < max_range_theta) && (ph_theta >= min_range_theta))
+                            {
+                                (rebin_ph+count)->p0=(*ph_orig)[i].p0;
+                                (rebin_ph+count)->p1=(*ph_orig)[i].p1;
+                                (rebin_ph+count)->p2=(*ph_orig)[i].p2;
+                                (rebin_ph+count)->p3=(*ph_orig)[i].p3;
+                                (rebin_ph+count)->comv_p0=(*ph_orig)[i].comv_p0;
+                                (rebin_ph+count)->comv_p1=(*ph_orig)[i].comv_p1;
+                                (rebin_ph+count)->comv_p2=(*ph_orig)[i].comv_p2;
+                                (rebin_ph+count)->comv_p3=(*ph_orig)[i].comv_p3;
+                                (rebin_ph+count)->r0=(*ph_orig)[i].r0;
+                                (rebin_ph+count)->r1= (*ph_orig)[i].r1;
+                                (rebin_ph+count)->r2=(*ph_orig)[i].r2; //y coordinate in flash becomes z coordinate in MCRaT
+                                (rebin_ph+count)->s0=(*ph_orig)[i].s0; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
+                                (rebin_ph+count)->s1=(*ph_orig)[i].s1;
+                                (rebin_ph+count)->s2=(*ph_orig)[i].s2;
+                                (rebin_ph+count)->s3=(*ph_orig)[i].s3;
+                                (rebin_ph+count)->num_scatt=(*ph_orig)[i].num_scatt;
+                                (rebin_ph+count)->weight=(*ph_orig)[i].weight;
+                                (rebin_ph+count)->nearest_block_index=(*ph_orig)[i].nearest_block_index; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
+                                
+                                (rebin_ph+count)->type = COMPTONIZED_PHOTON;
+                                
+                                count_weight+=(rebin_ph+count)->weight;
+
+                                i=*num_ph;
+                            }
                         }
                     }
                 }
+                else
+                {
+                    //fprintf(fPtr, "Rebinned Photon is a null photon because there are no photons in this energy bin.\n");
+                    (rebin_ph+count)->type = COMPTONIZED_PHOTON;
+                    
+                    energy=pow(10,0.5*(max_range+min_range));
+                    
+                    //fprintf(fPtr, "bin %e-%e has %e photons\n", pow(10, min_range)*C_LIGHT/1.6e-9, pow(10,max_range)*C_LIGHT/1.6e-9, 0.0);
+
+                    
+                    (rebin_ph+count)->p0=energy;
+                    (rebin_ph+count)->p1=0;
+                    (rebin_ph+count)->p2=0;
+                    (rebin_ph+count)->p3=0;
+                    (rebin_ph+count)->comv_p0=0;
+                    (rebin_ph+count)->comv_p1=0;
+                    (rebin_ph+count)->comv_p2=0;
+                    (rebin_ph+count)->comv_p3=0;
+                    (rebin_ph+count)->r0=0;
+                    (rebin_ph+count)->r1= 0;
+                    (rebin_ph+count)->r2=0;
+                    (rebin_ph+count)->s0=1; // stokes parameterized are normalized such that I always =1
+                    (rebin_ph+count)->s1=0;
+                    (rebin_ph+count)->s2=0;
+                    (rebin_ph+count)->s3=0;
+                    (rebin_ph+count)->num_scatt=0;
+                    (rebin_ph+count)->weight=0;
+                    (rebin_ph+count)->nearest_block_index=-1; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
+                    
+                    count_weight+=(rebin_ph+count)->weight;
+
+
+                }
+                
+                
+                
             }
-            else
-            {
-                //fprintf(fPtr, "Rebinned Photon is a null photon because there are no photons in this energy bin.\n");
-                (rebin_ph+count)->type = COMPTONIZED_PHOTON;
-                
-                energy=pow(10,0.5*(max_range+min_range));
-                
-                //fprintf(fPtr, "bin %e-%e has %e photons\n", pow(10, min_range)*C_LIGHT/1.6e-9, pow(10,max_range)*C_LIGHT/1.6e-9, 0.0);
-
-                
-                (rebin_ph+count)->p0=energy;
-                (rebin_ph+count)->p1=0;
-                (rebin_ph+count)->p2=0;
-                (rebin_ph+count)->p3=0;
-                (rebin_ph+count)->comv_p0=0;
-                (rebin_ph+count)->comv_p1=0;
-                (rebin_ph+count)->comv_p2=0;
-                (rebin_ph+count)->comv_p3=0;
-                (rebin_ph+count)->r0=0;
-                (rebin_ph+count)->r1= 0;
-                (rebin_ph+count)->r2=0;
-                (rebin_ph+count)->s0=1; // stokes parameterized are normalized such that I always =1
-                (rebin_ph+count)->s1=0;
-                (rebin_ph+count)->s2=0;
-                (rebin_ph+count)->s3=0;
-                (rebin_ph+count)->num_scatt=0;
-                (rebin_ph+count)->weight=0;
-                (rebin_ph+count)->nearest_block_index=-1; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
-                
-                count_weight+=(rebin_ph+count)->weight;
-
-
-            }
-            
-            
-            
         }
     }
+    */ //checked that below algorithm reproduces above nested loop
+    //have new loop where we loop over the photons, calculate their theta, E, and phi. Have 2D array of size total_bins*12 that we use to calculate averages
+    //double avg_values_2d[total_bins][12]={0}; //number of averages that'll be taken is given by num_avg
+    
+    
+    double** avg_values_2d = (double**)malloc(total_bins * sizeof(double*));
+    for (i = 0; i < total_bins; i++)
+        avg_values_2d[i] = (double*)malloc((num_avg) * sizeof(double));
+        
+    for (i = 0; i < total_bins; i++)
+        for (count=0;count<num_avg;count++)
+        {
+            avg_values_2d[i][count]=0;
+        }
+
+        
+ 
+    count=0; //used to claculate where in array we should save averages to
+    for (i=0;i<*num_ph;i++)
+    {
+        if (((*ph_orig)[i].weight != 0) && (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON)) && ((*ph_orig)[i].p0 > 0))
+        {
+            
+            ph_r=sqrt(((*ph_orig)[i].r0)*((*ph_orig)[i].r0) + ((*ph_orig)[i].r1)*((*ph_orig)[i].r1) + ((*ph_orig)[i].r2)*((*ph_orig)[i].r2));
+            ph_theta=acos(((*ph_orig)[i].r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
+            
+            gsl_histogram2d_find(h_energy_theta, log10((*ph_orig)[i].p0), ph_theta, &count_x, &count_y);
+            
+            #if DIMENSIONS == THREE
+                ph_phi=fmod(atan(((*ph_orig)[i].r1)/ ((*ph_orig)[i].r0))*180/M_PI + 360.0,360.0);//want phi to be from 0 to 360 deg
+                gsl_histogram2d_find(h_energy_phi, log10((*ph_orig)[i].p0), ph_phi, &count_x, &count_z);
+                gsl_histogram2d_find(h_theta_phi, ph_theta, ph_phi, &count_y, &count_z);
+            #endif
+            
+            //calculate index in avg_values_2d where the histogram bins lie
+            count=count_z*num_bins*num_bins_theta+count_x*num_bins_theta+count_y; //count_z=0 if this is 2D case otherwise
+            //fprintf(fPtr, "Photon %d with count %d weight %e  and avg_value_weight %e\n", i, count,  (*ph_orig)[i].weight, avg_values_2d[count][8]);
+            //fflush(fPtr);
+            
+            //calculate cumulative averages
+            avg_values_2d[count][0] += ph_r*(*ph_orig)[i].weight; // doing r, theta averages in space
+            avg_values_2d[count][1] += ph_theta*(*ph_orig)[i].weight;
+            avg_values_2d[count][2] += ((atan((*ph_orig)[i].p2/((*ph_orig)[i].p1))*180/M_PI)-(atan(((*ph_orig)[i].r1)/ ((*ph_orig)[i].r0))*180/M_PI))*(*ph_orig)[i].weight;// look at delta \phi between the 4 mometum and its location
+            avg_values_2d[count][3] += (*ph_orig)[i].s0*(*ph_orig)[i].weight;
+            avg_values_2d[count][4] += (*ph_orig)[i].s1*(*ph_orig)[i].weight;
+            avg_values_2d[count][5] += (*ph_orig)[i].s2*(*ph_orig)[i].weight;
+            avg_values_2d[count][6] += (*ph_orig)[i].s3*(*ph_orig)[i].weight;
+            avg_values_2d[count][7] += (*ph_orig)[i].num_scatt*(*ph_orig)[i].weight;
+            avg_values_2d[count][8] += (*ph_orig)[i].weight;
+            
+            //get avg theta and phi
+            {
+                avg_values_2d[count][9] += fmod(atan2((*ph_orig)[i].p2,((*ph_orig)[i].p1))*180/M_PI + 360.0,360.0) *(*ph_orig)[i].weight;
+                avg_values_2d[count][10] += (180/M_PI)*acos(((*ph_orig)[i].p3)/((*ph_orig)[i].p0))*(*ph_orig)[i].weight;
+
+            }
+            
+            avg_values_2d[count][11] +=(*ph_orig)[i].p0*(*ph_orig)[i].weight;
+            #if DIMENSIONS == THREE
+                avg_values_2d[count][12] += ph_phi*(*ph_orig)[i].weight;
+            #endif
+
+        }
+    }
+    
+    //save the avg values to the rebin_arrays
+    for (i=0;i<total_bins;i++)
+    {
+        //test if weight== 0 in 2D array, means there are no photons in that theta,E, phi bin
+        if (avg_values_2d[i][8]==0)
+        {
+            (rebin_ph+i)->type = COMPTONIZED_PHOTON;
+            //fprintf(fPtr, "bin %e-%e has %e photons\n", pow(10, min_range)*C_LIGHT/1.6e-9, pow(10,max_range)*C_LIGHT/1.6e-9, 0.0);
+
+            
+            (rebin_ph+i)->p0=1;
+            (rebin_ph+i)->p1=0;
+            (rebin_ph+i)->p2=0;
+            (rebin_ph+i)->p3=0;
+            (rebin_ph+i)->comv_p0=0;
+            (rebin_ph+i)->comv_p1=0;
+            (rebin_ph+i)->comv_p2=0;
+            (rebin_ph+i)->comv_p3=0;
+            (rebin_ph+i)->r0=0;
+            (rebin_ph+i)->r1= 0;
+            (rebin_ph+i)->r2=0;
+            (rebin_ph+i)->s0=1; // stokes parameterized are normalized such that I always =1
+            (rebin_ph+i)->s1=0;
+            (rebin_ph+i)->s2=0;
+            (rebin_ph+i)->s3=0;
+            (rebin_ph+i)->num_scatt=0;
+            (rebin_ph+i)->weight=0;
+            (rebin_ph+i)->nearest_block_index=-1; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
+            
+            count_weight+=(rebin_ph+i)->weight;
+
+        }
+        else
+        {
+            energy=avg_values_2d[i][11]/avg_values_2d[i][8];
+            
+            phi=avg_values_2d[i][9]/avg_values_2d[i][8];
+            theta=avg_values_2d[i][10]/avg_values_2d[i][8];
+            
+            (rebin_ph+i)->type = COMPTONIZED_PHOTON;
+                            
+            
+            (rebin_ph+i)->p0=energy;
+            (rebin_ph+i)->p1=energy*sin(theta*M_PI/180)*cos(phi*M_PI/180);
+            (rebin_ph+i)->p2=energy*sin(theta*M_PI/180)*sin(phi*M_PI/180);
+            (rebin_ph+i)->p3=energy*cos(theta*M_PI/180);
+            (rebin_ph+i)->comv_p0=0;
+            (rebin_ph+i)->comv_p1=0;
+            (rebin_ph+i)->comv_p2=0;
+            (rebin_ph+i)->comv_p3=0;
+            
+            #if DIMENSIONS == THREE
+                //actually use average phi here since these photons are already in teh same phi bin
+                rand1=(M_PI/180)*(avg_values_2d[i][12]/avg_values_2d[i][8]);
+            #else
+                //calculate the rebinned photon's positional phi as a displacement from its 4-momentum phi direction in 2D, dont care where photons are in phi because of cylilndrical symmetry
+                rand1=(M_PI/180)*(phi-avg_values_2d[i][2]/avg_values_2d[i][8]);
+            #endif
+
+            
+            
+            (rebin_ph+i)->r0= (avg_values_2d[i][0]/avg_values_2d[i][8])*sin(avg_values_2d[i][1]/avg_values_2d[i][8])*cos(rand1); //avg_values[0]/avg_values[8]; now do avg r * avg theta * random phi
+            (rebin_ph+i)->r1= (avg_values_2d[i][0]/avg_values_2d[i][8])*sin(avg_values_2d[i][1]/avg_values_2d[i][8])*sin(rand1); //avg_values[1]/avg_values[8];
+            (rebin_ph+i)->r2= (avg_values_2d[i][0]/avg_values_2d[i][8])*cos(avg_values_2d[i][1]/avg_values_2d[i][8]); //avg_values[2]/avg_values[8];
+
+            (rebin_ph+i)->s0=avg_values_2d[i][3]/avg_values_2d[i][8]; // stokes parameterized are normalized such that I always =1
+            (rebin_ph+i)->s1=avg_values_2d[i][4]/avg_values_2d[i][8];
+            (rebin_ph+i)->s2=avg_values_2d[i][5]/avg_values_2d[i][8];
+            (rebin_ph+i)->s3=avg_values_2d[i][6]/avg_values_2d[i][8];
+            (rebin_ph+i)->num_scatt=avg_values_2d[i][7]/avg_values_2d[i][8];
+            (rebin_ph+i)->weight=avg_values_2d[i][8];
+            (rebin_ph+i)->nearest_block_index=0; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
+            
+            //fprintf(fPtr, "bin %e-%e, %e-%e has %e photons: Theta of averages photon is: %e\n",pow(10, min_range)*C_LIGHT/1.6e-9, pow(10,max_range)*C_LIGHT/1.6e-9, min_range_theta, max_range_theta, gsl_histogram2d_get(h_energy_theta, count_x, count_y), ph_theta);
+            //fflush(fPtr);
+            
+            count_weight+=(rebin_ph+i)->weight;
+
+        }
+    }
+    
+    //free the dynamically allocated memory
+    for (i = 0; i < total_bins; i++)
+        free(avg_values_2d[i]);
+ 
+    free(avg_values_2d);
+    
+
+    //end second loop that can replace original nested loop
+
+    
     
     //fprintf(fPtr, "counted_weight 2 %e\n", count_weight);
     //fflush(fPtr);
@@ -542,7 +760,7 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
     //exit(0);
     
     
-    if ((count_c_ph+(*num_null_ph))<num_bins*num_bins_theta)
+    if ((count_c_ph+(*num_null_ph))<total_bins)
     {
         //need to expand the array
         //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
@@ -563,9 +781,9 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
          */
 
         
-        //fprintf(fPtr, "Rebin: Allocating %d space\n", ((*num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph) )); //befoe was dong
+        //fprintf(fPtr, "Rebin: Allocating %d space\n", ((*num_ph)+total_bins-count_c_ph+(*num_null_ph) )); //befoe was dong
         //fflush(fPtr);
-        tmp=realloc(*ph_orig, ((*num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph))* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
+        tmp=realloc(*ph_orig, ((*num_ph)+total_bins-count_c_ph+(*num_null_ph))* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
         if (tmp != NULL)
         {
             /* everything ok */
@@ -588,7 +806,7 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
 
         
         //also expand memory of other arrays
-        tmp_double=realloc(*all_time_steps, ((*num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph))*sizeof(double));
+        tmp_double=realloc(*all_time_steps, ((*num_ph)+total_bins-count_c_ph+(*num_null_ph))*sizeof(double));
         if (tmp_double!=NULL)
         {
             *all_time_steps=tmp_double;
@@ -604,7 +822,7 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
         //fflush(fPtr);
 
         
-        tmp_int=realloc(*sorted_indexes, ((*num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph))*sizeof(int));
+        tmp_int=realloc(*sorted_indexes, ((*num_ph)+total_bins-count_c_ph+(*num_null_ph))*sizeof(int));
         if (tmp_int!=NULL)
         {
             *sorted_indexes=tmp_int;
@@ -617,8 +835,8 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
         }
 
         
-        *num_ph=( *num_ph)+(num_bins*num_bins_theta-count_c_ph+(*num_null_ph));
-        end_count=(*scatt_cyclosynch_num_ph)+num_bins*num_bins_theta-count_c_ph+(*num_null_ph);
+        *num_ph=( *num_ph)+(total_bins-count_c_ph+(*num_null_ph));
+        end_count=(*scatt_cyclosynch_num_ph)+total_bins-count_c_ph+(*num_null_ph);
         
         //go through all the phtons and ID where the synchrotron ones are and reset them to what they were originally
         count=0;
@@ -652,7 +870,7 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
         }
         
         //go through the newly added phootns in the array and make sure that there are no CS_POOL_PHOTON type photons there that can cause issues later on
-        for (i=( *num_ph)-(num_bins*num_bins_theta-count_c_ph+(*num_null_ph));i<(*num_ph);i++)
+        for (i=( *num_ph)-(total_bins-count_c_ph+(*num_null_ph));i<(*num_ph);i++)
         {
             if ((*ph_orig)[i].type == CS_POOL_PHOTON)
             {
@@ -691,12 +909,12 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
         else
         {
             //enter this if we realloc the arrays
-            idx=i-(*scatt_cyclosynch_num_ph)+( *num_ph)-(num_bins*num_bins_theta-count_c_ph+(*num_null_ph));//go to the end of the old num_ph value and start setting things to null photons
+            idx=i-(*scatt_cyclosynch_num_ph)+( *num_ph)-(total_bins-count_c_ph+(*num_null_ph));//go to the end of the old num_ph value and start setting things to null photons
         }
 
         if (((*ph_orig)[idx].type == UNABSORBED_CS_PHOTON) || ((*ph_orig)[idx].type == COMPTONIZED_PHOTON))
         {
-            if (count<num_bins*num_bins_theta)
+            if (count<total_bins)
             {
                 //keep saving the rebinned photns
                 (*ph_orig)[idx].p0=(rebin_ph+count)->p0;
@@ -769,7 +987,7 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
     }
     
     //make sure that all the rebinned photons have been saved
-    if (count<num_bins*num_bins_theta)
+    if (count<total_bins)
     {
         fprintf(fPtr, "There was an issue where MCRaT was not able to save all of the rebinned photons\n");
         printf("TThere was an issue where MCRaT was not able to save all of the rebinned photons\n");
@@ -793,11 +1011,11 @@ int rebin2dCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num
 
     
     
-    *scatt_cyclosynch_num_ph=num_bins*num_bins_theta-num_null_rebin_ph;
-    *num_cyclosynch_ph_emit=num_bins*num_bins_theta+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
+    *scatt_cyclosynch_num_ph=total_bins-num_null_rebin_ph;
+    *num_cyclosynch_ph_emit=total_bins+synch_photon_count-num_null_rebin_ph; //include the emitted synch photons and exclude any of those that are null
     *num_null_ph=j; //was using j before but i have no idea why its not counting correctly
         
-    //fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d  num_null_rebin_ph: %d old scatt_cyclosynch_num_ph: %d new scatt_cyclosynch_num_ph: %d\n", *num_null_ph, (*num_ph), j, num_null_rebin_ph, *scatt_cyclosynch_num_ph, num_bins*num_bins_theta-num_null_rebin_ph  );
+    //fprintf(fPtr, "orig null_ph: %d Calc num_ph: %d counted null_ph: %d  num_null_rebin_ph: %d old scatt_cyclosynch_num_ph: %d new scatt_cyclosynch_num_ph: %d\n", *num_null_ph, (*num_ph), j, num_null_rebin_ph, *scatt_cyclosynch_num_ph, total_bins-num_null_rebin_ph  );
     //fflush(fPtr);
     
     //exit(2);

@@ -203,9 +203,14 @@ struct hydro_dataframe
         #define CYCLOSYNCHROTRON_REBIN_E_PERC 0.1
     #endif
 
-    //if the angle bins that the rebinned synch photons isnt defined use 0.5 degree increments by default
+    //if the polar angle bins that the rebinned synch photons isnt defined use 0.5 degree increments by default
     #ifndef CYCLOSYNCHROTRON_REBIN_ANG
         #define CYCLOSYNCHROTRON_REBIN_ANG 0.5
+    #endif
+
+    //if the azimuthal angle bins that the rebinned synch photons isnt defined use 0.5 degree increments by default
+    #ifndef CYCLOSYNCHROTRON_REBIN_ANG_PHI
+        #define CYCLOSYNCHROTRON_REBIN_ANG_PHI 10 //0.5
     #endif
 
     //if the user hasnt defined anything for how to calculate the B field, assume that they want it calculated from the total energy

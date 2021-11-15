@@ -29,16 +29,18 @@
 #define     SIM_SWITCH                  PLUTO
 #define     GEOMETRY                    CYLINDRICAL
 #define     DIMENSIONS                  TWO_POINT_FIVE
-#define     B_FIELD_CALC                SIMULATION
+//#define     B_FIELD_CALC                SIMULATION
+#define CYCLOSYNCHROTRON_REBIN_E_PERC 0.5
+#define EPSILON_B 1.0
 
 
 
 #define     STOKES_SWITCH               ON
 #define     COMV_SWITCH                 ON
-#define     HYDRO_L_SCALE               1e12
+#define     HYDRO_L_SCALE               1e11
 #define     HYDRO_D_SCALE               1
 
-#define     CYCLOSYNCHROTRON_SWITCH     OFF
+#define     CYCLOSYNCHROTRON_SWITCH     ON
 #define     SAVE_TYPE                   ON
 
 #define     MCPAR                   "mc.par"
