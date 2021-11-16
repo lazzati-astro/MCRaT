@@ -6,16 +6,11 @@ LIB         = -lz -lm -ldl -lgsl -lgslcblas -lm -lmpi -lsz -Wl,-rpath -Wl,/nasa/
 
 DEPS = mcrat.h mclib.h mclib_riken.h mclib_pluto.h mc_cyclosynch.h mcrat_input.h geometry.h mcrat_io.h mcrat_scattering.h mcrat_flash.h
 OBJ = mcrat.o mclib.o mclib_riken.o mclib_pluto.o mc_cyclosynch.o geometry.o mcrat_io.o mcrat_scattering.o mcrat_flash.o
+OBJ_MERGE = merge.o mclib.o mclib_riken.o mclib_pluto.o mc_cyclosynch.o geometry.o mcrat_io.o mcrat_scattering.o mclib_flash.o
+
 
 INCLUDE   = -I/nasa/pkgsrc/sles12/2016Q4/include -I/nasa/szip/2.1.1/include -I/u/tparsota/gsl-2.4/include
 LIBSHDF   =  $(EXTLIB)
-
-#all: h5_crtdat \
-#     h5_rdwt \
-#     h5_crtatt \
-#     h5_crtgrp \
-#     h5_crtgrpar \
-#     h5_crtgrpd \
  
 
 %.o: %.c $(DEPS)
@@ -24,10 +19,10 @@ LIBSHDF   =  $(EXTLIB)
 MCRAT: $(OBJ)
 	$(CC) $(CFLAGS)  -o $@ $^ $(INCLUDE) $(LIBSHDF) $(LIB)
 
-MERGE: merge.o mclib.o
+MERGE: $(OBJ_MERGE) 
 	$(CC) $(CFLAGS)  -o $@ $^ $(INCLUDE) $(LIBSHDF) $(LIB)
 
-merge.o: merge.c mclib.c mclib.h	
+%.o: %.c $(DEPS)
 	$(CC) $(CFLAGS)  -c -o $@ $< $(INCLUDE) $(LIBSHDF) $(LIB)
 
 clean: 

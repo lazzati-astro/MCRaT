@@ -800,7 +800,6 @@ int main(int argc, char **argv)
                             //if the number of synch photons that have been scattered is too high rebin them
                             
                             //printf("num_cyclosynch_ph_emit: %d\n", num_cyclosynch_ph_emit);
-//need to double check this for 3D simulation, will probably also need to bin in spherical phi
                             rebinCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
 
                             //fprintf(fPtr, "rebinSynchCompPhotons: scatt_cyclosynch_num_ph: %d\n", scatt_cyclosynch_num_ph);
@@ -835,7 +834,6 @@ int main(int argc, char **argv)
                     fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
                     fflush(fPtr);
                     */
-//need to double check this for 3D simulation 
                     rebinCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
                   //exit(0);
                }
