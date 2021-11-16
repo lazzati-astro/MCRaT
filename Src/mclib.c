@@ -539,7 +539,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
                 //fprintf(fPtr,"Min Index: %d\n", min_index);
         
                 //save values
-                (n_dens_lab_tmp)= (hydro_data->dens)[min_index];//(*(dens_lab+min_index));
+                (n_dens_lab_tmp)= (hydro_data->dens_lab)[min_index];//(*(dens_lab+min_index));
                 (n_temp_tmp)= (hydro_data->temp)[min_index];//(*(temp+min_index));
                 
                 #if DIMENSIONS == THREE
@@ -555,7 +555,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
                 
                 fl_v_x=fluid_beta[0];
                 fl_v_y=fluid_beta[1];
-                fl_v_x=fluid_beta[2];
+                fl_v_z=fluid_beta[2];
                 
                 fl_v_norm=sqrt(fl_v_x*fl_v_x+fl_v_y*fl_v_y+fl_v_z*fl_v_z);
                 ph_v_norm=sqrt(((ph+i)->p1)*((ph+i)->p1)+((ph+i)->p2)*((ph+i)->p2)+((ph+i)->p3)*((ph+i)->p3));
