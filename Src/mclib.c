@@ -49,10 +49,22 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
             hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], 0);
         #endif
         
-        //look at all boxes in width delta r=c/fps and within angles we are interested in NEED TO IMPLEMENT
+        //look at all boxes in width delta r=c/fps and within angles we are interested in 
+        //if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max) && ((hydro_data->r0_size)[i]<1e11) && ((hydro_data->r1_size)[i]<0.09))
         if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
             {
+                //&& ((hydro_data->r0_size)[i]<1e11) && ((hydro_data->r1)[i]<3.0*3.14/180) is just for testing sph_3d mcrat sim to see if block_cnt is the issue for the 200x normalization issue -> this fixed norm issue, not N_scatt issue when start at frame 0
+                // also try injecting photons in frame 1 without above conditions -> didnt fix normalization issue not N_scatt issue
+                // also try inj at frame 1 with scale 1e11 -> didnt fixed normalization issue not N_scatt issue
+                // also try inj at frame 0 (orig) to see what gets printed for diagnosing CHOMBO refinement levels being an issue
+                // try inj at frame 0 with modified if statement and L scale 1e11
                 block_cnt++;
+                //#if DIMENSIONS == THREE
+                //fprintf(fPtr,"rmin %e rmax %e thetamin %e thetamax %e hydro: r0 %e r1 %e r2 %e r0_size %e r1_size %e r2_size %e r_inner %e theta_inner %e r_outer %e theta_outer %e\n", rmin, rmax, theta_min, theta_max, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i], (hydro_data->r0_size)[i], (hydro_data->r1_size)[i], (hydro_data->r2_size)[i], r_grid_innercorner, theta_grid_innercorner, r_grid_outercorner, theta_grid_outercorner);
+                //#else
+                //fprintf(fPtr,"rmin %e rmax %e thetamin %e thetamax %e hydro: r0 %e r1 %e r0_size %e r1_size %e r_inner %e theta_inner %e r_outer %e theta_outer %e dens %e\n", rmin, rmax, theta_min, theta_max, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r0_size)[i], (hydro_data->r1_size)[i], r_grid_innercorner, theta_grid_innercorner, r_grid_outercorner, theta_grid_outercorner, (hydro_data->dens)[i]);
+                //#endif
+                //fflush(fPtr);
             }
     }
     //printf("Blocks: %d\n", block_cnt);
@@ -89,6 +101,7 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
                 hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], 0);
             #endif
 
+            //if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max) && ((hydro_data->r0_size)[i]<1e11) && ((hydro_data->r1_size)[i]<0.09))
             if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
             {
                 ph_dens_calc=(4.0/3.0)*hydroElementVolume(hydro_data, i) *(((hydro_data->gamma)[i]*num_dens_coeff*(hydro_data->temp)[i]*(hydro_data->temp)[i]*(hydro_data->temp)[i])/ph_weight_adjusted); //4 comes from L \propto 4p in the limit radiation pressure is greater than the matter energy density and 3 comes from p=u/3, where u is the energy density
@@ -149,6 +162,7 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
             hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], 0);
         #endif
 
+        //if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max) && ((hydro_data->r0_size)[i]<1e11) && ((hydro_data->r1_size)[i]<0.09))
         if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
         {
 
