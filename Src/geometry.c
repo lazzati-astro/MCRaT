@@ -41,12 +41,12 @@ void mcratCoordinateToHydroCoordinate(double *ph_hydro_coord, double mcrat_r0, d
         #if GEOMETRY == SPHERICAL
             r0=sqrt(mcrat_r0*mcrat_r0+mcrat_r1*mcrat_r1+mcrat_r2*mcrat_r2); // r coordinate
             r1= acos(mcrat_r2/r0); //theta cooridinate along jet axis
-            r2=atan2(mcrat_r1, mcrat_r0); // phi coordinate
+            r2= fmod(atan2(mcrat_r1, mcrat_r0) * 180.0/M_PI + 360.0, 360.0) *M_PI/180;//atan2(mcrat_r1, mcrat_r0); // phi coordinate
         #endif
 
         #if GEOMETRY == POLAR
             r0=sqrt(mcrat_r0*mcrat_r0+mcrat_r1*mcrat_r1); // r coordinate
-            r1=atan2(mcrat_r1, mcrat_r0); //phi coordinate along jet axis
+            r1=fmod(atan2(mcrat_r1, mcrat_r0) * 180.0/M_PI + 360.0, 360.0) *M_PI/180; //phi coordinate along jet axis
             r2=mcrat_r2; // z coordinate
         #endif
 
@@ -185,7 +185,8 @@ double vectorMagnitude(double v0, double v1, double v2)
 void hydroVectorToCartesian(double *cartesian_vector_3d, double v0, double v1, double v2, double x0, double x1, double x2)
 {
     //takes the vector <v0, v1, v2> at position (x0, x1, x2) in the hydro coordinate system and converts it to a 3D vector
-    // in 2D for cylindrical, cartesian, and spherical coordinates can just pass in the photon phi for the value of x2 since we are assuming axisymmetry here anyways
+    // in 2D for cylindrical, cartesian, and spherical coordinates
+    // can just pass in the photon phi for the value of x2 since we are assuming axisymmetry here anyways
     //may need to modify if PLUTO allows for saving full 3D vectors even when it only considers 2D sims
     double transformed_vector0=0, transformed_vector1=0, transformed_vector2=0;
     
