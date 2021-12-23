@@ -381,7 +381,7 @@ The \texttt{mc\_proc\_$i$.h5} file is a HDF5 file that contains all the data for
 \item PT - the photon type of each photon (these are saved as ASCII decimal numbers that can be mapped to a character)
 \end{itemize}
 
-The currently available photon types are 'i' for the injected photons and 's' for thermal synchrotron photons. 
+The currently available photon types are 'i' for the injected photons and 'c' for thermal synchrotron photons. 
 
 These data sets include information for all of the photons after they were scattered through the given hydro simulation frame. The order of the data is based on the chronological order in which each set of photons were injected. For the example \texttt{mc.par} file in \autoref{mc.par}, if the user uses $N$ MPI processes such that each process injects photons into 2 frames, the \texttt{mc\_proc\_$0$.h5} file would look like:
 \begin{figure}[h!]
