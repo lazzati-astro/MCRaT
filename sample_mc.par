@@ -1,9 +1,9 @@
 [Hydro/MHD Simulation Block]
 
 5.               # Number of frames per second of hydro simulation (likely always the same)
-224		# Last available hydro simulation frame  (get it from the last file in the data folder)
+3000		# Last available hydro simulation frame  (get it from the last file in the data folder)
 0 5e12		# Max r0 coordinate limits of hydro simulation
-0 2.5e13		# Max r1 coordinate limit of hydro simulation
+0 2.5e12		# Max r1 coordinate limit of hydro simulation
 0 2e13		# Max r2 coordinate limit of hydro simulation (if simulation is 3D)
 
 [MCRaT Injection Angles Block]
@@ -13,13 +13,13 @@
 3.			# Number of angle bins to consider
 200 200 200      	# Frame at which photon injection starts for each angle bin
 2 2 2            	# Number of frames for which photons are injected for each angle bin
-15e11 15e11 15e11	# The radius at which the photons are injected for each angle bin
+1e11 1.5e12 2e12	# The radius at which the photons are injected for each angle bin
 
 [MCRaT Photon Block]
 
 b		# Type of spectrum we inject with, w=wien b=blackbody
-50		# Min number of photons
-100		# Max number of photons
+1000		# Min number of photons
+5000		# Max number of photons
 
 [Initialization/Continuation Block]
 
