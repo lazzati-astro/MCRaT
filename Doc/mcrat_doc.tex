@@ -74,7 +74,7 @@ Additionally, there are a number of switches that the user can specify to the pr
 
 The \texttt{SIM\_SWITCH} tells MCRaT what hydro simulation is being used. The options are \texttt{FLASH} and \texttt{PLUTO\_CHOMBO}, for the FLASH hydrodynamic code and the PLUTO hydro code with CHOMBO AMR respectively. The switch \texttt{DIM\_SWITCH} tells MCRaT the dimensionality of the hydro simulation that is used. This switch can be set to \texttt{2}, for 2D, or \texttt{3}, for 3D. The 3D feature is still in development so the switch should be set to \texttt{2} for now. The geometry can also be specified through the \texttt{GEOMETRY} define statement. The options are \texttt{SPHERICAL} and \texttt{CARTESIAN}; however, since MCRaT only supports 2D, the supported spherical coordinate system is $(r, \theta)$ and the supported \texttt{CARTESIAN} system is $(x,y)$ and $(r,z)$ in cylindrical coordinates. The length, pressure, and density scales of the hydro simulation also has to be specified by setting the values of \texttt{HYDRO\_L\_SCALE}, \texttt{HYDRO\_P\_SCALE}, and \texttt{HYDRO\_D\_SCALE}, respectively, to the normalization that is used in the hydro simulation.
 
-In order to enable the consideration of thermal synchrotron photons in the MCRaT simulation the \texttt{CYCLOSYNCHROTRON\_SWITCH} needs to be set to \texttt{ON}, otherwise this switch should be set to \texttt{OFF}. If it is set to be \texttt{ON}, the user needs to define other variables. One variable that needs to be defined is \texttt{CYCLOSYNCHROTRON\_REBIN\_E\_PERC} which provides MCRaT with an upper limit for the number of synchrotron photons to emit. This quantity is calculated as the percentage of the maximum number of photons the user wants injected (see line 17 of the example mc.par file in section \ref{mc.par}). If \texttt{CYCLOSYNCHROTRON\_REBIN\_E\_PERC} is set to 0.5 and the value of the 17$^\textrm{th}$ line is 3000, the upper limit for the number of synchrotron emitted photons is 1500. This variable also defines the number of energy bins that MCRaT will create when it rebins the synchrotron photons, thus in the aforementioned example, the number of energy bins that the photons will be rebinned into is 1500 as well. MCRaT will also rebin the photons into spatial bins and the size of these bins are specified using the \texttt{CYCLOSYNCHROTRON\_REBIN\_ANG} variable which has units of degrees. In considering synchrotron emission, the user needs to specify how the magnetic field is calculated. This is done through the \texttt{B\_FIELD\_CALC} switch which can be set to: \texttt{INTERNAL\_E}, where the magnetic energy density is set equal to the internal energy of the outflow, \texttt{TOTAL\_E}, where the magnetic field is calculated from the total energy of the outflow, or \texttt{SIMULATION} where the code uses the magnitude of the magnetic field that is acquired from a simulation. If \texttt{B\_FIELD\_CALC} is set to \texttt{TOTAL\_E} or \texttt{INTERNAL\_E}, the user needs to set the \texttt{EPSILON\_B} switch, which represents the fraction of the total outflow energy that is in the magnetic field. More information about the implementation of thermal synchrotron emission in the algorithm of the code can be found in section \ref{algorithm}. More information regarding the physics of the implementation of thermal synchrotron emission and absorption can be found in section \ref{synch}. 
+In order to enable the consideration of thermal synchrotron photons in the MCRaT simulation the \texttt{CYCLOSYNCHROTRON\_SWITCH} needs to be set to \texttt{ON}, otherwise this switch should be set to \texttt{OFF}. If it is set to be \texttt{ON}, the user needs to define other variables. One variable that needs to be defined is \texttt{CYCLOSYNCHROTRON\_REBIN\_E\_PERC} which provides MCRaT with an upper limit for the number of synchrotron photons to emit. This quantity is calculated as the percentage of the maximum number of photons the user wants injected (see the \texttt{[MCRaT Photon Block]} portion of the example mc.par file in section \ref{mc.par}). If \texttt{CYCLOSYNCHROTRON\_REBIN\_E\_PERC} is set to 0.5 and the value of the 17$^\textrm{th}$ line is 3000, the upper limit for the number of synchrotron emitted photons is 1500. This variable also defines the number of energy bins that MCRaT will create when it rebins the synchrotron photons, thus in the aforementioned example, the number of energy bins that the photons will be rebinned into is 1500 as well. MCRaT will also rebin the photons into spatial bins and the size of these bins are specified using the \texttt{CYCLOSYNCHROTRON\_REBIN\_ANG} variable which has units of degrees. In considering synchrotron emission, the user needs to specify how the magnetic field is calculated. This is done through the \texttt{B\_FIELD\_CALC} switch which can be set to: \texttt{INTERNAL\_E}, where the magnetic energy density is set equal to the internal energy of the outflow, \texttt{TOTAL\_E}, where the magnetic field is calculated from the total energy of the outflow, or \texttt{SIMULATION} where the code uses the magnitude of the magnetic field that is acquired from a simulation. If \texttt{B\_FIELD\_CALC} is set to \texttt{TOTAL\_E} or \texttt{INTERNAL\_E}, the user needs to set the \texttt{EPSILON\_B} switch, which represents the fraction of the total outflow energy that is in the magnetic field. More information about the implementation of thermal synchrotron emission in the algorithm of the code can be found in section \ref{algorithm}. More information regarding the physics of the implementation of thermal synchrotron emission and absorption can be found in section \ref{synch}. 
 
 Another helpful switch is the \texttt{SAVE\_TYPE} switch, with tells MCRaT to include the photon type in the saved datasets. 
 
@@ -83,7 +83,7 @@ The parameters that can be set and the appropriate values that each parameter ca
 \begin{figure}[h!]
 \centering
 %\begin{table}
-\begin{tabular}{|c|p{0.5\textwidth}|}
+\begin{tabular}{|l|p{0.5\textwidth}|}
 \hline 
 Parameter & Acceptable Values \\ 
 \hline 
@@ -103,13 +103,11 @@ COMV\_SWITCH & ON, OFF (Defaults to OFF)\\
 \hline 
 SAVE\_TYPE & ON, OFF (Defaults to OFF)\\
 \hline 
-DIMENSIONS & 2 \\ 
+DIMENSIONS & TWO, TWO\_POINT\_FIVE, or THREE \\ 
 \hline 
-GEOMETRY & CARTESIAN, SPHERICAL \\ 
-\hline 
+GEOMETRY & CARTESIAN, \newline SPHERICAL, \newline CYLINDRICAL (only in 2D), \newline POLAR (only in 3D)  \\ 
+\hline  
 HYDRO\_L\_SCALE & $(-\infty, +\infty)$ \\ 
-\hline 
-HYDRO\_P\_SCALE & $(-\infty, +\infty)$ \\
 \hline 
 HYDRO\_D\_SCALE & $(-\infty, +\infty)$ \\ 
 \hline 
@@ -136,58 +134,94 @@ EPSILON\_B & (0.0, 1.0] (Default is 0.5)\\
 
 \end{figure}
 
+
+
+
 \subsection{The MCRaT Parameter File} \label{mc.par}
-MCRaT requires the user to provide information in the form of a parameter file named \texttt{mc.par} which should be placed in the appropriate directory, as is described in the previous section. An example \texttt{mc.par} file, named \texttt{sample\_mc.par} is included in the MCRaT github repository. An example with a description of each line, is as follows:\\
+MCRaT requires the user to provide information in the form of a parameter file named \texttt{mc.par} which should be placed in the appropriate directory, as is described in the previous section. An example \texttt{mc.par} file, named \texttt{sample\_mc.par} is included in the MCRaT github repository. An example with a description of each line, is as follows:\newpage
 
-\begin{tabularx}{\linewidth}{r X}
-1e12 &   The 1$^\textrm{st}$ line is the domain of the hydro x axis \\ 
-1e13 &   The 2$^\textrm{nd}$ line is the domain of the hydro y axis \\ 
-5 &   The 3$^\textrm{rd}$ line is the the hydro simulation number of frames per second  \\ 
-200 &    The 4$^\textrm{th}$ line is the starting frame number for angles $\le 2^\circ$\\ 
-200 &   The 5$^\textrm{th}$ line is the starting frame number for angles $> 2^\circ$ \\ 
-3000 &   The 6$^\textrm{th}$ line is the last hydro frame number \\ 
-124 &    The 7$^\textrm{th}$ line is the number of frames in which photons are injected for angles $\le 2^\circ$\\ 
-124 &   The 8$^\textrm{th}$ line is the number of frames in which photons are injected for angles $> 2^\circ$ \\ 
-8e11 &    The 9$^\textrm{th}$ line is the radius at which the photons will be injected for angles $\le 2^\circ$\\ 
-9e11 &   The 10$^\textrm{th}$ line is the radius at which the photons will be injected for angles $> 2^\circ$ \\ 
-0 &   The 11$^\textrm{th}$ line is the minimum angle in degrees for which photons will be injected \\ 
-20 &   The 12$^\textrm{th}$ line is the maximum angle in degrees for which photons will be injected \\ 
-4 &   The 13$^\textrm{th}$ line is the change in angular resolution, this partly dictates how MCRaT will parallelize the simulation \\ 
-5e50 &   The 14$^\textrm{th}$ line is the users initial guess of the weight of each injected photon for angles $\le 2^\circ$ \\ 
-5e50 &    The 15$^\textrm{th}$ line is the users initial guess of the weight of each injected photon for angles $> 2^\circ$\\ 
-1000 &   The 16$^\textrm{th}$ line is the minimum number of photons the user wants injected in each frame \\ 
-3000 &    The 17$^\textrm{th}$ line is the maximum number of photons the user wants injected in each frame\\ 
-b &   The 18$^\textrm{th}$ line is the spectrum of the injected photons. ``b''=Blackbody and ``w''=Wein \\ 
-i &    The 19$^\textrm{th}$ line is to tell MCRaT to initalize a new simulation, ``i'', or continue an old one, ``c'' \\ \newline
-\end{tabularx} 
+{\small
+\begin{verbatim}
+[Hydro/MHD Simulation Block]
 
-There are values related to photons injected within $2^\circ$ and outside of $2^\circ$ because at this angle, the outflow may become significantly denser (as occurs in Gamma Ray Bursts) and the user may want to increase their radius of injection in order to speed up the computation. In order to match the time in which photon injection will occur at these larger angles means changing the parameters that play a role in the value of the simulation time when the photons begin being injected. 
+5.               # Number of frames per second of hydro simulation (likely always the same)
+3000		# Last available hydro simulation frame  (get it from the last file in the data folder)
+0 5e12		# Max r0 coordinate limits of hydro simulation
+0 2.5e13		# Max r1 coordinate limit of hydro simulation
+0 2e13		# Max r2 coordinate limit of hydro simulation (if simulation is 3D)
 
-Lines 4, 3, and  9 dictate what time in the simulation you begin injecting photons. This is calculated as 
+[MCRaT Injection Angles Block]
+
+0.               	# The minimum off-axis angle to inject photons (in degrees)
+6.               	# The maximum off-axis angle to inject photons (in degrees)
+3.			# Number of angle bins to consider
+200 200 200      	# Frame at which photon injection starts for each angle bin
+199 199 299            	# Number of frames for which photons are injected for each angle bin
+1e11 1.5e12 2e12	# The radius at which the photons are injected for each angle bin
+
+[MCRaT Photon Block]
+
+b		# Type of spectrum we inject with, w=wien b=blackbody
+1000		# Min number of photons
+5000		# Max number of photons
+
+[Initialization/Continuation Block]
+
+i		# Initialize or continue simulation (i=initialize (delete all files) c=continue) 
+\end{verbatim}
+}
+
+The format of the \texttt{mc.par} file must follow what is shown above with each block in its respective order and each block title separated by a blank line from the contents of the block. Furthermore, the coordinate limits for r2 must always be there, even if the hydro simulation that is being analyzed with MCRaT is in 2D. The entries for each line that takes multiple values, such as the coordinate limits, must have each value separated by a space. 
+
+The first block provides information on the hydro/MHD simulation that MCRaT is analyzing. The first line denotes the number of hydro frames per second, or fps. The second line provides the file number of the last hydro simulation frame available in the analysis. The next three lines provide the lower and upper limits of the hydro coordinate. Even if the hydro simulation that is being analyzed is in 2D, the last line must still be there. In the example above, the r0 coordinate extends from 0 to 5e12 in the units provided by \texttt{HYDRO\_L\_SCALE} or, in the case of angles, the units used by the hydro simulation. The table below denotes what coordinates r0, r1, and r2 correspond to for each coordinate system and number of dimensions as well as their corresponding units. 
+
+\begin{figure}[h!]
+\centering
+\begin{tabular}{|c|c|c|}
+\hline
+ & 2D & 3D \\
+\hline
+Coordinate System & (r0, r1, r2) & (r0, r1, r2) \\
+\hline
+Cartesian & (x,y,-) & (x,y,z) \\
+\hline
+Spherical & (r,$\theta$, -) & (r,$\theta$, $\phi$) \\
+\hline
+Polar & - & (r, $\phi$, z) \\
+\hline
+Cylindrical & (r,z) & - \\
+\hline
+\end{tabular}
+\end{figure}
+
+The second block, called the \texttt{[MCRaT Injection Angles Block]}, tells MCRaT what angle ranges (in degrees) it should consider when injecting photons, as provided by the first two lines of the block, and what radii to inject photons for each angle range. The third line of this block denotes the number of angle ranges. In this example, we want MCRaT to inject photons from 0$\circ$-6$\circ$ and we want there to be 3 angle bins. For each angle bin, we provide the frame from which the photon injections will start, $\mathrm{f_{start}}$, the number of frames that we will inject photons into, df, and the radius where the photons will be injected in the frame, $R_\mathrm{inj}$. Thus, in the example provided, there have to be 3 numbers provided in each of the last 3 lines of the block. If we wanted N angle bins, then the next 3 lines should contain N numbers for each angle bin. Each number needs to be separated by a space.
+
+These last 3 lines dictate what time in the simulation you begin injecting photons. This is calculated as 
 \[
 t_\mathrm{start}=\frac{\mathrm{f_{start}}}{\mathrm{fps}}-\frac{R_\mathrm{inj}}{c}
 \]
-where $\mathrm{f_{start}}$ is the value in line 4, fps is the frames per second which is the value in line 3, $R_\mathrm{inj}$ is the radius at which photons are injected, or the value in line 9, and c is the speed of light. Building on the above formula, the time in which photons stop being injected are calculated as
+Building on the above formula, the time in which photons stop being injected are calculated as
 \[
 t_\mathrm{end}=\frac{\mathrm{f_{start}}+\mathrm{df}}{\mathrm{fps}}-\frac{R_\mathrm{inj}}{c}
 \]
-where df is the number of frames in which photons are injected, which is line 7. These calculations are the same for photons injected at angles $> 2^\circ$, except you use the \texttt{mc.par} lines that are applicable to those photons in the calculations. 
+These calculations are the same for photons injected at all angles. The number of angle bins and the number of frames that photons will be injected into (for each angle bin) are important for MCRaT's parallelism. This will be covered in the next section. 
 
-Line 19 allows the user to continue the MCRaT code from a previous point, if the value is set to ``c'', or it allows the user to initalize (by erasing the full working directory of MCRaT) or start a simulation by setting it to ``i''. \hl{\bf This is an important parameter to check to prevent accidentally erasing work that has already been done.}
+In the next block, labeled \texttt{[MCRaT Photon Block]}, we specify the initial condition of the MCRaT simulation and the number of photons that we want MCRaT to consider. The first line denotes whether we want the injected photons to be drawn from a blackbody or Wien spectrum, based on the optical depth being either $\gtrsim 10^3$ or $\sim 100$, respectively. The next two lines specify the minimum and maximum number of photons that MCRaT injects into a given frame, which helps to balance Poisson error from the Monte Carlo method with the run time of the MCRaT code. 
 
-Line 13 should be a value that divides evenly into the angle range provided by lines 12 and 11. In the above example (20-0)/4=5. This is important for MCRaT's parallelism. Another number that MCRaT uses to break up the problem is lines 7 and 8. The way that MCRaT parallelizes the problem will be shown in the next section.
+The final block allows the user to continue the MCRaT code from a previous point, if the value is set to ``c'', or it allows the user to initalize (by erasing the full working directory of MCRaT) or start a simulation by setting it to ``i''. \hl{\bf This is an important parameter to check to prevent accidentally erasing work that has already been done.}
+
 
 \subsection{Understanding MCRaT's Parallelism}
-The first step that MCRaT takes in breaking up the problem is breaking it up into pieces based on the range of angles that photons will be injected into, which the user specifies in lines 11 - 13 in the \texttt{mc.par} file. As the example \texttt{mc.par} above shows, MCRaT will break up the problem into (20-0)/4=5 pieces initially. Then, for each angle range ($0^\circ-4^\circ$, $4^\circ-8^\circ$, etc.) the code will then break up the problem based upon how many times photons will be injected, which is 1 plus the values in lines 7 and 8 in the \texttt{mc.par} file; this is because the photons are injected in the frames $[\mathrm{f_{start}}, \mathrm{f_{start}}+1, ..., \mathrm{f_{start}}+\mathrm{df}-1, \mathrm{f_{start}}+\mathrm{df}]$, which gives us this n+1 behavior. These pieces of information are important for understanding how the processes are divided with MCRaT. An example will be given in the next section.
+The first step that MCRaT takes in breaking up the problem is breaking it up into pieces based on the range of angles that photons will be injected into, which the user specifies in the \texttt{[MCRaT Injection Angles Block]} in the \texttt{mc.par} file. As the example \texttt{mc.par} above shows, MCRaT will break up the problem into 3 pieces initially. Then, for each angle range ($0^\circ-2^\circ$, $2^\circ-4^\circ$, etc.) the code will then break up the problem based upon how many times photons will be injected, which is 1 plus the values provided in the \texttt{mc.par} file; this is because the photons are injected in the frames $[\mathrm{f_{start}}, \mathrm{f_{start}}+1, ..., \mathrm{f_{start}}+\mathrm{df}-1, \mathrm{f_{start}}+\mathrm{df}]$, which gives us this n+1 behavior. These pieces of information are important for understanding how the processes are divided with MCRaT. An example will be given in the next section.
 
 \subsection{Running MCRaT}
 In this section we show how to run MCRaT and allocate the appropriate number of cores in order to optimize MCRaT's parallelism. We will use the example \texttt{mc.par} file in Section \ref{mc.par} for this section. 
 
 Running the MCRaT code is as simple as doing \texttt{mpiexec -np N ./MCRAT} where N is the total number of MPI processes that will be created. The OpenMP parallelism is controlled by setting the OpenMP environment variable \texttt{OMP\_NUM\_THREADS}. We recommended that \texttt{OMP\_NUM\_THREADS} be set to $1$ for a newly started MCRaT simulation, which essentially turns off the OpenMP parallelism. 
 
- The total number of MPI processes, N, is initially divided by the set of angles that photons will be injected into. For the example \texttt{mc.par}, there are $(20-0)/4=5$ sets of angles that will be considered which leads to the N MPI process initially being divided by 5. The $N_\theta=N/5$ MPI processes will then be used to inject photons in the user specified frames in parallel. The example \texttt{mc.par} file shows that there will be 124+1 photon injections, as was described in the last section. Thus, the number of frames that each MPI process will inject photons into becomes $\mathrm{f_{inj}}=(124+1)/N_\theta$. If we set $N=125$, $N_\theta=25$ and the number of frames that each MPI process will inject photons into becomes 5. Alternatively, if we want each MPI process to only inject photons into one frame, $N_\theta=125$ which means that $N=625$. Calculating N, by following these examples, shows how the problem is broken up between angles and photon injections. If the number of MPI processes available for the user to use does not divide well into the size of the problem, in terms of angle ranges and frames in which photons are injected, MCRaT will prioritize breaking up the problem evenly based on the set of angles. Thus, $N$ should at least be evenly divisible by the number of angle ranges specified by the \texttt{mc.par}; Once $N_\theta$ is calculated, MCRaT will distribute the number of frames in which photons will be injected accordingly to calculate $\mathrm{f_{inj}}$.
+ The total number of MPI processes, $N$, is initially divided by the set of angles that photons will be injected into. For the example \texttt{mc.par}, there are $3$ sets of angles that will be considered which leads to the N MPI process initially being divided by 3. The $N_\theta=N/3$ MPI processes will then be used to inject photons in the user specified frames in parallel. The example \texttt{mc.par} file shows that for the first angle bin there will be $199+1$ photon injections, as was described in the last section. Thus, the number of frames that each MPI process will inject photons into becomes $\mathrm{f_{inj}}=(199+1)/N_\theta$. If we set $N=150$, $N_\theta=50$ and the number of frames that each MPI process will inject photons into becomes $4$. Alternatively, if we want each MPI process to only inject photons into one frame, $N_\theta=200$ which means that $N=600$. Calculating $N$, by following these examples, shows how the problem is broken up between angles and photon injections. If the number of MPI processes available for the user to use does not divide well into the size of the problem, in terms of angle ranges and frames in which photons are injected, MCRaT will prioritize breaking up the problem evenly based on the set of angles. Thus, $N$ should at least be evenly divisible by the number of angle ranges specified by the \texttt{mc.par}; Once $N_\theta$ is calculated, MCRaT will distribute the number of frames in which photons will be injected accordingly to calculate $\mathrm{f_{inj}}$.
  
- Another option, when dealing with a limited number of available cores, is running MCRaT on a small portion of the problem. For example instead of doing 5 sets of angles at $4^\circ$ intervals all at once, simply run 1 set of angles from $0^\circ-4^\circ$, and when that simulation is complete run the second set from $4^\circ-8^\circ$, etc. The increased parallelism in decreasing $\mathrm{f_{inj}}$ by using this method may speed up the simulation compared to running the whole problem at once. This is also advantageous due to the fact that as the MPI processes begin to complete their portion of the simulation, the user may restart MCRaT using only the appropriate number of MPI processes left that have calculations left to do. Thus, this feature lets a given MCRaT simulation (e.g. $0^\circ-4^\circ$) use less MPI processes and resources over time, allowing another full simulation (e.g. $4^\circ-8^\circ$) to start running using the rest of the available resources. We will go over this feature in a later section.
+ Another option, when dealing with a limited number of available cores, is running MCRaT on a small portion of the problem. For example instead of doing 3 sets of angles at $2^\circ$ intervals all at once, simply run 1 set of angles from $0^\circ-2^\circ$, and when that simulation is complete run the second set from $2^\circ-4^\circ$, etc. The increased parallelism in decreasing $\mathrm{f_{inj}}$ by using this method may speed up the simulation compared to running the whole problem at once. This is also advantageous due to the fact that as the MPI processes begin to complete their portion of the simulation, the user may restart MCRaT using only the appropriate number of MPI processes left that have calculations left to do. Thus, this feature lets a given MCRaT simulation (e.g. $0^\circ-2^\circ$) use less MPI processes and resources over time, allowing another full simulation (e.g. $2^\circ-4^\circ$) to start running using the rest of the available resources. We will go over this feature in a later section.
  
  \subsection{MCRaT Output Files}
  Once MCRaT is run, it will create subdirectories dedicated to the calculations and results of each angle range. Using the example \texttt{mc.par} file, the directory tree will now look like: 
@@ -198,31 +232,35 @@ Running the MCRaT code is as simple as doing \texttt{mpiexec -np N ./MCRAT} wher
   .2 example\_hydro\_file\_name\_0001.
  .2 dir\_with\_MCRaT\_parameter\_file/.
  .3 \texttt{mc.par}.
- .3 0.0-4.0/.
+ .3 0.0-2.0/.
  .4 mc\_proc\_$i$.h5.
  .4 mc\_chkpt\_$i$.dat.
  .4 mc\_output\_$i$.log.
- .3 4.0-8.0/.
+ .3 2.0-4.0/.
  .4 mc\_proc\_$i$.h5.
   .4 mc\_chkpt\_$i$.dat.
   .4 mc\_output\_$i$.log.
- .3 8.0-12.0/.
+ .3 4.0-6.0/.
  .4 mc\_proc\_$i$.h5.
   .4 mc\_chkpt\_$i$.dat.
   .4 mc\_output\_$i$.log.
  } 
  \end{figure}
  
- We have not included the subdirectories extending up to $20^\circ$ for brevity, but those other 2 directories would also be created. Within each angle subdirectory, each MPI process, labeled process $i$, creates 3 files. The mc\_output\_$i$.log file prints exactly what the MCRaT code is doing for that given MPI process. This allows us to monitor the progress of the MCRaT simulation. This can be easily done by using Linux commands such as \texttt{less mc\_output\_$i$.log}. The mc\_proc\_$i$.h5 is a HDF5 file that contains all of the calculation results of the MCRaT MPI process. The mc\_chkpt\_$i$.dat file contains the necessary data for each MPI process to continue from the last point if MCRaT is interrupted for any reason. This is covered in the next section.
+ Within each angle subdirectory, each MPI process, labeled process $i$, creates 3 files. The mc\_output\_$i$.log file prints exactly what the MCRaT code is doing for that given MPI process. This allows us to monitor the progress of the MCRaT simulation. This can be easily done by using Linux commands such as \texttt{less mc\_output\_$i$.log}. The mc\_proc\_$i$.h5 is a HDF5 file that contains all of the calculation results of the MCRaT MPI process. The mc\_chkpt\_$i$.dat file contains the necessary data for each MPI process to continue from the last point if MCRaT is interrupted for any reason. This is covered in the next section.
  
- When all of the MPI processes in a given angle subdirectory have completed their calculations, they will produce HDF5 files with the results of the calculations for each file in the simulation. The results start with the frame specified in line 4 (or 5, depending on the angle range under consideration) in the \texttt{mc.par} file and go up to the frame specified in line 6 in the \texttt{mc.par} file. These files will be named \texttt{mcdata\_$f$.h5} where $f$ is the frame number of the hydrodynamic simulation.
+ When all of the MPI processes in a given angle subdirectory have completed their calculations, they will produce HDF5 files with the results of the calculations for each file in the simulation. The results start with the frame specified in the \texttt{[MCRaT Injection Angles Block]} of the \texttt{mc.par} file and go up to the frame specified in the next line of the \texttt{mc.par} file block. These files will be named \texttt{mcdata\_$f$.h5} where $f$ is the frame number of the hydrodynamic simulation.
  
  \subsection{Restarting MCRaT}
  If the MCRaT code gets interrupted by running out of allocated time on a cluster or any other type of issue, the code is easily continued. It may also use less MPI processes when it is restarted based on the number of MPI processes in the original simulation run that still have calculations to complete. 
  
- In order to ensure that the code knows to continue a MCRaT simulation, the 19$^\textrm{th}$ line in the \texttt{mc.par} file must be set to ``c''. \hl{\bf This is important to check since not changing this parameter means that all of the simulation progress will be erased and a completely new simulation will be started, thus nullifying the attempt to save time and resources by continuing a MCRaT simulation.} 
+ In order to ensure that the code knows to continue a MCRaT simulation, the last block of the \texttt{mc.par} file must be set to ``c''. \hl{\bf This is important to check since not changing this parameter means that all of the simulation progress will be erased and a completely new simulation will be started, thus nullifying the attempt to save time and resources by continuing a MCRaT simulation.} 
  
- Once this parameter has been changed, the user needs to identify how many total MPI processes have completed their calculations. This is done by running \texttt{tail -n 1 dir\_with\_MCRaT\_parameter\_file/angle\_dir/mc\_output\_* |grep "completed" |wc -l} in each angle range directory created by MCRaT. Add all the printed values and subtract from the original number of MPI processes, $N$, that the MCRaT simulation was originally started with. This is the number that has to replace $N$ in the new run of MCRaT. From here, MCRaT automatically distributes the given number of processes among the MPI processes in each angle subdirectory that still need to run calculations.
+Once this parameter has been changed, the user needs to identify how many total MPI processes have completed their calculations. This is done by running"
+ \begin{quotation}
+\texttt{tail -n 1 dir\_with\_MCRaT\_parameter\_file/angle\_dir/mc\_output\_* |grep "completed" |wc -l}
+ \end{quotation}
+in each angle range directory created by MCRaT. Add all the printed values and subtract from the original number of MPI processes, $N$, that the MCRaT simulation was originally started with. This is the number that has to replace $N$ in the new run of MCRaT. From here, MCRaT automatically distributes the given number of processes among the MPI processes in each angle subdirectory that still need to run calculations.
  
  This feature of only continuing the MCRaT simulation with the necessary number of MPI processes means that as the simulation progresses, fewer resources will be used which is invaluable for running jobs in a pipeline type of fashion and for conserving resources such as SBU allocations.
  
@@ -239,7 +277,7 @@ Running the MCRaT code is as simple as doing \texttt{mpiexec -np N ./MCRAT} wher
  \subsection{Post-Processing MCRaT Data}
  If the user is simply running running a simulation with one angle range under consideration, there is no post-pocessing to be done. The MCRaT produced \texttt{mcdata\_$f$.h5} files contain all the information for the photons (which will be covered in the next section).
  
- If not we need to be able to merge all the simulation results for photons injected in all angle ranges; following the example \texttt{mc.par} file, we need to merge the data in angles $0^\circ-4^\circ$, $4^\circ-8^\circ$, etc. This is done is with the MERGE code that is included with MCRaT. To run merge, the user simply types \texttt{mpiexec -np N ./MERGE}. In this case N needs to be a multiple of the number of subdirectories the MCRaT code has created and it has to be greater than or equal to the number of subdirectories; of course, the larger the number of MPI processes used, the less work each process has to do, making the post-processing code faster. In the example \texttt{mc.par} file there are 5 directories created, so N has to be a multiple of 5 in this case. The minimum value of N can be 5; however, since the MERGE code is also parallelized with OpenMPI, the larger the number of processes used, the less time it takes to merge all of the MCRaT data.  If $N=10$, 5 processes will be allocated to merge the data from the first half of the frames from 200 to 3000, as specified in the \texttt{mc.par} file, and the other 5 will merge the data from the last half of the range of frames.
+ If not we need to be able to merge all the simulation results for photons injected in all angle ranges; following the example \texttt{mc.par} file, we need to merge the data in angles $0^\circ-2^\circ$, $2^\circ-4^\circ$, etc. This is done is with the MERGE code that is included with MCRaT. To run merge, the user simply types \texttt{mpiexec -np N ./MERGE}. In this case N needs to be a multiple of the number of subdirectories the MCRaT code has created and it has to be greater than or equal to the number of subdirectories; of course, the larger the number of MPI processes used, the less work each process has to do, making the post-processing code faster. In the example \texttt{mc.par} file there are 3 directories created, so $N$ has to be a multiple of 3 in this case. The minimum value of N can be $3$; however, since the MERGE code is also parallelized with OpenMPI, the larger the number of processes used, the less time it takes to merge all of the MCRaT data.  If $N=6$, 3 processes will be allocated to merge the data from the first half of the frames from 200 to 3000, as specified in the \texttt{mc.par} file, and the other 3 will merge the data from the last half of the range of frames. If $N=12$, the number of frames from 200 to 3000 will be divided into quarters and 3 processes will deal with the first quarter, while a second set of 3 processes will deal with the second quarter, so on and so forth. 
  
  The merged data is placed into another folder that the code creates named \texttt{ALL\_DATA/}. \newline
  

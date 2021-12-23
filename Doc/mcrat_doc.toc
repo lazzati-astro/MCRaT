@@ -5,23 +5,23 @@
 \contentsline {subsection}{\numberline {2.3}The mcrat\_input.h file}{4}{subsection.2.3}
 \contentsline {subsection}{\numberline {2.4}The MCRaT Parameter File}{6}{subsection.2.4}
 \contentsline {subsection}{\numberline {2.5}Understanding MCRaT's Parallelism}{8}{subsection.2.5}
-\contentsline {subsection}{\numberline {2.6}Running MCRaT}{8}{subsection.2.6}
+\contentsline {subsection}{\numberline {2.6}Running MCRaT}{9}{subsection.2.6}
 \contentsline {subsection}{\numberline {2.7}MCRaT Output Files}{9}{subsection.2.7}
 \contentsline {subsection}{\numberline {2.8}Restarting MCRaT}{10}{subsection.2.8}
-\contentsline {subsubsection}{\numberline {2.8.1}Using The mcrat\_msp.sh Shell Script}{10}{subsubsection.2.8.1}
+\contentsline {subsubsection}{\numberline {2.8.1}Using The mcrat\_msp.sh Shell Script}{11}{subsubsection.2.8.1}
 \contentsline {subsection}{\numberline {2.9}Using Hybrid-Parellelization}{11}{subsection.2.9}
-\contentsline {subsection}{\numberline {2.10}Post-Processing MCRaT Data}{11}{subsection.2.10}
+\contentsline {subsection}{\numberline {2.10}Post-Processing MCRaT Data}{12}{subsection.2.10}
 \contentsline {section}{\numberline {3}The MCRaT Code}{12}{section.3}
-\contentsline {subsection}{\numberline {3.1}Assumptions about the Hydro Simulation}{12}{subsection.3.1}
-\contentsline {subsection}{\numberline {3.2}Algorithm}{12}{subsection.3.2}
-\contentsline {subsection}{\numberline {3.3}Saved Quantities}{16}{subsection.3.3}
-\contentsline {subsection}{\numberline {3.4}Post-processing Algorithm}{18}{subsection.3.4}
-\contentsline {section}{\numberline {4}Physics Included in MCRaT}{19}{section.4}
-\contentsline {subsection}{\numberline {4.1}Injecting Photons}{19}{subsection.4.1}
-\contentsline {subsection}{\numberline {4.2}Scattering Photons}{20}{subsection.4.2}
-\contentsline {subsection}{\numberline {4.3}Polarization}{22}{subsection.4.3}
-\contentsline {subsection}{\numberline {4.4}Cyclo-synchrotron Radiation}{27}{subsection.4.4}
-\contentsline {subsubsection}{\numberline {4.4.1}Emitting Cyclo-synchrotron (CS) Photons}{27}{subsubsection.4.4.1}
-\contentsline {subsubsection}{\numberline {4.4.2}Calculating B}{28}{subsubsection.4.4.2}
-\contentsline {subsubsection}{\numberline {4.4.3}Rebinning The Scattered CS Photons}{28}{subsubsection.4.4.3}
-\contentsline {subsubsection}{\numberline {4.4.4}Absorption of CS Photons}{29}{subsubsection.4.4.4}
+\contentsline {subsection}{\numberline {3.1}Assumptions about the Hydro Simulation}{13}{subsection.3.1}
+\contentsline {subsection}{\numberline {3.2}Algorithm}{13}{subsection.3.2}
+\contentsline {subsection}{\numberline {3.3}Saved Quantities}{17}{subsection.3.3}
+\contentsline {subsection}{\numberline {3.4}Post-processing Algorithm}{19}{subsection.3.4}
+\contentsline {section}{\numberline {4}Physics Included in MCRaT}{20}{section.4}
+\contentsline {subsection}{\numberline {4.1}Injecting Photons}{20}{subsection.4.1}
+\contentsline {subsection}{\numberline {4.2}Scattering Photons}{21}{subsection.4.2}
+\contentsline {subsection}{\numberline {4.3}Polarization}{23}{subsection.4.3}
+\contentsline {subsection}{\numberline {4.4}Cyclo-synchrotron Radiation}{28}{subsection.4.4}
+\contentsline {subsubsection}{\numberline {4.4.1}Emitting Cyclo-synchrotron (CS) Photons}{28}{subsubsection.4.4.1}
+\contentsline {subsubsection}{\numberline {4.4.2}Calculating B}{29}{subsubsection.4.4.2}
+\contentsline {subsubsection}{\numberline {4.4.3}Rebinning The Scattered CS Photons}{29}{subsubsection.4.4.3}
+\contentsline {subsubsection}{\numberline {4.4.4}Absorption of CS Photons}{30}{subsubsection.4.4.4}

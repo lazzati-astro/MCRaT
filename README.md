@@ -104,7 +104,7 @@ Currently, MCRaT can be used to analyze the output of FLASH and PLUTO hydrodynam
   - 2D/2.5D: Cartesian, Cylindrical, and Spherical
   - 3D: Cartesian, Polar, and Spherical
     
-Additionally, MCRaT can analyze PLUTO magneto-hydrodynamic simulations in the same dimensions and coordinate systems specified above.
+Additionally, MCRaT can analyze PLUTO and PLUTO-Chombo magneto-hydrodynamic simulations in the same dimensions and coordinate systems specified above.
 
 ### Built With
 
