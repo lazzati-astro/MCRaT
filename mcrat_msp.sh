@@ -120,8 +120,8 @@ if (("$MODIFY_FLAG" == 1));
 then
     TAB=$'\t'
     #the min and max number of photons to inject is the 16th and 17th lines
-    sed "16s/.*/$NMIN${TAB}${TAB}#Min number of photons/" "${DIRECTORY%/*/*}"/mc.par > "${DIRECTORY%/*/*}"/new_file.txt #replace nmin
-    sed  -i '' -e "17s/.*/$NMAX${TAB}${TAB}#Max number of photons/" "${DIRECTORY%/*/*}"/new_file.txt #replace nmin
+    sed "21s/.*/$NMIN${TAB}${TAB}#Min number of photons/" "${DIRECTORY%/*/*}"/mc.par > "${DIRECTORY%/*/*}"/new_file.txt #replace nmin
+    sed  -i '' -e "22s/.*/$NMAX${TAB}${TAB}#Max number of photons/" "${DIRECTORY%/*/*}"/new_file.txt #replace nmin
 
     mv "${DIRECTORY%/*/*}"/mc.par "${DIRECTORY%/*/*}"/old_mc.par
     mv "${DIRECTORY%/*/*}"/new_file.txt "${DIRECTORY%/*/*}"/mc.par #keep copy of old mc.par and move new_file (modified mc.par) to become mc.par
