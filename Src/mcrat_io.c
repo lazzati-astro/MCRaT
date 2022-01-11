@@ -158,10 +158,22 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
             r0[count]= ((ph+i)->r0);
             r1[count]= ((ph+i)->r1);
             r2[count]= ((ph+i)->r2);
-            s0[count]= ((ph+i)->s0);
-            s1[count]= ((ph+i)->s1);
-            s2[count]= ((ph+i)->s2);
-            s3[count]= ((ph+i)->s3);
+            #if COMV_SWITCH == ON
+            {
+                comv_p0[count]= ((ph+i)->comv_p0);
+                comv_p1[count]= ((ph+i)->comv_p1);
+                comv_p2[count]= ((ph+i)->comv_p2);
+                comv_p3[count]= ((ph+i)->comv_p3);
+            }
+            #endif
+            #if STOKES_SWITCH == ON
+            {
+                s0[count]= ((ph+i)->s0);
+                s1[count]= ((ph+i)->s1);
+                s2[count]= ((ph+i)->s2);
+                s3[count]= ((ph+i)->s3);
+            }
+            #endif
             num_scatt[count]= ((ph+i)->num_scatt);
             weight[count]= ((ph+i)->weight);
              //fprintf(fPtr, "%d %c %e %e %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9);
