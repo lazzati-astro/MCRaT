@@ -146,6 +146,10 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
     //go through blocks and assign random energies/locations to proper number of photons
     ph_tot=0;
     k=0;
+    //for blackbody injection sampling using Bjorkman and Wood 2001
+    double test=0, test_rand1=gsl_rng_uniform_pos(rand), test_rand2=gsl_rng_uniform_pos(rand), test_rand3=gsl_rng_uniform_pos(rand), test_rand4=gsl_rng_uniform_pos(rand), test_rand5=gsl_rng_uniform_pos(rand);
+    double test_cnt=0;
+
     for (i=0;i<hydro_data->num_elements;i++)
     {
         #if DIMENSIONS == THREE
@@ -169,29 +173,48 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
             for(j=0;j<( *(ph_dens+k) ); j++ )
             {
                 //have to get random frequency for the photon comoving frequency
-                y_dum=1; //initalize loop
-                yfr_dum=0;
-                while (y_dum>yfr_dum)
+                if (spect=='w')
                 {
-                    fr_dum=gsl_rng_uniform_pos(rand)*6.3e11*((hydro_data->temp)[i]); //in Hz
-                    //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
-                    y_dum=gsl_rng_uniform_pos(rand);
-                    //printf("%lf ",fr_dum);
-                    
-                    if (spect=='w')
+                    y_dum=1; //initalize loop
+                    yfr_dum=0;
+                    while (y_dum>yfr_dum)
                     {
+                        fr_dum=gsl_rng_uniform_pos(rand)*6.3e11*((hydro_data->temp)[i]); //in Hz
+                        //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
+                        y_dum=gsl_rng_uniform_pos(rand);
+                        //printf("%lf ",fr_dum);
+                    
                         yfr_dum=(1.0/(1.29e31))*pow((fr_dum/((hydro_data->temp)[i])),3.0)/(exp((PL_CONST*fr_dum)/(K_B*((hydro_data->temp)[i]) ))-1); //curve is normalized to maximum
                     }
-                    else
-                    {
+                }
+                else
+                {
+                        /* old way
                         fr_max=(5.88e10)*((hydro_data->temp)[i]);//(C_LIGHT*(*(temps+i)))/(0.29); //max frequency of bb
                         bb_norm=(PL_CONST*fr_max * pow((fr_max/C_LIGHT),2.0))/(exp(PL_CONST*fr_max/(K_B*((hydro_data->temp)[i])))-1); //find value of bb at fr_max
                         yfr_dum=((1.0/bb_norm)*PL_CONST*fr_dum * pow((fr_dum/C_LIGHT),2.0))/(exp(PL_CONST*fr_dum/(K_B*((hydro_data->temp)[i])))-1); //curve is normalized to vaue of bb @ max frequency
+                        */
                         
-                    }
+                        test=0;
+                        test_rand1=gsl_rng_uniform_pos(rand);
+                        test_rand2=gsl_rng_uniform_pos(rand);
+                        test_rand3=gsl_rng_uniform_pos(rand);
+                        test_rand4=gsl_rng_uniform_pos(rand);
+                        test_rand5=gsl_rng_uniform_pos(rand);
+                        test_cnt=0;
+                        while (test<M_PI*M_PI*M_PI*M_PI*test_rand1/90.0)
+                        {
+                            test_cnt+=1;
+                            test+=1/(test_cnt*test_cnt*test_cnt*test_cnt);
+                        }
+                        fr_dum=-log(test_rand2*test_rand3*test_rand4*test_rand5)/test_cnt;
+                        fr_dum*=K_B*((hydro_data->temp)[i])/PL_CONST;
+                        y_dum=0; yfr_dum=1;
+                        
+                }
                     //printf("%lf, %lf,%lf,%e \n",(*(temps+i)),fr_dum, y_dum, yfr_dum);
                     
-                }
+                
                 //printf("i: %d freq:%lf\n ",ph_tot, fr_dum);
                 #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
                     position_phi=gsl_rng_uniform(rand)*2*M_PI;
@@ -1428,26 +1451,32 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
                 avg_r_sum_inject+=sqrt(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2));
                 count_i++;
             }
-                        
+            
+            #if CYCLOSYNCHROTRON_SWITCH == ON
             if ((((ph+i)->type) == COMPTONIZED_PHOTON) || (((ph+i)->type) == UNABSORBED_CS_PHOTON))
             {
                 avg_r_sum_comp+=sqrt(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2));
                 count_comp++;
             }
-            
+            #endif
             
             count++;
         }
         
+        #if CYCLOSYNCHROTRON_SWITCH == ON
         if (((ph+i)->type) == CS_POOL_PHOTON )
         {
             avg_r_sum_synch+=sqrt(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2));
             count_synch++;
         }
-
+        #endif
         
     }
-    fprintf(fPtr, "In this frame Avg r for i type: %e c and o type: %e and s type: %e\n", avg_r_sum_inject/count_i, avg_r_sum_comp/count_comp, avg_r_sum_synch/count_synch);
+    #if CYCLOSYNCHROTRON_SWITCH == ON
+        fprintf(fPtr, "In this frame Avg r for i type: %e c and o type: %e and s type: %e\n", avg_r_sum_inject/count_i, avg_r_sum_comp/count_comp, avg_r_sum_synch/count_synch);
+    #else
+        fprintf(fPtr, "In this frame Avg r for i type: %e \n", avg_r_sum_inject/count_i);
+    #endif
     fflush(fPtr);
     //exit(0);
     
@@ -1520,7 +1549,7 @@ void cylindricalPrep(struct hydro_dataframe *hydro_data)
 
 void sphericalPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
 {
-    double  gamma_infinity=100, lumi=1e52, r00=1e8; //shopuld be 10^57
+    double  gamma_infinity=100, lumi=1e54, r00=1e8; //shopuld be 10^57
     //double  gamma_infinity=5, lumi=1e52, r00=1e8; //shopuld be 10^57
     double vel=0, r=0;
     int i=0;

@@ -7,14 +7,14 @@
 //  Created by Tyler Parsotan on 12/9/19.
 //
 
-//#define SIMULATION_TYPE CYLINDRICAL_OUTFLOW
-//#define FILEPATH "/Users/Tylerparsotan/Documents/HYDRO_SIMS/16OI_TEST/"
-//#define FILEROOT "rhd_jet_big_16OI_hdf5_plt_cnt_"
-//#define MC_PATH "SKN_16OI_CYLINDRICAL/"
-//#define     SIM_SWITCH                  FLASH
-//#define     GEOMETRY                    CARTESIAN
-//#define     DIMENSIONS                  TWO
-//#define     HYDRO_L_SCALE               1e9
+#define SIMULATION_TYPE SPHERICAL_OUTFLOW
+#define FILEPATH "/Users/Tylerparsotan/Documents/HYDRO_SIMS/16TI/"
+#define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
+#define MC_PATH "SPHERICAL/"
+#define     SIM_SWITCH                  FLASH
+#define     GEOMETRY                    CARTESIAN
+#define     DIMENSIONS                  TWO
+#define     HYDRO_L_SCALE               1e9
 
 
 //#define SIMULATION_TYPE CYLINDRICAL_OUTFLOW
@@ -26,14 +26,14 @@
 //#define     DIMENSIONS                  TWO
 //#define     HYDRO_L_SCALE               1e11
 
-#define SIMULATION_TYPE CYLINDRICAL_OUTFLOW
-#define FILEPATH "/Users/Tylerparsotan/Documents/HYDRO_SIMS/CHOMBO_TEST/CHOMBO_3D_HIGH_RES/"
-#define FILEROOT "data."
-#define MC_PATH "MCRAT_TEST/"
-#define     SIM_SWITCH                  PLUTO_CHOMBO
-#define     GEOMETRY                    SPHERICAL
-#define     DIMENSIONS                  THREE
-#define     HYDRO_L_SCALE               1e12
+//#define SIMULATION_TYPE CYLINDRICAL_OUTFLOW
+//#define FILEPATH "/Users/Tylerparsotan/Documents/HYDRO_SIMS/CHOMBO_TEST/CHOMBO_3D_HIGH_RES/"
+//#define FILEROOT "data."
+//#define MC_PATH "MCRAT_TEST/"
+//#define     SIM_SWITCH                  PLUTO_CHOMBO
+//#define     GEOMETRY                    SPHERICAL
+//#define     DIMENSIONS                  THREE
+//#define     HYDRO_L_SCALE               1e12
 
 //#define SIMULATION_TYPE CYLINDRICAL_OUTFLOW
 //#define FILEPATH "/Users/Tylerparsotan/Documents/HYDRO_SIMS/3D_MHD_SIMULATION_FRAMES/"
