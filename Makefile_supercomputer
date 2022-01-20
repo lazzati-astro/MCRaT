@@ -4,8 +4,8 @@ CC          = icc
 CFLAGS      = -Wall -qopenmp -O3 -ipo -axCORE-AVX2 -xSSE4.2 
 LIB         = -lz -lm -ldl -lgsl -lgslcblas -lm -lmpi -lsz -Wl,-rpath -Wl,/nasa/hdf5/1.8.18_mpt/lib
 
-DEPS = mcrat.h mclib.h mclib_riken.h mclib_pluto.h mc_cyclosynch.h mcrat_input.h geometry.h mcrat_io.h mcrat_scattering.h mcrat_flash.h
-OBJ = mcrat.o mclib.o mclib_riken.o mclib_pluto.o mc_cyclosynch.o geometry.o mcrat_io.o mcrat_scattering.o mcrat_flash.o
+DEPS = mcrat.h mclib.h mclib_riken.h mclib_pluto.h mc_cyclosynch.h mcrat_input.h geometry.h mcrat_io.h mcrat_scattering.h mclib_flash.h
+OBJ = mcrat.o mclib.o mclib_riken.o mclib_pluto.o mc_cyclosynch.o geometry.o mcrat_io.o mcrat_scattering.o mclib_flash.o
 OBJ_MERGE = merge.o mclib.o mclib_riken.o mclib_pluto.o mc_cyclosynch.o geometry.o mcrat_io.o mcrat_scattering.o mclib_flash.o
 
 
