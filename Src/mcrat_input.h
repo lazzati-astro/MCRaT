@@ -7,14 +7,14 @@
 //  Created by Tyler Parsotan on 12/9/19.
 //
 
-#define SIMULATION_TYPE SPHERICAL_OUTFLOW
-#define FILEPATH "/Users/Tylerparsotan/Documents/HYDRO_SIMS/16TI/"
-#define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
-#define MC_PATH "SPHERICAL/"
-#define     SIM_SWITCH                  FLASH
-#define     GEOMETRY                    CARTESIAN
-#define     DIMENSIONS                  TWO
-#define     HYDRO_L_SCALE               1e9
+//#define SIMULATION_TYPE SPHERICAL_OUTFLOW
+//#define FILEPATH "/Users/Tylerparsotan/Documents/HYDRO_SIMS/16TI/"
+//#define FILEROOT "rhd_jet_big_13_hdf5_plt_cnt_"
+//#define MC_PATH "SPHERICAL/"
+//#define     SIM_SWITCH                  FLASH
+//#define     GEOMETRY                    CARTESIAN
+//#define     DIMENSIONS                  TWO
+//#define     HYDRO_L_SCALE               1e9
 
 
 //#define SIMULATION_TYPE CYLINDRICAL_OUTFLOW
@@ -46,17 +46,17 @@
 //#define     HYDRO_L_SCALE               1e11
 
 
-//#define SIMULATION_TYPE CYLINDRICAL_OUTFLOW
-//#define FILEPATH "/Users/Tylerparsotan/Documents/HYDRO_SIMS/LEO_2.5D_MHD_PLUTO/BPT5/"
-//#define FILEROOT "data."
-//#define MC_PATH "MCRAT_TEST/"
-//#define     SIM_SWITCH                  PLUTO
-//#define     GEOMETRY                    CYLINDRICAL
-//#define     DIMENSIONS                  TWO_POINT_FIVE
+#define SIMULATION_TYPE CYLINDRICAL_OUTFLOW
+#define FILEPATH "/Users/Tylerparsotan/Documents/HYDRO_SIMS/LEO_2.5D_MHD_PLUTO/BPT5/"
+#define FILEROOT "data."
+#define MC_PATH "MCRAT_TEST/"
+#define     SIM_SWITCH                  PLUTO
+#define     GEOMETRY                    CYLINDRICAL
+#define     DIMENSIONS                  TWO_POINT_FIVE
 ////#define     B_FIELD_CALC                SIMULATION
 //#define CYCLOSYNCHROTRON_REBIN_E_PERC 0.5
 //#define EPSILON_B 1.0
-//#define     HYDRO_L_SCALE               1e12
+#define     HYDRO_L_SCALE               1e12
 
 
 
