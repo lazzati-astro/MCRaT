@@ -1487,11 +1487,14 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
     
 }
 
-void cylindricalPrep(struct hydro_dataframe *hydro_data)
+void cylindricalPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
 {
     double  gamma_infinity=100, t_comov=1e5, ddensity=3e-7;// the comoving temperature in Kelvin, and the comoving density in g/cm^2
     int i=0;
     double vel=sqrt(1-pow(gamma_infinity, -2.0)), lab_dens=gamma_infinity*ddensity;
+    
+    fprintf(fPtr, "The Cylindrical Outflow values are: Gamma_infinity=%e, T_comv=%e K, comv dens=%e g/cm^3 \n", gamma_infinity, t_comov, ddensity);
+    fflush(fPtr);
     
     for (i=0; i<hydro_data->num_elements; i++)
     {
@@ -1553,6 +1556,9 @@ void sphericalPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
     //double  gamma_infinity=5, lumi=1e52, r00=1e8; //shopuld be 10^57
     double vel=0, r=0;
     int i=0;
+    
+    fprintf(fPtr, "The Spherical Outflow values are: Gamma_infinity=%e, Luminosity=%e erg/s, r_0=%e cm \n", gamma_infinity, lumi, r00);
+    fflush(fPtr);
     
     for (i=0; i<hydro_data->num_elements; i++)
     {
@@ -1629,6 +1635,9 @@ void structuredFireballPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
     double eta=0, r_sat=0, r;
     double vel=0, theta_ratio=0;
     int i=0;
+    
+    fprintf(fPtr, "The Structured Spherical Outflow values are: Gamma_0=%e, Luminosity=%e erg/s, r_0=%e cm, theta_j=%e rad, p=%e \n", gamma_infinity, lumi, r00, theta_j, p);
+    fflush(fPtr);
     
     for (i=0; i<hydro_data->num_elements; i++)
     {

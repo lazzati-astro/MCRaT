@@ -24,7 +24,7 @@ double averagePhotonEnergy(struct photon *ph, int num_ph);
 
 void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg, double *r_avg, FILE *fPtr  );
 
-void cylindricalPrep(struct hydro_dataframe *hydro_data);
+void cylindricalPrep(struct hydro_dataframe *hydro_data, FILE *fPtr);
 
 void sphericalPrep(struct hydro_dataframe *hydro_data, FILE *fPtr);
 
