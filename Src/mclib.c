@@ -1636,7 +1636,7 @@ void structuredFireballPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
     double vel=0, theta_ratio=0;
     int i=0;
     
-    fprintf(fPtr, "The Structured Spherical Outflow values are: Gamma_0=%e, Luminosity=%e erg/s, r_0=%e cm, theta_j=%e rad, p=%e \n", gamma_infinity, lumi, r00, theta_j, p);
+    fprintf(fPtr, "The Structured Spherical Outflow values are: Gamma_0=%e, Luminosity=%e erg/s, r_0=%e cm, theta_j=%e rad, p=%e \n", gamma_0, lumi, r00, theta_j, p);
     fflush(fPtr);
     
     for (i=0; i<hydro_data->num_elements; i++)

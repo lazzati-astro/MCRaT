@@ -1895,7 +1895,7 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
     //check for run type see if we need to rewrite any data
     
     #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
-        cylindricalPrep(hydro_data);
+        cylindricalPrep(hydro_data, fPtr);
     #elif SIMULATION_TYPE == SPHERICAL_OUTFLOW
         sphericalPrep(hydro_data, fPtr);
     #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
