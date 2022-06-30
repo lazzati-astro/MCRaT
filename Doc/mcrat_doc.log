@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex 2018.8.22)  31 JAN 2022 12:04
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (TeX Live 2018) (preloaded format=pdflatex 2018.8.22)  30 JUN 2022 17:07
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -523,28 +523,31 @@ Overfull \hbox (62.71672pt too wide) in paragraph at lines 86--134
  [][] 
  []
 
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
 [5] [6]
+Overfull \hbox (29.92188pt too wide) in paragraph at lines 171--171
+[]\OT1/cmtt/m/n/10.95 5.        # Number of frames per second of hydro simulati
+on (likely always the same)[] 
+ []
+
+
 Overfull \hbox (70.16269pt too wide) in paragraph at lines 171--171
-[]\OT1/cmtt/m/n/10.95 5.               # Number of frames per second of hydro s
-imulation (likely always the same)[] 
+[]\OT1/cmtt/m/n/10.95 3000   # Last available hydro simulation frame  (get from
+ the last file in the data folder)[] 
  []
 
 
-Overfull \hbox (75.91138pt too wide) in paragraph at lines 171--171
-[]\OT1/cmtt/m/n/10.95 3000 # Last available hydro simulation frame  (get it fro
-m the last file in the data folder)[] 
+Overfull \hbox (41.41925pt too wide) in paragraph at lines 171--171
+[]\OT1/cmtt/m/n/10.95 199 199 299       # Number of frames for which photons ar
+e injected for each angle bin[] 
  []
 
 
-Overfull \hbox (75.91138pt too wide) in paragraph at lines 171--171
-[]\OT1/cmtt/m/n/10.95 199 199 299             # Number of frames for which phot
-ons are injected for each angle bin[] 
- []
-
-
-Overfull \hbox (18.4245pt too wide) in paragraph at lines 171--171
-[]\OT1/cmtt/m/n/10.95 1e11 1.5e12 2e12 # The radius at which the photons are in
-jected for each angle bin[] 
+Overfull \hbox (24.17319pt too wide) in paragraph at lines 171--171
+[]\OT1/cmtt/m/n/10.95 1e11 1.5e12 2e12  # The radius at which the photons are i
+njected for each angle bin[] 
  []
 
 
@@ -698,7 +701,7 @@ e/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/
 018/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/local/texlive/20
 18/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb></usr/local/texlive/201
 8/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb>
-Output written on mcrat_doc.pdf (31 pages, 673812 bytes).
+Output written on mcrat_doc.pdf (31 pages, 672856 bytes).
 PDF statistics:
  667 PDF objects out of 1000 (max. 8388607)
  496 compressed objects within 5 object streams

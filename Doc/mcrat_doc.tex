@@ -72,7 +72,7 @@ The other variable that can be changed in MCRaT is \texttt{SIMULATION\_TYPE} whi
 
 Additionally, there are a number of switches that the user can specify to the program to tell it whether they want to consider the effects of polarization, with the \texttt{STOKES\_SWITCH}, and one that specifies whether the user wants MCRaT to save the comoving 4 momenta of each photon, with the \texttt{COMV\_SWITCH}. These switches can be set to \texttt{OFF}, which means do not save the comoving 4 momenta and/or save and consider the effects of polarization, or they can be set to \texttt{ON}, which tells the program to consider polarization and/or save the stokes parameter associated with each photon or save each photon's 4 momentum.
 
-The \texttt{SIM\_SWITCH} tells MCRaT what hydro simulation is being used. The options are \texttt{FLASH} and \texttt{PLUTO\_CHOMBO}, for the FLASH hydrodynamic code and the PLUTO hydro code with CHOMBO AMR respectively. The switch \texttt{DIM\_SWITCH} tells MCRaT the dimensionality of the hydro simulation that is used. This switch can be set to \texttt{2}, for 2D, or \texttt{3}, for 3D. The 3D feature is still in development so the switch should be set to \texttt{2} for now. The geometry can also be specified through the \texttt{GEOMETRY} define statement. The options are \texttt{SPHERICAL} and \texttt{CARTESIAN}; however, since MCRaT only supports 2D, the supported spherical coordinate system is $(r, \theta)$ and the supported \texttt{CARTESIAN} system is $(x,y)$ and $(r,z)$ in cylindrical coordinates. The length, pressure, and density scales of the hydro simulation also has to be specified by setting the values of \texttt{HYDRO\_L\_SCALE}, \texttt{HYDRO\_P\_SCALE}, and \texttt{HYDRO\_D\_SCALE}, respectively, to the normalization that is used in the hydro simulation.
+The \texttt{SIM\_SWITCH} tells MCRaT what hydro simulation is being used. The options are \texttt{FLASH} and \texttt{PLUTO\_CHOMBO}, for the FLASH hydrodynamic code and the PLUTO hydro code with CHOMBO AMR respectively. The switch \texttt{DIM\_SWITCH} tells MCRaT the dimensionality of the hydro simulation that is used. This switch can be set to \texttt{TWO}, for 2D, \texttt{TWO\_POINT\_FIVE}, for 2.5D, or \texttt{THREE}, for 3D. The geometry can also be specified through the \texttt{GEOMETRY} define statement. The options are \texttt{SPHERICAL}, \texttt{CARTESIAN}, \texttt{CYLINDRICAL}, and \texttt{POLAR}. The length, pressure, and density scales of the hydro simulation also has to be specified by setting the values of \texttt{HYDRO\_L\_SCALE}, \texttt{HYDRO\_P\_SCALE}, and \texttt{HYDRO\_D\_SCALE}, respectively, to the normalization that is used in the hydro simulation.
 
 In order to enable the consideration of thermal synchrotron photons in the MCRaT simulation the \texttt{CYCLOSYNCHROTRON\_SWITCH} needs to be set to \texttt{ON}, otherwise this switch should be set to \texttt{OFF}. If it is set to be \texttt{ON}, the user needs to define other variables. One variable that needs to be defined is \texttt{CYCLOSYNCHROTRON\_REBIN\_E\_PERC} which provides MCRaT with an upper limit for the number of synchrotron photons to emit. This quantity is calculated as the percentage of the maximum number of photons the user wants injected (see the \texttt{[MCRaT Photon Block]} portion of the example mc.par file in section \ref{mc.par}). If \texttt{CYCLOSYNCHROTRON\_REBIN\_E\_PERC} is set to 0.5 and the value of the 17$^\textrm{th}$ line is 3000, the upper limit for the number of synchrotron emitted photons is 1500. This variable also defines the number of energy bins that MCRaT will create when it rebins the synchrotron photons, thus in the aforementioned example, the number of energy bins that the photons will be rebinned into is 1500 as well. MCRaT will also rebin the photons into spatial bins and the size of these bins are specified using the \texttt{CYCLOSYNCHROTRON\_REBIN\_ANG} variable which has units of degrees. In considering synchrotron emission, the user needs to specify how the magnetic field is calculated. This is done through the \texttt{B\_FIELD\_CALC} switch which can be set to: \texttt{INTERNAL\_E}, where the magnetic energy density is set equal to the internal energy of the outflow, \texttt{TOTAL\_E}, where the magnetic field is calculated from the total energy of the outflow, or \texttt{SIMULATION} where the code uses the magnitude of the magnetic field that is acquired from a simulation. If \texttt{B\_FIELD\_CALC} is set to \texttt{TOTAL\_E} or \texttt{INTERNAL\_E}, the user needs to set the \texttt{EPSILON\_B} switch, which represents the fraction of the total outflow energy that is in the magnetic field. More information about the implementation of thermal synchrotron emission in the algorithm of the code can be found in section \ref{algorithm}. More information regarding the physics of the implementation of thermal synchrotron emission and absorption can be found in section \ref{synch}. 
 
@@ -144,20 +144,20 @@ MCRaT requires the user to provide information in the form of a parameter file n
 \begin{verbatim}
 [Hydro/MHD Simulation Block]
 
-5.               # Number of frames per second of hydro simulation (likely always the same)
-3000		# Last available hydro simulation frame  (get it from the last file in the data folder)
-0 5e12		# Max r0 coordinate limits of hydro simulation
-0 2.5e13		# Max r1 coordinate limit of hydro simulation
-0 2e13		# Max r2 coordinate limit of hydro simulation (if simulation is 3D)
+5.        # Number of frames per second of hydro simulation (likely always the same)
+3000	  # Last available hydro simulation frame  (get from the last file in the data folder)
+0 5e12	  # Max r0 coordinate limits of hydro simulation
+0 2.5e13  # Max r1 coordinate limit of hydro simulation
+0 2e13	  # Max r2 coordinate limit of hydro simulation (if simulation is 3D)
 
 [MCRaT Injection Angles Block]
 
-0.               	# The minimum off-axis angle to inject photons (in degrees)
-6.               	# The maximum off-axis angle to inject photons (in degrees)
-3.			# Number of angle bins to consider
-200 200 200      	# Frame at which photon injection starts for each angle bin
-199 199 299            	# Number of frames for which photons are injected for each angle bin
-1e11 1.5e12 2e12	# The radius at which the photons are injected for each angle bin
+0.                # The minimum off-axis angle to inject photons (in degrees)
+6.                # The maximum off-axis angle to inject photons (in degrees)
+3.			      # Number of angle bins to consider
+200 200 200       # Frame at which photon injection starts for each angle bin
+199 199 299       # Number of frames for which photons are injected for each angle bin
+1e11 1.5e12 2e12  # The radius at which the photons are injected for each angle bin
 
 [MCRaT Photon Block]
 
