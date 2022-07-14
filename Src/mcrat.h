@@ -31,6 +31,7 @@
 #define CYLINDRICAL_OUTFLOW             1
 #define SPHERICAL_OUTFLOW               2
 #define STRUCTURED_SPHERICAL_OUTFLOW    3
+#define CUSTOM_OUTFLOW                  4
 
 //define the geometries that we can handle
 #define CARTESIAN   0 //2D, 3D
@@ -178,6 +179,33 @@ struct hydro_dataframe
 #include "geometry.h"
 #include "mcrat_scattering.h"
 #include "mcrat_io.h"
+#include "custom_outflow.h"
+#include "custom_spectrum.h"
+
+//throw errors during compilation if other switches are not defined
+#ifndef SIM_SWITCH
+#error Need to define hydro simulation type in mcrat_input.h file using SIM_SWITCH
+#endif
+
+#ifndef DIMENSIONS
+#error Need to define hydro simulation dimensions in mcrat_input.h file using DIMENSIONS (should be set to two for this version of MCRaT)
+#endif
+
+#ifndef GEOMETRY
+#error Need to define hydro simulation geometry in mcrat_input.h file using GEOMETRY
+#endif
+
+#ifndef HYDRO_L_SCALE
+#error Need to define hydro simulation length scaling in mcrat_input.h file using HYDRO_L_SCALE
+#endif
+
+#ifndef HYDRO_D_SCALE
+#error Need to define hydro simulation density scaling in mcrat_input.h file using HYDRO_D_SCALE
+#endif
+
+#ifndef MCPAR
+#error Need to define name of MCRaT parameter file in mcrat_input.h file using MCPAR (it is typically called mc.par, see e.g. the MCRaT manual)
+#endif
 
 //set default hydro v scale to be the speed of light
 #define HYDRO_V_SCALE C_LIGHT
@@ -244,27 +272,3 @@ struct hydro_dataframe
     #define SAVE_TYPE   OFF
 #endif
 
-//throw errors during compilation if other switches are not defined
-#ifndef SIM_SWITCH
-#error Need to define hydro simulation type in mcrat_input.h file using SIM_SWITCH
-#endif
-
-#ifndef DIMENSIONS
-#error Need to define hydro simulation dimensions in mcrat_input.h file using DIMENSIONS (should be set to two for this version of MCRaT)
-#endif
-
-#ifndef GEOMETRY
-#error Need to define hydro simulation geometry in mcrat_input.h file using GEOMETRY
-#endif
-
-#ifndef HYDRO_L_SCALE
-#error Need to define hydro simulation length scaling in mcrat_input.h file using HYDRO_L_SCALE
-#endif
-
-#ifndef HYDRO_D_SCALE
-#error Need to define hydro simulation density scaling in mcrat_input.h file using HYDRO_D_SCALE
-#endif
-
-#ifndef MCPAR
-#error Need to define name of MCRaT parameter file in mcrat_input.h file using MCPAR (it is typically called mc.par, see e.g. the MCRaT manual)
-#endif

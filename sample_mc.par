@@ -17,7 +17,7 @@
 
 [MCRaT Photon Block]
 
-b		# Type of spectrum we inject with, w=wien b=blackbody
+b		# Type of spectrum we inject with, w=wien b=blackbody, c=custom spectrum
 1000		# Min number of photons
 5000		# Max number of photons
 
