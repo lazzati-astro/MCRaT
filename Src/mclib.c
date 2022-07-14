@@ -22,10 +22,14 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
         num_dens_coeff=8.44;
         //printf("in wien spectrum\n");
     }
-    else
+    else if (spect=='b')
     {
         num_dens_coeff=20.29; //this is for black body spectrum
         //printf("in BB spectrum");
+    }
+    else
+    {
+        num_dens_coeff=1;
     }
     
     //find how many blocks are near the injection radius within the angles defined in mc.par, get temperatures and calculate number of photons to allocate memory for 
@@ -188,7 +192,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                         yfr_dum=(1.0/(1.29e31))*pow((fr_dum/((hydro_data->temp)[i])),3.0)/(exp((PL_CONST*fr_dum)/(K_B*((hydro_data->temp)[i]) ))-1); //curve is normalized to maximum
                     }
                 }
-                else
+                else if (spect=='b')
                 {
                         /* old way
                         fr_max=(5.88e10)*((hydro_data->temp)[i]);//(C_LIGHT*(*(temps+i)))/(0.29); //max frequency of bb
@@ -212,6 +216,23 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                         fr_dum*=K_B*((hydro_data->temp)[i])/PL_CONST;
                         y_dum=0; yfr_dum=1;
                         
+                }
+                else
+                {
+                    //this is for custom spectrum sampling
+                    y_dum=1; //initalize loop
+                    yfr_dum=0;
+                    while (y_dum>yfr_dum)
+                    {
+                        fr_dum=gsl_rng_uniform_pos(rand)*6.3e11*((hydro_data->temp)[i]); //in Hz
+                        //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
+                        y_dum=gsl_rng_uniform_pos(rand);
+                        //printf("%lf ",fr_dum);
+                    
+                        yfr_dum=custom_spectrum(fr_dum);
+                    }
+
+                    
                 }
                     //printf("%lf, %lf,%lf,%e \n",(*(temps+i)),fr_dum, y_dum, yfr_dum);
                     

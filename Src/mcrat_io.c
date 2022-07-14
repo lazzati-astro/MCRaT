@@ -1972,6 +1972,8 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
         sphericalPrep(hydro_data, fPtr);
     #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
         structuredFireballPrep(hydro_data, fPtr);
+    #elif SIMULATION_TYPE == CUSTOM_OUTFLOW
+        customOutflowPrep(hydro_data, fPtr);
     #endif
 
     #if NONTHERMAL_E_DIST != OFF

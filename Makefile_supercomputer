@@ -10,9 +10,9 @@ CC          = mpicc -cc=icc
 CFLAGS      = -Wall -qopenmp -O3 -ipo -axCORE-AVX2 -xSSE4.2 
 LIB         = -lz -lm -ldl -lgsl -lgslcblas -lm -lmpi -lsz -Wl,-rpath -Wl,/nasa/hdf5/1.8.18_mpt/lib -lhdf5
 
-DEPS = mcrat.h mclib.h mclib_riken.h mclib_pluto.h mc_cyclosynch.h mcrat_input.h geometry.h mcrat_io.h mcrat_scattering.h mclib_flash.h analytic_outflows.h
-OBJ = mcrat.o mclib.o mclib_riken.o mclib_pluto.o mc_cyclosynch.o geometry.o mcrat_io.o mcrat_scattering.o mclib_flash.o analytic_outflows.o
-OBJ_MERGE = merge.o mclib.o mclib_riken.o mclib_pluto.o mc_cyclosynch.o geometry.o mcrat_io.o mcrat_scattering.o mclib_flash.o analytic_outflows.o
+DEPS = mcrat.h mclib.h mclib_riken.h mclib_pluto.h mc_cyclosynch.h mcrat_input.h geometry.h mcrat_io.h mcrat_scattering.h mclib_flash.h analytic_outflows.h optical_depth.h electron.h hot_x_section.h photons.h custom_outflow.h custom_spectrum.h
+OBJ = mcrat.o mclib.o mclib_riken.o mclib_pluto.o mc_cyclosynch.o geometry.o mcrat_io.o mcrat_scattering.o mclib_flash.o analytic_outflows.o optical_depth.o electron.o hot_x_section.o photons.o custom_outflow.o custom_spectrum.o
+OBJ_MERGE = merge.o mclib.o mclib_riken.o mclib_pluto.o mc_cyclosynch.o geometry.o mcrat_io.o mcrat_scattering.o mclib_flash.o analytic_outflows.o optical_depth.o electron.o hot_x_section.o photons.o custom_outflow.o custom_spectrum.o
 
 INCLUDE   = -I/nasa/szip/2.1.1/include -I/u/tparsota/gsl-2.4/include -I/nasa/hdf5/1.8.18_mpt/include -I/nasa/pkgsrc/toss3/2021Q2/include
 LIBSHDF   =  $(EXTLIB)

@@ -31,6 +31,7 @@
 #define CYLINDRICAL_OUTFLOW             1
 #define SPHERICAL_OUTFLOW               2
 #define STRUCTURED_SPHERICAL_OUTFLOW    3
+#define CUSTOM_OUTFLOW                  4
 
 //define the geometries that we can handle
 #define CARTESIAN   0 //2D, 3D
@@ -257,6 +258,8 @@ struct hydro_dataframe
 #include "optical_depth.h"
 #include "electron.h"
 #include "photons.h"
+#include "custom_outflow.h"
+#include "custom_spectrum.h"
 
 
 //if the user doesnt specify NONTHERMAL_E_DIST set it to be off
