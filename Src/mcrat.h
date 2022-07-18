@@ -429,3 +429,10 @@ struct hydro_dataframe
 #error Need to define name of MCRaT parameter file in mcrat_input.h file using MCPAR (it is typically called mc.par, see e.g. the MCRaT manual)
 #endif
 
+// this can be set by the user when they use the custom spectrum option.
+//define the number density coeficient, integrate the number density spectrum from 0 to infinity to get this value
+//used to calculate the number density of photons as num_dens_coeff*T_comv^3
+#ifndef PHOTON_DENSITY_COEFF
+    #define PHOTON_DENSITY_COEFF  1
+#endif
+

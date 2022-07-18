@@ -15,14 +15,17 @@ void customOutflowPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
     double vel=0, rho=0, r=0, gamma;
     int i=0;
     
-    fprintf(fPtr, "The Custom Outflow values are: beta=%e, T_comv=%e K, m_dot=%e, tau_0=%e \n", beta, t_comov, m_dot_out, tau_0);
+    fprintf(fPtr, "The Custom Outflow values are: beta=%e, T_comv=%e K, m_dot=%e, tau_0=%e, r_0=%e \n", beta, t_comov, m_dot_out, tau_0, r_0);
     fflush(fPtr);
     
     for (i=0; i<hydro_data->num_elements; i++)
     {
         r=((hydro_data->r))[i];
         vel=C_LIGHT*m_dot_out*pow(r_0/r, 2-beta);
-        rho=N_0*M_P*pow(r_0/r, beta);
+        
+        //should this be the lab frame density or the fluid frame density?
+        //this may not matter since its a factor of ~2
+        rho=N_0*M_P*pow(r_0/r, beta); 
         gamma=1/sqrt(1-pow(vel/C_LIGHT, 2.0));
         
         
