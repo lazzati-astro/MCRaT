@@ -2,9 +2,9 @@
 
 5.               # Number of frames per second of hydro simulation (likely always the same)
 3000		# Last available hydro simulation frame  (get it from the last file in the data folder)
-0 5e12		# Max r0 coordinate limits of hydro simulation
-0 2.5e12		# Max r1 coordinate limit of hydro simulation
-0 2e13		# Max r2 coordinate limit of hydro simulation (if simulation is 3D)
+0 5e12		# r0 coordinate min/max limits of hydro simulation
+0 2.5e12		# r1 coordinate min/max limit of hydro simulation
+0 2e13		# r2 coordinate min/max limit of hydro simulation (if simulation is 3D)
 
 [MCRaT Injection Angles Block]
 
