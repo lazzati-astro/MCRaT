@@ -237,7 +237,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
 
                     
                 }
-                    //printf("%lf, %lf,%lf,%e \n",(*(temps+i)),fr_dum, y_dum, yfr_dum);
+                //printf("%lf, %lf,%lf,%e \n",(hydro_data->temp)[i],fr_dum, y_dum, yfr_dum);
                     
                 
                 //printf("i: %d freq:%lf\n ",ph_tot, fr_dum);

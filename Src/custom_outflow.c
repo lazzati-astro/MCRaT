@@ -9,7 +9,8 @@
 
 void customOutflowPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
 {
-    double  beta=2.0, t_comov=3*1.63-9/K_B, m_dot_out=0.8, tau_0=2;// the comoving temperature of 3keV in Kelvin, and the initial unitless m_dot, initial optical depth
+    //for now the velocity is in units of c, but will need to change this everywhere once I am done testing
+    double  beta=2.0, t_comov=3*1.60218e-9/K_B, m_dot_out=0.8, tau_0=2;// the comoving temperature of 3keV in Kelvin, and the initial unitless m_dot, initial optical depth
     double r_0=1e9; //choose some radius at base of outflow in cm, also is inner limit of simulations
     double N_0=tau_0*(beta-1)/(THOM_X_SECT*r_0); //initial number density of particles
     double vel=0, rho=0, r=0, gamma;
@@ -21,7 +22,7 @@ void customOutflowPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
     for (i=0; i<hydro_data->num_elements; i++)
     {
         r=((hydro_data->r))[i];
-        vel=C_LIGHT*m_dot_out*pow(r_0/r, 2-beta);
+        vel=m_dot_out*pow(r_0/r, 2-beta); //C_LIGHT*, see first comment about velocity in units of c
         
         //should this be the lab frame density or the fluid frame density?
         //this may not matter since its a factor of ~2
