@@ -16,6 +16,9 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
     double r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
     double position_rand=0, position2_rand=0, position3_rand=0, cartesian_position_rand_array[3];
     
+    //define the number density coeficient, integrate the number density spectrum from 0 to infinity to get this value
+    //used to calculate the number density of photons as num_dens_coeff*T_comv^3
+    // how should this be defined for the custom spectrum case? -> made it be an input that the user sets
     if (spect=='w') //from MCRAT paper, w for wien spectrum 
     {
         num_dens_coeff=8.44;
@@ -28,7 +31,7 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
     }
     else
     {
-        num_dens_coeff=1;
+        num_dens_coeff=PHOTON_DENSITY_COEFF;
     }
     
     //find how many blocks are near the injection radius within the angles defined in mc.par, get temperatures and calculate number of photons to allocate memory for 
