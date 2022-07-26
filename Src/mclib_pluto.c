@@ -1071,7 +1071,7 @@ void readDblOutFile(char dblfile[STR_BUFFER], int *num_var, char ***var_strings,
 //    fflush(fPtr);
     
     //parse the line to get the number of variables
-    junk=0; //use this to count now
+    junk=1; //use this to count now
     value = strtok_r(buf, " ", &context);
     while (context != NULL)
     {
@@ -1079,6 +1079,11 @@ void readDblOutFile(char dblfile[STR_BUFFER], int *num_var, char ***var_strings,
 //        fprintf(fPtr, "strtok: %s value %s\n", context , value);
 //        fflush(fPtr);
         value = strtok_r(NULL, " ", &context);
+        
+        if (strcmp(context, "\n") == 0)
+        {
+            context = NULL;
+        }
         
         junk++;
     }
@@ -1105,6 +1110,7 @@ void readDblOutFile(char dblfile[STR_BUFFER], int *num_var, char ***var_strings,
 //        fflush(fPtr);
 //
 //    }
+    
     fclose(fileptr);
 
 }
