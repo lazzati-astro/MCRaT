@@ -684,6 +684,25 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
     if (find_nearest_block_switch!=0)
     {
         num_photons_find_new_element=0; //force this to be 0 since we forced MCRaT to find the indexes for all the photons here
+        
+        double max_dr=0, min_dr=DBL_MAX;
+        for (i=0;i<num_ph; i++)
+        {
+            ph_block_index=(ph+i)->nearest_block_index;
+            
+            if (((hydro_data->r0_size))[ph_block_index] < min_dr)
+            {
+                min_dr=(hydro_data->r0_size)[ph_block_index];
+            }
+            
+            if (((hydro_data->r0_size))[ph_block_index] > max_dr)
+            {
+                max_dr=(hydro_data->r0_size)[ph_block_index];
+            }
+        }
+        
+        fprintf(fPtr, "The maximum dr=%e cm, The minimum dr=%e cm \n", max_dr, min_dr);
+        fflush(fPtr);
     }
     
     return num_photons_find_new_element;
@@ -1581,6 +1600,8 @@ void sphericalPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
     double vel=0, r=0;
     int i=0;
     
+    double max_dr=0, min_dr=DBL_MAX;
+    
     fprintf(fPtr, "The Spherical Outflow values are: Gamma_infinity=%e, Luminosity=%e erg/s, r_0=%e cm \n", gamma_infinity, lumi, r00);
     fflush(fPtr);
     
@@ -1647,7 +1668,23 @@ void sphericalPrep(struct hydro_dataframe *hydro_data, FILE *fPtr)
         #endif
 
         //fprintf(fPtr,"Gamma: %lf\nR: %lf\nPres: %e\nvel %lf\nX: %lf\nY %lf\nVx: %lf\nVy: %lf\nDens: %e\nLab_Dens: %e\nTemp: %lf\n", *(gamma+i), *(r+i), *(pres+i), vel, *(x+i), *(y+i), *(vx+i), *(vy+i), *(dens+i), *(dens_lab+i), *(temp+i));
+        
+        if (((hydro_data->r0_size))[i]<min_dr)
+        {
+            min_dr=((hydro_data->r0_size))[i];
+        }
+        
+        if (((hydro_data->r0_size))[i]>max_dr)
+        {
+            max_dr=((hydro_data->r0_size))[i];
+        }
+
+        
     }
+    
+    fprintf(fPtr, "The maximum dr=%e cm, The minimum dr=%e cm \n", max_dr, min_dr);
+    fflush(fPtr);
+
     
 }
 
