@@ -632,6 +632,25 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
     if (find_nearest_block_switch!=0)
     {
         num_photons_find_new_element=0; //force this to be 0 since we forced MCRaT to find the indexes for all the photons here
+        
+        double max_dr=0, min_dr=DBL_MAX;
+        for (i=0;i<num_ph; i++)
+        {
+            ph_block_index=(ph+i)->nearest_block_index;
+            
+            if (((hydro_data->r0_size))[ph_block_index] < min_dr)
+            {
+                min_dr=(hydro_data->r0_size)[ph_block_index];
+            }
+            
+            if (((hydro_data->r0_size))[ph_block_index] > max_dr)
+            {
+                max_dr=(hydro_data->r0_size)[ph_block_index];
+            }
+        }
+        
+        fprintf(fPtr, "The maximum dr=%e cm, The minimum dr=%e cm \n", max_dr, min_dr);
+        fflush(fPtr);
     }
     
     return num_photons_find_new_element;

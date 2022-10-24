@@ -76,6 +76,9 @@ void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro
     attr = H5Aopen (file, "num_levels", H5P_DEFAULT);
     status = H5Aread (attr, H5T_NATIVE_INT, &num_levels);
     
+    //adjust the levels here to adjust which level of refinement to start reading from
+    //num_levels=num_levels-1;
+    
     status = H5Aclose (attr);
     //printf("readPlutoChombo num_levels: %d\n", num_levels);
     
@@ -790,7 +793,6 @@ void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro
     }
     
     //fprintf(fPtr, "number: %d\n", r_count);
-    
 
    hydro_data->num_elements=r_count;
     
