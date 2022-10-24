@@ -23,8 +23,9 @@
 #  that may be deleted by the script and verify them before running mcrat_msp to delete the files and modify the mc.par file.
 #
 #  Example calls are:
-#  ./mcrat_msp.sh -modifypar 50 100 ~/path/to/mc_dir/0.0-3.0/ 1230000 -delete
 #  ./mcrat_msp.sh ~/path/to/mc_dir/0.0-3.0/ 1230000
+#  ./mcrat_msp.sh -modifypar 50 100 ~/path/to/mc_dir/0.0-3.0/ 1230000 -delete
+#  ./mcrat_msp.sh -modifypar 50 100 ~/path/to/mc_dir/0.0-3.0/ 1230000 -delete -mcpar test.par
 #
 #  Created by Tyler Parsotan on 11/20/18.
 #
@@ -34,6 +35,7 @@ NC='\033[0m' # No Color
 
 DELETE_FLAG=0
 MODIFY_FLAG=0
+MCPAR_NAME_FLAG=0
 
 #read in the flags and directory given to script
 while [ "$1" != "" ];
@@ -45,6 +47,11 @@ while [ "$1" != "" ];
         -modifypar )
             shift; NMIN=$1 NMAX=$2 MODIFY_FLAG=1
         ;;
+        -mcpar )
+            MCPAR_NAME_FLAG=1
+            shift; MCPAR_FILENAME=$1
+        ;;
+
     esac;
 
     if [ -d "$1" ]
@@ -56,6 +63,12 @@ while [ "$1" != "" ];
 
     shift;
 done
+
+#if the mcpar file name is not specified set it to be thee default
+if (("$MCPAR_NAME_FLAG" == 0));
+then
+    MCPAR_FILENAME="mc.par"
+fi
 
 #echo $DELETE_FLAG
 #echo $MODIFY_FLAG
@@ -120,11 +133,11 @@ if (("$MODIFY_FLAG" == 1));
 then
     TAB=$'\t'
     #the min and max number of photons to inject is the 21 and 22 lines
-    sed "21s/.*/$NMIN${TAB}${TAB}#Min number of photons/" "${DIRECTORY%/*/*}"/mc.par > "${DIRECTORY%/*/*}"/new_file.txt #replace nmin
+    sed "21s/.*/$NMIN${TAB}${TAB}#Min number of photons/" "${DIRECTORY%/*/*}"/"$MCPAR_FILENAME" > "${DIRECTORY%/*/*}"/new_file.txt #replace nmin
     sed  -i '' -e "22s/.*/$NMAX${TAB}${TAB}#Max number of photons/" "${DIRECTORY%/*/*}"/new_file.txt #replace nmin
 
-    mv "${DIRECTORY%/*/*}"/mc.par "${DIRECTORY%/*/*}"/old_mc.par
-    mv "${DIRECTORY%/*/*}"/new_file.txt "${DIRECTORY%/*/*}"/mc.par #keep copy of old mc.par and move new_file (modified mc.par) to become mc.par
+    mv "${DIRECTORY%/*/*}"/"$MCPAR_FILENAME" "${DIRECTORY%/*/*}"/old_"$MCPAR_FILENAME"
+    mv "${DIRECTORY%/*/*}"/new_file.txt "${DIRECTORY%/*/*}"/"$MCPAR_FILENAME" #keep copy of old mc.par and move new_file (modified mc.par) to become mc.par
     printf "${RED}Make sure that the mc.par file is set to continue the simulation with 'c' and not 'i'${NC}\n"
 fi
 
