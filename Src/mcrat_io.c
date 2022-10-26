@@ -865,7 +865,7 @@ int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame,
         {
             //can call printPhotons here or return an int signifying if the checkpoint save worked
             fwrite(&angle_size, sizeof(int), 1, fPtr);
-            restart='c';
+            restart=CONTINUE;
             fwrite(&restart, sizeof(char), 1, fPtr);
             //printf("Rank: %d wrote restart %c\n", angle_rank, restart);
             fflush(stdout);
@@ -917,7 +917,7 @@ int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame,
         else
         {
             fwrite(&angle_size, sizeof(int), 1, fPtr);
-            restart='c';
+            restart=CONTINUE;
             fwrite(&restart, sizeof(char), 1, fPtr);
             //printf("Rank: %d wrote restart %c\n", angle_rank, restart);
             fflush(stdout);
@@ -971,7 +971,7 @@ int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame,
         {
             //just finished last iteration of scatt_frame
             fwrite(&angle_size, sizeof(int), 1, fPtr);
-            restart='r';
+            restart=INITALIZE;
             fwrite(&restart, sizeof(char), 1, fPtr);
             fwrite(&frame, sizeof(int), 1, fPtr);
             fwrite(&frame2, sizeof(int), 1, fPtr);
@@ -1025,7 +1025,7 @@ int readCheckpoint(char dir[STR_BUFFER], struct photon **ph, int *frame2, int *f
         //printf("%d\n", *framestart);
         fread(frame2, sizeof(int), 1, fPtr);
         
-        if((*restart)=='c')
+        if((*restart)==CONTINUE)
         {
             fread(scatt_framestart, sizeof(int), 1, fPtr);
             
@@ -1111,7 +1111,7 @@ int readCheckpoint(char dir[STR_BUFFER], struct photon **ph, int *frame2, int *f
     {
         //*framestart=(*framestart);
         *scatt_framestart=(*framestart);
-        *restart='r';
+        *restart=INITALIZE;
         
     }
     
