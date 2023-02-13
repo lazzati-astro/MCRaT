@@ -7,6 +7,7 @@
 
 #include "mcrat.h"
 
+//may be able to replace these by reading in the dimensions of the grid variables
 #define PROP_DIM1 1
 #define PROP_DIM2 8
 #define PROP_DIM3 8
@@ -199,7 +200,7 @@ void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_
     //H5Pclose(xfer_plist);
     status = H5Fclose (file);
 
-    
+    //may be able to read in different refinement levels by selecting nodes with other values besides 1
     fprintf(fPtr,">> Selecting good node types (=1)\n");
     //find out how many good nodes there are
 
