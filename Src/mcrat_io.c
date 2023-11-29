@@ -1123,7 +1123,7 @@ void readMcPar(struct hydro_dataframe *hydro_data, double *theta_jmin, double *t
     //function to read mc.par file
     char mc_file[STR_BUFFER]="" ;
     FILE *fptr=NULL;
-    char buf[100]="", buf2[100]="", *value, *context = NULL, copied_str[100]="";
+    char buf[STR_BUFFER]="", buf2[STR_BUFFER]="", *value, *context = NULL, copied_str[STR_BUFFER]="";
     double theta_deg;
     int i, val;
     
