@@ -83,7 +83,7 @@ int main(int argc, char **argv)
     double dt_max=0, thescatt=0, accum_time=0; 
     double  gamma_infinity=0, time_now=0, time_step=0, avg_scatt=0,avg_r=0; //gamma_infinity not used?
     double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0, ph_vzPtr=0;// *ph_cosanglePtr=NULL ;
-    double min_r=0, max_r=0, min_theta=0, max_theta=0, nu_c_scatt=0, n_comptonized=0;
+    double min_r=0, max_r=0, min_theta=0, max_theta=0, nu_c_scatt=0, n_comptonized=0, remaining_time=0;
     int frame=0, scatt_frame=0, frame_scatt_cnt=0, frame_abs_cnt=0, scatt_framestart=0, framestart=0;
     struct photon *phPtr=NULL; //pointer to array of photons
     struct hydro_dataframe hydrodata; //pointer to array of hydro data
@@ -745,9 +745,11 @@ int main(int argc, char **argv)
             frame_abs_cnt=0;
             find_nearest_grid_switch=1; // set to true so the function findNearestPropertiesAndMinMFP by default finds the index of the grid block closest to each photon since we just read in a file and the prior index is invalid
             num_photons_find_new_element=0;
+            remaining_time=((scatt_frame+hydrodata.increment_scatt_frame)/hydrodata.fps)-time_now; //This keeps track of the amount of time that remains until a new frame has to be loaded, we initalize it to the time of the next frame and subtract the scattering times from it. If the time_now=time of the last hydro frame then this ==dt_max
             
             n_comptonized=0;
-            while (time_now<((scatt_frame+hydrodata.increment_scatt_frame)/hydrodata.fps))
+            //while (time_now<((scatt_frame+hydrodata.increment_scatt_frame)/hydrodata.fps))
+            while (remaining_time>0)
             {
                 //if simulation time is less than the simulation time of the next frame, keep scattering in this frame
                 //for RIKEN hydro data, theres still 10 fps but after frame 3000, file increment is 10 not 1, therefore modify dt_max not fps
@@ -758,13 +760,16 @@ int main(int argc, char **argv)
 
                 find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
                 
-                if (*(all_time_steps+(*(sorted_indexes+0)))<dt_max)
+                if (*(all_time_steps+(*(sorted_indexes+0)))<remaining_time)
                 {
                     //scatter the photon
                     //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
-                    time_step=photonEvent( phPtr, num_ph, dt_max, all_time_steps, sorted_indexes, &hydrodata, &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );
+                    time_step=photonEvent( phPtr, num_ph, remaining_time, all_time_steps, sorted_indexes, &hydrodata, &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );
                     time_now+=time_step;
+                    
+                    remaining_time-=time_step; //update the remaining time subtracting off the time that has been accumulated through photon scatterings.
+
                     
                     //see if the scattered phton was a seed photon, if so replenish the seed photon
                     #if CYCLOSYNCHROTRON_SWITCH == ON
@@ -812,12 +817,18 @@ int main(int argc, char **argv)
                 }
                 else
                 {
-                    time_now+=dt_max;
+                    //this handles the case of the scattering time being larger than the time to the next frame either right away or at any point in iteratively scattering the photons
+                    time_now+=remaining_time;
                     
-                    //for each photon update its position based on its momentum
+                    //for each photon update its position based on its momentum and the remaining time to the next frame
                     
-                    updatePhotonPosition(phPtr, num_ph, dt_max, fPtr);
+                    updatePhotonPosition(phPtr, num_ph, remaining_time, fPtr);
+                    
+                    //if we are here, then we need to load the next frame and we can set the timestep=remaining_time and then set remaining_time=0
+                    time_step=remaining_time;
+                    remaining_time=0;
                 }
+                
                 
                 //printf("In main 2: %e, %d, %e, %e\n", ((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
 
