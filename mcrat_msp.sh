@@ -100,15 +100,42 @@ do
     then
         NUM_SCATT_LINE=$(grep "Scattering Number" $i |tail -n 1) #if the process didnt even finish the forst frame probably has alot alot of scatterings and should still have its files deleted in order to be restarted
         NUM_SCATT=${NUM_SCATT_LINE##*:}
+        
+        LINE=$(grep "Working on frame" $i | tail -n 1 | awk '{print $NF}'  |  cut -d "."  -f2)
+        
         printf "Process %s is working on the first frame number: %s\n" "$PROC_NUM" "${LINE}"
         printf "The number of scatterings completed in this frame is: %s\n" "$NUM_SCATT"
 
         
     else
+        LINE=$(grep "Working on frame" $i | tail -n 2| head -n 1 | awk '{print $NF}'  |  cut -d "."  -f2)
+        
         printf "Process %s recently completed frame: %s\n" "$PROC_NUM" "${LINE}"
         echo  $NUM_SCATT_LINE
 
     fi
+
+    if (( "$NUM_FRAMES" > 1 )); #if the number of frames completed is >0
+    then
+        
+
+        NUM_SCATT_LINE=$(grep "The number of scatterings in this frame is:" $i |tail -n 1) # what if the process didnt even finish the first frame? then go to else
+        #get the number of scatterings
+        NUM_SCATT=${NUM_SCATT_LINE##*:}
+
+        printf "Process %s recently completed frame: %s\n" "$PROC_NUM" "${LINE}"
+        echo  $NUM_SCATT_LINE
+    else
+        LINE=$(grep "Working on frame" $i | tail -n 1 | awk '{print $NF}'  |  cut -d "."  -f2)
+
+        NUM_SCATT_LINE=$(grep "Scattering Number" $i |tail -n 1) #if the process didnt even finish the forst frame probably has alot alot of scatterings and should still have its files deleted in order to be restarted
+        #get the number of scatterings
+        NUM_SCATT=${NUM_SCATT_LINE##*:}
+        printf "Process %s is working on the first frame number: %s\n" "$PROC_NUM" "${LINE}"
+        printf "The number of scatterings completed in this frame is: %s\n" "$NUM_SCATT"
+
+    fi
+
 
 
     if (( "$NUM_SCATT" >= "$N_SCATT_USER" ));
