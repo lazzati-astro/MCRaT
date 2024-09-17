@@ -122,6 +122,8 @@ do
             printf "${RED}Now deleting the checkpoint and process files${NC}\n"
             find "${DIRECTORY}" -name "mc_chkpt_${PROC_NUM}.dat" -delete
             find "${DIRECTORY}" -name "mc_proc_${PROC_NUM}.h5" -delete
+            
+            echo "Deleting the checkpoint and hdf5 files!!!" >> "${DIRECTORY}"/"mc_proc_${PROC_NUM}.h5"
         fi
     fi
     printf "\n"
