@@ -65,7 +65,7 @@ while [ "$1" != "" ];
 done
 
 #if the mcpar file name is not specified set it to be thee default
-if (("$MCPAR_NAME_FLAG" == 0));
+if (( "$MCPAR_NAME_FLAG" == 0 ));
 then
     MCPAR_FILENAME="mc.par"
 fi
