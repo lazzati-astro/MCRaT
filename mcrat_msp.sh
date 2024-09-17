@@ -112,12 +112,12 @@ do
 
 
 
-    if (("$NUM_SCATT" >= "$N_SCATT_USER"));
+    if (( "$NUM_SCATT" >= "$N_SCATT_USER" ));
     then
         printf "${RED}Process %s has undergone more than %s scatterings${NC}\n" "$PROC_NUM" "$N_SCATT_USER"
         #  if the -delete flag is set, delete the chkpt and proc files
         # find ${directory} -name 'mc_chkpt_(number).dat' -delete #or 'mc_proc_(number).h5'
-        if (("$DELETE_FLAG" == 1));
+        if (( "$DELETE_FLAG" == 1 ));
         then
             printf "${RED}Now deleting the checkpoint and process files${NC}\n"
             find "${DIRECTORY}" -name "mc_chkpt_${PROC_NUM}.dat" -delete
@@ -129,7 +129,7 @@ do
 done
 
 #  if the -modifypar file is set modify the N_inj parameters in the mc.par file
-if (("$MODIFY_FLAG" == 1));
+if (( "$MODIFY_FLAG" == 1 ));
 then
     TAB=$'\t'
     #the min and max number of photons to inject is the 21 and 22 lines
