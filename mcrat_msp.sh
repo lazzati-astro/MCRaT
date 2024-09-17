@@ -88,28 +88,27 @@ do
     NO_END=${FILE_NAME%.*}
     PROC_NUM=${NO_END##*_} #get third value of filenme parsed by underscore
     NUM_FRAMES=$(grep "MCRaT is working on" $i |wc -l)
-
-    if (( "$NUM_FRAMES" > 1 )); #if the number of frames completed is >0
+    
+    
+    #Try to get the number of scatterings assuming that the process has completed more than 1 frames of scattering.
+    # Then check if NUM_SCATT is empty. If so, then try to get the number of scatterings assuming that the process hasnt event completed a single frame
+    
+    NUM_SCATT_LINE=$(grep "The number of scatterings in this frame is:" $i |tail -n 1)
+    NUM_SCATT=${NUM_SCATT_LINE##*:}
+    
+    if [ "${NUM_SCATT_LINE##*:}" == "" ];
     then
-        LINE=$(grep "Working on frame" $i | tail -n 2| head -n 1 | awk '{print $NF}'  |  cut -d "."  -f2)
-
-        NUM_SCATT_LINE=$(grep "The number of scatterings in this frame is:" $i |tail -n 1) # what if the process didnt even finish the first frame? then go to else
-        #get the number of scatterings
-        NUM_SCATT=${NUM_SCATT_LINE##*:}
-
-        printf "Process %s recently completed frame: %s\n" "$PROC_NUM" "${LINE}"
-        echo  $NUM_SCATT_LINE
-    else
-        LINE=$(grep "Working on frame" $i | tail -n 1 | awk '{print $NF}'  |  cut -d "."  -f2)
-
         NUM_SCATT_LINE=$(grep "Scattering Number" $i |tail -n 1) #if the process didnt even finish the forst frame probably has alot alot of scatterings and should still have its files deleted in order to be restarted
-        #get the number of scatterings
         NUM_SCATT=${NUM_SCATT_LINE##*:}
         printf "Process %s is working on the first frame number: %s\n" "$PROC_NUM" "${LINE}"
         printf "The number of scatterings completed in this frame is: %s\n" "$NUM_SCATT"
 
-    fi
+        
+    else
+        printf "Process %s recently completed frame: %s\n" "$PROC_NUM" "${LINE}"
+        echo  $NUM_SCATT_LINE
 
+    fi
 
 
     if (( "$NUM_SCATT" >= "$N_SCATT_USER" ));
