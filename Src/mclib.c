@@ -446,7 +446,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
     
     int index=0, num_photons_find_new_element=0;
-    double mfp=0,min_mfp=0, beta=0;
+    double mfp=0, default_mfp=0, beta=0;
     double el_p[4];
     double ph_p_comv[4], ph_p[4], fluid_beta[3], photon_hydro_coord[3];
 
@@ -471,8 +471,8 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
     //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
     //or just parallelize this part here
     
-    min_mfp=1e12;
-    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p, ph_p, fluid_beta) private(i) shared(min_mfp ) reduction(+:num_photons_find_new_element)
+    default_mfp=1e12;
+    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p, ph_p, fluid_beta) private(i) shared(default_mfp ) reduction(+:num_photons_find_new_element)
     for (i=0;i<num_ph; i++)
     {
         //fprintf(fPtr, "%d, %d,%e\n", i, ((ph+i)->nearest_block_index), ((ph+i)->weight));
@@ -618,12 +618,12 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
             }
             else
             {
-                mfp=min_mfp;
+                mfp=default_mfp;
             }
         }
          else
         {
-            mfp=min_mfp;
+            mfp=default_mfp;
             //fprintf(fPtr,"Photon %d In ELSE\n", i);
             //exit(0);
         }
@@ -720,7 +720,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
     
     int index=0;
-    double mfp=0,min_mfp=0, beta=0;
+    double mfp=0,default_mfp=0, beta=0;
         
         
     //initialize gsl random number generator fo each thread
@@ -744,8 +744,8 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
     //or just parallelize this part here
     
-    min_mfp=1e12;
-    #pragma omp parallel for num_threads(num_thread) firstprivate( r, theta,dv, v, all_adjacent_block_indexes, j, left_block_index, right_block_index, top_block_index, bottom_block_index, is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(min_mfp )
+    default_mfp=1e12;
+    #pragma omp parallel for num_threads(num_thread) firstprivate( r, theta,dv, v, all_adjacent_block_indexes, j, left_block_index, right_block_index, top_block_index, bottom_block_index, is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker) private(i) shared(default_mfp )
     for (i=0;i<num_ph; i++)
     {
         //printf("%d, %e,%e\n", i, ((ph+i)->r0), ((ph+i)->r1));
@@ -941,9 +941,9 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
         
         
         #pragma omp critical 
-        if ( mfp<min_mfp)
+        if ( mfp<default_mfp)
         {
-            min_mfp=mfp;
+            default_mfp=mfp;
             n_dens_lab_min= n_dens_lab_tmp;
             n_vx_min= n_vx_tmp;
             n_vy_min= n_vy_tmp;
@@ -958,7 +958,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
             index=i;
             //fprintf(fPtr, "Thread is %d. new min: %e for photon %d with block properties: %e, %e, %e Located at: %e, %e, Dist: %e\n", omp_get_thread_num(), mfp, index, n_vx_tmp, n_vy_tmp, n_temp_tmp, *(x+min_index), *(y+min_index), dist_min);
             //fflush(fPtr);
-            #pragma omp flush(min_mfp)
+            #pragma omp flush(default_mfp)
         }
 
         
@@ -982,7 +982,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     #endif
     
     *(n_temp)= n_temp_min;
-    (*time_step)=min_mfp/C_LIGHT;
+    (*time_step)=default_mfp/C_LIGHT;
     return index;
     */
     return 0;
