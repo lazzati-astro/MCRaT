@@ -2,3 +2,4 @@ Src/*.o
 Src/MCRAT
 Src/MERGE
 OLDER_MCRaT_VERSIONS/
+.DS_Store
