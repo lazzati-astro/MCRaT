@@ -430,7 +430,7 @@ double *zeroNorm(double *p_ph)
     return p_ph;
 }
 
-int findContainingHydroCell( struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)
+int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_dataframe *hydro_data, int find_nearest_block_switch, FILE *fPtr)
 {
     int i=0, min_index=0, ph_block_index=0, num_thread=1, thread_id=0;
     double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, ph_r=0, ph_theta=0;

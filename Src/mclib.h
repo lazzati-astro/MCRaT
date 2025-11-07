@@ -5,7 +5,7 @@ void lorentzBoost(double *boost, double *p_ph, double *result, char object,  FIL
 
 double *zeroNorm(double *p_ph);
 
-int findContainingHydroCell( struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr);
+int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_dataframe *hydro_data, int find_nearest_block_switch, FILE *fPtr);
 
 void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr);
 
