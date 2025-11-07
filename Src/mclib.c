@@ -1,6 +1,5 @@
 #include "mcrat.h"
 
-
 //define constants
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27, FINE_STRUCT=7.29735308e-3, CHARGE_EL= 4.8032068e-10;
 const double K_B=1.380658e-16, M_P=1.6726231e-24, THOM_X_SECT=6.65246e-25, M_EL=9.1093879e-28 , R_EL=2.817941499892705e-13;
@@ -646,16 +645,9 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
     {
         *(sorted_indexes+i)= i; //save  indexes to array to use in qsort
     }
-    
-    //printf("before QSORT\n");
-    #if (defined _GNU_SOURCE || defined __GNU__ || defined __linux__)
-        qsort_r(sorted_indexes, num_ph, sizeof (int),  compare2, all_time_steps);
-    #elif (defined __APPLE__ || defined __MACH__ || defined __DARWIN__ || defined __FREEBSD__ || defined __BSD__ || defined OpenBSD3_1 || defined OpenBSD3_9)
-        qsort_r(sorted_indexes, num_ph, sizeof (int), all_time_steps, compare);
-    #else
-        #error Cannot detect operating system
-    #endif
-    
+
+    reverseSortIndexes(sorted_indexes, num_ph, sizeof (int),  all_time_steps);
+
     //print number of times we had to refind the index of the elemtn photons were located in
     if (find_nearest_block_switch!=0)
     {
@@ -666,7 +658,22 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
     
 }
 
-int compare1 (void *ar, const void *a, const void *b)
+void reverseSortIndexes(void *sorted_indexes, int num_elements, size_t element_size, void *context_array)
+{
+    /*
+    Here, we get the proper call to reverse qsort based on the operating system that we are compiling/running code on
+    */
+    //printf("before QSORT\n");
+    #if (defined _GNU_SOURCE || defined __GNU__ || defined __linux__)
+        qsort_r(sorted_indexes, num_elements, sizeof (int),  compare2, context_array);
+    #elif (defined __APPLE__ || defined __MACH__ || defined __DARWIN__ || defined __FREEBSD__ || defined __BSD__ || defined OpenBSD3_1 || defined OpenBSD3_9)
+        qsort_r(sorted_indexes, num_elements, sizeof (int), context_array, compare1);
+    #else
+    #error Cannot detect operating system
+    #endif
+}
+
+int compare1(void *ar, const void *a, const void *b)
 {
     //from https://phoxis.org/2012/07/12/get-sorted-index-orderting-of-an-array/
   int aa = *(int *) a;
@@ -688,7 +695,7 @@ int compare1 (void *ar, const void *a, const void *b)
     return ((arr[aa] > arr[bb]) - (arr[aa] < arr[bb]));
 }
 
-int compare2 ( const void *a, const void *b, void *ar)
+int compare2(const void *a, const void *b, void *ar)
 {
     //have 2 compare funcions b/c of changes in qsort_r between BSD and GNU
     //from https://phoxis.org/2012/07/12/get-sorted-index-orderting-of-an-array/

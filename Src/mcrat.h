@@ -149,6 +149,7 @@ struct hydro_dataframe
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <glob.h>
