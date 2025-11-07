@@ -7,7 +7,7 @@ double *zeroNorm(double *p_ph);
 
 int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr);
                                    
-int compare (void *ar, const void *a, const void *b);
+int compare1 (void *ar, const void *a, const void *b);
 
 int compare2 ( const void *a, const void *b, void *ar);
                                    

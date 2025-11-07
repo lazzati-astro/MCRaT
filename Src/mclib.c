@@ -666,7 +666,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
     
 }
 
-int compare (void *ar, const void *a, const void *b)
+int compare1 (void *ar, const void *a, const void *b)
 {
     //from https://phoxis.org/2012/07/12/get-sorted-index-orderting-of-an-array/
   int aa = *(int *) a;
