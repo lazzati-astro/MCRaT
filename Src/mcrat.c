@@ -756,7 +756,10 @@ int main(int argc, char **argv)
                 
                 //go through each photon and find blocks closest to each photon and properties of those blocks to calulate mean free path
                 //and choose the photon with the smallest mfp and calculate the timestep
-                num_photons_find_new_element+=findNearestPropertiesAndMinMFP(phPtr, num_ph, all_time_steps, sorted_indexes, &hydrodata, rng, find_nearest_grid_switch, fPtr);
+                num_photons_find_new_element+=findContainingHydroCell(phPtr, num_ph, all_time_steps, sorted_indexes, &hydrodata, rng, find_nearest_grid_switch, fPtr);
+
+                //now calculate all the mean free paths (and get a sorted index array)
+                calcMeanFreePath(phPtr, num_ph, all_time_steps, sorted_indexes, &hydrodata, rng, fPtr);
 
                 find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
                 

@@ -430,7 +430,7 @@ double *zeroNorm(double *p_ph)
     return p_ph;
 }
 
-int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)
+int findContainingHydroCell( struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)
 {
     int i=0, min_index=0, ph_block_index=0, num_thread=1, thread_id=0;
     double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, ph_r=0, ph_theta=0;
@@ -692,7 +692,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
         gsl_rng_set(rng[i],gsl_rng_get(rand));
     }
 
-    #pragma omp parallel for num_threads(num_thread) firstprivate(ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p, ph_p, fluid_beta) private(i) shared(default_mfp ) 
+    #pragma omp parallel for num_threads(num_thread) firstprivate(ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p, ph_p, fluid_beta) private(i) shared(default_mfp )
     for (i=0;i<num_ph; i++)
     {
 
