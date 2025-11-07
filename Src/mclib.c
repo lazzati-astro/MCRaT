@@ -432,29 +432,21 @@ double *zeroNorm(double *p_ph)
 
 int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_dataframe *hydro_data, int find_nearest_block_switch, FILE *fPtr)
 {
-    int i=0, min_index=0, ph_block_index=0, num_thread=1, thread_id=0;
-    double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, ph_r=0, ph_theta=0;
-    double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
+    int i=0, min_index=0, ph_block_index=0, num_thread=1, num_photons_find_new_element=0;
+    bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
+    double ph_phi=0;
+    double ph_p_comv[4], ph_p[4], fluid_beta[3], photon_hydro_coord[3];
 
-    double ph_v_norm=0, fl_v_norm=0;
-    double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
-    double rnd_tracker=0, n_dens_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
     #if defined(_OPENMP)
     num_thread=omp_get_num_threads(); //default is one above if theres no openmp usage
     #endif
-    bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
-    
-    int index=0, num_photons_find_new_element=0;
-    double mfp=0, default_mfp=0, beta=0;
-    double el_p[4];
-    double ph_p_comv[4], ph_p[4], fluid_beta[3], photon_hydro_coord[3];
 
 
     //go through each photon and find the blocks around it and then get the distances to all of those blocks and choose the one thats the shortest distance away
     //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
     //or just parallelize this part here
     
-    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p, ph_p, fluid_beta) private(i) reduction(+:num_photons_find_new_element)
+    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index,  ph_phi, min_index, ph_p_comv, ph_p, fluid_beta) private(i) reduction(+:num_photons_find_new_element)
     for (i=0;i<num_ph; i++)
     {
         //fprintf(fPtr, "%d, %d,%e\n", i, ((ph+i)->nearest_block_index), ((ph+i)->weight));
