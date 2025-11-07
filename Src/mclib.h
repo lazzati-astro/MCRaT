@@ -7,6 +7,8 @@ double *zeroNorm(double *p_ph);
 
 int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr);
 
+void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr);
+
 void reverseSortIndexes(void *sorted_indexes, int num_elements, size_t element_size, void *context_array);
 
 int compare1(void *ar, const void *a, const void *b);

@@ -530,11 +530,11 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
             
                 //find the new index of the block that the photon is actually in
                 min_index=findContainingBlock(photon_hydro_coord[0], photon_hydro_coord[1], photon_hydro_coord[2], hydro_data, fPtr); //(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, fPtr);
-                
+
+                (ph+i)->nearest_block_index=min_index; //save the index if min_index != -1
+
                 if (min_index != -1)
                 {
-                    (ph+i)->nearest_block_index=min_index; //save the index if min_index != -1
-                    
                     //also recalculate the photons' comoving frequency in this new fluid element
                     ph_p[0]=((ph+i)->p0);
                     ph_p[1]=((ph+i)->p1);
@@ -620,7 +620,7 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
                 mfp=default_mfp;
             }
         }
-         else
+        else
         {
             mfp=default_mfp;
             //fprintf(fPtr,"Photon %d In ELSE\n", i);
@@ -656,6 +656,125 @@ int findNearestPropertiesAndMinMFP( struct photon *ph, int num_ph, double *all_t
     
     return num_photons_find_new_element;
     
+}
+
+void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr)
+{
+    int i=0, min_index=0, ph_block_index=0, num_thread=1, thread_id=0;
+    double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, ph_r=0, ph_theta=0;
+    double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
+
+    double ph_v_norm=0, fl_v_norm=0, synch_x_sect=0;
+    double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
+    double rnd_tracker=0, n_dens_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
+    #if defined(_OPENMP)
+        num_thread=omp_get_num_threads(); //default is one above if theres no openmp usage
+    #endif
+
+    double mfp=0, default_mfp=1e12, beta=0;
+    double el_p[4];
+    double ph_p_comv[4], ph_p[4], fluid_beta[3], photon_hydro_coord[3];
+
+
+    //initialize gsl random number generator fo each thread
+    const gsl_rng_type *rng_t;
+    gsl_rng **rng;
+    gsl_rng_env_setup();
+    rng_t = gsl_rng_ranlxs0;
+
+    rng = (gsl_rng **) malloc((num_thread ) * sizeof(gsl_rng *));
+    rng[0]=rand;
+
+    //#pragma omp parallel for num_threads(nt)
+    for(i=1;i<num_thread;i++)
+    {
+        rng[i] = gsl_rng_alloc (rng_t);
+        gsl_rng_set(rng[i],gsl_rng_get(rand));
+    }
+
+    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p, ph_p, fluid_beta) private(i) shared(default_mfp ) reduction(+:num_photons_find_new_element)
+    for (i=0;i<num_ph; i++)
+    {
+
+        ph_block_index=(ph+i)->nearest_block_index;
+
+
+        //if the location of the photon is inside the domain of the hydro simulation then do all of this, otherwise assign huge mfp value so no scattering occurs and the next frame is loaded
+        // absorbed photons have ph_block_index=-1, therefore if this value is not less than 0, calulate the mfp properly but doesnt work when go to new frame and find new indexes (will change b/c will get rid of these photons when printing)
+        //alternatively make decision based on 0 weight
+
+        //if min_index!= -1 (know which fluid element photon is in) do all this stuff, otherwise make sure photon doesnt scatter
+        if (ph_block_index != -1)
+        {
+            //fprintf(fPtr,"Min Index: %d\n", min_index);
+
+            //save values
+            (n_dens_lab_tmp)= (hydro_data->dens_lab)[ph_block_index];//(*(dens_lab+min_index));
+            (n_temp_tmp)= (hydro_data->temp)[ph_block_index];//(*(temp+min_index));
+
+            #if DIMENSIONS == THREE
+                hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[ph_block_index], (hydro_data->v1)[ph_block_index], (hydro_data->v2)[ph_block_index], (hydro_data->r0)[ph_block_index], (hydro_data->r1)[ph_block_index], (hydro_data->r2)[ph_block_index]);
+            #elif DIMENSIONS == TWO_POINT_FIVE
+                ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
+                hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[ph_block_index], (hydro_data->v1)[ph_block_index], (hydro_data->v2)[ph_block_index], (hydro_data->r0)[ph_block_index], (hydro_data->r1)[ph_block_index], ph_phi);
+            #else
+                ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
+                //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
+                hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[ph_block_index], (hydro_data->v1)[ph_block_index], 0, (hydro_data->r0)[ph_block_index], (hydro_data->r1)[ph_block_index], ph_phi);
+            #endif
+
+            fl_v_x=fluid_beta[0];
+            fl_v_y=fluid_beta[1];
+            fl_v_z=fluid_beta[2];
+
+            fl_v_norm=sqrt(fl_v_x*fl_v_x+fl_v_y*fl_v_y+fl_v_z*fl_v_z);
+            ph_v_norm=sqrt(((ph+i)->p1)*((ph+i)->p1)+((ph+i)->p2)*((ph+i)->p2)+((ph+i)->p3)*((ph+i)->p3));
+
+            //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
+            n_cosangle=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
+
+            beta=sqrt(1.0-1.0/((hydro_data->gamma)[ph_block_index]*(hydro_data->gamma)[ph_block_index]));
+
+            //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
+            rnd_tracker=0;
+            #if defined(_OPENMP)
+            thread_id=omp_get_thread_num();
+            #endif
+
+            rnd_tracker=gsl_rng_uniform_pos(rng[thread_id]);
+            //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
+
+            //mfp=(-1)*log(rnd_tracker)*(M_P/((n_dens_tmp))/(THOM_X_SECT)); ///(1.0-beta*((n_cosangle)))) ; // the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths IN COMOV FRAME for reference
+            mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*n_cosangle))*log(rnd_tracker) ;
+
+
+        }
+        else
+        {
+            mfp=default_mfp;
+        }
+
+    *(all_time_steps+i)=mfp/C_LIGHT;
+    //fprintf(fPtr,"Photon %d has time %e\n", i, *(all_time_steps+i));
+    //fflush(fPtr);
+
+    }
+    //exit(0);
+    //free rand number generator
+    for (i=1;i<num_thread;i++)
+    {
+        gsl_rng_free(rng[i]);
+    }
+    free(rng);
+
+    //printf("HERE\n");
+    for (i=0;i<num_ph;i++)
+    {
+        *(sorted_indexes+i)= i; //save  indexes to array to use in qsort
+    }
+
+    reverseSortIndexes(sorted_indexes, num_ph, sizeof (int),  all_time_steps);
+
 }
 
 void reverseSortIndexes(void *sorted_indexes, int num_elements, size_t element_size, void *context_array)
