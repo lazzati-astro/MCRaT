@@ -692,7 +692,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
         gsl_rng_set(rng[i],gsl_rng_get(rand));
     }
 
-    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p, ph_p, fluid_beta) private(i) shared(default_mfp ) reduction(+:num_photons_find_new_element)
+    #pragma omp parallel for num_threads(num_thread) firstprivate(ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p, ph_p, fluid_beta) private(i) shared(default_mfp ) 
     for (i=0;i<num_ph; i++)
     {
 
