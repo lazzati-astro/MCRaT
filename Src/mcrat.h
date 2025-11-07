@@ -179,6 +179,7 @@ struct hydro_dataframe
 #include "geometry.h"
 #include "mcrat_scattering.h"
 #include "mcrat_io.h"
+#include "analytic_outflows.h"
 
 //set default hydro v scale to be the speed of light
 #define HYDRO_V_SCALE C_LIGHT
