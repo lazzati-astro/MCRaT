@@ -436,7 +436,7 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
     double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, ph_r=0, ph_theta=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
 
-    double ph_v_norm=0, fl_v_norm=0, synch_x_sect=0;
+    double ph_v_norm=0, fl_v_norm=0;
     double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
     double rnd_tracker=0, n_dens_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
     #if defined(_OPENMP)
@@ -449,29 +449,12 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
     double el_p[4];
     double ph_p_comv[4], ph_p[4], fluid_beta[3], photon_hydro_coord[3];
 
-    //initialize gsl random number generator fo each thread
-    
-    const gsl_rng_type *rng_t;
-    gsl_rng **rng;
-    gsl_rng_env_setup();
-    rng_t = gsl_rng_ranlxs0;
 
-    rng = (gsl_rng **) malloc((num_thread ) * sizeof(gsl_rng *));
-    rng[0]=rand;
-
-        //#pragma omp parallel for num_threads(nt)
-    for(i=1;i<num_thread;i++)
-    {
-        rng[i] = gsl_rng_alloc (rng_t);
-        gsl_rng_set(rng[i],gsl_rng_get(rand));
-    }
-       
     //go through each photon and find the blocks around it and then get the distances to all of those blocks and choose the one thats the shortest distance away
     //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
     //or just parallelize this part here
     
-    default_mfp=1e12;
-    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p, ph_p, fluid_beta) private(i) shared(default_mfp ) reduction(+:num_photons_find_new_element)
+    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p, ph_p, fluid_beta) private(i) reduction(+:num_photons_find_new_element)
     for (i=0;i<num_ph; i++)
     {
         //fprintf(fPtr, "%d, %d,%e\n", i, ((ph+i)->nearest_block_index), ((ph+i)->weight));
@@ -569,84 +552,17 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
             
             }
             
-            //if min_index!= -1 (know which fluid element photon is in) do all this stuff, otherwise make sure photon doesnt scatter
-            if (min_index != -1)
-            {
-                //fprintf(fPtr,"Min Index: %d\n", min_index);
-        
-                //save values
-                (n_dens_lab_tmp)= (hydro_data->dens_lab)[min_index];//(*(dens_lab+min_index));
-                (n_temp_tmp)= (hydro_data->temp)[min_index];//(*(temp+min_index));
-                
-                #if DIMENSIONS == THREE
-                    hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], (hydro_data->v2)[min_index], (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], (hydro_data->r2)[min_index]);
-                #elif DIMENSIONS == TWO_POINT_FIVE
-                    ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
-                    hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], (hydro_data->v2)[min_index], (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], ph_phi);
-                #else
-                    ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
-                    //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
-                    hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], 0, (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], ph_phi);
-                #endif
-                
-                fl_v_x=fluid_beta[0];
-                fl_v_y=fluid_beta[1];
-                fl_v_z=fluid_beta[2];
-                
-                fl_v_norm=sqrt(fl_v_x*fl_v_x+fl_v_y*fl_v_y+fl_v_z*fl_v_z);
-                ph_v_norm=sqrt(((ph+i)->p1)*((ph+i)->p1)+((ph+i)->p2)*((ph+i)->p2)+((ph+i)->p3)*((ph+i)->p3));
-        
-                //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
-                n_cosangle=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
-                
-                beta=sqrt(1.0-1.0/((hydro_data->gamma)[min_index]*(hydro_data->gamma)[min_index]));
-                
-                //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
-                rnd_tracker=0;
-                #if defined(_OPENMP)
-                thread_id=omp_get_thread_num();
-                #endif
-                
-                rnd_tracker=gsl_rng_uniform_pos(rng[thread_id]);
-                //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
-        
-                //mfp=(-1)*log(rnd_tracker)*(M_P/((n_dens_tmp))/(THOM_X_SECT)); ///(1.0-beta*((n_cosangle)))) ; // the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths IN COMOV FRAME for reference
-                mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*n_cosangle))*log(rnd_tracker) ;
-                
-                
-            }
-            else
-            {
-                mfp=default_mfp;
-            }
         }
         else
         {
-            mfp=default_mfp;
+            //later on we want to make sure that this photon gets assigned a large mfp so it doesnt erroneously scatter
+            (ph+i)->nearest_block_index=-1;
             //fprintf(fPtr,"Photon %d In ELSE\n", i);
             //exit(0);
         }
         
-        *(all_time_steps+i)=mfp/C_LIGHT;
-        //fprintf(fPtr,"Photon %d has time %e\n", i, *(all_time_steps+i));
-        //fflush(fPtr);
-        
-    }
-    //exit(0);
-    //free rand number generator
-    for (i=1;i<num_thread;i++)
-    {
-        gsl_rng_free(rng[i]);
-    }
-    free(rng);
-        
-    //printf("HERE\n");
-    for (i=0;i<num_ph;i++)
-    {
-        *(sorted_indexes+i)= i; //save  indexes to array to use in qsort
     }
 
-    reverseSortIndexes(sorted_indexes, num_ph, sizeof (int),  all_time_steps);
 
     //print number of times we had to refind the index of the elemtn photons were located in
     if (find_nearest_block_switch!=0)
@@ -664,7 +580,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
     double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, ph_r=0, ph_theta=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
 
-    double ph_v_norm=0, fl_v_norm=0, synch_x_sect=0;
+    double ph_v_norm=0, fl_v_norm=0;
     double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
     double rnd_tracker=0, n_dens_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
     #if defined(_OPENMP)
