@@ -568,20 +568,19 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
 
 void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr)
 {
-    int i=0, min_index=0, ph_block_index=0, num_thread=1, thread_id=0;
-    double ph_x=0, ph_y=0, ph_phi=0, ph_z=0, ph_r=0, ph_theta=0;
+    int i=0, ph_block_index=0, num_thread=1, thread_id=0;
+    double ph_phi=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
 
     double ph_v_norm=0, fl_v_norm=0;
-    double n_cosangle=0, n_dens_lab_tmp=0,n_vx_tmp=0, n_vy_tmp=0, n_vz_tmp=0, n_temp_tmp=0 ;
-    double rnd_tracker=0, n_dens_min=0, n_vx_min=0, n_vy_min=0, n_vz_min=0, n_temp_min=0;
+    double n_cosangle=0, n_dens_lab_tmp=0;
+    double rnd_tracker=0;
     #if defined(_OPENMP)
         num_thread=omp_get_num_threads(); //default is one above if theres no openmp usage
     #endif
 
     double mfp=0, default_mfp=1e12, beta=0;
-    double el_p[4];
-    double ph_p_comv[4], ph_p[4], fluid_beta[3], photon_hydro_coord[3];
+    double fluid_beta[3];
 
 
     //initialize gsl random number generator fo each thread
@@ -600,7 +599,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
         gsl_rng_set(rng[i],gsl_rng_get(rand));
     }
 
-    #pragma omp parallel for num_threads(num_thread) firstprivate(ph_block_index, ph_x, ph_y, ph_z, ph_phi, ph_r, min_index, n_dens_lab_tmp,n_vx_tmp, n_vy_tmp, n_vz_tmp, n_temp_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, ph_p_comv, el_p, ph_p, fluid_beta) private(i) shared(default_mfp )
+    #pragma omp parallel for num_threads(num_thread) firstprivate(ph_block_index, ph_phi, n_dens_lab_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, fluid_beta) private(i) shared(default_mfp )
     for (i=0;i<num_ph; i++)
     {
 
@@ -611,14 +610,13 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
         // absorbed photons have ph_block_index=-1, therefore if this value is not less than 0, calulate the mfp properly but doesnt work when go to new frame and find new indexes (will change b/c will get rid of these photons when printing)
         //alternatively make decision based on 0 weight
 
-        //if min_index!= -1 (know which fluid element photon is in) do all this stuff, otherwise make sure photon doesnt scatter
+        //if ph_block_index!= -1 (know which fluid element photon is in) do all this stuff, otherwise make sure photon doesnt scatter
         if (ph_block_index != -1)
         {
-            //fprintf(fPtr,"Min Index: %d\n", min_index);
+            //fprintf(fPtr,"ph_block Index: %d\n", ph_block_index);
 
             //save values
-            (n_dens_lab_tmp)= (hydro_data->dens_lab)[ph_block_index];//(*(dens_lab+min_index));
-            (n_temp_tmp)= (hydro_data->temp)[ph_block_index];//(*(temp+min_index));
+            (n_dens_lab_tmp)= (hydro_data->dens_lab)[ph_block_index];
 
             #if DIMENSIONS == THREE
                 hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[ph_block_index], (hydro_data->v1)[ph_block_index], (hydro_data->v2)[ph_block_index], (hydro_data->r0)[ph_block_index], (hydro_data->r1)[ph_block_index], (hydro_data->r2)[ph_block_index]);
