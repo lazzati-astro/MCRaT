@@ -6,10 +6,10 @@
 
 double calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data, FILE *fPtr)
 {
+    int ph_block_index;
     double tau=0;
     double ph_phi=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
-
     double ph_v_norm=0, fl_v_norm=0;
     double n_cosangle=0, n_dens_lab_tmp=0;
     double beta=0, fluid_beta[3];
@@ -43,7 +43,7 @@ double calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_da
 
     beta = sqrt(1.0-1.0/((hydro_data->gamma)[ph_block_index]*(hydro_data->gamma)[ph_block_index]));
 
-    tau = M_P/(n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*n_cosangle)
+    tau = M_P/(n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*n_cosangle);
 
-    return tau
+    return tau;
 }
