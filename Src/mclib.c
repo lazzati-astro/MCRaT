@@ -690,9 +690,9 @@ void reverseSortIndexes(void *sorted_indexes, int num_elements, size_t element_s
     */
     //printf("before QSORT\n");
     #if (defined _GNU_SOURCE || defined __GNU__ || defined __linux__)
-        qsort_r(sorted_indexes, num_elements, sizeof (int),  compare2, context_array);
+        qsort_r(sorted_indexes, num_elements, element_size,  compare2, context_array);
     #elif (defined __APPLE__ || defined __MACH__ || defined __DARWIN__ || defined __FREEBSD__ || defined __BSD__ || defined OpenBSD3_1 || defined OpenBSD3_9)
-        qsort_r(sorted_indexes, num_elements, sizeof (int), context_array, compare1);
+        qsort_r(sorted_indexes, num_elements, element_size, context_array, compare1);
     #else
         #error Cannot detect operating system
     #endif
