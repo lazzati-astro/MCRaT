@@ -569,19 +569,11 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
 void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr)
 {
     int i=0, ph_block_index=0, num_thread=1, thread_id=0;
-    double ph_phi=0;
-    double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
-
-    double ph_v_norm=0, fl_v_norm=0;
-    double n_cosangle=0, n_dens_lab_tmp=0;
+    double mfp=0, default_mfp=1e12, tau=0;
     double rnd_tracker=0;
     #if defined(_OPENMP)
         num_thread=omp_get_num_threads(); //default is one above if theres no openmp usage
     #endif
-
-    double mfp=0, default_mfp=1e12, beta=0, tau=0;
-    double fluid_beta[3];
-
 
     //initialize gsl random number generator fo each thread
     const gsl_rng_type *rng_t;
@@ -602,9 +594,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
     #pragma omp parallel for num_threads(num_thread) firstprivate(ph_block_index, ph_phi, n_dens_lab_tmp, fl_v_x, fl_v_y, fl_v_z, fl_v_norm, ph_v_norm, n_cosangle, mfp, beta, rnd_tracker, fluid_beta) private(i) shared(default_mfp )
     for (i=0;i<num_ph; i++)
     {
-
         ph_block_index=(ph+i)->nearest_block_index;
-
 
         //if the location of the photon is inside the domain of the hydro simulation then do all of this, otherwise assign huge mfp value so no scattering occurs and the next frame is loaded
         // absorbed photons have ph_block_index=-1, therefore if this value is not less than 0, calulate the mfp properly but doesnt work when go to new frame and find new indexes (will change b/c will get rid of these photons when printing)
@@ -614,32 +604,6 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
         if (ph_block_index != -1)
         {
             //fprintf(fPtr,"ph_block Index: %d\n", ph_block_index);
-
-            //save values
-            (n_dens_lab_tmp)= (hydro_data->dens_lab)[ph_block_index];
-
-            #if DIMENSIONS == THREE
-                hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[ph_block_index], (hydro_data->v1)[ph_block_index], (hydro_data->v2)[ph_block_index], (hydro_data->r0)[ph_block_index], (hydro_data->r1)[ph_block_index], (hydro_data->r2)[ph_block_index]);
-            #elif DIMENSIONS == TWO_POINT_FIVE
-                ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
-                hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[ph_block_index], (hydro_data->v1)[ph_block_index], (hydro_data->v2)[ph_block_index], (hydro_data->r0)[ph_block_index], (hydro_data->r1)[ph_block_index], ph_phi);
-            #else
-                ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
-                //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
-                hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[ph_block_index], (hydro_data->v1)[ph_block_index], 0, (hydro_data->r0)[ph_block_index], (hydro_data->r1)[ph_block_index], ph_phi);
-            #endif
-
-            fl_v_x=fluid_beta[0];
-            fl_v_y=fluid_beta[1];
-            fl_v_z=fluid_beta[2];
-
-            fl_v_norm=sqrt(fl_v_x*fl_v_x+fl_v_y*fl_v_y+fl_v_z*fl_v_z);
-            ph_v_norm=sqrt(((ph+i)->p1)*((ph+i)->p1)+((ph+i)->p2)*((ph+i)->p2)+((ph+i)->p3)*((ph+i)->p3));
-
-            //(*(n_cosangle+i))=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
-            n_cosangle=((fl_v_x* ((ph+i)->p1))+(fl_v_y* ((ph+i)->p2))+(fl_v_z* ((ph+i)->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
-
-            beta=sqrt(1.0-1.0/((hydro_data->gamma)[ph_block_index]*(hydro_data->gamma)[ph_block_index]));
 
             tau = calculateOpticalDepth((ph+i), hydro_data, fPtr);
 
@@ -653,13 +617,8 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
             //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
 
             //mfp=(-1)*log(rnd_tracker)*(M_P/((n_dens_tmp))/(THOM_X_SECT)); ///(1.0-beta*((n_cosangle)))) ; // the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths IN COMOV FRAME for reference
-            //mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*n_cosangle))*log(rnd_tracker) ;
-
-            printf("Original tau is: %e, new tau from calculateOpticalDepth is: %e \n", (M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*n_cosangle)), tau);
 
             mfp = -1.0*tau*log(rnd_tracker);
-
-
         }
         else
         {
