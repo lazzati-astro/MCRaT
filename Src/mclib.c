@@ -641,7 +641,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
 
             beta=sqrt(1.0-1.0/((hydro_data->gamma)[ph_block_index]*(hydro_data->gamma)[ph_block_index]));
 
-            tau = calculateOpticalDepth((ph+i), hydro_data, fPtr)
+            tau = calculateOpticalDepth((ph+i), hydro_data, fPtr);
 
             //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
             rnd_tracker=0;
@@ -653,7 +653,9 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
             //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
 
             //mfp=(-1)*log(rnd_tracker)*(M_P/((n_dens_tmp))/(THOM_X_SECT)); ///(1.0-beta*((n_cosangle)))) ; // the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths IN COMOV FRAME for reference
-            mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*n_cosangle))*log(rnd_tracker) ;
+            //mfp=(-1)*(M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*n_cosangle))*log(rnd_tracker) ;
+
+            printf("Original tau is: %e, new tau from calculateOpticalDepth is: %e \n", (M_P/((n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*n_cosangle)), tau);
 
             mfp = -1.0*tau*log(rnd_tracker);
 
