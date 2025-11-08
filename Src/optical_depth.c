@@ -43,7 +43,7 @@ double calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_da
 
     beta = sqrt(1.0-1.0/((hydro_data->gamma)[ph_block_index]*(hydro_data->gamma)[ph_block_index]));
 
-    tau = M_P/(n_dens_lab_tmp))/THOM_X_SECT/(1.0-beta*n_cosangle);
+    tau = M_P/(n_dens_lab_tmp)/THOM_X_SECT/(1.0-beta*n_cosangle);
 
     return tau;
 }
