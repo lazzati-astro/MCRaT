@@ -539,7 +539,7 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
                 }
                 else
                 {
-                	fprintf(fPtr, "Photon number %d FLASH index not found, making sure it doesnt scatter.\n", i);
+                	fprintf(fPtr, "Photon number %d Hydro grid index not found, making sure it doesnt scatter.\n", i);
                 }
             
             }
