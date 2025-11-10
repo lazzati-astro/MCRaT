@@ -22,8 +22,6 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr);
 
 double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt,  gsl_rng * rand, FILE *fPtr);
 
-void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr);
-
 double averagePhotonEnergy(struct photon *ph, int num_ph);
 
 void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg, double *r_avg, FILE *fPtr  );

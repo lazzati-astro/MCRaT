@@ -47,3 +47,4 @@ double calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_da
 
     return tau;
 }
+
