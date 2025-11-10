@@ -119,3 +119,28 @@ double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr)
 
     return gamma;
 }
+
+double sampleNonthermalElectron(double p, gsl_rng * rand, FILE *fPtr)
+{
+
+
+}
+
+double samplePowerLaw(double p, double gamma_min, double gamma_max, gsl_rng * rand, FILE *fPtr)
+{
+    // p: power-law index, gmin/gmax: min/max gamma
+    double random_num = gsl_rng_uniform_pos(rand);
+    double gamma_e;
+
+    if (fabs(p-1.0) < 1e-6)
+    {
+        // Special case: p ~ 1
+        gamma_e = gamma_min * pow(gamma_max / gamma_min, random_num);
+    }
+    else
+    {
+        gamma_e = 1.0 + random_num * (pow(gamma_max/gamma_min, 1.0 - p) - 1.0);
+        gamma_e = gamma_min * pow(gamma_e, 1.0 / (1.0 - p));
+    }
+    return gamma_e;
+}
