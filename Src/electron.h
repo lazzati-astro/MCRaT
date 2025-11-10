@@ -3,3 +3,5 @@
 //
 
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr);
+
+double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr);

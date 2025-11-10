@@ -13,35 +13,7 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
     gsl_vector_view el_p_prime ; //create vector to hold rotated electron 4 momentum
     gsl_vector *result=gsl_vector_alloc (3);
 
-    //fprintf(fPtr, "Temp in singleElectron: %e\n", temp);
-    if (temp>= 1e7)
-    {
-        // see also rejection sampling method here: https://arxiv.org/pdf/2408.09105
-        //printf("In if\n");
-        factor=K_B*temp/(M_EL*C_LIGHT*C_LIGHT);
-        y_dum=1; //initalize loop to get a random gamma from the distribution of electron velocities
-        f_x_dum=0;
-        while ((isnan(f_x_dum) !=0) || (y_dum>f_x_dum) )
-        {
-
-            x_dum=gsl_rng_uniform_pos(rand)*(1+100*factor);
-            beta_x_dum=sqrt(1-(1/(x_dum*x_dum)));
-            y_dum=gsl_rng_uniform(rand)/2.0;
-
-            f_x_dum=x_dum*x_dum*(beta_x_dum/gsl_sf_bessel_Kn (2, 1.0/factor))*exp(-1*x_dum/factor); //
-            //fprintf(fPtr,"Choosing a Gamma: xdum: %e, f_x_dum: %e, y_dum: %e\n", x_dum, f_x_dum, y_dum);
-        }
-        gamma=x_dum;
-
-    }
-    else
-    {
-
-        //printf("In else\n");
-        factor=sqrt(K_B*temp/M_EL);
-        //calculate a random gamma from 3 random velocities drawn from a gaussian distribution with std deviation of "factor"
-        gamma=1.0/sqrt( 1- (pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)+ pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)+pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)  )); //each vel direction is normal distribution -> maxwellian when multiplied
-    }
+    gamma=sampleThermalElectron(temp, rand, fPtr);
 
     //fprintf(fPtr,"Chosen Gamma: %e\n",gamma);
 
@@ -109,4 +81,41 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
 
 
     gsl_matrix_free (rot);gsl_vector_free(result);
+}
+
+double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr)
+{
+    double gamma=1, factor=0, x_dum=0, y_dum=0, f_x_dum=0, beta_x_dum=0;
+
+    //fprintf(fPtr, "Temp in singleElectron: %e\n", temp);
+    if (temp>= 1e7)
+    {
+        // see also rejection sampling method here: https://arxiv.org/pdf/2408.09105
+        //printf("In if\n");
+        factor=K_B*temp/(M_EL*C_LIGHT*C_LIGHT);
+        y_dum=1; //initalize loop to get a random gamma from the distribution of electron velocities
+        f_x_dum=0;
+        while ((isnan(f_x_dum) !=0) || (y_dum>f_x_dum) )
+        {
+
+            x_dum=gsl_rng_uniform_pos(rand)*(1+100*factor);
+            beta_x_dum=sqrt(1-(1/(x_dum*x_dum)));
+            y_dum=gsl_rng_uniform(rand)/2.0;
+
+            f_x_dum=x_dum*x_dum*(beta_x_dum/gsl_sf_bessel_Kn (2, 1.0/factor))*exp(-1*x_dum/factor); //
+            //fprintf(fPtr,"Choosing a Gamma: xdum: %e, f_x_dum: %e, y_dum: %e\n", x_dum, f_x_dum, y_dum);
+        }
+        gamma=x_dum;
+
+    }
+    else
+    {
+
+        //printf("In else\n");
+        factor=sqrt(K_B*temp/M_EL);
+        //calculate a random gamma from 3 random velocities drawn from a gaussian distribution with std deviation of "factor"
+        gamma=1.0/sqrt( 1- (pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)+ pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)+pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)  )); //each vel direction is normal distribution -> maxwellian when multiplied
+    }
+
+    return gamma;
 }
