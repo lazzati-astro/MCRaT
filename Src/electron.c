@@ -123,14 +123,14 @@ double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr)
 double sampleNonthermalElectron(double p, gsl_rng * rand, FILE *fPtr)
 {
 
-
+    return 0;
 }
 
 double samplePowerLaw(double p, double gamma_min, double gamma_max, gsl_rng * rand, FILE *fPtr)
 {
     // p: power-law index, gmin/gmax: min/max gamma
     double random_num = gsl_rng_uniform_pos(rand);
-    double gamma_e;
+    double gamma_e=0;
 
     if (fabs(p-1.0) < 1e-6)
     {
@@ -143,4 +143,63 @@ double samplePowerLaw(double p, double gamma_min, double gamma_max, gsl_rng * ra
         gamma_e = gamma_min * pow(gamma_e, 1.0 / (1.0 - p));
     }
     return gamma_e;
+}
+
+double sampleDoublePowerLaw(double p1, double p2, double gamma_min, double gamma_max, double gamma_break, gsl_rng * rand, FILE *fPtr)
+{
+    bool p1_is_1=(fabs(p1-1.0) < 1e-6), p2_is_1=(fabs(p2-1.0) < 1e-6);
+    double xi_break=0, A=0, gamma_e=0;
+    double random_num=gsl_rng_uniform_pos(rand);
+
+    if (!p1_is_1 && !p2_is_1)
+    {
+        A = 1.0 / ( ((pow(gamma_break, 1.0-p1)-pow(gamma_min, 1.0-p1))/(1.0-p1)) + pow(gamma_break, -1.0*p1+p2)* ((pow(gamma_max, 1.0-p2)-pow(gamma_break, 1.0-p2))/(1.0-p2)));
+        xi_break=A*((pow(gamma_break, 1.0-p1)-pow(gamma_min, 1.0-p1))/(1.0-p1));
+
+        if (random_num <= xi_break)
+        {
+            gamma_e = pow(pow(gamma_min, 1.0-p1) + ((1.0-p1)*random_num/A), 1.0/(1.0-p1));
+        }
+        else
+        {
+            gamma_e = pow( pow(gamma_break, 1.0-p2) - (1.0-p2)*pow(gamma_break, p1-p2)*( ((pow(gamma_min, 1.0-p1)-pow(gamma_break, 1.0-p1))/(1.0-p1))  +(random_number/A))  , 1.0/(1.0-p2));
+        }
+    }
+    elif (p1_is_1 && !p2_is_1)
+    {
+        A = 1.0 / (log(gamma_break/gamma_min) + pow(gamma_break, -1.0*p1+p2)*((pow(gamma_max, 1.0-p2)-pow(gamma_break, 1.0-p2))/(1.0-p2)) ) ;
+        xi_break=A*log(gamma_break/gamma_min);
+
+        if (random_num <= xi_break)
+        {
+            gamma_e = gamma_min * exp(random_num/A);
+        }
+        else
+        {
+            gamma_e = pow( pow(gamma_break, 1.0-p2) - (1.0-p2)*pow(gamma_break, p1-p2)*(log(gamma_break/gamma_min) -(random_number/A))  , 1.0/(1.0-p2));
+        }
+
+    }
+    elif (!p1_is_1 && p2_is_1)
+    {
+        A = 1.0/(((pow(gamma_break, 1.0-p1)-pow(gamma_min, 1.0-p1))/(1.0-p1)) + pow(gamma_break, -1.0*p1+p2)*log(gamma_max/gamma_break));
+        xi = A * ((pow(gamma_break, 1.0-p1)-pow(gamma_min, 1.0-p1))/(1.0-p1));
+
+        if (random_num <= xi_break)
+        {
+            gamma_e = pow(pow(gamma_min, 1.0-p1) + ((1.0-p1)*random_num/A), 1.0/(1.0-p1));
+        }
+        else
+        {
+            gamma_e = gamma_break*exp(pow(gamma_break, p1-p2)* ((random_num/A) - (pow(gamma_break, 1.0-p1)-pow(gamma_min, 1.0-p1))/(1.0-p1)) ) );
+        }
+    }
+    else
+    {
+        fprintf(fPtr,"sampleDoublePowerLaw: In the else\n p1_is_1: %d, p2_is_1: %d \n This shouldnt have occured exiting", p1_is_1, p2_is_1);
+        exit(1);
+    }
+
+    return gamma_e;
+
 }
