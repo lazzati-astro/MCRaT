@@ -162,10 +162,10 @@ double sampleDoublePowerLaw(double p1, double p2, double gamma_min, double gamma
         }
         else
         {
-            gamma_e = pow( pow(gamma_break, 1.0-p2) - (1.0-p2)*pow(gamma_break, p1-p2)*( ((pow(gamma_min, 1.0-p1)-pow(gamma_break, 1.0-p1))/(1.0-p1))  +(random_number/A))  , 1.0/(1.0-p2));
+            gamma_e = pow( pow(gamma_break, 1.0-p2) - (1.0-p2)*pow(gamma_break, p1-p2)*( ((pow(gamma_min, 1.0-p1)-pow(gamma_break, 1.0-p1))/(1.0-p1))  +(random_num/A))  , 1.0/(1.0-p2));
         }
     }
-    elif (p1_is_1 && !p2_is_1)
+    else if (p1_is_1 && !p2_is_1)
     {
         A = 1.0 / (log(gamma_break/gamma_min) + pow(gamma_break, -1.0*p1+p2)*((pow(gamma_max, 1.0-p2)-pow(gamma_break, 1.0-p2))/(1.0-p2)) ) ;
         xi_break=A*log(gamma_break/gamma_min);
@@ -176,11 +176,11 @@ double sampleDoublePowerLaw(double p1, double p2, double gamma_min, double gamma
         }
         else
         {
-            gamma_e = pow( pow(gamma_break, 1.0-p2) - (1.0-p2)*pow(gamma_break, p1-p2)*(log(gamma_break/gamma_min) -(random_number/A))  , 1.0/(1.0-p2));
+            gamma_e = pow( pow(gamma_break, 1.0-p2) - (1.0-p2)*pow(gamma_break, p1-p2)*(log(gamma_break/gamma_min) -(random_num/A))  , 1.0/(1.0-p2));
         }
 
     }
-    elif (!p1_is_1 && p2_is_1)
+    else if (!p1_is_1 && p2_is_1)
     {
         A = 1.0/(((pow(gamma_break, 1.0-p1)-pow(gamma_min, 1.0-p1))/(1.0-p1)) + pow(gamma_break, -1.0*p1+p2)*log(gamma_max/gamma_break));
         xi = A * ((pow(gamma_break, 1.0-p1)-pow(gamma_min, 1.0-p1))/(1.0-p1));
