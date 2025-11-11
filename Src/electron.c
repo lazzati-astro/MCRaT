@@ -183,7 +183,7 @@ double sampleDoublePowerLaw(double p1, double p2, double gamma_min, double gamma
     else if (!p1_is_1 && p2_is_1)
     {
         A = 1.0/(((pow(gamma_break, 1.0-p1)-pow(gamma_min, 1.0-p1))/(1.0-p1)) + pow(gamma_break, -1.0*p1+p2)*log(gamma_max/gamma_break));
-        xi = A * ((pow(gamma_break, 1.0-p1)-pow(gamma_min, 1.0-p1))/(1.0-p1));
+        xi_break = A * ((pow(gamma_break, 1.0-p1)-pow(gamma_min, 1.0-p1))/(1.0-p1));
 
         if (random_num <= xi_break)
         {
@@ -191,7 +191,7 @@ double sampleDoublePowerLaw(double p1, double p2, double gamma_min, double gamma
         }
         else
         {
-            gamma_e = gamma_break*exp(pow(gamma_break, p1-p2)* ((random_num/A) - (pow(gamma_break, 1.0-p1)-pow(gamma_min, 1.0-p1))/(1.0-p1)) ) );
+            gamma_e = gamma_break*exp(pow(gamma_break, p1-p2)* ((random_num/A) - ((pow(gamma_break, 1.0-p1)-pow(gamma_min, 1.0-p1))/(1.0-p1)) ) );
         }
     }
     else
