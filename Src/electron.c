@@ -240,7 +240,7 @@ double brokenPowerLawNorm(double p1, double p2, double gamma_min, double gamma_m
     else
     {
         // Handle this edge case - could use double logarithmic form
-        A = 0
+        A = 0;
     }
 
     return A;
