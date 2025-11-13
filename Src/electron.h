@@ -18,3 +18,8 @@ double singleElectronBrokenPowerLaw(double x, double p1, double p2, double gamma
 
 void arrayElectronBrokenPowerLaw(const double *x, double *y, int n_points, double p1, double p2, double gamma_min, double gamma_max, double gamma_break);
 
+double powerLawNorm(double p, double gamma_min, double gamma_max);
+
+double singleElectronPowerLaw(double x, double p, double gamma_min, double gamma_max);
+
+void arrayElectronPowerLaw(const double *x, double *y, int n_points, double p, double gamma_min, double gamma_max);

@@ -240,7 +240,7 @@ double brokenPowerLawNorm(double p1, double p2, double gamma_min, double gamma_m
     else
     {
         // Handle this edge case - could use double logarithmic form
-        A = 1.0 / (log(gamma_break / gamma_min) + log(gamma_max / gamma_break));
+        A = 0
     }
 
     return A;
@@ -266,7 +266,8 @@ double singleElectronBrokenPowerLaw(double x, double p1, double p2, double gamma
 
     // Calculate distribution value based on which segment x falls in
     double y;
-    if (x <= gamma_break) {
+    if (x <= gamma_break)
+    {
         // Low-energy segment
         y = A * pow(x, -p1);
     }
@@ -303,13 +304,109 @@ void arrayElectronBrokenPowerLaw(const double *x, double *y, int n_points, doubl
     double continuity_factor = pow(gamma_break, -p1 + p2);
 
     // Fill the distribution values
-    for (int i = 0; i < n_points; i++) {
-        if (x[i] <= gamma_break) {
+    for (int i = 0; i < n_points; i++)
+    {
+        if (x[i] <= gamma_break)
+        {
             // Low-energy segment
             y[i] = A * pow(x[i], -p1);
-        } else {
+        }
+        else
+        {
             // High-energy segment
             y[i] = A * pow(x[i], -p2) * continuity_factor;
+        }
+    }
+}
+
+
+double powerLawNorm(double p, double gamma_min, double gamma_max)
+{
+    /**
+     * Calculate the normalization constant A for a single power-law distribution
+     *
+     * The distribution is: n(gamma) = A * gamma^(-p) for gamma_min <= gamma <= gamma_max
+     *
+     * @param p Power-law index
+     * @param gamma_min Minimum Lorentz factor
+     * @param gamma_max Maximum Lorentz factor
+     * @return Normalization constant A
+     */
+
+    bool p_is_1 = (fabs(p - 1.0) < 1e-10);
+    double A;
+
+    if (p_is_1)
+    {
+        // Special case: p = 1 (logarithmic distribution)
+        A = 1.0 / log(gamma_max / gamma_min);
+    }
+    else
+    {
+        // General case: p != 1
+        double integral = (pow(gamma_max, 1.0 - p) - pow(gamma_min, 1.0 - p)) / (1.0 - p);
+        A = 1.0 / integral;
+    }
+
+    return A;
+}
+
+
+double singleElectronPowerLaw(double x, double p, double gamma_min, double gamma_max)
+{
+    /**
+     * Calculate single power-law distribution value for a single x value
+     *
+     * @param x Gamma value (Lorentz factor)
+     * @param p Power-law index
+     * @param gamma_min Minimum Lorentz factor
+     * @param gamma_max Maximum Lorentz factor
+     * @return Distribution value f(x)
+     */
+
+    // Check if x is within valid range
+    if (x < gamma_min || x > gamma_max)
+    {
+        return 0.0;  // Outside valid range
+    }
+
+    // Calculate normalization constant
+    double A = powerLawNorm(p, gamma_min, gamma_max);
+
+    // Calculate distribution value
+    double y = A * pow(x, -p);
+
+    return y;
+}
+
+
+
+void arrayElectronPowerLaw(const double *x, double *y, int n_points, double p, double gamma_min, double gamma_max)
+{
+    /**
+     * Calculate single power-law distribution values for an array of x values
+     *
+     * @param x Array of gamma values (input, must be pre-allocated)
+     * @param y Array of distribution values (output, must be pre-allocated)
+     * @param n_points Number of points in x and y arrays
+     * @param p Power-law index
+     * @param gamma_min Minimum Lorentz factor
+     * @param gamma_max Maximum Lorentz factor
+     */
+
+    // Calculate normalization constant once (more efficient)
+    double A = powerLawNorm(p, gamma_min, gamma_max);
+
+    // Fill the distribution values
+    for (int i = 0; i < n_points; i++)
+    {
+        if (x[i] >= gamma_min && x[i] <= gamma_max)
+        {
+            y[i] = A * pow(x[i], -p);
+        }
+        else
+           {
+            y[i] = 0.0;  // Outside valid range
         }
     }
 }
