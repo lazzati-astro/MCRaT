@@ -162,7 +162,10 @@ double sampleDoublePowerLaw(double p1, double p2, double gamma_min, double gamma
         }
         else
         {
-            gamma_e = pow( pow(gamma_break, 1.0-p2) - (1.0-p2)*pow(gamma_break, p1-p2)*( ((pow(gamma_min, 1.0-p1)-pow(gamma_break, 1.0-p1))/(1.0-p1))  +(random_num/A))  , 1.0/(1.0-p2));
+            // in raikou paper we have: pow(gamma_break, 1.0-p2) - (1.0-p2)...
+            // This wasnt sampling the distribution properly and when I set p1=p2=p and tried to recover the single power law
+            // behavior found that there should be a plus sign instead to recover the limiting case
+            gamma_e = pow( pow(gamma_break, 1.0-p2) + (1.0-p2)*pow(gamma_break, p1-p2)*( ((pow(gamma_min, 1.0-p1)-pow(gamma_break, 1.0-p1))/(1.0-p1))  +(random_num/A))  , 1.0/(1.0-p2));
         }
     }
     else if (p1_is_1 && !p2_is_1)
