@@ -206,3 +206,110 @@ double sampleDoublePowerLaw(double p1, double p2, double gamma_min, double gamma
     return gamma_e;
 
 }
+
+double brokenPowerLawNorm(double p1, double p2, double gamma_min, double gamma_max, double gamma_break)
+{
+    bool p1_is_1 = (fabs(p1 - 1.0) < 1e-10);
+    bool p2_is_1 = (fabs(p2 - 1.0) < 1e-10);
+    double A;
+
+    // Case 1: Neither p1 nor p2 equals 1
+    if (!p1_is_1 && !p2_is_1)
+    {
+        double term1 = (pow(gamma_break, 1.0 - p1) - pow(gamma_min, 1.0 - p1)) / (1.0 - p1);
+        double term2 = pow(gamma_break, -p1 + p2) *
+                       (pow(gamma_max, 1.0 - p2) - pow(gamma_break, 1.0 - p2)) / (1.0 - p2);
+        A = 1.0 / (term1 + term2);
+    }
+    // Case 2: p1 equals 1, p2 does not
+    else if (p1_is_1 && !p2_is_1)
+    {
+        double term1 = log(gamma_break / gamma_min);
+        double term2 = pow(gamma_break, p2 - 1.0) *
+                       (pow(gamma_max, 1.0 - p2) - pow(gamma_break, 1.0 - p2)) / (1.0 - p2);
+        A = 1.0 / (term1 + term2);
+    }
+    // Case 3: p1 does not equal 1, p2 equals 1
+    else if (!p1_is_1 && p2_is_1)
+    {
+        double term1 = (pow(gamma_break, -p1 + 1.0) - pow(gamma_min, -p1 + 1.0)) / (-p1 + 1.0);
+        double term2 = pow(gamma_break, -p1 + 1.0) * log(gamma_max / gamma_break);
+        A = 1.0 / (term1 + term2);
+    }
+    // Case 4: Both equal 1 (should not occur in practice)
+    else
+    {
+        // Handle this edge case - could use double logarithmic form
+        A = 1.0 / (log(gamma_break / gamma_min) + log(gamma_max / gamma_break));
+    }
+
+    return A;
+}
+
+
+double singleElectronBrokenPowerLaw(double x, double p1, double p2, double gamma_min, double gamma_max, double gamma_break)
+{
+    /**
+     * Calculate broken power-law distribution value for a single x value
+     *
+     * @param x Gamma value (Lorentz factor)
+     * @param p1 Power-law index below break
+     * @param p2 Power-law index above break
+     * @param gamma_min Minimum Lorentz factor
+     * @param gamma_max Maximum Lorentz factor
+     * @param gamma_break Break Lorentz factor
+     * @return Distribution value f(x)
+     */
+
+    // Calculate normalization constant
+    double A = brokenPowerLawNorm(p1, p2, gamma_min, gamma_max, gamma_break);
+
+    // Calculate distribution value based on which segment x falls in
+    double y;
+    if (x <= gamma_break) {
+        // Low-energy segment
+        y = A * pow(x, -p1);
+    }
+    else
+    {
+        // High-energy segment with continuity factor
+        double continuity_factor = pow(gamma_break, -p1 + p2);
+        y = A * pow(x, -p2) * continuity_factor;
+    }
+
+    return y;
+}
+
+
+void arrayElectronBrokenPowerLaw(const double *x, double *y, int n_points, double p1, double p2, double gamma_min, double gamma_max, double gamma_break)
+{
+    /**
+     * Calculate broken power-law distribution values for an array of x values
+     *
+     * @param x Array of gamma values (input, must be pre-allocated)
+     * @param y Array of distribution values (output, must be pre-allocated)
+     * @param n_points Number of points in x and y arrays
+     * @param p1 Power-law index below break
+     * @param p2 Power-law index above break
+     * @param gamma_min Minimum Lorentz factor
+     * @param gamma_max Maximum Lorentz factor
+     * @param gamma_break Break Lorentz factor
+     */
+
+    // Calculate normalization constant once (more efficient)
+    double A = brokenPowerLawNorm(p1, p2, gamma_min, gamma_max, gamma_break);
+
+    // Calculate continuity factor once
+    double continuity_factor = pow(gamma_break, -p1 + p2);
+
+    // Fill the distribution values
+    for (int i = 0; i < n_points; i++) {
+        if (x[i] <= gamma_break) {
+            // Low-energy segment
+            y[i] = A * pow(x[i], -p1);
+        } else {
+            // High-energy segment
+            y[i] = A * pow(x[i], -p2) * continuity_factor;
+        }
+    }
+}

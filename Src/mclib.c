@@ -1428,3 +1428,22 @@ void phMinMax(struct photon *ph, int ph_num, double *min, double *max, double *m
     *max_theta=temp_theta_max;
     *min_theta=temp_theta_min;
 }
+
+
+void logspace(double start, double stop, int num, double *array)
+{
+    /**
+     * Generate logarithmically-spaced array
+     *
+     * @param start Starting value (will be 10^start)
+     * @param stop Ending value (will be 10^stop)
+     * @param num Number of points
+     * @param array Output array (must be pre-allocated)
+     */
+
+    double step = (stop - start) / (num - 1);
+    for (int i = 0; i < num; i++)
+    {
+        array[i] = pow(10.0, start + i * step);
+    }
+}

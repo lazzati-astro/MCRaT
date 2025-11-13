@@ -28,3 +28,4 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
 
 void phMinMax(struct photon *ph, int ph_num, double *min, double *max, double *min_theta, double *max_theta, FILE *fPtr);
 
+void logspace(double start, double stop, int num, double *array);

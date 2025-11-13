@@ -11,3 +11,10 @@ double sampleNonthermalElectron(double p, gsl_rng * rand, FILE *fPtr);
 double samplePowerLaw(double p, double gamma_min, double gamma_max, gsl_rng * rand, FILE *fPtr);
 
 double sampleDoublePowerLaw(double p1, double p2, double gamma_min, double gamma_max, double gamma_break, gsl_rng * rand, FILE *fPtr);
+
+double brokenPowerLawNorm(double p1, double p2, double gamma_min, double gamma_max, double gamma_break);
+
+double singleElectronBrokenPowerLaw(double x, double p1, double p2, double gamma_min, double gamma_max, double gamma_break);
+
+void arrayElectronBrokenPowerLaw(const double *x, double *y, int n_points, double p1, double p2, double gamma_min, double gamma_max, double gamma_break);
+
