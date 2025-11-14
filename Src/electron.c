@@ -21,16 +21,7 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
     //printf("Beta is: %e in singleElectron\n", beta);
     phi=gsl_rng_uniform(rand)*2*M_PI;
 
-    y_dum=1; //initalize loop to get a random theta
-    f_x_dum=0;
-    while (y_dum>f_x_dum)
-    {
-        y_dum=gsl_rng_uniform(rand)*1.3;
-        x_dum=gsl_rng_uniform(rand)*M_PI;
-        f_x_dum=sin(x_dum)*(1-(beta*cos(x_dum)));
-    }
-    theta=x_dum;
-    //theta=sampleElectronTheta(beta, rand, fPtr);
+    theta=sampleElectronTheta(beta, rand, fPtr);
     //fprintf(fPtr,"Beta: %e\tPhi: %e\tTheta: %e\n",beta,phi, theta);
     //fill in electron 4 momentum NOT SURE WHY THE ORDER IS AS SUCH SEEMS TO BE E/c, pz,py,px!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -100,7 +91,7 @@ double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr)
     theta=x_dum;
 
     //can change to this: equation 56 of the RAIKOU paper: 10.3847/1538-4357/acc94a
-    //theta = arccos((1-sqrt(1+pow(beta,2.0)+2*beta-4*beta*random_num))/beta)
+    //theta = arccos((1-sqrt(1+beta*beta+2*beta-4*beta*random_num))/beta)
 
 
     return theta;
