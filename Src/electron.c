@@ -86,7 +86,7 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
 
 double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr)
 {
-    double y_dum=0, f_x_dum=0, x_dum=0, beta_x_dum=0, beta=0, theta=0;
+    double y_dum=0, f_x_dum=0, x_dum=0, beta_x_dum=0, theta=0;
 
     //this loop is inefficient
     y_dum=1; //initalize loop to get a random theta
