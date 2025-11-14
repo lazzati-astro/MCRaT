@@ -79,7 +79,7 @@ double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr)
 {
     double y_dum=0, f_x_dum=0, x_dum=0, beta_x_dum=0, theta=0;
 
-    //this loop is inefficient
+    /*this loop is inefficient
     y_dum=1; //initalize loop to get a random theta
     f_x_dum=0;
     while (y_dum>f_x_dum)
@@ -89,9 +89,10 @@ double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr)
         f_x_dum=sin(x_dum)*(1-(beta*cos(x_dum)));
     }
     theta=x_dum;
+    */
 
     //can change to this: equation 56 of the RAIKOU paper: 10.3847/1538-4357/acc94a
-    //theta = arccos((1-sqrt(1+beta*beta+2*beta-4*beta*random_num))/beta)
+    theta = arccos((1-sqrt(1+beta*beta+2*beta-4*beta*random_num))/beta)
 
 
     return theta;
