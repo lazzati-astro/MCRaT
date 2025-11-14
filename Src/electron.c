@@ -7,8 +7,7 @@
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr)
 {
     //generates an electron with random energy
-    double gamma=0;
-    double y_dum=0, f_x_dum=0, x_dum=0, beta_x_dum=0, beta=0, phi=0, theta=0, ph_theta=0, ph_phi=0;
+    double gamma=0, beta=0, phi=0, theta=0, ph_theta=0, ph_phi=0;
     gsl_matrix *rot= gsl_matrix_calloc (3, 3); //create matrix thats 3x3 to do rotation
     gsl_vector_view el_p_prime ; //create vector to hold rotated electron 4 momentum
     gsl_vector *result=gsl_vector_alloc (3);
@@ -91,7 +90,7 @@ double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr)
     theta=x_dum;
     */
 
-    //can change to this: equation 56 of the RAIKOU paper: 10.3847/1538-4357/acc94a
+    //can change to this: equation 56 of the RAIKOU paper: DOI: 10.3847/1538-4357/acc94a
     theta = arccos((1-sqrt(1+beta*beta+2*beta-4*beta*random_num))/beta)
 
 
