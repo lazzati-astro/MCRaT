@@ -7,7 +7,7 @@
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr)
 {
     //generates an electron with random energy
-    double factor=0, gamma=0;
+    double gamma=0;
     double y_dum=0, f_x_dum=0, x_dum=0, beta_x_dum=0, beta=0, phi=0, theta=0, ph_theta=0, ph_phi=0;
     gsl_matrix *rot= gsl_matrix_calloc (3, 3); //create matrix thats 3x3 to do rotation
     gsl_vector_view el_p_prime ; //create vector to hold rotated electron 4 momentum
@@ -30,6 +30,7 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
         f_x_dum=sin(x_dum)*(1-(beta*cos(x_dum)));
     }
     theta=x_dum;
+    //theta=sampleElectronTheta(beta, rand, fPtr);
     //fprintf(fPtr,"Beta: %e\tPhi: %e\tTheta: %e\n",beta,phi, theta);
     //fill in electron 4 momentum NOT SURE WHY THE ORDER IS AS SUCH SEEMS TO BE E/c, pz,py,px!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -81,6 +82,28 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
 
 
     gsl_matrix_free (rot);gsl_vector_free(result);
+}
+
+double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr)
+{
+    double y_dum=0, f_x_dum=0, x_dum=0, beta_x_dum=0, beta=0, theta=0;
+
+    //this loop is inefficient
+    y_dum=1; //initalize loop to get a random theta
+    f_x_dum=0;
+    while (y_dum>f_x_dum)
+    {
+        y_dum=gsl_rng_uniform(rand)*1.3;
+        x_dum=gsl_rng_uniform(rand)*M_PI;
+        f_x_dum=sin(x_dum)*(1-(beta*cos(x_dum)));
+    }
+    theta=x_dum;
+
+    //can change to this: equation 56 of the RAIKOU paper: 10.3847/1538-4357/acc94a
+    //theta = arccos((1-sqrt(1+pow(beta,2.0)+2*beta-4*beta*random_num))/beta)
+
+
+    return theta;
 }
 
 double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr)
