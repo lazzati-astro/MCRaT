@@ -91,7 +91,7 @@ double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr)
     */
 
     //can change to this: equation 56 of the RAIKOU paper: DOI: 10.3847/1538-4357/acc94a
-    theta = arccos((1-sqrt(1+beta*beta+2*beta-4*beta*random_num))/beta);
+    theta = arccos((1-sqrt(1+beta*beta+2*beta-4*beta*gsl_rng_uniform(rand)))/beta);
 
 
     return theta;
