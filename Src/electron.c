@@ -159,7 +159,7 @@ double samplePowerLaw(double p, double gamma_min, double gamma_max, gsl_rng * ra
     return gamma_e;
 }
 
-double sampleDoublePowerLaw(double p1, double p2, double gamma_min, double gamma_max, double gamma_break, gsl_rng * rand, FILE *fPtr)
+double sampleBrokenPowerLaw(double p1, double p2, double gamma_min, double gamma_max, double gamma_break, gsl_rng * rand, FILE *fPtr)
 {
     bool p1_is_1=(fabs(p1-1.0) < 1e-6), p2_is_1=(fabs(p2-1.0) < 1e-6);
     double xi_break=0, A=0, gamma_e=0;
@@ -213,7 +213,7 @@ double sampleDoublePowerLaw(double p1, double p2, double gamma_min, double gamma
     }
     else
     {
-        fprintf(fPtr,"sampleDoublePowerLaw: In the else\n p1_is_1: %d, p2_is_1: %d \n This shouldnt have occured exiting", p1_is_1, p2_is_1);
+        fprintf(fPtr,"sampleBrokenPowerLaw: In the else\n p1_is_1: %d, p2_is_1: %d \n This shouldnt have occured exiting", p1_is_1, p2_is_1);
         exit(1);
     }
 
