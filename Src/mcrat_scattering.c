@@ -602,5 +602,13 @@ double kleinNishinaCrossSection(double energy_ratio)
         Calculate the total cross section normalized by the thompson cross section
         given the photon energy (in the electron rest frame) normalized by the electron rest mass energy
     */
-    return (3.0/4.0)*(  (  ((1+energy_ratio)/ pow(energy_ratio,3.0))*(((2*energy_ratio)*(1+energy_ratio)/(1+2*energy_ratio)) - log(1+2*energy_ratio)))  + (log(1+2*energy_ratio)/(2*energy_ratio)) - ((1+3*energy_ratio)/pow((1+2*energy_ratio),2.0))  );
+    //set to 1 by default, if the energy ratio is small enough, klein nishina converges to thompson cross section
+    double result=1;
+
+    if (energy_ratio >= 1e-2)
+    {
+        result=(3.0/4.0)*(  (  ((1+energy_ratio)/ pow(energy_ratio,3.0))*(((2*energy_ratio)*(1+energy_ratio)/(1+2*energy_ratio)) - log(1+2*energy_ratio)))  + (log(1+2*energy_ratio)/(2*energy_ratio)) - ((1+3*energy_ratio)/pow((1+2*energy_ratio),2.0))  );
+    }
+
+    return result;
 }
