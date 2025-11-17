@@ -519,9 +519,8 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
     KN_x_section_over_thomson_x_section= kleinNishinaCrossSection(energy_ratio);
     rand_num=gsl_rng_uniform(rand);
         
-    if ((rand_num<= KN_x_section_over_thomson_x_section) || (p0 < 1e-2*(M_EL*C_LIGHT ) ))
+    if (rand_num<= KN_x_section_over_thomson_x_section)
     {
-        //include last condition so low energy seed phtoons can scatter (as they should under thompson scattering), calculating KN_x_section_over_thomson_x_section incurs numerical error at very low frequencies
         //fprintf(fPtr,"In If!\n");
         //fflush(fPtr);
     
@@ -603,6 +602,8 @@ double kleinNishinaCrossSection(double energy_ratio)
         given the photon energy (in the electron rest frame) normalized by the electron rest mass energy
     */
     //set to 1 by default, if the energy ratio is small enough, klein nishina converges to thompson cross section
+    //low energy seed phtoons can scatter (as they should under thompson scattering),
+    //neded because calculating KN_x_section_over_thomson_x_section incurs numerical error at very low frequencies
     double result=1;
 
     if (energy_ratio >= 1e-2)
