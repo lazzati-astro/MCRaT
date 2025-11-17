@@ -595,3 +595,11 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
     
     return will_scatter;
 }
+
+double kleinNishinaCrossSection(double energy_ratio)
+{
+    /*
+        Calculate the total cross section given the photon energy (in the electron rest frame) normalized by the electron rest mass energy
+    */
+    return (3.0/4.0)*(  (  ((1+energy_ratio)/ pow(energy_ratio,3.0))*(((2*energy_ratio)*(1+energy_ratio)/(1+2*energy_ratio)) - log(1+2*energy_ratio)))  + (log(1+2*energy_ratio)/(2*energy_ratio)) - ((1+3*energy_ratio)/pow((1+2*energy_ratio),2.0))  );
+}
