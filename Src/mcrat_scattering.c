@@ -516,7 +516,7 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
     double energy_ratio=  p0/(M_EL*C_LIGHT ); //h*nu / mc^2 , units of p0 is erg/c
     
     //determine the KN cross section over the thomson cross section From RYBICKI AND LIGHTMAN pg 197
-    KN_x_section_over_thomson_x_section= (3.0/4.0)*(  (  ((1+energy_ratio)/ pow(energy_ratio,3.0))*(((2*energy_ratio)*(1+energy_ratio)/(1+2*energy_ratio)) - log(1+2*energy_ratio)))  + (log(1+2*energy_ratio)/(2*energy_ratio)) - ((1+3*energy_ratio)/pow((1+2*energy_ratio),2.0))  );
+    KN_x_section_over_thomson_x_section= kleinNishinaCrossSection(energy_ratio)
     rand_num=gsl_rng_uniform(rand);
         
     if ((rand_num<= KN_x_section_over_thomson_x_section) || (p0 < 1e-2*(M_EL*C_LIGHT ) ))
@@ -599,7 +599,8 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
 double kleinNishinaCrossSection(double energy_ratio)
 {
     /*
-        Calculate the total cross section given the photon energy (in the electron rest frame) normalized by the electron rest mass energy
+        Calculate the total cross section normalized by the thompson cross section
+        given the photon energy (in the electron rest frame) normalized by the electron rest mass energy
     */
     return (3.0/4.0)*(  (  ((1+energy_ratio)/ pow(energy_ratio,3.0))*(((2*energy_ratio)*(1+energy_ratio)/(1+2*energy_ratio)) - log(1+2*energy_ratio)))  + (log(1+2*energy_ratio)/(2*energy_ratio)) - ((1+3*energy_ratio)/pow((1+2*energy_ratio),2.0))  );
 }
