@@ -6,6 +6,9 @@
 // Tomohisa Kawashima et al 2023 ApJ 949 101
 //
 
+#include "mcrat.h"
+
+
 double boostedCrossSection(double norm_ph_comv, double mu, double gamma)
 {
     /*
