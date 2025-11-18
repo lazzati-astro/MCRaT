@@ -424,3 +424,27 @@ void arrayElectronPowerLaw(const double *x, double *y, int n_points, double p, d
         }
     }
 }
+
+double singleMaxwellJuttner(double gamma, double theta)
+{
+    /*
+       returns the maxwell juttner distribution value for a given dimensionless temp, theta, and electron lorentz factor, gamma
+        When the temp >~6e7 K, we use the full distribution since we evaluate the integral at this threshold and it is
+        properly normalized (there is a ~12% error in the normalization at this threshold value). Below this temperature, we calculated the
+        limit of the distribution as theta->0 and the normalizations
+    */
+    double result=0, normalization=0;
+    
+    if (theta > 1.e-2) 
+    {
+        normalization = gsl_sf_bessel_Kn(2, 1. / theta) * exp(1. / theta);
+    } 
+    else 
+    {
+        normalization = sqrt(M_PI * theta / 2.);
+    }
+
+    result = ((gamma * sqrt(gamma * gamma - 1.) / (theta * normalization)) * exp(-(gamma - 1.) / theta));
+
+    return result;
+}
