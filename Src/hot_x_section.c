@@ -3,16 +3,28 @@
 // This file holds the functions to create/read in the hot cross section lookup table
 // This is calculated using the equations outlined in:
 // Dolence, J.C., Gammie, C.F., Mo\'scibrodzka, M., \& Leung, P.-K. 2009, Astrophysical Journal Supplement, 184, 387 &
-// Tomohisa Kawashima et al 2023 ApJ 949 101
+// Tomohisa Kawashima et al 2023 ApJ 949 101 &
+// Canfield E., Howard W. M. and Liang E. P. 1987 ApJ 323 565
 //
 
 #include "mcrat.h"
 
+double calculateTotalThermalCrossSection()
+{
+    /*
+    Here we perform a double integral over gamma and mu, given the photon energy (normalized by the electron rest mass)
+    in the fluid rest frame and the fluid temperature. This integral is done using the maxwell juttner distribution of
+    thermal electrons
+    */
+    double result=0;
+
+    double result;
+}
 
 double boostedCrossSection(double norm_ph_comv, double mu, double gamma)
 {
     /*
-        Calculates the KN cross section in the electron restframe
+        Calculates the KN cross section normalized by the thompson cross section in the electron rest frame
         This takes the photon's comobetaing energy (in the fluid frame) normalized by the electron rest mass, norm_ph_comv,
         the cosine of the angle between the photon and the electron in the electron rest frame, mu,
         and the lorentz factor of the electron in the fluid frame, gamma
@@ -23,7 +35,7 @@ double boostedCrossSection(double norm_ph_comv, double mu, double gamma)
     beta = sqrt(gamma * gamma - 1.) / gamma;
     norm_ph_e = norm_ph_comv * gamma * (1. - mu * beta);
 
-    result = hc_klein_nishina(norm_ph_e) * (1. - mu * beta);
+    result = kleinNishinaCrossSection(norm_ph_e) * (1. - mu * beta);
 
     if (result > 2)
     {
