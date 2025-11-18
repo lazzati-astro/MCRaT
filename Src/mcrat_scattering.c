@@ -515,7 +515,7 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
     int will_scatter=0;
     double energy_ratio=  p0/(M_EL*C_LIGHT ); //h*nu / mc^2 , units of p0 is erg/c
     
-    //determine the KN cross section over the thomson cross section From RYBICKI AND LIGHTMAN pg 197
+    //determine the KN cross section over the thomson cross section
     KN_x_section_over_thomson_x_section= kleinNishinaCrossSection(energy_ratio);
     rand_num=gsl_rng_uniform(rand);
         
@@ -617,7 +617,7 @@ double kleinNishinaCrossSection(double energy_ratio)
     }
     else
     {
-        result=(1. - 2. * we);
+        result=(1. - 2. * energy_ratio);
     }
 
     return result;
