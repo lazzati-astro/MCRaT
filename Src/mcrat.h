@@ -182,6 +182,7 @@ struct hydro_dataframe
 #include "analytic_outflows.h"
 #include "optical_depth.h"
 #include "electron.h"
+#include "hot_x_section.h"
 
 //set default hydro v scale to be the speed of light
 #define HYDRO_V_SCALE C_LIGHT
