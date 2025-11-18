@@ -599,16 +599,25 @@ double kleinNishinaCrossSection(double energy_ratio)
 {
     /*
         Calculate the total cross section normalized by the thompson cross section
-        given the photon energy (in the electron rest frame) normalized by the electron rest mass energy
+        given the photon energy (in the electron rest frame) normalized by the electron rest mass energy.
+        This is given in the grmonty code and the low energy limit is more continuous and gives very small error
+        with respect to the full cross section value (needed for integration when calculating modified cross section).
+        Verified that this form of the KN cross section reproduces Rybicki and lightman KN cross section formula
     */
-    //set to 1 by default, if the energy ratio is small enough, klein nishina converges to thompson cross section
-    //low energy seed phtoons can scatter (as they should under thompson scattering),
-    //neded because calculating KN_x_section_over_thomson_x_section incurs numerical error at very low frequencies
-    double result=1;
+    double result=0;
 
-    if (energy_ratio >= 1e-2)
+    if (energy_ratio >= 1e-3)
     {
-        result=(3.0/4.0)*(  (  ((1+energy_ratio)/ pow(energy_ratio,3.0))*(((2*energy_ratio)*(1+energy_ratio)/(1+2*energy_ratio)) - log(1+2*energy_ratio)))  + (log(1+2*energy_ratio)/(2*energy_ratio)) - ((1+3*energy_ratio)/pow((1+2*energy_ratio),2.0))  );
+        result=(3. / 4.) * (2. / (energy_ratio * energy_ratio) +
+                 (1. / (2. * energy_ratio) -
+                  (1. + energy_ratio) / (energy_ratio * energy_ratio * energy_ratio)) * log(1. +
+                                2. * energy_ratio) +
+                 (1. + energy_ratio) / ((1. + 2. * energy_ratio) * (1. + 2. * energy_ratio))
+        );
+    }
+    else
+    {
+        result=(1. - 2. * we);
     }
 
     return result;
