@@ -246,7 +246,7 @@ double nonThermalCrossSectionIntegrand(double x[], size_t dim, void * p)
     #ifdef NONTHERMAL_E_DIST
 
         #if NONTHERMAL_E_DIST == POWERLAW
-            result = singlePowerLaw(gamma, POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX);
+            result = singleElectronPowerLaw(gamma, POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX);
         #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
             result = singleElectronBrokenPowerLaw(gamma, POWERLAW_INDEX_1, POWERLAW_INDEX_2, GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK);
         #else
