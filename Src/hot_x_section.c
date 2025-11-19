@@ -28,10 +28,10 @@
 #define HOT_THERMAL_X_SECTION_FILE	"thermal_hot_x_section.dat"
 
 //define the number of lorentz factor intervals that we will calculate the nonthermal hot cross sections for
-#define N_GAMMA 1
+#define N_GAMMA 100
 
 //helper struct to evaluate the double integral
-struct double_integral_params { double norm_ph_comv; double theta };
+struct double_integral_input_params { double norm_ph_comv; double theta };
 
 double thermal_table[N_PH_E + 1][N_T + 1];
 
@@ -162,7 +162,7 @@ double calculateTotalThermalCrossSection(double ph_comv, double theta, gsl_rng *
     double result=0, error=0;
     double xl[2] = { 1, -1 };
     double xu[2] = { 1. + 12 * theta, 1 };
-    struct double_integral_params params = {ph_comv, theta };
+    struct double_integral_input_params params = {ph_comv, theta };
 
     //
     if (theta < pow(10, LOG_T_MIN) && ph_comv < pow(10, LOG_PH_E_MIN))
@@ -189,7 +189,7 @@ double calculateTotalThermalCrossSection(double ph_comv, double theta, gsl_rng *
 double thermalCrossSectionIntegrand(double x[], size_t dim, void * p)
 {
     double result=0;
-    struct double_integral_params * fp = (struct double_integral_params *)p;
+    struct double_integral_input_params * fp = (struct double_integral_input_params *)p;
     double gamma=x[0], mu=x[1];
 
     result = singleMaxwellJuttner(gamma, fp->theta)*boostedCrossSection(fp->norm_ph_comv, mu, gamma);
@@ -241,7 +241,7 @@ void display_results (char *title, double result, double error,  FILE *fPtr)
 double nonThermalCrossSectionIntegrand(double x[], size_t dim, void * p)
 {
     double result=0;
-    struct double_integral_params * fp = (struct double_integral_params *)p;
+    struct double_integral_input_params * fp = (struct double_integral_input_params *)p;
     double gamma=x[0], mu=x[1];
     #ifdef NONTHERMAL_E_DIST
 
@@ -270,7 +270,7 @@ double calculateTotalNonThermalCrossSection(double ph_comv, double theta, double
     double result=0, error=0;
     double xl[2] = { gamma_min, -1 };
     double xu[2] = { gamma_max, 1 };
-    struct double_integral_params params = {ph_comv, theta };
+    struct double_integral_input_params params = {ph_comv, theta };
 
     //
     if (theta < pow(10, LOG_T_MIN) && ph_comv < pow(10, LOG_PH_E_MIN))
