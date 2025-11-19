@@ -105,7 +105,7 @@ double calculateTotalThermalCrossSection(double ph_comv, double theta, gsl_rng *
     size_t calls = 500000;
 
     gsl_monte_plain_state *s = gsl_monte_plain_alloc (2);
-    gsl_monte_plain_integrate (&F, xl, xu, 3, calls, rand, s, &result, &error);
+    gsl_monte_plain_integrate (&F, xl, xu, 2, calls, rand, s, &result, &error);
     gsl_monte_plain_free (s);
 
     display_results ("plain", result, error, fPtr);
