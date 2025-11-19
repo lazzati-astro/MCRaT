@@ -4,7 +4,7 @@ double calculateTotalThermalCrossSection(double ph_comv, double theta, gsl_rng *
 
 double thermalCrossSectionIntegrand(double x[], size_t dim, void * p);
 
-double boostedCrossSection(double norm_ph_comv, double mu, double gamma, FILE *fPtr);
+double boostedCrossSection(double norm_ph_comv, double mu, double gamma);
 
 void display_results (char *title, double result, double error,  FILE *fPtr);
 
