@@ -49,15 +49,15 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
         {
             comv_ph_e = pow(10., LOG_PH_E_MIN + i * dph_e);
             theta = pow(10., LOG_T_MIN + j * dt);
-            table[i][j] = log10(calculateTotalThermalCrossSection(comv_ph_e, theta, rand, fPtr));
+            table[i][j] = log10(calculateTotalThermalCrossSection(comv_ph_e, theta, rand, fPtr)*THOM_X_SECT);
             if (isnan(table[i][j]))
             {
-                fprintf(stdout, "%d %d %g %g\n", i, j, comv_ph_e, theta);
+                fprintf(stdout, "%d %d %g %g %g\n", i, j, comv_ph_e, theta, table[i][j]);
                 //exit(0);
             }
             else
             {
-                fprintf(stdout, "%d %d %g %g\n", i, j, comv_ph_e, theta);
+                fprintf(stdout, "%d %d %g %g %g\n", i, j, comv_ph_e, theta, table[i][j]);
             }
         }
     }
