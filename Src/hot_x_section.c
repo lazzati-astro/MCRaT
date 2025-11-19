@@ -72,8 +72,8 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
     {
         for (j = 0; j <= N_T; j++)
         {
-            comv_ph_e = pow(10., LOG_PH_E_MIN + i * dph_e);
-            theta = pow(10., LOG_T_MIN + j * dt);
+            comv_ph_e =  LOG_PH_E_MIN + i * dph_e;
+            theta =  LOG_T_MIN + j * dt;
             fprintf(fp, "%d %d %g %g %15.10g\n", i, j, comv_ph_e, theta, table[i][j]);
         }
     }
