@@ -91,8 +91,8 @@ double calculateTotalThermalCrossSection(double ph_comv, double theta, gsl_rng *
     included in the full definition of the hot cross section.
     */
     double result=0, error=0;
-    double xl[2] = { -1, 1 };
-    double xu[2] = { 1, 1. + 12 * theta };
+    double xl[2] = { 1, -1 };
+    double xu[2] = { 1. + 12 * theta, 1 };
     struct double_integral_params params = {ph_comv, theta };
 
     //
