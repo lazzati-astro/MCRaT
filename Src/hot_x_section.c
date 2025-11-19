@@ -111,14 +111,14 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
                     gamma_min = GAMMA_MIN + k * dgamma;
                     gamma_max = gamma_min + dgamma;
                     nonthermal_table[i][j][k] = log10(calculateTotalNonThermalCrossSection(comv_ph_e, theta, gamma_min, gamma_max,  rand, fPtr)*THOM_X_SECT);
-                    if (nonthermal_table(table[i][j][k]))
+                    if (isnan(nonthermal_table[i][j][k]))
                     {
-                        fprintf(stdout, "%d %d %g %g %g %g %g\n", i, j, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
+                        fprintf(stdout, "%d %d %d %g %g %g %g %g\n", i, j, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
                         //exit(0);
                     }
                     else
                     {
-                        fprintf(stdout, "%d %d %g %g %g %g %g\n", i, j, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
+                        fprintf(stdout, "%d %d %d %g %g %g %g %g\n", i, j, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
                     }
                 }
             }
@@ -140,7 +140,7 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
                     theta =  LOG_T_MIN + j * dt;
                     gamma_min = GAMMA_MIN + k * dgamma;
                     gamma_max=gamma_min + N_GAMMA;
-                    fprintf(fp, "%d %d %g %g %g %g %15.10g\n", i, j, k, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
+                    fprintf(fp, "%d %d %d %g %g %g %g %15.10g\n", i, j, k, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
                 }
             }
         }
