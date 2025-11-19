@@ -63,15 +63,15 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
         {
             comv_ph_e = pow(10., LOG_PH_E_MIN + i * dph_e);
             theta = pow(10., LOG_T_MIN + j * dt);
-            table[i][j] = log10(calculateTotalThermalCrossSection(comv_ph_e, theta, rand, fPtr)*THOM_X_SECT);
-            if (isnan(table[i][j]))
+            thermal_table[i][j] = log10(calculateTotalThermalCrossSection(comv_ph_e, theta, rand, fPtr)*THOM_X_SECT);
+            if (isnan(thermal_table[i][j]))
             {
-                fprintf(stdout, "%d %d %g %g %g\n", i, j, comv_ph_e, theta, table[i][j]);
+                fprintf(stdout, "%d %d %g %g %g\n", i, j, comv_ph_e, theta, thermal_table[i][j]);
                 //exit(0);
             }
             else
             {
-                fprintf(stdout, "%d %d %g %g %g\n", i, j, comv_ph_e, theta, table[i][j]);
+                fprintf(stdout, "%d %d %g %g %g\n", i, j, comv_ph_e, theta, thermal_table[i][j]);
             }
         }
     }
@@ -88,7 +88,7 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
         {
             comv_ph_e =  LOG_PH_E_MIN + i * dph_e;
             theta =  LOG_T_MIN + j * dt;
-            fprintf(fp, "%d %d %g %g %15.10g\n", i, j, comv_ph_e, theta, table[i][j]);
+            fprintf(fp, "%d %d %g %g %15.10g\n", i, j, comv_ph_e, theta, thermal_table[i][j]);
         }
     }
     fclose(fp);
@@ -110,15 +110,15 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
                     theta = pow(10., LOG_T_MIN + j * dt);
                     gamma_min = GAMMA_MIN + k * dgamma;
                     gamma_max = gamma_min + dgamma;
-                    table[i][j] = log10(calculateTotalNonThermalCrossSection(comv_ph_e, theta, gamma_min, gamma_max,  rand, fPtr)*THOM_X_SECT);
-                    if (isnan(table[i][j][k]))
+                    nonthermal_table[i][j][k] = log10(calculateTotalNonThermalCrossSection(comv_ph_e, theta, gamma_min, gamma_max,  rand, fPtr)*THOM_X_SECT);
+                    if (nonthermal_table(table[i][j][k]))
                     {
-                        fprintf(stdout, "%d %d %g %g %g %g %g\n", i, j, comv_ph_e, theta, gamma_min, gamma_max, table[i][j][k]);
+                        fprintf(stdout, "%d %d %g %g %g %g %g\n", i, j, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
                         //exit(0);
                     }
                     else
                     {
-                        fprintf(stdout, "%d %d %g %g %g %g %g\n", i, j, comv_ph_e, theta, gamma_min, gamma_max, table[i][j][k]);
+                        fprintf(stdout, "%d %d %g %g %g %g %g\n", i, j, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
                     }
                 }
             }
@@ -140,7 +140,7 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
                     theta =  LOG_T_MIN + j * dt;
                     gamma_min = GAMMA_MIN + k * dgamma;
                     gamma_max=gamma_min + N_GAMMA;
-                    fprintf(fp, "%d %d %g %g %g %g %15.10g\n", i, j, k, comv_ph_e, theta, gamma_min, gamma_max, table[i][j][k]);
+                    fprintf(fp, "%d %d %g %g %g %g %15.10g\n", i, j, k, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
                 }
             }
         }
@@ -243,13 +243,15 @@ double nonThermalCrossSectionIntegrand(double x[], size_t dim, void * p)
     double result=0;
     struct double_integral_params * fp = (struct double_integral_params *)p;
     double gamma=x[0], mu=x[1];
+    #ifdef NONTHERMAL_E_DIST
 
-    #if NONTHERMAL_E_DIST == POWERLAW
-        result = singlePowerLaw(gamma, POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX);
-    #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
-        result = singleElectronBrokenPowerLaw(gamma, POWERLAW_INDEX_1, POWERLAW_INDEX_2, GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK);
-    #else
-    #error Unnknown nonthermal electron distribution.
+        #if NONTHERMAL_E_DIST == POWERLAW
+            result = singlePowerLaw(gamma, POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX);
+        #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
+            result = singleElectronBrokenPowerLaw(gamma, POWERLAW_INDEX_1, POWERLAW_INDEX_2, GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK);
+        #else
+            #error Unnknown nonthermal electron distribution.
+        #endif
     #endif
 
     result*=boostedCrossSection(fp->norm_ph_comv, mu, gamma);
