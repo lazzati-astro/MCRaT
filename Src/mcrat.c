@@ -555,6 +555,12 @@ int main(int argc, char **argv)
             }
         }
     }
+
+    if (angle_id==0)
+    {
+        //initalize the tabulated cross sections (if needed)
+        initalizeHotCrossSection(rng, fPtr);
+    }
     
     #if SIM_SWITCH == RIKEN && DIMENSIONS == THREE
     if (framestart>=3000)
