@@ -53,7 +53,7 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
             if (isnan(table[i][j]))
             {
                 fprintf(stdout, "%d %d %g %g\n", i, j, comv_ph_e, theta);
-                exit(0);
+                //exit(0);
             }
             else
             {
