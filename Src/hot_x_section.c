@@ -283,7 +283,7 @@ double calculateTotalNonThermalCrossSection(double ph_comv, double theta, double
     F.dim = 2;
     F.params = &params;
 
-    size_t calls = 500000;
+    size_t calls = 1000000;
 
     gsl_monte_plain_state *s = gsl_monte_plain_alloc (2);
     gsl_monte_plain_integrate (&F, xl, xu, 2, calls, rand, s, &result, &error);
