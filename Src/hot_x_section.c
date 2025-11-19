@@ -55,6 +55,10 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
                 fprintf(stdout, "%d %d %g %g\n", i, j, comv_ph_e, theta);
                 exit(0);
             }
+            else
+            {
+                fprintf(stdout, "%d %d %g %g\n", i, j, comv_ph_e, theta);
+            }
         }
     }
 

@@ -555,12 +555,6 @@ int main(int argc, char **argv)
             }
         }
     }
-
-    if (angle_id==0)
-    {
-        //initalize the tabulated cross sections (if needed)
-        initalizeHotCrossSection(rng, fPtr);
-    }
     
     #if SIM_SWITCH == RIKEN && DIMENSIONS == THREE
     if (framestart>=3000)
@@ -585,6 +579,12 @@ int main(int argc, char **argv)
     snprintf(log_file,sizeof(log_file),"%s%s%d%s",mc_dir,"mc_output_", angle_id,".log" );
     printf("%s\n",log_file);
     fPtr=fopen(log_file, "a");
+
+    if (angle_id==0)
+    {
+        //initalize the tabulated cross sections (if needed)
+        initalizeHotCrossSection(rng, fPtr);
+    }
     
     printf( "Im Proc %d with angles %0.1lf-%0.1lf proc_frame_size is %d Starting on Frame: %d Injecting until %d scatt_framestart: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, proc_frame_size, framestart, frm2, scatt_framestart);
     
