@@ -55,6 +55,9 @@
 #define UNABSORBED_CS_PHOTON 'c'
 #define REBINNED_PHOTON 'r'
 
+//define nonthermal functions for electron distribution
+#define POWERLAW 1
+#define BROKENPOWERLAW 2
 
 extern const double C_LIGHT;
 extern const double A_RAD;
@@ -236,6 +239,42 @@ struct hydro_dataframe
 
 #endif
 
+#ifdef NONTHERMAL_E_DIST
+    //if the user is specifying one of the 2 on-thermal distributions to use need to do error checking
+    #if NONTHERMAL_E_DIST == POWERLAW
+        #ifndef POWERLAW_INDEX
+            #error Need to define POWERLAW_INDEX in mcrat_input.h file using POWERLAW_INDEX
+        #endif
+
+    #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
+        #ifndef POWERLAW_INDEX_1
+            #error Need to define POWERLAW_INDEX_1 in mcrat_input.h file using POWERLAW_INDEX_1
+        #endif
+
+        #ifndef POWERLAW_INDEX_2
+            #error Need to define POWERLAW_INDEX_2 in mcrat_input.h file using POWERLAW_INDEX_2
+        #endif
+
+        #ifndef GAMMA_BREAK
+            #error Need to define GAMMA_BREAK in mcrat_input.h file using GAMMA_BREAK
+        #endif
+
+    #else
+        #error Unnknown nonthermal electron distribution.
+    #endif
+
+    #if NONTHERMAL_E_DIST == POWERLAW || NONTHERMAL_E_DIST == BROKENPOWERLAW
+        #ifndef GAMMA_MIN
+            #error Need to define GAMMA_MIN in mcrat_input.h file using GAMMA_MIN
+        #endif
+
+        #ifndef GAMMA_MAX
+            #error Need to define GAMMA_MAX in mcrat_input.h file using GAMMA_MAX
+        #endif
+    #endif
+#endif
+
+
 //take care of stokes switch and comv_switch and save_type defaults too
 #ifndef STOKES_SWITCH
     #define STOKES_SWITCH   OFF
@@ -273,3 +312,4 @@ struct hydro_dataframe
 #ifndef MCPAR
 #error Need to define name of MCRaT parameter file in mcrat_input.h file using MCPAR (it is typically called mc.par, see e.g. the MCRaT manual)
 #endif
+
