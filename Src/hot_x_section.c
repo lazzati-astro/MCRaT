@@ -113,12 +113,12 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
                     nonthermal_table[i][j][k] = log10(calculateTotalNonThermalCrossSection(comv_ph_e, theta, gamma_min, gamma_max,  rand, fPtr)*THOM_X_SECT);
                     if (isnan(nonthermal_table[i][j][k]))
                     {
-                        fprintf(stdout, "%d %d %d %g %g %g %g %g\n", i, j, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
+                        fprintf(stdout, "%d %d %d %g %g %g %g %g\n", i, j, k, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
                         //exit(0);
                     }
                     else
                     {
-                        fprintf(stdout, "%d %d %d %g %g %g %g %g\n", i, j, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
+                        fprintf(stdout, "%d %d %d %g %g %g %g %g\n", i, j,k, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
                     }
                 }
             }
