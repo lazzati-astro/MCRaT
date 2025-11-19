@@ -36,7 +36,7 @@ struct double_integral_params { double norm_ph_comv; double theta };
 double thermal_table[N_PH_E + 1][N_T + 1];
 
 #ifdef NONTHERMAL_E_DIST
-    double nonthermal_table[N_PH_E + 1][N_T + 1][N_GAMMA + 1];
+    double nonthermal_table[N_PH_E + 1][N_T + 1][N_GAMMA];
 
     //define the nonthermal modified cross section table filename
     #if NONTHERMAL_E_DIST == POWERLAW
@@ -104,7 +104,7 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
         {
             for (j = 0; j <= N_T; j++)
             {
-                for (k = 0; k <= N_GAMMA; k++)
+                for (k = 0; k < N_GAMMA; k++)
                 {
                     comv_ph_e = pow(10., LOG_PH_E_MIN + i * dph_e);
                     theta = pow(10., LOG_T_MIN + j * dt);
@@ -134,7 +134,7 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
         {
             for (j = 0; j <= N_T; j++)
             {
-                for (k = 0; k <= N_GAMMA; k++)
+                for (k = 0; k < N_GAMMA; k++)
                 {
                     comv_ph_e =  LOG_PH_E_MIN + i * dph_e;
                     theta =  LOG_T_MIN + j * dt;
