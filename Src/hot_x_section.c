@@ -98,7 +98,7 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
     fp=NULL;
 
     #ifdef NONTHERMAL_E_DIST
-        double dgamma=(GAMMA_MAX-GAMMA_MIN)/N_GAMMA;
+        double dgamma=(log10(GAMMA_MAX)-log10(GAMMA_MIN))/N_GAMMA;
 
         for (i = 0; i <= N_PH_E; i++)
         {
@@ -108,8 +108,8 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
                 {
                     comv_ph_e = pow(10., LOG_PH_E_MIN + i * dph_e);
                     theta = pow(10., LOG_T_MIN + j * dt);
-                    gamma_min = GAMMA_MIN + k * dgamma;
-                    gamma_max = gamma_min + dgamma;
+                    gamma_min = pow(10., log10(GAMMA_MIN) + k * dgamma);
+                    gamma_max = pow(10., log10(gamma_min) + dgamma);
                     nonthermal_table[i][j][k] = log10(calculateTotalNonThermalCrossSection(comv_ph_e, theta, gamma_min, gamma_max,  rand, fPtr)*THOM_X_SECT);
                     if (isnan(nonthermal_table[i][j][k]))
                     {
