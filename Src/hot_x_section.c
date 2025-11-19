@@ -33,6 +33,8 @@
 //helper struct to evaluate the double integral
 struct double_integral_params { double norm_ph_comv; double theta };
 
+double table[N_PH_E + 1][N_T + 1];
+
 void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
 {
 
