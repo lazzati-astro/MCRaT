@@ -108,7 +108,7 @@ double calculateTotalThermalCrossSection(double ph_comv, double theta, gsl_rng *
     gsl_monte_plain_integrate (&F, xl, xu, 3, calls, rand, s, &result, &error);
     gsl_monte_plain_free (s);
 
-    display_results ("plain", result, error);
+    display_results ("plain", result, error, fPtr);
 
     return 0.5*result;
 }
@@ -122,6 +122,7 @@ double thermalCrossSectionIntegrand(double x[], size_t dim, void * p)
     result = singleMaxwellJuttner(gamma, fp->theta)*boostedCrossSection(fp->norm_ph_comv, mu, gamma);
 
     return result;
+}
 
 double boostedCrossSection(double norm_ph_comv, double mu, double gamma)
 {
@@ -157,9 +158,9 @@ double boostedCrossSection(double norm_ph_comv, double mu, double gamma)
 
 void display_results (char *title, double result, double error,  FILE *fPtr)
 {
-    printf ("%s ==================\n", title);
-    printf ("result = % .6f\n", result);
-    printf ("sigma  = % .6f\n", error);
+    fprintf (fPtr, "%s ==================\n", title);
+    fprintf (fPtr, "result = % .6f\n", result);
+    fprintf (fPtr, "sigma  = % .6f\n", error);
     //printf ("exact  = % .6f\n", exact);
     //printf ("error  = % .6f = %.2g sigma\n", result - exact, fabs (result - exact) / error);
 }
