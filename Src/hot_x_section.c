@@ -198,8 +198,8 @@ void readHotCrossSection(FILE *fPtr)
     }
 
     // Skip header lines until line with only dashes is found
-    fgets(line, sizeof(line), fp)
-    line[strcspn(line, "\r\n")] = 0
+    fgets(line, sizeof(line), fp);
+    line[strcspn(line, "\r\n")] = 0;
     while (fgets(line, sizeof(line), fp) && !is_dash_line(line))
     {
         // Remove trailing newline
