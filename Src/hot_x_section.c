@@ -48,6 +48,11 @@ double thermal_table[N_PH_E + 1][N_T + 1];
 void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
 {
 
+
+}
+
+void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
+{
     int i,j,k;
     double dt=(LOG_T_MAX-LOG_T_MIN)/N_T, dph_e=(LOG_PH_E_MAX-LOG_PH_E_MIN)/N_PH_E;
     double comv_ph_e, theta, gamma_min, gamma_max;
@@ -59,7 +64,7 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
         {
             comv_ph_e = pow(10., LOG_PH_E_MIN + i * dph_e);
             theta = pow(10., LOG_T_MIN + j * dt);
-            thermal_table[i][j] = log10(calculateTotalThermalCrossSection(comv_ph_e, theta, rand, fPtr)*THOM_X_SECT);
+            thermal_table[i][j] = log10(calculateTotalThermalCrossSection(comv_ph_e, theta, rand, fPtr));
             if (isnan(thermal_table[i][j]))
             {
                 fprintf(stdout, "%d %d %g %g %g\n", i, j, comv_ph_e, theta, thermal_table[i][j]);
@@ -78,6 +83,14 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
         fprintf(stderr, "couldn't write to file\n");
         exit(0);
     }
+
+    //write header to file
+    fprintf(fp, "The comoving photon energy and the temperatures are normalized by the electron rest mass\n");
+    fprintf(fp, "The calculated hot cross sections are normalized by the thompson cross section.\n");
+    fprintf(fp, "Photon index\tTheta Index\tlog10(Comoving Photon Energy)\tlog10(Theta)\tlog10(Hot Cross Section)\n");
+    fprintf(fp, "------------------------------------------------\n");
+
+
     for (i = 0; i <= N_PH_E; i++)
     {
         for (j = 0; j <= N_T; j++)
@@ -105,7 +118,7 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
                     comv_ph_e = pow(10., LOG_PH_E_MIN + i * dph_e);
                     gamma_min = pow(10., log10(GAMMA_MIN) + k * dgamma);
                     gamma_max = pow(10., log10(gamma_min) + dgamma);
-                    nonthermal_table[i][k] = log10(calculateTotalNonThermalCrossSection(comv_ph_e, gamma_min, gamma_max,  rand, fPtr)*THOM_X_SECT);
+                    nonthermal_table[i][k] = log10(calculateTotalNonThermalCrossSection(comv_ph_e, gamma_min, gamma_max,  rand, fPtr));
                     if (isnan(nonthermal_table[i][k]))
                     {
                         fprintf(stdout, "%d %d %g %g %g %g\n", i, k, comv_ph_e, gamma_min, gamma_max, nonthermal_table[i][k]);
@@ -125,6 +138,16 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
             fprintf(stderr, "couldn't write to file\n");
             exit(0);
         }
+
+
+        fprintf(fp, "This file is produced for a Powerlaw electron distribution with:\n");
+        fprintf(fp, "gamma_min: %g\ngamma_max: %g\npowerlaw index %g\n", GAMMA_MIN, GAMMA_MAX, POWERLAW_INDEX);
+
+        fprintf(fp, "The comoving photon energy is normalized by the electron rest mass\n");
+        fprintf(fp, "The calculated hot cross sections are normalized by the thompson cross section.\n");
+        fprintf(fp, "Photon index\tTheta Index\tlog10(Comoving Photon Energy)\tlog10(Theta)\tlog10(Hot Cross Section)\n");
+        fprintf(fp, "------------------------------------------------\n");
+
         for (i = 0; i <= N_PH_E; i++)
         {
             //for (j = 0; j <= N_T; j++)
@@ -142,6 +165,15 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
         fprintf(stderr, "done.\n\n");
 
     #endif
+}
+
+void readHotCrossSection(FILE *fPtr)
+{
+    int i, j, read_error;
+    FILE *fp;
+
+    //first read in the thermal electron hot cross section
+    fp = fopen(HOTCROSS, "r");
 
 }
 
