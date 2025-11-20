@@ -584,7 +584,7 @@ int main(int argc, char **argv)
     if (myid==0)
     {
         //initalize the tabulated cross sections (if needed)
-        initalizeHotCrossSection(myid, rng, fPtr);
+        initalizeHotCrossSection(rng, fPtr);
     }
     MPI_Barrier(MPI_COMM_WORLD);
 
