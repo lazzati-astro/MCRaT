@@ -211,7 +211,7 @@ void readHotCrossSection(FILE *fPtr)
     while (fgets(line, sizeof(line), fp))
     {
         parsed = sscanf(line, "%d\t%d\t%lf\t%lf\t%lf", &i, &j, &comv_ph_e, &theta, &value);
-        if (i >=0  && i < N_PH_E && j >= 0 && j < N_T)
+        if (i >=0  && i <= N_PH_E && j >= 0 && j <= N_T)
         {
             thermal_table[i][j] = value;
         }
@@ -257,7 +257,7 @@ void readHotCrossSection(FILE *fPtr)
         while (fgets(line, sizeof(line), fp))
         {
             parsed = sscanf(line, "%d\t%d\t%lf\t%lf\t%lf\t%lf", &i, &j, &comv_ph_e, &gamma_min, &gamma_max, &value);
-            if (i >=0  && i < N_PH_E && j >= 0 && j < N_GAMMA)
+            if (i >=0  && i <= N_PH_E && j >= 0 && j < N_GAMMA)
             {
                 nonthermal_table[i][j] = value;
             }
