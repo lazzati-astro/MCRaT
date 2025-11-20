@@ -8,10 +8,6 @@
 //
 
 #include "mcrat.h"
-#include <gsl/gsl_monte.h>
-#include <gsl/gsl_monte_plain.h>
-#include <gsl/gsl_monte_miser.h>
-#include <gsl/gsl_monte_vegas.h>
 
 // define the extent of the tabulated fluid photon energies normalized by electron rest mass
 #define LOG_PH_E_MIN -12.0
@@ -28,7 +24,7 @@
 #define HOT_THERMAL_X_SECTION_FILE	"thermal_hot_x_section.dat"
 
 //define the number of lorentz factor intervals that we will calculate the nonthermal hot cross sections for
-#define N_GAMMA 100
+#define N_GAMMA 3
 
 //helper struct to evaluate the double integral
 struct double_integral_input_params { double norm_ph_comv; double theta };

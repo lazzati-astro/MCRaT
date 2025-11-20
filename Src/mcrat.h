@@ -170,6 +170,10 @@ struct hydro_dataframe
 #include <gsl/gsl_permutation.h>
 #include <gsl/gsl_sort.h>
 #include <gsl/gsl_sort_vector.h>
+#include <gsl/gsl_monte.h>
+#include <gsl/gsl_monte_plain.h>
+#include <gsl/gsl_monte_miser.h>
+#include <gsl/gsl_monte_vegas.h>
 
 //include all other header files in mcrat
 #include "mcrat_input.h"
