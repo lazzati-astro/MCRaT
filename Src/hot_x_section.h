@@ -10,4 +10,4 @@ void display_results (char *title, double result, double error,  FILE *fPtr);
 
 double nonThermalCrossSectionIntegrand(double x[], size_t dim, void * p);
 
-double calculateTotalNonThermalCrossSection(double ph_comv, double theta, double gamma_min, double gamma_max, gsl_rng *rand, FILE *fPtr);
+double calculateTotalNonThermalCrossSection(double ph_comv, double gamma_min, double gamma_max, gsl_rng *rand, FILE *fPtr);

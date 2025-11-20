@@ -32,7 +32,7 @@ struct double_integral_input_params { double norm_ph_comv; double theta };
 double thermal_table[N_PH_E + 1][N_T + 1];
 
 #ifdef NONTHERMAL_E_DIST
-    double nonthermal_table[N_PH_E + 1][N_T + 1][N_GAMMA];
+    double nonthermal_table[N_PH_E + 1][N_GAMMA];
 
     //define the nonthermal modified cross section table filename
     #if NONTHERMAL_E_DIST == POWERLAW
@@ -98,23 +98,22 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
 
         for (i = 0; i <= N_PH_E; i++)
         {
-            for (j = 0; j <= N_T; j++)
+            //for (j = 0; j <= N_T; j++)
             {
                 for (k = 0; k < N_GAMMA; k++)
                 {
                     comv_ph_e = pow(10., LOG_PH_E_MIN + i * dph_e);
-                    theta = pow(10., LOG_T_MIN + j * dt);
                     gamma_min = pow(10., log10(GAMMA_MIN) + k * dgamma);
                     gamma_max = pow(10., log10(gamma_min) + dgamma);
-                    nonthermal_table[i][j][k] = log10(calculateTotalNonThermalCrossSection(comv_ph_e, theta, gamma_min, gamma_max,  rand, fPtr)*THOM_X_SECT);
-                    if (isnan(nonthermal_table[i][j][k]))
+                    nonthermal_table[i][k] = log10(calculateTotalNonThermalCrossSection(comv_ph_e, gamma_min, gamma_max,  rand, fPtr)*THOM_X_SECT);
+                    if (isnan(nonthermal_table[i][k]))
                     {
-                        fprintf(stdout, "%d %d %d %g %g %g %g %g\n", i, j, k, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
+                        fprintf(stdout, "%d %d %g %g %g %g\n", i, k, comv_ph_e, gamma_min, gamma_max, nonthermal_table[i][k]);
                         //exit(0);
                     }
                     else
                     {
-                        fprintf(stdout, "%d %d %d %g %g %g %g %g\n", i, j,k, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
+                        fprintf(stdout, "%d %d %g %g %g %g\n", i,k, comv_ph_e, gamma_min, gamma_max, nonthermal_table[i][k]);
                     }
                 }
             }
@@ -128,15 +127,14 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
         }
         for (i = 0; i <= N_PH_E; i++)
         {
-            for (j = 0; j <= N_T; j++)
+            //for (j = 0; j <= N_T; j++)
             {
                 for (k = 0; k < N_GAMMA; k++)
                 {
                     comv_ph_e =  LOG_PH_E_MIN + i * dph_e;
-                    theta =  LOG_T_MIN + j * dt;
                     gamma_min = log10(GAMMA_MIN) + k * dgamma;
                     gamma_max = gamma_min + dgamma;
-                    fprintf(fp, "%d %d %d %g %g %g %g %15.10g\n", i, j, k, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
+                    fprintf(fp, "%d %d %g %g %g %15.10g\n", i, k, comv_ph_e, gamma_min, gamma_max, nonthermal_table[i][k]);
                 }
             }
         }
@@ -257,7 +255,7 @@ double nonThermalCrossSectionIntegrand(double x[], size_t dim, void * p)
     return result;
 }
 
-double calculateTotalNonThermalCrossSection(double ph_comv, double theta, double gamma_min, double gamma_max, gsl_rng *rand, FILE *fPtr)
+double calculateTotalNonThermalCrossSection(double ph_comv, double gamma_min, double gamma_max, gsl_rng *rand, FILE *fPtr)
 {
     /*
     Here we perform a double integral over gamma and mu, given the photon energy (normalized by the electron rest mass)
@@ -268,13 +266,7 @@ double calculateTotalNonThermalCrossSection(double ph_comv, double theta, double
     double result=0, error=0;
     double xl[2] = { gamma_min, -1 };
     double xu[2] = { gamma_max, 1 };
-    struct double_integral_input_params params = {ph_comv, theta };
-
-    //
-    if (theta < pow(10, LOG_T_MIN) && ph_comv < pow(10, LOG_PH_E_MIN))
-        return 1;
-    if (theta < pow(10, LOG_T_MIN))
-        return (kleinNishinaCrossSection(ph_comv));
+    struct double_integral_input_params params = {ph_comv, 0.0 };
 
     gsl_monte_function F;
     F.f = &nonThermalCrossSectionIntegrand;
