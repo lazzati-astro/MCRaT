@@ -56,6 +56,7 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
     int i,j,k;
     double dt=(LOG_T_MAX-LOG_T_MIN)/N_T, dph_e=(LOG_PH_E_MAX-LOG_PH_E_MIN)/N_PH_E;
     double comv_ph_e, theta, gamma_min, gamma_max;
+    char xsection_file[STR_BUFFER]="" ;
     FILE *fp;
 
     for (i = 0; i <= N_PH_E; i++)
@@ -67,17 +68,19 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
             thermal_table[i][j] = log10(calculateTotalThermalCrossSection(comv_ph_e, theta, rand, fPtr));
             if (isnan(thermal_table[i][j]))
             {
-                fprintf(stdout, "%d %d %g %g %g\n", i, j, comv_ph_e, theta, thermal_table[i][j]);
-                //exit(0);
+                printf("%d %d %g %g %g\n", i, j, comv_ph_e, theta, thermal_table[i][j]);
+                fprintf(fPtr, "%d %d %g %g %g\n", i, j, comv_ph_e, theta, thermal_table[i][j]);
+                exit(0);
             }
             else
             {
-                fprintf(stdout, "%d %d %g %g %g\n", i, j, comv_ph_e, theta, thermal_table[i][j]);
+                printf("%d %d %g %g %g\n", i, j, comv_ph_e, theta, thermal_table[i][j]);
             }
         }
     }
 
-    fp = fopen(HOT_THERMAL_X_SECTION_FILE, "w");
+    snprintf(xsection_file,sizeof(xsection_file),"%s%s%s",FILEPATH, MC_PATH,HOT_THERMAL_X_SECTION_FILE);
+    fp = fopen(xsection_file, "w");
     if (fp == NULL)
     {
         fprintf(stderr, "couldn't write to file\n");
@@ -97,14 +100,15 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
         {
             comv_ph_e =  LOG_PH_E_MIN + i * dph_e;
             theta =  LOG_T_MIN + j * dt;
-            fprintf(fp, "%d %d %g %g %15.10g\n", i, j, comv_ph_e, theta, thermal_table[i][j]);
+            fprintf(fp, "%d\t%d\t%g\t%g\t%15.10g\n", i, j, comv_ph_e, theta, thermal_table[i][j]);
         }
     }
     fclose(fp);
-    fprintf(stderr, "done.\n\n");
+    fprintf(fPtr, "done.\n\n");
 
     //set to null incase we are dealing with nonthermal hot cross section after
     fp=NULL;
+    memset(&xsection_file[0], 0, sizeof(xsection_file));
 
     #ifdef NONTHERMAL_E_DIST
         double dgamma=(log10(GAMMA_MAX)-log10(GAMMA_MIN))/N_GAMMA;
@@ -121,31 +125,37 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
                     nonthermal_table[i][k] = log10(calculateTotalNonThermalCrossSection(comv_ph_e, gamma_min, gamma_max,  rand, fPtr));
                     if (isnan(nonthermal_table[i][k]))
                     {
-                        fprintf(stdout, "%d %d %g %g %g %g\n", i, k, comv_ph_e, gamma_min, gamma_max, nonthermal_table[i][k]);
-                        //exit(0);
+                        fprintf(fPtr, "%d %d %g %g %g %g\n", i, k, comv_ph_e, gamma_min, gamma_max, nonthermal_table[i][k]);
+                        printf("%d %d %g %g %g %g\n", i, k, comv_ph_e, gamma_min, gamma_max, nonthermal_table[i][k]);
+                        exit(0);
                     }
                     else
                     {
-                        fprintf(stdout, "%d %d %g %g %g %g\n", i,k, comv_ph_e, gamma_min, gamma_max, nonthermal_table[i][k]);
+                        printf("%d %d %g %g %g %g\n", i,k, comv_ph_e, gamma_min, gamma_max, nonthermal_table[i][k]);
                     }
                 }
             }
         }
 
-        fp = fopen(HOT_NONTHERMAL_X_SECTION_FILE, "w");
+        snprintf(xsection_file,sizeof(xsection_file),"%s%s%s",FILEPATH, MC_PATH,HOT_NONTHERMAL_X_SECTION_FILE);
+
+        fp = fopen(xsection_file, "w");
         if (fp == NULL)
         {
             fprintf(stderr, "couldn't write to file\n");
             exit(0);
         }
 
-
-        fprintf(fp, "This file is produced for a Powerlaw electron distribution with:\n");
-        fprintf(fp, "gamma_min: %g\ngamma_max: %g\npowerlaw index %g\n", GAMMA_MIN, GAMMA_MAX, POWERLAW_INDEX);
-
+        #if NONTHERMAL_E_DIST == POWERLAW
+            fprintf(fp, "This file is produced for a Powerlaw electron distribution with:\n");
+            fprintf(fp, "gamma_min: %g\ngamma_max: %g\npowerlaw index %g\n", GAMMA_MIN, GAMMA_MAX, POWERLAW_INDEX);
+        #else
+            fprintf(fp, "This file is produced for a Broken Powerlaw electron distribution with:\n");
+            fprintf(fp, "gamma_min: %g\ngamma_max: %g\ngamma_break: %g\n powerlaw index 1 %g\npowerlaw index 2 %g\n", GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK, POWERLAW_INDEX_1, POWERLAW_INDEX_2);
+        #endif
         fprintf(fp, "The comoving photon energy is normalized by the electron rest mass\n");
         fprintf(fp, "The calculated hot cross sections are normalized by the thompson cross section.\n");
-        fprintf(fp, "Photon index\tTheta Index\tlog10(Comoving Photon Energy)\tlog10(Theta)\tlog10(Hot Cross Section)\n");
+        fprintf(fp, "Photon index\telectron gamma Index\tlog10(Comoving Photon Energy)\tlog10(electron_gamma_min)\tlog10(electron_gamma_max)\tlog10(Hot Cross Section)\n");
         fprintf(fp, "------------------------------------------------\n");
 
         for (i = 0; i <= N_PH_E; i++)
@@ -169,15 +179,115 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
 
 void readHotCrossSection(FILE *fPtr)
 {
-    int i, j, read_error;
+    int i, j, read_error, parsed;
+    double comv_ph_e, theta, gamma_min, gamma_max, value;
+    char xsection_file[STR_BUFFER]="", line[STR_BUFFER] ;
     FILE *fp;
 
-    //first read in the thermal electron hot cross section
-    fp = fopen(HOTCROSS, "r");
+    snprintf(xsection_file,sizeof(xsection_file),"%s%s%s",FILEPATH, MC_PATH,HOT_THERMAL_X_SECTION_FILE);
 
+    fprintf(fPtr, "Reading thermal hot cross section data from %s...\n", xsection_file);
+
+    //first read in the thermal electron hot cross section
+    fp = fopen(xsection_file, "r");
+
+    if (fp == NULL)
+    {
+        fprintf(fPtr, "Couldn't read file\n");
+        exit(0);
+    }
+
+    // Skip header lines until line with only dashes is found
+    fgets(line, sizeof(line), fp)
+    line[strcspn(line, "\r\n")] = 0
+    while (fgets(line, sizeof(line), fp) && !is_dash_line(line))
+    {
+        // Remove trailing newline
+        line[strcspn(line, "\r\n")] = 0;
+    }
+
+    // Read data rows
+    while (fgets(line, sizeof(line), fp))
+    {
+        parsed = sscanf(line, "%d\t%d\t%lf\t%lf\t%lf", &i, &j, &comv_ph_e, &theta, &value);
+        if (i >=0  && i < N_PH_E && j >= 0 && j < N_T)
+        {
+            thermal_table[i][j] = value;
+        }
+        else
+        {
+            fprintf(fPtr, "The bounds of the input file exceed what MCRaT has been compiled with.\n");
+            exit(0);
+        }
+    }
+
+    fclose(fp);
+    //set to null incase we are dealing with nonthermal hot cross section after
+    fp=NULL;
+    memset(&xsection_file[0], 0, sizeof(xsection_file));
+
+
+    #ifdef NONTHERMAL_E_DIST
+        //TODO: add check for whether the nonthermal electron distribution valuess match in teh header match the compiler macro values
+
+        snprintf(xsection_file,sizeof(xsection_file),"%s%s%s",FILEPATH, MC_PATH,HOT_NONTHERMAL_X_SECTION_FILE);
+
+        fprintf(fPtr, "Reading nonthermal hot cross section data from %s...\n", xsection_file);
+
+        //first read in the thermal electron hot cross section
+        fp = fopen(xsection_file, "r");
+
+        if (fp == NULL)
+        {
+            fprintf(fPtr, "Couldn't read file\n");
+            exit(0);
+        }
+
+        // Skip header lines until line with only dashes is found
+        fgets(line, sizeof(line), fp)
+        line[strcspn(line, "\r\n")] = 0
+        while (fgets(line, sizeof(line), fp) && !is_dash_line(line))
+        {
+            // Remove trailing newline
+            line[strcspn(line, "\r\n")] = 0;
+        }
+
+        // Read data rows
+        while (fgets(line, sizeof(line), fp))
+        {
+            parsed = sscanf(line, "%d\t%d\t%lf\t%lf\t%lf\t%lf", &i, &j, &comv_ph_e, &gamma_min, &gamma_max, &value);
+            if (i >=0  && i < N_PH_E && j >= 0 && j < N_GAMMA)
+            {
+                nonthermal_table[i][j] = value;
+            }
+            else
+            {
+                fprintf(fPtr, "The bounds of the non-thermal input file exceed what MCRaT has been compiled with.\n");
+                exit(0);
+            }
+        }
+
+        fclose(fp);
+
+    #endif
 }
 
-
+int is_dash_line(const char *line)
+{
+    int found_dash = 0;
+    for (int i = 0; line[i]; i++)
+    {
+        if (!isspace((unsigned char)line[i]))
+        {
+            if (line[i] != '-')
+            {
+                return 0;
+            }
+            found_dash = 1;
+        }
+    }
+    return found_dash;
+}
 
 double calculateTotalThermalCrossSection(double ph_comv, double theta, gsl_rng *rand, FILE *fPtr)
 {
