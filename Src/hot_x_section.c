@@ -134,8 +134,8 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
                 {
                     comv_ph_e =  LOG_PH_E_MIN + i * dph_e;
                     theta =  LOG_T_MIN + j * dt;
-                    gamma_min = GAMMA_MIN + k * dgamma;
-                    gamma_max=gamma_min + N_GAMMA;
+                    gamma_min = log10(GAMMA_MIN) + k * dgamma;
+                    gamma_max = gamma_min + dgamma;
                     fprintf(fp, "%d %d %d %g %g %g %g %15.10g\n", i, j, k, comv_ph_e, theta, gamma_min, gamma_max, nonthermal_table[i][j][k]);
                 }
             }
@@ -146,6 +146,8 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
     #endif
 
 }
+
+
 
 double calculateTotalThermalCrossSection(double ph_comv, double theta, gsl_rng *rand, FILE *fPtr)
 {

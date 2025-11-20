@@ -580,11 +580,14 @@ int main(int argc, char **argv)
     printf("%s\n",log_file);
     fPtr=fopen(log_file, "a");
 
-    if (angle_id==0)
+    //
+    if (myid==0)
     {
         //initalize the tabulated cross sections (if needed)
-        initalizeHotCrossSection(rng, fPtr);
+        initalizeHotCrossSection(myid, rng, fPtr);
     }
+    MPI_Barrier(MPI_COMM_WORLD);
+
     
     printf( "Im Proc %d with angles %0.1lf-%0.1lf proc_frame_size is %d Starting on Frame: %d Injecting until %d scatt_framestart: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, proc_frame_size, framestart, frm2, scatt_framestart);
     
