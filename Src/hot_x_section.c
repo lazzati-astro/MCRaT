@@ -47,8 +47,9 @@ double thermal_table[N_PH_E + 1][N_T + 1];
 
 void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
 {
+    createHotCrossSection(rand, fPtr)
 
-
+    readHotCrossSection(fPtr)
 }
 
 void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
