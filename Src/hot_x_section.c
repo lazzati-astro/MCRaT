@@ -75,13 +75,12 @@ void initalizeHotCrossSection(int rank, gsl_rng *rand, FILE *fPtr)
 
         if (!files_exist)
         {
-            fprintf(fPtr, "Hot cross section files not found. Creating tables...\n");
+            fprintf(fPtr, "Hot cross section file(s) not found. Creating tables...\n");
             createHotCrossSection(rand, fPtr);
         } else {
-            fprintf(fPtr, "Hot cross section files found. Skipping table creation.\n");
+            fprintf(fPtr, "Hot cross section file(s) found. Skipping table creation.\n");
         }
 
-        createHotCrossSection(rand, fPtr);
         readHotCrossSection(fPtr);
         initalizeHotCrossSectionInterp();
     }
@@ -754,7 +753,8 @@ int checkHotCrossSectionFilesExist(FILE *fPtr)
 int validateThermalFile(const char *filename, FILE *fPtr)
 {
     FILE *fp = fopen(filename, "r");
-    if (fp == NULL) {
+    if (fp == NULL)
+    {
         fprintf(fPtr, "Thermal file does not exist: %s\n", filename);
         return 0;
     }
@@ -773,30 +773,36 @@ int validateThermalFile(const char *filename, FILE *fPtr)
     double tolerance = 1e-9; // Tolerance for floating point comparison
 
     // Skip header lines until dashes
-    while (fgets(line, sizeof(line), fp)) {
+    while (fgets(line, sizeof(line), fp))
+    {
         line[strcspn(line, "\r\n")] = 0;
-        if (is_dash_line(line)) {
+        if (is_dash_line(line))
+        {
             in_data_section = 1;
             break;
         }
     }
 
-    if (!in_data_section) {
+    if (!in_data_section)
+    {
         fprintf(fPtr, "Thermal file invalid: header format incorrect in %s\n", filename);
         fclose(fp);
         return 0;
     }
 
     // Read and validate data lines
-    while (fgets(line, sizeof(line), fp)) {
+    while (fgets(line, sizeof(line), fp))
+        {
         int parsed = sscanf(line, "%d\t%d\t%lf\t%lf\t%lf", &i, &j, &comv_ph_e, &theta, &value);
 
-        if (parsed != 5) {
+        if (parsed != 5)
+        {
             continue; // Skip malformed lines
         }
 
         // Check indices are in valid range
-        if (i < 0 || i > N_PH_E || j < 0 || j > N_T) {
+        if (i < 0 || i > N_PH_E || j < 0 || j > N_T)
+        {
             fprintf(fPtr, "Thermal file invalid: indices out of range [%d, %d] in %s\n",
                     i, j, filename);
             grid_valid = 0;
@@ -808,7 +814,8 @@ int validateThermalFile(const char *filename, FILE *fPtr)
         expected_theta = LOG_T_MIN + j * dt;
 
         // Validate grid values
-        if (fabs(comv_ph_e - expected_comv_ph) > tolerance) {
+        if (fabs(comv_ph_e - expected_comv_ph) > tolerance)
+        {
             fprintf(fPtr, "Thermal file invalid: comv_ph_e mismatch at [%d, %d]. "
                     "Expected %g, found %g in %s\n",
                     i, j, expected_comv_ph, comv_ph_e, filename);
@@ -816,7 +823,8 @@ int validateThermalFile(const char *filename, FILE *fPtr)
             break;
         }
 
-        if (fabs(theta - expected_theta) > tolerance) {
+        if (fabs(theta - expected_theta) > tolerance)
+        {
             fprintf(fPtr, "Thermal file invalid: theta mismatch at [%d, %d]. "
                     "Expected %g, found %g in %s\n",
                     i, j, expected_theta, theta, filename);
@@ -832,13 +840,15 @@ int validateThermalFile(const char *filename, FILE *fPtr)
     // Expected number of data lines
     int expected_lines = (N_PH_E + 1) * (N_T + 1);
 
-    if (data_lines != expected_lines) {
+    if (data_lines != expected_lines)
+    {
         fprintf(fPtr, "Thermal file invalid: %s (expected %d lines, found %d)\n",
                 filename, expected_lines, data_lines);
         return 0;
     }
 
-    if (!grid_valid) {
+    if (!grid_valid)
+    {
         return 0;
     }
 
@@ -850,7 +860,8 @@ int validateThermalFile(const char *filename, FILE *fPtr)
     int validateNonthermalFile(const char *filename, FILE *fPtr)
     {
         FILE *fp = fopen(filename, "r");
-        if (fp == NULL) {
+        if (fp == NULL)
+        {
             fprintf(fPtr, "Nonthermal file does not exist: %s\n", filename);
             return 0;
         }
@@ -870,10 +881,12 @@ int validateThermalFile(const char *filename, FILE *fPtr)
         double tolerance = 1e-9; // Tolerance for floating point comparison
 
         // Read header and validate parameters
-        while (fgets(line, sizeof(line), fp)) {
+        while (fgets(line, sizeof(line), fp))
+        {
             line[strcspn(line, "\r\n")] = 0;
 
-            if (is_dash_line(line)) {
+            if (is_dash_line(line))
+            {
                 in_data_section = 1;
                 break;
             }
@@ -882,8 +895,10 @@ int validateThermalFile(const char *filename, FILE *fPtr)
             #if NONTHERMAL_E_DIST == POWERLAW
                 double file_gamma_min, file_gamma_max, file_index;
 
-                if (sscanf(line, "gamma_min: %lf", &file_gamma_min) == 1) {
-                    if (fabs(file_gamma_min - GAMMA_MIN) > tolerance) {
+                if (sscanf(line, "gamma_min: %lf", &file_gamma_min) == 1)
+                {
+                    if (fabs(file_gamma_min - GAMMA_MIN) > tolerance)
+                    {
                         fprintf(fPtr, "Nonthermal file invalid: GAMMA_MIN mismatch. "
                                 "Expected %g, found %g in %s\n",
                                 GAMMA_MIN, file_gamma_min, filename);
@@ -892,8 +907,10 @@ int validateThermalFile(const char *filename, FILE *fPtr)
                     }
                 }
 
-                if (sscanf(line, "gamma_max: %lf", &file_gamma_max) == 1) {
-                    if (fabs(file_gamma_max - GAMMA_MAX) > tolerance) {
+                if (sscanf(line, "gamma_max: %lf", &file_gamma_max) == 1)
+                {
+                    if (fabs(file_gamma_max - GAMMA_MAX) > tolerance)
+                    {
                         fprintf(fPtr, "Nonthermal file invalid: GAMMA_MAX mismatch. "
                                 "Expected %g, found %g in %s\n",
                                 GAMMA_MAX, file_gamma_max, filename);
@@ -902,8 +919,10 @@ int validateThermalFile(const char *filename, FILE *fPtr)
                     }
                 }
 
-                if (sscanf(line, "powerlaw index %lf", &file_index) == 1) {
-                    if (fabs(file_index - POWERLAW_INDEX) > tolerance) {
+                if (sscanf(line, "powerlaw index %lf", &file_index) == 1)
+                {
+                    if (fabs(file_index - POWERLAW_INDEX) > tolerance)
+                    {
                         fprintf(fPtr, "Nonthermal file invalid: POWERLAW_INDEX mismatch. "
                                 "Expected %g, found %g in %s\n",
                                 POWERLAW_INDEX, file_index, filename);
@@ -917,8 +936,10 @@ int validateThermalFile(const char *filename, FILE *fPtr)
                 double file_gamma_min, file_gamma_max, file_gamma_break;
                 double file_index1, file_index2;
 
-                if (sscanf(line, "gamma_min: %lf", &file_gamma_min) == 1) {
-                    if (fabs(file_gamma_min - GAMMA_MIN) > tolerance) {
+                if (sscanf(line, "gamma_min: %lf", &file_gamma_min) == 1)
+                {
+                    if (fabs(file_gamma_min - GAMMA_MIN) > tolerance)
+                    {
                         fprintf(fPtr, "Nonthermal file invalid: GAMMA_MIN mismatch. "
                                 "Expected %g, found %g in %s\n",
                                 GAMMA_MIN, file_gamma_min, filename);
@@ -927,8 +948,10 @@ int validateThermalFile(const char *filename, FILE *fPtr)
                     }
                 }
 
-                if (sscanf(line, "gamma_max: %lf", &file_gamma_max) == 1) {
-                    if (fabs(file_gamma_max - GAMMA_MAX) > tolerance) {
+                if (sscanf(line, "gamma_max: %lf", &file_gamma_max) == 1)
+                {
+                    if (fabs(file_gamma_max - GAMMA_MAX) > tolerance)
+                    {
                         fprintf(fPtr, "Nonthermal file invalid: GAMMA_MAX mismatch. "
                                 "Expected %g, found %g in %s\n",
                                 GAMMA_MAX, file_gamma_max, filename);
@@ -937,8 +960,10 @@ int validateThermalFile(const char *filename, FILE *fPtr)
                     }
                 }
 
-                if (sscanf(line, "gamma_break: %lf", &file_gamma_break) == 1) {
-                    if (fabs(file_gamma_break - GAMMA_BREAK) > tolerance) {
+                if (sscanf(line, "gamma_break: %lf", &file_gamma_break) == 1)
+                {
+                    if (fabs(file_gamma_break - GAMMA_BREAK) > tolerance)
+                    {
                         fprintf(fPtr, "Nonthermal file invalid: GAMMA_BREAK mismatch. "
                                 "Expected %g, found %g in %s\n",
                                 GAMMA_BREAK, file_gamma_break, filename);
@@ -947,8 +972,10 @@ int validateThermalFile(const char *filename, FILE *fPtr)
                     }
                 }
 
-                if (sscanf(line, "powerlaw index 1 %lf", &file_index1) == 1) {
-                    if (fabs(file_index1 - POWERLAW_INDEX_1) > tolerance) {
+                if (sscanf(line, "powerlaw index 1 %lf", &file_index1) == 1)
+                {
+                    if (fabs(file_index1 - POWERLAW_INDEX_1) > tolerance)
+                    {
                         fprintf(fPtr, "Nonthermal file invalid: POWERLAW_INDEX_1 mismatch. "
                                 "Expected %g, found %g in %s\n",
                                 POWERLAW_INDEX_1, file_index1, filename);
@@ -957,8 +984,10 @@ int validateThermalFile(const char *filename, FILE *fPtr)
                     }
                 }
 
-                if (sscanf(line, "powerlaw index 2 %lf", &file_index2) == 1) {
-                    if (fabs(file_index2 - POWERLAW_INDEX_2) > tolerance) {
+                if (sscanf(line, "powerlaw index 2 %lf", &file_index2) == 1)
+                {
+                    if (fabs(file_index2 - POWERLAW_INDEX_2) > tolerance)
+                    {
                         fprintf(fPtr, "Nonthermal file invalid: POWERLAW_INDEX_2 mismatch. "
                                 "Expected %g, found %g in %s\n",
                                 POWERLAW_INDEX_2, file_index2, filename);
@@ -970,13 +999,15 @@ int validateThermalFile(const char *filename, FILE *fPtr)
             #endif
         }
 
-        if (!in_data_section) {
+        if (!in_data_section)
+        {
             fprintf(fPtr, "Nonthermal file invalid: header format incorrect in %s\n", filename);
             fclose(fp);
             return 0;
         }
 
-        if (!header_valid) {
+        if (!header_valid)
+        {
             fprintf(fPtr, "Nonthermal file invalid: required parameters not found in header of %s\n",
                     filename);
             fclose(fp);
@@ -984,7 +1015,8 @@ int validateThermalFile(const char *filename, FILE *fPtr)
         }
 
         // Read and validate data lines
-        while (fgets(line, sizeof(line), fp)) {
+        while (fgets(line, sizeof(line), fp))
+        {
             int parsed = sscanf(line, "%d %d %lf %lf %lf %lf",
                                &i, &j, &comv_ph_e, &gamma_min, &gamma_max, &value);
 
@@ -993,7 +1025,8 @@ int validateThermalFile(const char *filename, FILE *fPtr)
             }
 
             // Check indices are in valid range
-            if (i < 0 || i > N_PH_E || j < 0 || j >= N_GAMMA) {
+            if (i < 0 || i > N_PH_E || j < 0 || j >= N_GAMMA)
+            {
                 fprintf(fPtr, "Nonthermal file invalid: indices out of range [%d, %d] in %s\n",
                         i, j, filename);
                 grid_valid = 0;
@@ -1006,7 +1039,8 @@ int validateThermalFile(const char *filename, FILE *fPtr)
             expected_gamma_max = expected_gamma_min + dgamma;
 
             // Validate comv_ph_e grid
-            if (fabs(comv_ph_e - expected_comv_ph) > tolerance) {
+            if (fabs(comv_ph_e - expected_comv_ph) > tolerance)
+            {
                 fprintf(fPtr, "Nonthermal file invalid: comv_ph_e mismatch at [%d, %d]. "
                         "Expected %g, found %g in %s\n",
                         i, j, expected_comv_ph, comv_ph_e, filename);
@@ -1015,7 +1049,8 @@ int validateThermalFile(const char *filename, FILE *fPtr)
             }
 
             // Validate gamma_min grid
-            if (fabs(gamma_min - expected_gamma_min) > tolerance) {
+            if (fabs(gamma_min - expected_gamma_min) > tolerance)
+            {
                 fprintf(fPtr, "Nonthermal file invalid: gamma_min mismatch at [%d, %d]. "
                         "Expected %g, found %g in %s\n",
                         i, j, expected_gamma_min, gamma_min, filename);
@@ -1024,7 +1059,8 @@ int validateThermalFile(const char *filename, FILE *fPtr)
             }
 
             // Validate gamma_max grid
-            if (fabs(gamma_max - expected_gamma_max) > tolerance) {
+            if (fabs(gamma_max - expected_gamma_max) > tolerance)
+            {
                 fprintf(fPtr, "Nonthermal file invalid: gamma_max mismatch at [%d, %d]. "
                         "Expected %g, found %g in %s\n",
                         i, j, expected_gamma_max, gamma_max, filename);
@@ -1040,13 +1076,15 @@ int validateThermalFile(const char *filename, FILE *fPtr)
         // Expected number of data lines
         int expected_lines = (N_PH_E + 1) * N_GAMMA;
 
-        if (data_lines != expected_lines) {
+        if (data_lines != expected_lines)
+        {
             fprintf(fPtr, "Nonthermal file invalid: %s (expected %d lines, found %d)\n",
                     filename, expected_lines, data_lines);
             return 0;
         }
 
-        if (!grid_valid) {
+        if (!grid_valid)
+        {
             return 0;
         }
 
