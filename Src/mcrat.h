@@ -203,14 +203,23 @@ struct hydro_dataframe
     #define NONTHERMAL_E_DIST OFF
 #endif
 
+//if the user specifies the NONTHERMAL_E_DIST then they need to also specify
+// TAU_CALCULATION = TABLE to use the tabulated cross sectional values
+#if NONTHERMAL_E_DIST != OFF
+    //set the default optical depth calculation to be that of the fluid properties
+    #ifndef TAU_CALCULATION
+        #define TAU_CALCULATION TABLE
+    #endif
+
+    //The user can specify NONTHERMAL_E_DIST and set TAU_CALCULATION = DIRECT, this is not permitted so throw an error
+    #if TAU_CALCULATION == DIRECT
+        #error NONTHERMAL_E_DIST cannot be set while TAU_CALCULATION = DIRECT. 
+    #endif
+#endif
+
 //set the default optical depth calculation to be that of the fluid properties
 #ifndef TAU_CALCULATION
     #define TAU_CALCULATION DIRECT
-#endif
-
-//if the user specifies the NONTHERMAL_E_DIST then we must use the tabulated cross sectional values
-#ifdef NONTHERMAL_E_DIST
-    #define TAU_CALCULATION TABLE
 #endif
 
 //set default hydro v scale to be the speed of light
