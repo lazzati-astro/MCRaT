@@ -487,7 +487,7 @@ void initalizeHotCrossSectionInterp()
 
     #ifdef NONTHERMAL_E_DIST
         dgamma=(log10(GAMMA_MAX)-log10(GAMMA_MIN))/N_GAMMA;
-        double gamma_min=0, gamma_max=0, gamma_grid[N_GAMMA*(N_PH_E+1)]
+        double gamma_min=0, gamma_max=0, gamma_grid[N_GAMMA*(N_PH_E+1)];
 
         for (i = 0; i < N_GAMMA; i++)
         {
@@ -525,7 +525,7 @@ void initalizeHotCrossSectionInterp()
 double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta)
 {
     // Access global_interp_data fields
-    return gsl_spline2d_eval(global_interp_data.spline, log_ph_comv_e, log_theta, global_interp_data.xacc, global_interp_data.yacc);
+    return gsl_spline2d_eval(global_interp_thermal_data.spline, log_ph_comv_e, log_theta, global_interp_thermal_data.xacc, global_interp_thermal_data.yacc);
 }
 
 void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *subgroup_interpolated_results)
