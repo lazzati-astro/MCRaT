@@ -496,7 +496,7 @@ void initalizeHotCrossSectionInterp()
 
     #ifdef NONTHERMAL_E_DIST
         dgamma=(log10(GAMMA_MAX)-log10(GAMMA_MIN))/N_GAMMA;
-        double gamma_min=0, gamma_max=0, gamma_grid[N_GAMMA*(N_PH_E+1)];
+        double gamma_min=0, gamma_max=0, gamma_grid[N_GAMMA], nonthermal_data_grid[N_GAMMA*(N_PH_E+1)];
 
         for (i = 0; i < N_GAMMA; i++)
         {
@@ -511,7 +511,7 @@ void initalizeHotCrossSectionInterp()
         {
             for (j = 0; j < N_GAMMA; j++)
             {
-                gamma_grid[j*(N_PH_E+1)+i] = nonthermal_table[i][j];
+                nonthermal_data_grid[j*(N_PH_E+1)+i] = nonthermal_table[i][j];
             }
         }
 
@@ -519,7 +519,7 @@ void initalizeHotCrossSectionInterp()
         global_interp_nonthermal_data.ny = N_GAMMA;
         global_interp_nonthermal_data.xa = comv_ph_grid;
         global_interp_nonthermal_data.ya = gamma_grid;
-        global_interp_nonthermal_data.za = nonthermal_table;
+        global_interp_nonthermal_data.za = nonthermal_data_grid;
 
         // The gsl_spline2d high-level interface stores the data arrays internally
         global_interp_nonthermal_data.spline = gsl_spline2d_alloc(gsl_interp2d_bilinear, N_PH_E+1, N_GAMMA);
