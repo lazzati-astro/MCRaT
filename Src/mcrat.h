@@ -194,6 +194,14 @@ struct hydro_dataframe
 #include "electron.h"
 #include "hot_x_section.h"
 
+//set the nonthermal electrons to be off
+#ifndef NONTHERMAL_E_DIST
+    #define NONTHERMAL_E_DIST OFF
+#endif
+
+//set the default optical depth calculation to be that of the fluid properties
+
+
 //set default hydro v scale to be the speed of light
 #define HYDRO_V_SCALE C_LIGHT
 

@@ -42,7 +42,7 @@ struct InterpolationData {
 struct InterpolationData global_interp_thermal_data;
 
 
-#ifdef NONTHERMAL_E_DIST
+#if NONTHERMAL_E_DIST != OFF
     //define the number of lorentz factor intervals that we will calculate the nonthermal hot cross sections for
     #define N_GAMMA 3
 
@@ -93,7 +93,7 @@ void initalizeHotCrossSection(int rank, gsl_rng *rand, FILE *fPtr)
     // Test interpolation (all ranks can do this now)
     interpolateThermalHotCrossSection(log10(1e-2), 2.75, fPtr);
 
-    #ifdef NONTHERMAL_E_DIST
+    #if NONTHERMAL_E_DIST != OFF
         double test[N_GAMMA];
         interpolateSubgroupNonThermalHotCrossSection(log10(1e-2), test, fPtr);
     #endif
@@ -158,7 +158,7 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
     fp=NULL;
     memset(&xsection_file[0], 0, sizeof(xsection_file));
 
-    #ifdef NONTHERMAL_E_DIST
+    #if NONTHERMAL_E_DIST != OFF
         double dgamma=(log10(GAMMA_MAX)-log10(GAMMA_MIN))/N_GAMMA;
 
         for (i = 0; i <= N_PH_E; i++)
@@ -275,7 +275,7 @@ void readHotCrossSection(FILE *fPtr)
     memset(&xsection_file[0], 0, sizeof(xsection_file));
 
 
-    #ifdef NONTHERMAL_E_DIST
+    #if NONTHERMAL_E_DIST != OFF
         //TODO: add check for whether the nonthermal electron distribution valuess match in teh header match the compiler macro values
 
         snprintf(xsection_file,sizeof(xsection_file),"%s%s%s",FILEPATH, MC_PATH,HOT_NONTHERMAL_X_SECTION_FILE);
@@ -429,7 +429,7 @@ double nonThermalCrossSectionIntegrand(double x[], size_t dim, void * p)
     double result=0;
     struct double_integral_input_params * fp = (struct double_integral_input_params *)p;
     double gamma=x[0], mu=x[1];
-    #ifdef NONTHERMAL_E_DIST
+    #if NONTHERMAL_E_DIST != OFF
 
         #if NONTHERMAL_E_DIST == POWERLAW
             result = singleElectronPowerLaw(gamma, POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX);
@@ -517,7 +517,7 @@ void initalizeHotCrossSectionInterp()
     // Initialize the spline with the data
     gsl_spline2d_init(global_interp_thermal_data.spline, global_interp_thermal_data.xa, global_interp_thermal_data.ya, global_interp_thermal_data.za, global_interp_thermal_data.nx, global_interp_thermal_data.ny);
 
-    #ifdef NONTHERMAL_E_DIST
+    #if NONTHERMAL_E_DIST != OFF
         dgamma=(log10(GAMMA_MAX)-log10(GAMMA_MIN))/N_GAMMA;
         double gamma_min=0, gamma_max=0;
         double *gamma_grid = malloc(N_GAMMA * sizeof(double));
@@ -597,7 +597,7 @@ void cleanupInterpolationData()
     free(global_interp_thermal_data.ya);
     free(global_interp_thermal_data.za);
 
-    #ifdef NONTHERMAL_E_DIST
+    #if NONTHERMAL_E_DIST != OFF
         gsl_spline2d_free(global_interp_nonthermal_data.spline);
         gsl_interp_accel_free(global_interp_nonthermal_data.xacc);
         gsl_interp_accel_free(global_interp_nonthermal_data.yacc);
@@ -665,7 +665,7 @@ void broadcastInterpolationData(int rank)
                           global_interp_thermal_data.ny);
     }
 
-    #ifdef NONTHERMAL_E_DIST
+    #if NONTHERMAL_E_DIST != OFF
         // Broadcast nonthermal table data
         MPI_Bcast(nonthermal_table, (N_PH_E + 1) * N_GAMMA, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
@@ -738,7 +738,7 @@ int checkHotCrossSectionFilesExist(FILE *fPtr)
 
     thermal_valid = validateThermalFile(thermal_file, fPtr);
 
-    #ifdef NONTHERMAL_E_DIST
+    #if NONTHERMAL_E_DIST != OFF
         char nonthermal_file[STR_BUFFER] = "";
 
         snprintf(nonthermal_file, sizeof(nonthermal_file), "%s%s%s",
@@ -857,7 +857,7 @@ int validateThermalFile(const char *filename, FILE *fPtr)
     return 1;
 }
 
-#ifdef NONTHERMAL_E_DIST
+#if NONTHERMAL_E_DIST != OFF
     int validateNonthermalFile(const char *filename, FILE *fPtr)
     {
         FILE *fp = fopen(filename, "r");
@@ -879,7 +879,7 @@ int validateThermalFile(const char *filename, FILE *fPtr)
         double dph_e = (LOG_PH_E_MAX - LOG_PH_E_MIN) / N_PH_E;
         double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
         double expected_comv_ph, expected_gamma_min, expected_gamma_max;
-        double tolerance = 1e-9; // Tolerance for floating point comparison
+        double tolerance = 1e-9; // Tolerance for floating point comparison of the tabulated values
         double tolerance_grid=1e-3;    //tolerance for checking the grid values that were used to create the table
 
 
