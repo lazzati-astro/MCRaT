@@ -64,6 +64,8 @@ struct InterpolationData global_interp_thermal_data;
 
 void initalizeHotCrossSection(int rank, gsl_rng *rand, FILE *fPtr)
 {
+    int files_exist = 0;
+
     if (rank == 0)
     {
         // Only rank 0 creates and reads the tables
