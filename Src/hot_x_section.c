@@ -770,7 +770,8 @@ int validateThermalFile(const char *filename, FILE *fPtr)
     double dt = (LOG_T_MAX - LOG_T_MIN) / N_T;
     double dph_e = (LOG_PH_E_MAX - LOG_PH_E_MIN) / N_PH_E;
     double expected_comv_ph, expected_theta;
-    double tolerance = 1e-9; // Tolerance for floating point comparison
+    double tolerance = 1e-9; // Tolerance for floating point comparison of the tabulated values
+    double tolerance_grid=1e-3;    //tolerance for checking the grid values that were used to create the table
 
     // Skip header lines until dashes
     while (fgets(line, sizeof(line), fp))
@@ -814,7 +815,7 @@ int validateThermalFile(const char *filename, FILE *fPtr)
         expected_theta = LOG_T_MIN + j * dt;
 
         // Validate grid values
-        if (fabs(comv_ph_e - expected_comv_ph) > tolerance)
+        if (fabs(comv_ph_e - expected_comv_ph) > tolerance_grid)
         {
             fprintf(fPtr, "Thermal file invalid: comv_ph_e mismatch at [%d, %d]. "
                     "Expected %g, found %g with Delta: %e in %s\n",
@@ -823,7 +824,7 @@ int validateThermalFile(const char *filename, FILE *fPtr)
             break;
         }
 
-        if (fabs(theta - expected_theta) > tolerance)
+        if (fabs(theta - expected_theta) > tolerance_grid)
         {
             fprintf(fPtr, "Thermal file invalid: theta mismatch at [%d, %d]. "
                     "Expected %g, found %g with Delta: %e in %s\n",
@@ -879,6 +880,8 @@ int validateThermalFile(const char *filename, FILE *fPtr)
         double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
         double expected_comv_ph, expected_gamma_min, expected_gamma_max;
         double tolerance = 1e-9; // Tolerance for floating point comparison
+        double tolerance_grid=1e-3;    //tolerance for checking the grid values that were used to create the table
+
 
         // Read header and validate parameters
         while (fgets(line, sizeof(line), fp))
@@ -1039,7 +1042,7 @@ int validateThermalFile(const char *filename, FILE *fPtr)
             expected_gamma_max = expected_gamma_min + dgamma;
 
             // Validate comv_ph_e grid
-            if (fabs(comv_ph_e - expected_comv_ph) > tolerance)
+            if (fabs(comv_ph_e - expected_comv_ph) > tolerance_grid)
             {
                 fprintf(fPtr, "Nonthermal file invalid: comv_ph_e mismatch at [%d, %d]. "
                         "Expected %g, found %g with Delta: %e in %s\n",
@@ -1049,7 +1052,7 @@ int validateThermalFile(const char *filename, FILE *fPtr)
             }
 
             // Validate gamma_min grid
-            if (fabs(gamma_min - expected_gamma_min) > tolerance)
+            if (fabs(gamma_min - expected_gamma_min) > tolerance_grid)
             {
                 fprintf(fPtr, "Nonthermal file invalid: gamma_min mismatch at [%d, %d]. "
                         "Expected %g, found %g with Delta: %e, in %s\n",
@@ -1059,7 +1062,7 @@ int validateThermalFile(const char *filename, FILE *fPtr)
             }
 
             // Validate gamma_max grid
-            if (fabs(gamma_max - expected_gamma_max) > tolerance)
+            if (fabs(gamma_max - expected_gamma_max) > tolerance_grid)
             {
                 fprintf(fPtr, "Nonthermal file invalid: gamma_max mismatch at [%d, %d]. "
                         "Expected %g, found %g with Delta: %e in %s\n",
