@@ -27,3 +27,11 @@ void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *
 void cleanupInterpolationData();
 
 void broadcastInterpolationData(int rank);
+
+int checkHotCrossSectionFilesExist(FILE *fPtr);
+
+int validateThermalFile(const char *filename, FILE *fPtr);
+
+#ifdef NONTHERMAL_E_DIST
+int validateNonthermalFile(const char *filename, FILE *fPtr);
+#endif

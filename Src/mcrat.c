@@ -590,7 +590,6 @@ int main(int argc, char **argv)
     frame_array=NULL;
 
     //initalize the tabulated cross sections (if needed)
-    //TODO: call the cleanup function at end
     initalizeHotCrossSection(myid, rng, fPtr);
 
     
@@ -941,6 +940,7 @@ int main(int argc, char **argv)
     fflush(fPtr);
     
     //exit(0);
+    cleanupInterpolationData();
                 
     MPI_Barrier(angle_comm);
         
