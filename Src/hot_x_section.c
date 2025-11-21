@@ -8,6 +8,9 @@
 //
 
 #include "mcrat.h"
+#include <gsl/gsl_interp2d.h>
+#include <gsl/gsl_spline2d.h>
+
 
 // define the extent of the tabulated fluid photon energies normalized by electron rest mass
 #define LOG_PH_E_MIN -12.0
@@ -23,15 +26,29 @@
 //define the thermal modified cross section table filename
 #define HOT_THERMAL_X_SECTION_FILE	"thermal_hot_x_section.dat"
 
-//define the number of lorentz factor intervals that we will calculate the nonthermal hot cross sections for
-#define N_GAMMA 3
-
 //helper struct to evaluate the double integral
 struct double_integral_input_params { double norm_ph_comv; double theta };
 
 double thermal_table[N_PH_E + 1][N_T + 1];
 
+struct InterpolationData {
+    gsl_spline2d *spline;
+    gsl_interp_accel *xacc;
+    gsl_interp_accel *yacc;
+    double *xa;
+    double *ya;
+    double *za;
+    size_t nx;
+    size_t ny;
+};
+
+struct InterpolationData global_interp_thermal_data;
+
+
 #ifdef NONTHERMAL_E_DIST
+    //define the number of lorentz factor intervals that we will calculate the nonthermal hot cross sections for
+    #define N_GAMMA 3
+
     double nonthermal_table[N_PH_E + 1][N_GAMMA];
 
     //define the nonthermal modified cross section table filename
@@ -42,6 +59,9 @@ double thermal_table[N_PH_E + 1][N_T + 1];
     #else
         #error Unnknown nonthermal electron distribution.
     #endif
+
+    struct InterpolationData global_interp_nonthermal_data;
+
 
 #endif
 
@@ -426,3 +446,119 @@ double calculateTotalNonThermalCrossSection(double ph_comv, double gamma_min, do
 
     return 0.5*result;
 }
+
+void initalizeHotCrossSectionInterp()
+{
+    int i=0, j=0;
+    double comv_ph_grid[N_PH_E+1], theta_grid[N_T+1], data_grid[(N_PH_E+1)*(N_T+1)];
+    double dt=(LOG_T_MAX-LOG_T_MIN)/N_T, dph_e=(LOG_PH_E_MAX-LOG_PH_E_MIN)/N_PH_E, dgamma=0;
+
+    for (i = 0; i <= N_PH_E; i++)
+    {
+        comv_ph_grid[i] = LOG_PH_E_MIN + i * dph_e;
+    }
+
+    for (i = 0; i <= N_T; i++)
+    {
+        theta_grid[i] = LOG_T_MIN + i * dt;
+    }
+
+    for (i = 0; i <= N_PH_E; i++)
+    {
+        for (j = 0; j <= N_T; j++)
+        {
+            data_grid[j*(N_PH_E+1)+i] = thermal_table[i][j];
+        }
+    }
+
+    global_interp_thermal_data.nx = N_PH_E+1;
+    global_interp_thermal_data.ny = N_T+1;
+    global_interp_thermal_data.xa = comv_ph_grid;
+    global_interp_thermal_data.ya = theta_grid;
+    global_interp_thermal_data.za = data_grid;
+
+    // The gsl_spline2d high-level interface stores the data arrays internally
+    global_interp_thermal_data.spline = gsl_spline2d_alloc(gsl_interp2d_bilinear, N_PH_E+1, N_T+1);
+    global_interp_thermal_data.xacc = gsl_interp_accel_alloc();
+    global_interp_thermal_data.yacc = gsl_interp_accel_alloc();
+
+    // Initialize the spline with the data
+    gsl_spline2d_init(global_interp_thermal_data.spline, global_interp_thermal_data.xa, global_interp_thermal_data.ya, global_interp_thermal_data.za, global_interp_thermal_data.nx, global_interp_thermal_data.ny);
+
+    #ifdef NONTHERMAL_E_DIST
+        dgamma=(log10(GAMMA_MAX)-log10(GAMMA_MIN))/N_GAMMA;
+        double gamma_min=0, gamma_max=0, gamma_grid[N_GAMMA*(N_PH_E+1)]
+
+        for (i = 0; i < N_GAMMA; i++)
+        {
+            gamma_min = log10(GAMMA_MIN) + i * dgamma;
+            gamma_max = gamma_min + dgamma;
+            gamma_grid[i] = 0.5*(gamma_min+gamma_max);
+        }
+
+
+        for (i = 0; i <= N_PH_E; i++)
+        {
+            for (j = 0; j < N_GAMMA; j++)
+            {
+                gamma_grid[j*(N_PH_E+1)+i] = nonthermal_table[i][j];
+            }
+        }
+
+        global_interp_nonthermal_data.nx = N_PH_E+1;
+        global_interp_nonthermal_data.ny = N_GAMMA;
+        global_interp_nonthermal_data.xa = comv_ph_grid;
+        global_interp_nonthermal_data.ya = gamma_grid;
+        global_interp_nonthermal_data.za = nonthermal_table;
+
+        // The gsl_spline2d high-level interface stores the data arrays internally
+        global_interp_nonthermal_data.spline = gsl_spline2d_alloc(gsl_interp2d_bilinear, N_PH_E+1, N_GAMMA);
+        global_interp_nonthermal_data.xacc = gsl_interp_accel_alloc();
+        global_interp_nonthermal_data.yacc = gsl_interp_accel_alloc();
+
+        // Initialize the spline with the data
+        gsl_spline2d_init(global_interp_nonthermal_data.spline, global_interp_nonthermal_data.xa, global_interp_nonthermal_data.ya, global_interp_nonthermal_data.za, global_interp_nonthermal_data.nx, global_interp_nonthermal_data.ny);
+    #endif
+
+}
+
+double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta)
+{
+    // Access global_interp_data fields
+    return gsl_spline2d_eval(global_interp_data.spline, log_ph_comv_e, log_theta, global_interp_data.xacc, global_interp_data.yacc);
+}
+
+void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *subgroup_interpolated_results)
+{
+    // iterate over the subgroups to get the nonthermal cross sections and save them to the pointer array
+    int i=0;
+    double results[N_GAMMA];
+
+    for (i=0;i<global_interp_nonthermal_data.ny;i++)
+    {
+        results[i]=gsl_spline2d_eval(global_interp_nonthermal_data.spline, log_ph_comv_e, global_interp_nonthermal_data.ya[i], global_interp_nonthermal_data.xacc, global_interp_nonthermal_data.yacc);
+        printf("%g %g %g\n", log_ph_comv_e, global_interp_nonthermal_data.ya[i], results[i]);
+    }
+
+    //todo: make sure that the pointer has enough space allocated
+    for (i=0;i<global_interp_nonthermal_data.ny;i++)
+    {
+        *(subgroup_interpolated_results+i)=results[i];
+    }
+}
+
+void cleanupInterpolationData()
+{
+    gsl_spline2d_free(global_interp_thermal_data.spline);
+    gsl_interp_accel_free(global_interp_thermal_data.xacc);
+    gsl_interp_accel_free(global_interp_thermal_data.yacc);
+    // Note: The data arrays (xa, ya, za) are assumed to be managed by the caller if they were dynamically allocated.
+
+    #ifdef NONTHERMAL_E_DIST
+        gsl_spline2d_free(global_interp_nonthermal_data.spline);
+        gsl_interp_accel_free(global_interp_nonthermal_data.xacc);
+        gsl_interp_accel_free(global_interp_nonthermal_data.yacc);
+    #endif
+}
+
+
