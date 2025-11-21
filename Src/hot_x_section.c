@@ -65,18 +65,29 @@ struct InterpolationData global_interp_thermal_data;
 
 #endif
 
-void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
+void initalizeHotCrossSection(int rank, gsl_rng *rand, FILE *fPtr)
 {
-    createHotCrossSection(rand, fPtr);
+    if (rank == 0)
+    {
+        // Only rank 0 creates and reads the tables
+        createHotCrossSection(rand, fPtr);
+        readHotCrossSection(fPtr);
+        initalizeHotCrossSectionInterp();
+    }
 
-    readHotCrossSection(fPtr);
+    // Broadcast the interpolation data to all processes
+    broadcastInterpolationData(rank);
 
-    initalizeHotCrossSectionInterp();
+    fprintf(fPtr, "The hot cross section interpolation has been initialized successfully\n");
 
-    interpolateThermalHotCrossSection(log10(1e-2), 2.75);
+    // Test interpolation (all ranks can do this now)
+    interpolateThermalHotCrossSection(log10(1e-2), 2.75, fPtr);
 
-    double test[N_GAMMA];
-    interpolateSubgroupNonThermalHotCrossSection(log10(1e-2), test);
+    #ifdef NONTHERMAL_E_DIST
+        double test[N_GAMMA];
+        interpolateSubgroupNonThermalHotCrossSection(log10(1e-2), test, fPtr);
+    #endif
+    }
 }
 
 void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
@@ -457,8 +468,11 @@ double calculateTotalNonThermalCrossSection(double ph_comv, double gamma_min, do
 void initalizeHotCrossSectionInterp()
 {
     int i=0, j=0;
-    double comv_ph_grid[N_PH_E+1], theta_grid[N_T+1], data_grid[(N_PH_E+1)*(N_T+1)];
     double dt=(LOG_T_MAX-LOG_T_MIN)/N_T, dph_e=(LOG_PH_E_MAX-LOG_PH_E_MIN)/N_PH_E, dgamma=0;
+    // Dynamically allocate arrays for the interpolation struct
+    double *comv_ph_grid = malloc((N_PH_E + 1) * sizeof(double));
+    double *theta_grid = malloc((N_T + 1) * sizeof(double));
+    double *data_grid = malloc((N_PH_E + 1) * (N_T + 1) * sizeof(double));
 
     for (i = 0; i <= N_PH_E; i++)
     {
@@ -496,7 +510,9 @@ void initalizeHotCrossSectionInterp()
 
     #ifdef NONTHERMAL_E_DIST
         dgamma=(log10(GAMMA_MAX)-log10(GAMMA_MIN))/N_GAMMA;
-        double gamma_min=0, gamma_max=0, gamma_grid[N_GAMMA], nonthermal_data_grid[N_GAMMA*(N_PH_E+1)];
+        double gamma_min=0, gamma_max=0;
+        double *gamma_grid = malloc(N_GAMMA * sizeof(double));
+        double *nonthermal_data_grid = malloc(N_GAMMA * (N_PH_E + 1) * sizeof(double));
 
         for (i = 0; i < N_GAMMA; i++)
         {
@@ -533,16 +549,16 @@ void initalizeHotCrossSectionInterp()
 }
 
 //interpolation checked with python interpolation of the same hot coss section table
-double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta)
+double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta, FILE *fPtr)
 {
     double result=0;
     // Access global_interp_data fields
     result=gsl_spline2d_eval(global_interp_thermal_data.spline, log_ph_comv_e, log_theta, global_interp_thermal_data.xacc, global_interp_thermal_data.yacc);
-    //printf("Thermal: %g %g %g\n", log_ph_comv_e, log_theta, result);
+    fprintf(fPtr, "Thermal: %g %g %g\n", log_ph_comv_e, log_theta, result);
     return result;
 }
 
-void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *subgroup_interpolated_results)
+void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *subgroup_interpolated_results, FILE *fPtr)
 {
     // iterate over the subgroups to get the nonthermal cross sections and save them to the pointer array
     int i=0;
@@ -551,7 +567,7 @@ void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *
     for (i=0;i<global_interp_nonthermal_data.ny;i++)
     {
         results[i]=gsl_spline2d_eval(global_interp_nonthermal_data.spline, log_ph_comv_e, global_interp_nonthermal_data.ya[i], global_interp_nonthermal_data.xacc, global_interp_nonthermal_data.yacc);
-        //printf("Non-thermal: %g %g %g\n", log_ph_comv_e, global_interp_nonthermal_data.ya[i], results[i]);
+        fprintf(fPtr, "Non-thermal: %g %g %g\n", log_ph_comv_e, global_interp_nonthermal_data.ya[i], results[i]);
     }
 
     //todo: make sure that the pointer has enough space allocated
@@ -566,13 +582,139 @@ void cleanupInterpolationData()
     gsl_spline2d_free(global_interp_thermal_data.spline);
     gsl_interp_accel_free(global_interp_thermal_data.xacc);
     gsl_interp_accel_free(global_interp_thermal_data.yacc);
-    // Note: The data arrays (xa, ya, za) are assumed to be managed by the caller if they were dynamically allocated.
+
+    // Free dynamically allocated arrays
+    free(global_interp_thermal_data.xa);
+    free(global_interp_thermal_data.ya);
+    free(global_interp_thermal_data.za);
 
     #ifdef NONTHERMAL_E_DIST
         gsl_spline2d_free(global_interp_nonthermal_data.spline);
         gsl_interp_accel_free(global_interp_nonthermal_data.xacc);
         gsl_interp_accel_free(global_interp_nonthermal_data.yacc);
+
+        // Free nonthermal arrays (xa is shared with thermal, so don't free twice)
+        free(global_interp_nonthermal_data.ya);
+        free(global_interp_nonthermal_data.za);
     #endif
+}
+
+void broadcastInterpolationData(int rank)
+{
+    int i, j;
+    double dt = (LOG_T_MAX - LOG_T_MIN) / N_T;
+    double dph_e = (LOG_PH_E_MAX - LOG_PH_E_MIN) / N_PH_E;
+
+    // Broadcast thermal table data
+    MPI_Bcast(thermal_table, (N_PH_E + 1) * (N_T + 1), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    if (rank != 0)
+    {
+        // Non-root processes need to allocate and initialize their interpolation structures
+
+        // Allocate arrays for grid points and data
+        double *comv_ph_grid = malloc((N_PH_E + 1) * sizeof(double));
+        double *theta_grid = malloc((N_T + 1) * sizeof(double));
+        double *data_grid = malloc((N_PH_E + 1) * (N_T + 1) * sizeof(double));
+
+        // Reconstruct grid points
+        for (i = 0; i <= N_PH_E; i++)
+        {
+            comv_ph_grid[i] = LOG_PH_E_MIN + i * dph_e;
+        }
+
+        for (i = 0; i <= N_T; i++)
+        {
+            theta_grid[i] = LOG_T_MIN + i * dt;
+        }
+
+        // Copy thermal table data to data_grid
+        for (i = 0; i <= N_PH_E; i++)
+        {
+            for (j = 0; j <= N_T; j++)
+            {
+                data_grid[j * (N_PH_E + 1) + i] = thermal_table[i][j];
+            }
+        }
+
+        // Initialize interpolation structure
+        global_interp_thermal_data.nx = N_PH_E + 1;
+        global_interp_thermal_data.ny = N_T + 1;
+        global_interp_thermal_data.xa = comv_ph_grid;
+        global_interp_thermal_data.ya = theta_grid;
+        global_interp_thermal_data.za = data_grid;
+
+        global_interp_thermal_data.spline = gsl_spline2d_alloc(gsl_interp2d_bilinear, N_PH_E + 1, N_T + 1);
+        global_interp_thermal_data.xacc = gsl_interp_accel_alloc();
+        global_interp_thermal_data.yacc = gsl_interp_accel_alloc();
+
+        gsl_spline2d_init(global_interp_thermal_data.spline,
+                          global_interp_thermal_data.xa,
+                          global_interp_thermal_data.ya,
+                          global_interp_thermal_data.za,
+                          global_interp_thermal_data.nx,
+                          global_interp_thermal_data.ny);
+    }
+
+    #ifdef NONTHERMAL_E_DIST
+        // Broadcast nonthermal table data
+        MPI_Bcast(nonthermal_table, (N_PH_E + 1) * N_GAMMA, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+        if (rank != 0)
+        {
+            double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
+            double gamma_min, gamma_max;
+
+            // Allocate arrays
+            double *comv_ph_grid_nt = malloc((N_PH_E + 1) * sizeof(double));
+            double *gamma_grid = malloc(N_GAMMA * sizeof(double));
+            double *nonthermal_data_grid = malloc((N_PH_E + 1) * N_GAMMA * sizeof(double));
+
+            // Reconstruct photon energy grid
+            for (i = 0; i <= N_PH_E; i++)
+            {
+                comv_ph_grid_nt[i] = LOG_PH_E_MIN + i * dph_e;
+            }
+
+            // Reconstruct gamma grid
+            for (i = 0; i < N_GAMMA; i++)
+            {
+                gamma_min = log10(GAMMA_MIN) + i * dgamma;
+                gamma_max = gamma_min + dgamma;
+                gamma_grid[i] = 0.5 * (gamma_min + gamma_max);
+            }
+
+            // Copy nonthermal table data
+            for (i = 0; i <= N_PH_E; i++)
+            {
+                for (j = 0; j < N_GAMMA; j++)
+                {
+                    nonthermal_data_grid[j * (N_PH_E + 1) + i] = nonthermal_table[i][j];
+                }
+            }
+
+            // Initialize nonthermal interpolation structure
+            global_interp_nonthermal_data.nx = N_PH_E + 1;
+            global_interp_nonthermal_data.ny = N_GAMMA;
+            global_interp_nonthermal_data.xa = comv_ph_grid_nt;
+            global_interp_nonthermal_data.ya = gamma_grid;
+            global_interp_nonthermal_data.za = nonthermal_data_grid;
+
+            global_interp_nonthermal_data.spline = gsl_spline2d_alloc(gsl_interp2d_bilinear, N_PH_E + 1, N_GAMMA);
+            global_interp_nonthermal_data.xacc = gsl_interp_accel_alloc();
+            global_interp_nonthermal_data.yacc = gsl_interp_accel_alloc();
+
+            gsl_spline2d_init(global_interp_nonthermal_data.spline,
+                              global_interp_nonthermal_data.xa,
+                              global_interp_nonthermal_data.ya,
+                              global_interp_nonthermal_data.za,
+                              global_interp_nonthermal_data.nx,
+                              global_interp_nonthermal_data.ny);
+        }
+    #endif
+
+    // Ensure all processes are synchronized
+    MPI_Barrier(MPI_COMM_WORLD);
 }
 
 

@@ -1,4 +1,4 @@
-void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr);
+void initalizeHotCrossSection(int rank, gsl_rng *rand, FILE *fPtr);
 
 void createHotCrossSection(gsl_rng *rand, FILE *fPtr);
 
@@ -20,8 +20,10 @@ double calculateTotalNonThermalCrossSection(double ph_comv, double gamma_min, do
 
 void initalizeHotCrossSectionInterp();
 
-double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta);
+double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta, FILE *fPtr);
 
-void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *subgroup_interpolated_results);
+void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *subgroup_interpolated_results, FILE *fPtr);
 
 void cleanupInterpolationData();
+
+void broadcastInterpolationData(int rank);

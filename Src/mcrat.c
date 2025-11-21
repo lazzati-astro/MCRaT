@@ -580,14 +580,6 @@ int main(int argc, char **argv)
     printf("%s\n",log_file);
     fPtr=fopen(log_file, "a");
 
-    //
-    if (myid==0)
-    {
-        //initalize the tabulated cross sections (if needed)
-        initalizeHotCrossSection(rng, fPtr);
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-
     
     printf( "Im Proc %d with angles %0.1lf-%0.1lf proc_frame_size is %d Starting on Frame: %d Injecting until %d scatt_framestart: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, proc_frame_size, framestart, frm2, scatt_framestart);
     
@@ -596,10 +588,14 @@ int main(int argc, char **argv)
     
     free(frame_array);
     frame_array=NULL;
+
+    //initalize the tabulated cross sections (if needed)
+    //TODO: call the cleanup function at end
+    initalizeHotCrossSection(rng, fPtr);
+
     
     //for a checkpoint implementation, start from the last saved "frame" value and go to the saved "frm2" value
-        
-            
+
     for (frame=framestart;frame<=frm2;frame=frame+hydrodata.increment_inj_frame)
     {
         hydrodata.inj_frame_number=frame;
