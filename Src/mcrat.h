@@ -265,7 +265,7 @@ struct hydro_dataframe
 
 #endif
 
-#ifdef NONTHERMAL_E_DIST
+#if NONTHERMAL_E_DIST != OFF
     //if the user is specifying one of the 2 on-thermal distributions to use need to do error checking
     #if NONTHERMAL_E_DIST == POWERLAW
         #ifndef POWERLAW_INDEX
