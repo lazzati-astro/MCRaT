@@ -17,3 +17,11 @@ void display_results (char *title, double result, double error,  FILE *fPtr);
 double nonThermalCrossSectionIntegrand(double x[], size_t dim, void * p);
 
 double calculateTotalNonThermalCrossSection(double ph_comv, double gamma_min, double gamma_max, gsl_rng *rand, FILE *fPtr);
+
+void initalizeHotCrossSectionInterp();
+
+double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta);
+
+void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *subgroup_interpolated_results);
+
+void cleanupInterpolationData();
