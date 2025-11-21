@@ -591,7 +591,7 @@ int main(int argc, char **argv)
 
     //initalize the tabulated cross sections (if needed)
     //TODO: call the cleanup function at end
-    initalizeHotCrossSection(rng, fPtr);
+    initalizeHotCrossSection(id, rng, fPtr);
 
     
     //for a checkpoint implementation, start from the last saved "frame" value and go to the saved "frm2" value
