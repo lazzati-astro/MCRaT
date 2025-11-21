@@ -215,7 +215,7 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
                     comv_ph_e =  LOG_PH_E_MIN + i * dph_e;
                     gamma_min = log10(GAMMA_MIN) + k * dgamma;
                     gamma_max = gamma_min + dgamma;
-                    fprintf(fp, "%d %d %g %g %g %15.10g\n", i, k, comv_ph_e, gamma_min, gamma_max, nonthermal_table[i][k]);
+                    fprintf(fp, "%d\t%d\t%g\t%g\t%g\t%15.10g\n", i, k, comv_ph_e, gamma_min, gamma_max, nonthermal_table[i][k]);
                 }
             }
         }
@@ -817,8 +817,8 @@ int validateThermalFile(const char *filename, FILE *fPtr)
         if (fabs(comv_ph_e - expected_comv_ph) > tolerance)
         {
             fprintf(fPtr, "Thermal file invalid: comv_ph_e mismatch at [%d, %d]. "
-                    "Expected %g, found %g in %s\n",
-                    i, j, expected_comv_ph, comv_ph_e, filename);
+                    "Expected %g, found %g with Delta: %e in %s\n",
+                    i, j, expected_comv_ph, comv_ph_e, fabs(comv_ph_e - expected_comv_ph), filename);
             grid_valid = 0;
             break;
         }
@@ -826,8 +826,8 @@ int validateThermalFile(const char *filename, FILE *fPtr)
         if (fabs(theta - expected_theta) > tolerance)
         {
             fprintf(fPtr, "Thermal file invalid: theta mismatch at [%d, %d]. "
-                    "Expected %g, found %g in %s\n",
-                    i, j, expected_theta, theta, filename);
+                    "Expected %g, found %g with Delta: %e in %s\n",
+                    i, j, expected_theta, theta, fabs(theta - expected_theta), filename);
             grid_valid = 0;
             break;
         }
@@ -1017,7 +1017,7 @@ int validateThermalFile(const char *filename, FILE *fPtr)
         // Read and validate data lines
         while (fgets(line, sizeof(line), fp))
         {
-            int parsed = sscanf(line, "%d %d %lf %lf %lf %lf",
+            int parsed = sscanf(line, "%d\t%d\t%lf\t%lf\t%lf\t%lf",
                                &i, &j, &comv_ph_e, &gamma_min, &gamma_max, &value);
 
             if (parsed != 6) {
@@ -1042,8 +1042,8 @@ int validateThermalFile(const char *filename, FILE *fPtr)
             if (fabs(comv_ph_e - expected_comv_ph) > tolerance)
             {
                 fprintf(fPtr, "Nonthermal file invalid: comv_ph_e mismatch at [%d, %d]. "
-                        "Expected %g, found %g in %s\n",
-                        i, j, expected_comv_ph, comv_ph_e, filename);
+                        "Expected %g, found %g with Delta: %e in %s\n",
+                        i, j, expected_comv_ph, comv_ph_e, fabs(comv_ph_e - expected_comv_ph), filename);
                 grid_valid = 0;
                 break;
             }
@@ -1052,8 +1052,8 @@ int validateThermalFile(const char *filename, FILE *fPtr)
             if (fabs(gamma_min - expected_gamma_min) > tolerance)
             {
                 fprintf(fPtr, "Nonthermal file invalid: gamma_min mismatch at [%d, %d]. "
-                        "Expected %g, found %g in %s\n",
-                        i, j, expected_gamma_min, gamma_min, filename);
+                        "Expected %g, found %g with Delta: %e, in %s\n",
+                        i, j, expected_gamma_min, gamma_min,fabs(gamma_min - expected_gamma_min), filename);
                 grid_valid = 0;
                 break;
             }
@@ -1062,8 +1062,8 @@ int validateThermalFile(const char *filename, FILE *fPtr)
             if (fabs(gamma_max - expected_gamma_max) > tolerance)
             {
                 fprintf(fPtr, "Nonthermal file invalid: gamma_max mismatch at [%d, %d]. "
-                        "Expected %g, found %g in %s\n",
-                        i, j, expected_gamma_max, gamma_max, filename);
+                        "Expected %g, found %g with Delta: %e in %s\n",
+                        i, j, expected_gamma_max, gamma_max, fabs(gamma_max - expected_gamma_max), filename);
                 grid_valid = 0;
                 break;
             }
