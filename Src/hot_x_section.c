@@ -463,11 +463,13 @@ void initalizeHotCrossSectionInterp()
     for (i = 0; i <= N_PH_E; i++)
     {
         comv_ph_grid[i] = LOG_PH_E_MIN + i * dph_e;
+        printf("comv_ph_grid[%d] = %g\n", i, comv_ph_grid[i]);
     }
 
     for (i = 0; i <= N_T; i++)
     {
         theta_grid[i] = LOG_T_MIN + i * dt;
+        printf("theta_grid[%d] = %g\n", i, theta_grid[i]);
     }
 
     for (i = 0; i <= N_PH_E; i++)
@@ -501,6 +503,7 @@ void initalizeHotCrossSectionInterp()
             gamma_min = log10(GAMMA_MIN) + i * dgamma;
             gamma_max = gamma_min + dgamma;
             gamma_grid[i] = 0.5*(gamma_min+gamma_max);
+            printf("gamma_grid[%d] = %g\n", i, gamma_grid[i]);
         }
 
 
