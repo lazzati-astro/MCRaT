@@ -71,11 +71,12 @@ void initalizeHotCrossSection(gsl_rng *rand, FILE *fPtr)
 
     readHotCrossSection(fPtr);
 
-    initInterpolationData();
+    initalizeHotCrossSectionInterp();
 
     interpolateThermalHotCrossSection(log10(1e-2), 2.75);
 
-    interpolateNonThermalHotCrossSection(log10(1e-2));
+    double test[N_GAMMA];
+    interpolateSubgroupNonThermalHotCrossSection(log10(1e-2), test);
 }
 
 void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
