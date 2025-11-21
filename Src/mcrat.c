@@ -589,8 +589,10 @@ int main(int argc, char **argv)
     free(frame_array);
     frame_array=NULL;
 
-    //initalize the tabulated cross sections (if needed)
-    initalizeHotCrossSection(myid, rng, fPtr);
+    #if TAU_CALCULATION == TABLE
+        //initalize the tabulated cross sections (if needed)
+        initalizeHotCrossSection(myid, rng, fPtr);
+    #endif
 
     
     //for a checkpoint implementation, start from the last saved "frame" value and go to the saved "frm2" value
@@ -940,7 +942,9 @@ int main(int argc, char **argv)
     fflush(fPtr);
     
     //exit(0);
-    cleanupInterpolationData();
+    #if TAU_CALCULATION == TABLE
+        cleanupInterpolationData();
+    #endif
                 
     MPI_Barrier(angle_comm);
         
