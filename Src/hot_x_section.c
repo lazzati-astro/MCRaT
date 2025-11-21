@@ -532,12 +532,13 @@ void initalizeHotCrossSectionInterp()
 
 }
 
+//interpolation checked with python interpolation of the same hot coss section table
 double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta)
 {
     double result=0;
     // Access global_interp_data fields
     result=gsl_spline2d_eval(global_interp_thermal_data.spline, log_ph_comv_e, log_theta, global_interp_thermal_data.xacc, global_interp_thermal_data.yacc);
-    printf("Thermal: %g %g %g\n", log_ph_comv_e, log_theta, result);
+    //printf("Thermal: %g %g %g\n", log_ph_comv_e, log_theta, result);
     return result;
 }
 
@@ -550,7 +551,7 @@ void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *
     for (i=0;i<global_interp_nonthermal_data.ny;i++)
     {
         results[i]=gsl_spline2d_eval(global_interp_nonthermal_data.spline, log_ph_comv_e, global_interp_nonthermal_data.ya[i], global_interp_nonthermal_data.xacc, global_interp_nonthermal_data.yacc);
-        printf("Non-thermal: %g %g %g\n", log_ph_comv_e, global_interp_nonthermal_data.ya[i], results[i]);
+        //printf("Non-thermal: %g %g %g\n", log_ph_comv_e, global_interp_nonthermal_data.ya[i], results[i]);
     }
 
     //todo: make sure that the pointer has enough space allocated
