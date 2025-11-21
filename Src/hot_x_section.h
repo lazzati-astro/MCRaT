@@ -22,7 +22,9 @@ void initalizeHotCrossSectionInterp();
 
 double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta, FILE *fPtr);
 
+#if NONTHERMAL_E_DIST != OFF
 void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *subgroup_interpolated_results, FILE *fPtr);
+#endif
 
 void cleanupInterpolationData();
 
@@ -32,6 +34,6 @@ int checkHotCrossSectionFilesExist(FILE *fPtr);
 
 int validateThermalFile(const char *filename, FILE *fPtr);
 
-#ifdef NONTHERMAL_E_DIST
+#if NONTHERMAL_E_DIST != OFF
 int validateNonthermalFile(const char *filename, FILE *fPtr);
 #endif

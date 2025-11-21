@@ -213,7 +213,7 @@ struct hydro_dataframe
 
     //The user can specify NONTHERMAL_E_DIST and set TAU_CALCULATION = DIRECT, this is not permitted so throw an error
     #if TAU_CALCULATION == DIRECT
-        #error NONTHERMAL_E_DIST cannot be set while TAU_CALCULATION = DIRECT. 
+        #error NONTHERMAL_E_DIST cannot be set while TAU_CALCULATION = DIRECT.
     #endif
 #endif
 

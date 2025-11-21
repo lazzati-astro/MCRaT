@@ -567,24 +567,26 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
     return result;
 }
 
-void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *subgroup_interpolated_results, FILE *fPtr)
-{
-    // iterate over the subgroups to get the nonthermal cross sections and save them to the pointer array
-    int i=0;
-    double results[N_GAMMA];
-
-    for (i=0;i<global_interp_nonthermal_data.ny;i++)
+#if NONTHERMAL_E_DIST != OFF
+    void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *subgroup_interpolated_results, FILE *fPtr)
     {
-        results[i]=gsl_spline2d_eval(global_interp_nonthermal_data.spline, log_ph_comv_e, global_interp_nonthermal_data.ya[i], global_interp_nonthermal_data.xacc, global_interp_nonthermal_data.yacc);
-        fprintf(fPtr, "Non-thermal: %g %g %g\n", log_ph_comv_e, global_interp_nonthermal_data.ya[i], results[i]);
-    }
+        // iterate over the subgroups to get the nonthermal cross sections and save them to the pointer array
+        int i=0;
+        double results[N_GAMMA];
 
-    //todo: make sure that the pointer has enough space allocated
-    for (i=0;i<global_interp_nonthermal_data.ny;i++)
-    {
-        *(subgroup_interpolated_results+i)=results[i];
+        for (i=0;i<global_interp_nonthermal_data.ny;i++)
+        {
+            results[i]=gsl_spline2d_eval(global_interp_nonthermal_data.spline, log_ph_comv_e, global_interp_nonthermal_data.ya[i], global_interp_nonthermal_data.xacc, global_interp_nonthermal_data.yacc);
+            fprintf(fPtr, "Non-thermal: %g %g %g\n", log_ph_comv_e, global_interp_nonthermal_data.ya[i], results[i]);
+        }
+
+        //todo: make sure that the pointer has enough space allocated
+        for (i=0;i<global_interp_nonthermal_data.ny;i++)
+        {
+            *(subgroup_interpolated_results+i)=results[i];
+        }
     }
-}
+#endif
 
 void cleanupInterpolationData()
 {
