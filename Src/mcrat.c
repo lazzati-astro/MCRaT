@@ -592,6 +592,17 @@ int main(int argc, char **argv)
     #if TAU_CALCULATION == TABLE
         //initalize the tabulated cross sections (if needed)
         initalizeHotCrossSection(myid, rng, fPtr);
+
+        fprintf(fPtr, "Im Proc %d testing the hot cross section interpolation\n");
+        fflush(fPtr);
+        // Test interpolation (all ranks can do this now)
+        interpolateThermalHotCrossSection(log10(1e-2), 2.75, fPtr);
+
+        #if NONTHERMAL_E_DIST != OFF
+            double test[N_GAMMA];
+            interpolateSubgroupNonThermalHotCrossSection(log10(1e-2), test, fPtr);
+        #endif
+
     #endif
 
     

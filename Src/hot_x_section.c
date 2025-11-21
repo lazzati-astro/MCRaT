@@ -91,12 +91,12 @@ void initalizeHotCrossSection(int rank, gsl_rng *rand, FILE *fPtr)
     fprintf(fPtr, "The hot cross section interpolation has been initialized successfully\n");
 
     // Test interpolation (all ranks can do this now)
-    interpolateThermalHotCrossSection(log10(1e-2), 2.75, fPtr);
+    //interpolateThermalHotCrossSection(log10(1e-2), 2.75, fPtr);
 
-    #if NONTHERMAL_E_DIST != OFF
-        double test[N_GAMMA];
-        interpolateSubgroupNonThermalHotCrossSection(log10(1e-2), test, fPtr);
-    #endif
+    //#if NONTHERMAL_E_DIST != OFF
+    //    double test[N_GAMMA];
+    //    interpolateSubgroupNonThermalHotCrossSection(log10(1e-2), test, fPtr);
+    //#endif
 }
 
 void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
@@ -118,11 +118,8 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
             {
                 printf("%d %d %g %g %g\n", i, j, comv_ph_e, theta, thermal_table[i][j]);
                 fprintf(fPtr, "%d %d %g %g %g\n", i, j, comv_ph_e, theta, thermal_table[i][j]);
+                fflush(fPtr);
                 exit(0);
-            }
-            else
-            {
-                printf("%d %d %g %g %g\n", i, j, comv_ph_e, theta, thermal_table[i][j]);
             }
         }
     }
@@ -131,7 +128,8 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
     fp = fopen(xsection_file, "w");
     if (fp == NULL)
     {
-        fprintf(stderr, "couldn't write to file\n");
+        fprintf(fPtr, "couldn't write to file %s\n", xsection_file);
+        fflush(fPtr);
         exit(0);
     }
 
@@ -152,7 +150,7 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
         }
     }
     fclose(fp);
-    fprintf(fPtr, "done.\n\n");
+    fprintf(fPtr, "done writing to file.\n\n");
 
     //set to null incase we are dealing with nonthermal hot cross section after
     fp=NULL;
@@ -175,11 +173,8 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
                     {
                         fprintf(fPtr, "%d %d %g %g %g %g\n", i, k, comv_ph_e, gamma_min, gamma_max, nonthermal_table[i][k]);
                         printf("%d %d %g %g %g %g\n", i, k, comv_ph_e, gamma_min, gamma_max, nonthermal_table[i][k]);
+                        fflush(fPtr);
                         exit(0);
-                    }
-                    else
-                    {
-                        printf("%d %d %g %g %g %g\n", i,k, comv_ph_e, gamma_min, gamma_max, nonthermal_table[i][k]);
                     }
                 }
             }
@@ -190,7 +185,8 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
         fp = fopen(xsection_file, "w");
         if (fp == NULL)
         {
-            fprintf(stderr, "couldn't write to file\n");
+            fprintf(stderr, "couldn't write to file %s\n", xsection_file);
+            fflush(fPtr);
             exit(0);
         }
 
@@ -220,7 +216,7 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
             }
         }
         fclose(fp);
-        fprintf(stderr, "done.\n\n");
+        fprintf(fPtr, "done writing to file.\n\n");
 
     #endif
 }
@@ -242,6 +238,7 @@ void readHotCrossSection(FILE *fPtr)
     if (fp == NULL)
     {
         fprintf(fPtr, "Couldn't read file\n");
+        fflush(fPtr);
         exit(0);
     }
 
@@ -265,6 +262,7 @@ void readHotCrossSection(FILE *fPtr)
         else
         {
             fprintf(fPtr, "The bounds of the input file exceed what MCRaT has been compiled with.\n");
+            fflush(fPtr);
             exit(0);
         }
     }
@@ -288,6 +286,7 @@ void readHotCrossSection(FILE *fPtr)
         if (fp == NULL)
         {
             fprintf(fPtr, "Couldn't read file\n");
+            fflush(fPtr);
             exit(0);
         }
 
@@ -311,6 +310,7 @@ void readHotCrossSection(FILE *fPtr)
             else
             {
                 fprintf(fPtr, "The bounds of the non-thermal input file exceed what MCRaT has been compiled with.\n");
+                fflush(fPtr);
                 exit(0);
             }
         }
@@ -367,7 +367,7 @@ double calculateTotalThermalCrossSection(double ph_comv, double theta, gsl_rng *
     gsl_monte_plain_integrate (&F, xl, xu, 2, calls, rand, s, &result, &error);
     gsl_monte_plain_free (s);
 
-    display_results ("plain", result, error, fPtr);
+    //display_results ("plain", result, error, fPtr);
 
     return 0.5*result;
 }
@@ -469,7 +469,7 @@ double calculateTotalNonThermalCrossSection(double ph_comv, double gamma_min, do
     gsl_monte_plain_integrate (&F, xl, xu, 2, calls, rand, s, &result, &error);
     gsl_monte_plain_free (s);
 
-    display_results ("plain", result, error, fPtr);
+    //display_results ("plain", result, error, fPtr);
 
     return 0.5*result;
 }
@@ -486,13 +486,13 @@ void initalizeHotCrossSectionInterp()
     for (i = 0; i <= N_PH_E; i++)
     {
         comv_ph_grid[i] = LOG_PH_E_MIN + i * dph_e;
-        printf("comv_ph_grid[%d] = %g\n", i, comv_ph_grid[i]);
+        //printf("comv_ph_grid[%d] = %g\n", i, comv_ph_grid[i]);
     }
 
     for (i = 0; i <= N_T; i++)
     {
         theta_grid[i] = LOG_T_MIN + i * dt;
-        printf("theta_grid[%d] = %g\n", i, theta_grid[i]);
+        //printf("theta_grid[%d] = %g\n", i, theta_grid[i]);
     }
 
     for (i = 0; i <= N_PH_E; i++)
@@ -528,7 +528,7 @@ void initalizeHotCrossSectionInterp()
             gamma_min = log10(GAMMA_MIN) + i * dgamma;
             gamma_max = gamma_min + dgamma;
             gamma_grid[i] = 0.5*(gamma_min+gamma_max);
-            printf("gamma_grid[%d] = %g\n", i, gamma_grid[i]);
+            //printf("gamma_grid[%d] = %g\n", i, gamma_grid[i]);
         }
 
 
