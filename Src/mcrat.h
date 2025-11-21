@@ -59,6 +59,10 @@
 #define POWERLAW 1
 #define BROKENPOWERLAW 2
 
+//define ways that the optical depth can be calculated (eithe directly from the fluid or from the pretabulated values)
+#define DIRECT 1
+#define TABLE 2
+
 extern const double C_LIGHT;
 extern const double A_RAD;
 extern const double PL_CONST;
@@ -200,7 +204,14 @@ struct hydro_dataframe
 #endif
 
 //set the default optical depth calculation to be that of the fluid properties
+#ifndef TAU_CALCULATION
+    #define TAU_CALCULATION DIRECT
+#endif
 
+//if the user specifies the NONTHERMAL_E_DIST then we must use the tabulated cross sectional values
+#ifdef NONTHERMAL_E_DIST
+    #define TAU_CALCULATION TABLE
+#endif
 
 //set default hydro v scale to be the speed of light
 #define HYDRO_V_SCALE C_LIGHT
