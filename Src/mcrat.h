@@ -160,6 +160,7 @@ struct hydro_dataframe
 #include <dirent.h>
 #include <math.h>
 #include <time.h>
+#include <ctype.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
@@ -174,6 +175,8 @@ struct hydro_dataframe
 #include <gsl/gsl_monte_plain.h>
 #include <gsl/gsl_monte_miser.h>
 #include <gsl/gsl_monte_vegas.h>
+#include <gsl/gsl_interp2d.h>
+#include <gsl/gsl_spline2d.h>
 
 //include all other header files in mcrat
 #include "mcrat_input.h"

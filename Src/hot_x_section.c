@@ -8,9 +8,6 @@
 //
 
 #include "mcrat.h"
-#include <gsl/gsl_interp2d.h>
-#include <gsl/gsl_spline2d.h>
-
 
 // define the extent of the tabulated fluid photon energies normalized by electron rest mass
 #define LOG_PH_E_MIN -12.0
@@ -27,7 +24,7 @@
 #define HOT_THERMAL_X_SECTION_FILE	"thermal_hot_x_section.dat"
 
 //helper struct to evaluate the double integral
-struct double_integral_input_params { double norm_ph_comv; double theta };
+struct double_integral_input_params { double norm_ph_comv; double theta; };
 
 double thermal_table[N_PH_E + 1][N_T + 1];
 
@@ -87,7 +84,6 @@ void initalizeHotCrossSection(int rank, gsl_rng *rand, FILE *fPtr)
         double test[N_GAMMA];
         interpolateSubgroupNonThermalHotCrossSection(log10(1e-2), test, fPtr);
     #endif
-    }
 }
 
 void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
