@@ -9,7 +9,6 @@
 
 #include "mcrat.h"
 
-
 //helper struct to evaluate the double integral
 struct double_integral_input_params { double norm_ph_comv; double theta; };
 
@@ -28,30 +27,19 @@ struct InterpolationData {
 
 struct InterpolationData global_interp_thermal_data;
 
-
 #if NONTHERMAL_E_DIST != OFF
-    //define the number of lorentz factor intervals that we will calculate the nonthermal hot cross sections for
-    #define N_GAMMA 3
-
     double nonthermal_table[N_PH_E + 1][N_GAMMA];
 
-    //define the nonthermal modified cross section table filename
-    #if NONTHERMAL_E_DIST == POWERLAW
-        #define HOT_NONTHERMAL_X_SECTION_FILE	"nonthermal_pl_hot_x_section.dat"
-    #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
-        #define HOT_NONTHERMAL_X_SECTION_FILE	"nonthermal_bpl_hot_x_section.dat"
-    #else
-        #error Unnknown nonthermal electron distribution.
-    #endif
-
     struct InterpolationData global_interp_nonthermal_data;
-
-
 #endif
 
 void initalizeHotCrossSection(int rank, gsl_rng *rand, FILE *fPtr)
 {
     int files_exist = 0;
+
+    fprintf(fPtr, "Initalizing the hot cross section interpolation\n");
+    fflush(fPtr);
+
 
     if (rank == 0)
     {
@@ -63,9 +51,11 @@ void initalizeHotCrossSection(int rank, gsl_rng *rand, FILE *fPtr)
         if (!files_exist)
         {
             fprintf(fPtr, "Hot cross section file(s) not found. Creating tables...\n");
+            fflush(fPtr);
             createHotCrossSection(rand, fPtr);
         } else {
             fprintf(fPtr, "Hot cross section file(s) found. Skipping table creation.\n");
+            fflush(fPtr);
         }
 
         readHotCrossSection(fPtr);
@@ -76,7 +66,7 @@ void initalizeHotCrossSection(int rank, gsl_rng *rand, FILE *fPtr)
     broadcastInterpolationData(rank);
 
     fprintf(fPtr, "The hot cross section interpolation has been initialized successfully\n");
-
+    fflush(fPtr);
     // Test interpolation (all ranks can do this now)
     //interpolateThermalHotCrossSection(log10(1e-2), 2.75, fPtr);
 
