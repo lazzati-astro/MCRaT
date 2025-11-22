@@ -596,11 +596,14 @@ int main(int argc, char **argv)
         fprintf(fPtr, "Im Proc %d testing the hot cross section interpolation\n");
         fflush(fPtr);
         // Test interpolation (all ranks can do this now)
-        interpolateThermalHotCrossSection(log10(1e-2), 2.75, fPtr);
+        double test = interpolateThermalHotCrossSection(log10(1e-2), 2.75, fPtr);
+        fprintf(fPtr, "Thermal test: %g %g %g\n", log10(1e-2), 2.75, test);
+
 
         #if NONTHERMAL_E_DIST != OFF
             double test[N_GAMMA];
             interpolateSubgroupNonThermalHotCrossSection(log10(1e-2), test, fPtr);
+            fprintf(fPtr, "NonThermal test: %g %g %g %g\n", log10(1e-2), test[0], test[1], test[2]);
         #endif
 
     #endif

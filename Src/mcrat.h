@@ -74,6 +74,11 @@ extern const double FINE_STRUCT;
 extern const double CHARGE_EL;
 extern const double R_EL;
 
+//allow the N_GAMMA used for the hot cross section tabulation values to be accessed anywhere since the
+// nonthermal electron distribution are subdivided into subtypes and we need to know how many subtypes there are 
+extern const int N_GAMMA;
+
+
 #define STR_BUFFER 2000
 
 struct photon
