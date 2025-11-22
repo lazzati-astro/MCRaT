@@ -48,3 +48,8 @@ double calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_da
     return tau;
 }
 
+double getCrossSection(double photon_comv_e, double fluid_temp)
+{
+
+}
+

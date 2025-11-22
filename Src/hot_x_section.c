@@ -130,6 +130,8 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
     }
     fclose(fp);
     fprintf(fPtr, "done writing to file.\n\n");
+    fflush(fPtr);
+
 
     //set to null incase we are dealing with nonthermal hot cross section after
     fp=NULL;
@@ -196,6 +198,8 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
         }
         fclose(fp);
         fprintf(fPtr, "done writing to file.\n\n");
+        fflush(fPtr);
+
 
     #endif
 }
