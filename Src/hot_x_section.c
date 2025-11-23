@@ -70,11 +70,12 @@ void initalizeHotCrossSection(int rank, gsl_rng *rand, FILE *fPtr)
     fprintf(fPtr, "The hot cross section interpolation has been initialized successfully\n");
     fflush(fPtr);
     // Test interpolation (all ranks can do this now)
-    //interpolateThermalHotCrossSection(log10(1e-2), 2.75, fPtr);
+    //interpolateThermalHotCrossSection(log10(1e-2), 2.75, rand, fPtr);
+
 
     //#if NONTHERMAL_E_DIST != OFF
     //    double test[N_GAMMA];
-    //    interpolateSubgroupNonThermalHotCrossSection(log10(1e-2), test, fPtr);
+    //    interpolateSubgroupNonThermalHotCrossSection(log10(1e-2), test, rand, fPtr);
     //#endif
 }
 
