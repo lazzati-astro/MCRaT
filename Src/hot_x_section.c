@@ -550,7 +550,7 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
     gsl_error_handler_t *error_handler;
 
     //turn off error handler to do our custom error handling
-    error_handler=gsl_set_error_handler_off()
+    error_handler=gsl_set_error_handler_off();
 
     // Access global_interp_data fields
     status = gsl_spline2d_eval_e(global_interp_thermal_data.spline,
@@ -616,7 +616,7 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
         gsl_error_handler_t *error_handler;
 
         //turn off error handler to do our custom error handling
-        error_handler=gsl_set_error_handler_off()
+        error_handler=gsl_set_error_handler_off();
 
 
         //todo: make sure that the subgroup_interpolated_results pointer has N_GAMMA space allocated
