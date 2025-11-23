@@ -547,6 +547,11 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
     double result = NAN;
     int status;
 
+    gsl_error_handler_t *error_handler;
+
+    //turn off error handler to do our custom error handling
+    error_handler=gsl_set_error_handler_off()
+
     // Access global_interp_data fields
     status = gsl_spline2d_eval_e(global_interp_thermal_data.spline,
                                       log_ph_comv_e, log_theta,
@@ -593,6 +598,9 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
         }
     }
 
+    //reset default behavior
+    error_handler = gsl_set_error_handler (NULL);
+
     return result;
 }
 
@@ -604,6 +612,12 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
         double result;
         int status;
         double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
+
+        gsl_error_handler_t *error_handler;
+
+        //turn off error handler to do our custom error handling
+        error_handler=gsl_set_error_handler_off()
+
 
         //todo: make sure that the subgroup_interpolated_results pointer has N_GAMMA space allocated
 
@@ -663,6 +677,11 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
 
             subgroup_interpolated_results[i] = result;
         }
+
+        //reset default behavior
+        error_handler = gsl_set_error_handler (NULL);
+
+
     }
 #endif
 
