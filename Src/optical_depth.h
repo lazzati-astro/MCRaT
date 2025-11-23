@@ -8,4 +8,6 @@ double getCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *rand, F
 
 double getThermalCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *rand, FILE *fPtr);
 
-double getNonThermalCrossSection(double photon_comv_e, double *subgroup_interpolated_results, gsl_rng *rand, FILE *fPtr);
+#if NONTHERMAL_E_DIST != OFF
+    double getNonThermalCrossSection(double photon_comv_e, double *subgroup_interpolated_results, gsl_rng *rand, FILE *fPtr);
+#endif

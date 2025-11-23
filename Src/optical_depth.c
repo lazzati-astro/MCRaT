@@ -88,12 +88,13 @@ double getThermalCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *
     return result;
 }
 
-double getNonThermalCrossSection(double photon_comv_e, double *subgroup_interpolated_results, gsl_rng *rand, FILE *fPtr)
-{
-    double normalized_photon_comv_e=photon_comv_e/(M_EL*C_LIGHT ); //h*nu / mc^2 , units of p0 is erg/c
+#if NONTHERMAL_E_DIST != OFF
+    double getNonThermalCrossSection(double photon_comv_e, double *subgroup_interpolated_results, gsl_rng *rand, FILE *fPtr)
+    {
+        double normalized_photon_comv_e=photon_comv_e/(M_EL*C_LIGHT ); //h*nu / mc^2 , units of p0 is erg/c
 
-    interpolateSubgroupNonThermalHotCrossSection(log10(normalized_photon_comv_e), subgroup_interpolated_results, rand, fPtr);
+        interpolateSubgroupNonThermalHotCrossSection(log10(normalized_photon_comv_e), subgroup_interpolated_results, rand, fPtr);
 
-}
-
+    }
+#endif
 
