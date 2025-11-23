@@ -542,7 +542,7 @@ void initalizeHotCrossSectionInterp()
 }
 
 //interpolation checked with python interpolation of the same hot coss section table
-double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta, gsl_rng *rand, FILE *fPtr);
+double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta, gsl_rng *rand, FILE *fPtr)
 {
     double result = NAN;
     int status;
