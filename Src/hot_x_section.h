@@ -50,10 +50,10 @@ double calculateTotalNonThermalCrossSection(double ph_comv, double gamma_min, do
 
 void initalizeHotCrossSectionInterp();
 
-double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta, FILE *fPtr);
+double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta, gsl_rng *rand, FILE *fPtr);
 
 #if NONTHERMAL_E_DIST != OFF
-void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *subgroup_interpolated_results, FILE *fPtr);
+void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *subgroup_interpolated_results, gsl_rng *rand, FILE *fPtr);
 #endif
 
 void cleanupInterpolationData();

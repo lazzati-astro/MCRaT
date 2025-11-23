@@ -541,32 +541,126 @@ void initalizeHotCrossSectionInterp()
 }
 
 //interpolation checked with python interpolation of the same hot coss section table
-double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta, FILE *fPtr)
+double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta, gsl_rng *rand, FILE *fPtr);
 {
-    double result=0;
+    double result = NAN;
+    int status;
+
     // Access global_interp_data fields
-    result=gsl_spline2d_eval(global_interp_thermal_data.spline, log_ph_comv_e, log_theta, global_interp_thermal_data.xacc, global_interp_thermal_data.yacc);
-    fprintf(fPtr, "Thermal: %g %g %g\n", log_ph_comv_e, log_theta, result);
+    status = gsl_spline2d_eval_e(global_interp_thermal_data.spline,
+                                      log_ph_comv_e, log_theta,
+                                      global_interp_thermal_data.xacc,
+                                      global_interp_thermal_data.yacc,
+                                      &result);
+    //fprintf(fPtr, "Thermal: %g %g %g\n", log_ph_comv_e, log_theta, result);
+
+    if (status != GSL_SUCCESS)
+    {
+        fprintf(stderr, "interpolateThermalHotCrossSection: GSL error - %s\n",
+                gsl_strerror(status));
+        fprintf(stderr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
+                log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
+        fprintf(stderr, "  log_theta = %g (valid range: [%g, %g])\n",
+                log_theta, LOG_T_MIN, LOG_T_MAX);
+        fprintf(stderr, "  Calculating cross section directly...\n");
+
+        // Log to file as well if available
+        if (fPtr != NULL)
+        {
+            fprintf(fPtr, "interpolateThermalHotCrossSection: GSL error - %s\n",
+                    gsl_strerror(status));
+            fprintf(fPtr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
+                    log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
+            fprintf(fPtr, "  log_theta = %g (valid range: [%g, %g])\n",
+                    log_theta, LOG_T_MIN, LOG_T_MAX);
+            fprintf(fPtr, "  Calculating cross section directly...\n");
+            fflush(fPtr);
+        }
+
+        // Convert from log10 space back to linear space for calculation
+        double ph_comv = pow(10.0, log_ph_comv_e);
+        double theta = pow(10.0, log_theta);
+
+        // Calculate directly and return in log10 space to match table format
+        result = log10(calculateTotalThermalCrossSection(ph_comv, theta, rand, fPtr));
+
+        fprintf(stderr, "  Direct calculation result: %g\n", result);
+        if (fPtr != NULL)
+        {
+            fprintf(fPtr, "  Direct calculation result: %g\n", result);
+            fflush(fPtr);
+        }
+    }
+
     return result;
 }
 
 #if NONTHERMAL_E_DIST != OFF
-    void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *subgroup_interpolated_results, FILE *fPtr)
+    void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *subgroup_interpolated_results, gsl_rng *rand, FILE *fPtr)
     {
         // iterate over the subgroups to get the nonthermal cross sections and save them to the pointer array
         int i=0;
-        double results[N_GAMMA];
+        double result;
+        int status;
+        double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
 
-        for (i=0;i<global_interp_nonthermal_data.ny;i++)
-        {
-            results[i]=gsl_spline2d_eval(global_interp_nonthermal_data.spline, log_ph_comv_e, global_interp_nonthermal_data.ya[i], global_interp_nonthermal_data.xacc, global_interp_nonthermal_data.yacc);
-            fprintf(fPtr, "Non-thermal: %g %g %g\n", log_ph_comv_e, global_interp_nonthermal_data.ya[i], results[i]);
-        }
+        //todo: make sure that the subgroup_interpolated_results pointer has N_GAMMA space allocated
 
-        //todo: make sure that the pointer has enough space allocated
-        for (i=0;i<global_interp_nonthermal_data.ny;i++)
+        for (i = 0; i < global_interp_nonthermal_data.ny; i++)
         {
-            *(subgroup_interpolated_results+i)=results[i];
+            status = gsl_spline2d_eval_e(global_interp_nonthermal_data.spline,
+                                          log_ph_comv_e,
+                                          global_interp_nonthermal_data.ya[i],
+                                          global_interp_nonthermal_data.xacc,
+                                          global_interp_nonthermal_data.yacc,
+                                          &result);
+
+            if (status != GSL_SUCCESS)
+            {
+                fprintf(stderr, "interpolateSubgroupNonThermalHotCrossSection: GSL error - %s\n",
+                        gsl_strerror(status));
+                fprintf(stderr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
+                        log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
+                fprintf(stderr, "  gamma subgroup index = %d, gamma_center = %g\n",
+                        i, global_interp_nonthermal_data.ya[i]);
+                fprintf(stderr, "  Calculating cross section directly...\n");
+
+                // Log to file as well if available
+                if (fPtr != NULL)
+                {
+                    fprintf(fPtr, "interpolateSubgroupNonThermalHotCrossSection: GSL error - %s\n",
+                            gsl_strerror(status));
+                    fprintf(fPtr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
+                            log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
+                    fprintf(fPtr, "  gamma subgroup index = %d, gamma_center = %g\n",
+                            i, global_interp_nonthermal_data.ya[i]);
+                    fprintf(fPtr, "  Calculating cross section directly...\n");
+                    fflush(fPtr);
+                }
+
+                // Convert from log10 space back to linear space for calculation
+                double ph_comv = pow(10.0, log_ph_comv_e);
+
+                // Calculate gamma_min and gamma_max for this subgroup
+                // The ya[i] values are centers, so we need to reconstruct the bin edges
+                double gamma_min_log = log10(GAMMA_MIN) + i * dgamma;
+                double gamma_max_log = gamma_min_log + dgamma;
+                double gamma_min = pow(10.0, gamma_min_log);
+                double gamma_max = pow(10.0, gamma_max_log);
+
+                // Calculate directly and return in log10 space to match table format
+                result = log10(calculateTotalNonThermalCrossSection(ph_comv, gamma_min, gamma_max, rand, fPtr));
+
+                fprintf(stderr, "  Direct calculation result for subgroup %d: %g\n", i, result);
+                if (fPtr != NULL)
+                {
+                    fprintf(fPtr, "  Direct calculation result for subgroup %d: %g\n", i, result);
+                    fflush(fPtr);
+                }
+
+            }
+
+            subgroup_interpolated_results[i] = result;
         }
     }
 #endif
