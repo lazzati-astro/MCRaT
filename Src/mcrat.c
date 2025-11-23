@@ -590,6 +590,9 @@ int main(int argc, char **argv)
     frame_array=NULL;
 
     #if TAU_CALCULATION == TABLE
+        fprintf(fPtr, "TAU_CALCULATION is set to TABLE\n");
+        fflush(fPtr);
+
         //initalize the tabulated cross sections (if needed)
         initalizeHotCrossSection(myid, rng, fPtr);
 
@@ -606,6 +609,9 @@ int main(int argc, char **argv)
             fprintf(fPtr, "NonThermal test: %g %g %g %g\n", log10(1e-2), test[0], test[1], test[2]);
         #endif
 
+    #else
+    fprintf(fPtr, "TAU_CALCULATION is set to DIRECT\n");
+    fflush(fPtr);
     #endif
 
     
