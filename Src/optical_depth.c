@@ -45,7 +45,7 @@ double calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_da
     beta = sqrt(1.0-1.0/((hydro_data->gamma)[ph_block_index]*(hydro_data->gamma)[ph_block_index]));
 
     //TODO: extend this to the non-thermal electron dist
-    norm_cross_section=getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index],  rand, fPtr)
+    norm_cross_section=getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index],  rand, fPtr);
 
     tau = M_P/(n_dens_lab_tmp)/(THOM_X_SECT*norm_cross_section)/(1.0-beta*n_cosangle);
 
