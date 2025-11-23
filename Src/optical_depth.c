@@ -65,7 +65,7 @@ double getCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *rand, F
         #endif
     #else
         //if we are directly calcualting the optical depth, just use the thompson cross section
-        result=1
+        result=1;
     #endif
 
     return result;
@@ -82,7 +82,7 @@ double getThermalCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *
         double theta=fluid_temp*(K_B/(M_EL*C_LIGHT*C_LIGHT ));
         result = pow(10.0, interpolateThermalHotCrossSection(log10(normalized_photon_comv_e), log10(theta), rand, fPtr));
     #else
-        result = 1
+        result = 1;
     #endif
 
     return result;
@@ -92,7 +92,7 @@ double getNonThermalCrossSection(double photon_comv_e, double *subgroup_interpol
 {
     double normalized_photon_comv_e=photon_comv_e/(M_EL*C_LIGHT ); //h*nu / mc^2 , units of p0 is erg/c
 
-    interpolateSubgroupNonThermalHotCrossSection(log10(log_ph_comv_e), subgroup_interpolated_results, rand, fPtr);
+    interpolateSubgroupNonThermalHotCrossSection(log10(normalized_photon_comv_e), subgroup_interpolated_results, rand, fPtr);
 
 }
 
