@@ -605,7 +605,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
         {
             //fprintf(fPtr,"ph_block Index: %d\n", ph_block_index);
 
-            tau = calculateOpticalDepth((ph+i), hydro_data, fPtr);
+            tau = calculateOpticalDepth((ph+i), hydro_data, rng, fPtr);
 
             //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
             rnd_tracker=0;

@@ -4,7 +4,7 @@
 
 #include "mcrat.h"
 
-double calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data, FILE *fPtr)
+double calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data, gsl_rng *rand, FILE *fPtr)
 {
     int ph_block_index;
     double tau=0;
@@ -13,6 +13,7 @@ double calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_da
     double ph_v_norm=0, fl_v_norm=0;
     double n_cosangle=0, n_dens_lab_tmp=0;
     double beta=0, fluid_beta[3];
+    double norm_cross_section=0;
 
 
     ph_block_index=ph->nearest_block_index;
@@ -43,13 +44,56 @@ double calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_da
 
     beta = sqrt(1.0-1.0/((hydro_data->gamma)[ph_block_index]*(hydro_data->gamma)[ph_block_index]));
 
-    tau = M_P/(n_dens_lab_tmp)/THOM_X_SECT/(1.0-beta*n_cosangle);
+    //TODO: extend this to the non-thermal electron dist
+    norm_cross_section=getCrossSection( photon_comv_e,  fluid_temp,  rng, fPtr)
+
+    tau = M_P/(n_dens_lab_tmp)/(THOM_X_SECT*norm_cross_section)/(1.0-beta*n_cosangle);
 
     return tau;
 }
 
-double getCrossSection(double photon_comv_e, double fluid_temp)
+double getCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *rand, FILE *fPtr)
 {
+    double result=0;
+    //this returns the cross section normalized by the thompson cross section
+    #if TAU_CALCULATION == TABLE
+        result=getThermalCrossSection(photon_comv_e, fluid_temp, rand, fPtr);
+        #if NONTHERMAL_E_DIST != OFF
+            double test[N_GAMMA];
+            interpolateSubgroupNonThermalHotCrossSection(log10(1e-2), test, rng, fPtr);
+            fprintf(fPtr, "NonThermal test: %g %g %g %g\n", log10(1e-2), test[0], test[1], test[2]);
+        #endif
+    #else
+        //if we are directly calcualting the optical depth, just use the thompson cross section
+        result=1
+    #endif
+
+    return result;
+}
+
+double getThermalCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *rand, FILE *fPtr)
+{
+    //this returns the thermal cross section normalized by the thompson cross section
+
+    double result=0;
+
+    #if TAU_CALCULATION == TABLE
+        double normalized_photon_comv_e=photon_comv_e/(M_EL*C_LIGHT ); //h*nu / mc^2 , units of p0 is erg/c
+        double theta=fluid_temp*(K_B/(M_EL*C_LIGHT*C_LIGHT ));
+        result = pow(10.0, interpolateThermalHotCrossSection(log10(normalized_photon_comv_e), log10(theta), rand, fPtr));
+    #else
+        result = 1
+    #endif
+
+    return result;
+}
+
+double getNonThermalCrossSection(double photon_comv_e, double *subgroup_interpolated_results, gsl_rng *rand, FILE *fPtr)
+{
+    double normalized_photon_comv_e=photon_comv_e/(M_EL*C_LIGHT ); //h*nu / mc^2 , units of p0 is erg/c
+
+    interpolateSubgroupNonThermalHotCrossSection(log10(log_ph_comv_e), subgroup_interpolated_results, rand, fPtr);
 
 }
+
 
