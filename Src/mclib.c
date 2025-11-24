@@ -593,6 +593,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, int *sorted_indexes, struct
     int i=0, ph_block_index=0, num_thread=1, thread_id=0;
     double mfp=0, default_mfp=1e12, tau=0;
     double rnd_tracker=0;
+    double *all_time_steps=malloc(num_ph*sizeof(double));
     #if defined(_OPENMP)
         num_thread=omp_get_num_threads(); //default is one above if theres no openmp usage
     #endif
@@ -671,6 +672,8 @@ void calcMeanFreePath(struct photon *ph, int num_ph, int *sorted_indexes, struct
     }
 
     reverseSortIndexes(sorted_indexes, num_ph, sizeof (int),  all_time_steps);
+
+    free(all_time_steps);
 
 }
 
