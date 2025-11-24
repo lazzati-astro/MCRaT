@@ -282,6 +282,7 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
                 (*ph)[ph_tot].weight=ph_weight_adjusted;
                 (*ph)[ph_tot].nearest_block_index=0;
                 (*ph)[ph_tot].type=INJECTED_PHOTON; //i for injected
+                (*ph)[ph_tot].recalc_properties=1 //set to 1 so we are sure that we calculate tau values later on
                 //printf("%d\n",ph_tot);
                 ph_tot++;
             }

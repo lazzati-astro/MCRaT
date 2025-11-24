@@ -690,7 +690,8 @@ int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_n
             (rebin_ph+i)->num_scatt=0;
             (rebin_ph+i)->weight=0;
             (rebin_ph+i)->nearest_block_index=-1; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
-            
+            (rebin_ph+i)->recalc_properties=1; //set to 1 so we are sure that we calculate tau values later on
+
             count_weight+=(rebin_ph+i)->weight;
 
         }
@@ -734,7 +735,8 @@ int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_n
             (rebin_ph+i)->num_scatt=avg_values_2d[i][7]/avg_values_2d[i][8];
             (rebin_ph+i)->weight=avg_values_2d[i][8];
             (rebin_ph+i)->nearest_block_index=0; //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
-            
+            (rebin_ph+i)->recalc_properties=1; //set to 1 so we are sure that we calculate tau values later on
+
             //fprintf(fPtr, "bin %e-%e, %e-%e has %e photons: Theta of averages photon is: %e\n",pow(10, min_range)*C_LIGHT/1.6e-9, pow(10,max_range)*C_LIGHT/1.6e-9, min_range_theta, max_range_theta, gsl_histogram2d_get(h_energy_theta, count_x, count_y), ph_theta);
             //fflush(fPtr);
             
@@ -864,6 +866,8 @@ int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_n
                 (*ph_orig)[idx].num_scatt=(synch_ph+count)->num_scatt;
                 (*ph_orig)[idx].weight=(synch_ph+count)->weight;
                 (*ph_orig)[idx].nearest_block_index=(synch_ph+count)->nearest_block_index;
+                (*ph_orig)[idx].recalc_properties= (synch_ph+count)->recalc_properties; //set to 1 so we are sure that we calculate tau values later on
+
                 //(*ph_orig)[idx].type = CS_POOL_PHOTON;
                 
                 count++;
@@ -937,6 +941,7 @@ int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_n
                 (*ph_orig)[idx].weight=(rebin_ph+count)->weight;
                 (*ph_orig)[idx].nearest_block_index=(rebin_ph+count)->nearest_block_index;
                 (*ph_orig)[idx].type = COMPTONIZED_PHOTON;
+                (*ph_orig)[idx].recalc_properties = 1;
                                 
                 if ((rebin_ph+count)->weight==0)
                 {
@@ -956,6 +961,7 @@ int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_n
                     (*ph_orig)[idx].p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been "absorbed", this makes it still get saves in the hdf5 files
                     (*ph_orig)[idx].nearest_block_index=-1;
                     (*ph_orig)[idx].weight=0; //now making the absorbed UNABSORBED_CS_PHOTON photons become null photons
+                    (*ph_orig)[idx].recalc_properties = 0;
                     //num_null_rebin_ph++;
                 }
                 else
@@ -963,6 +969,7 @@ int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_n
                     //all rebinned photns have been saved so just treat the rest of the phootn array as null photons
                     (*ph_orig)[idx].weight=0;
                     (*ph_orig)[idx].nearest_block_index=-1;
+                    (*ph_orig)[idx].recalc_properties = 0;
                     //j++;
                     //num_null_rebin_ph++;
                 }
@@ -976,6 +983,7 @@ int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_n
             (*ph_orig)[idx].type = COMPTONIZED_PHOTON;
             (*ph_orig)[idx].weight=0;
             (*ph_orig)[idx].nearest_block_index=-1;
+            (*ph_orig)[idx].recalc_properties = 0;
             //num_null_rebin_ph++;
         }
         
@@ -1427,6 +1435,8 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                     (*ph_orig)[idx].weight=ph_weight_adjusted;
                     (*ph_orig)[idx].nearest_block_index=0; //these photons can be scattered
                     (*ph_orig)[idx].type=CS_POOL_PHOTON;
+                    (*ph_orig)[idx].recalc_properties=1; //set to 1 so we are sure that we calculate tau values later on
+
                     //printf("%d\n",ph_tot);
                     ph_tot++; //count how many photons have been emitted
                     count_null_indexes--; //keep track fo the null photon indexes
@@ -1523,6 +1533,8 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         (*ph_orig)[idx].weight=(*ph_orig)[scatt_ph_index].weight;
         (*ph_orig)[idx].nearest_block_index=i; //these photons can be scattered
         (*ph_orig)[idx].type=CS_POOL_PHOTON;
+        (*ph_orig)[idx].recalc_properties=1; //set to 1 so we are sure that we calculate tau values later on
+
         
         //change position of scattered synchrotron photon to be random in the hydro grid
         position_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r0_size)[i])-((hydro_data->r0_size)[i])/2.0; //choose between -size/2 to size/2
