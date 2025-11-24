@@ -736,7 +736,7 @@ int main(int argc, char **argv)
             num_cyclosynch_ph_emit=0;
             
             //by default want to allocat ememory for time_steps and sorted indexes to scatter
-            all_time_steps=malloc(num_ph*sizeof(double));
+            // all_time_steps=malloc(num_ph*sizeof(double)); this is now in the photon struct
             sorted_indexes=malloc(num_ph*sizeof(int));
             
             #if CYCLOSYNCHROTRON_SWITCH == ON
@@ -760,7 +760,7 @@ int main(int argc, char **argv)
                     
                     phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
 
-                    num_cyclosynch_ph_emit=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 0, 0, fPtr);
+                    num_cyclosynch_ph_emit=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 0, 0, fPtr);
                 }
             #endif
             
@@ -810,7 +810,7 @@ int main(int argc, char **argv)
                         
                         //fprintf(fPtr, "num_null_ph %d\n", num_null_ph);
                         //printf("The previous scattered photon was a seed photon %c.\n", (phPtr+ph_scatt_index)->type);
-                        num_cyclosynch_ph_emit+=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &all_time_steps, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 1, ph_scatt_index, fPtr);
+                        num_cyclosynch_ph_emit+=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 1, ph_scatt_index, fPtr);
                         //fprintf(fPtr, " num_photon: %d\n",num_ph  );
                         //fflush(fPtr);
                         
@@ -836,7 +836,7 @@ int main(int argc, char **argv)
                             //if the number of synch photons that have been scattered is too high rebin them
                             
                             //printf("num_cyclosynch_ph_emit: %d\n", num_cyclosynch_ph_emit);
-                            rebinCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
+                            rebinCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
 
                             //fprintf(fPtr, "rebinSynchCompPhotons: scatt_cyclosynch_num_ph: %d\n", scatt_cyclosynch_num_ph);
                             //exit(0);
@@ -876,7 +876,7 @@ int main(int argc, char **argv)
                     fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
                     fflush(fPtr);
                     */
-                    rebinCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, &all_time_steps, &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
+                    rebinCyclosynchCompPhotons(&phPtr, &num_ph, &num_null_ph, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph,  &sorted_indexes, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
                   //exit(0);
                }
                                         
@@ -941,8 +941,8 @@ int main(int argc, char **argv)
             free(gammaPtr);free(dens_labPtr);free(tempPtr);
             xPtr=NULL; yPtr=NULL;  rPtr=NULL;thetaPtr=NULL;velxPtr=NULL;velyPtr=NULL;densPtr=NULL;presPtr=NULL;gammaPtr=NULL;dens_labPtr=NULL;
             szxPtr=NULL; szyPtr=NULL; tempPtr=NULL;
-            free(all_time_steps); //malloc is called in for loop therefore free memory at th end of the loop
-            all_time_steps=NULL;
+            //free(all_time_steps); //malloc is called in for loop therefore free memory at th end of the loop
+            //all_time_steps=NULL;
             free(sorted_indexes);
             sorted_indexes=NULL;
             freeHydroDataFrame(&hydrodata);
@@ -953,8 +953,8 @@ int main(int argc, char **argv)
         num_null_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
         free(phPtr);
         phPtr=NULL;
-        free(all_time_steps);
-        all_time_steps=NULL;
+        //free(all_time_steps);
+        //all_time_steps=NULL;
         free(sorted_indexes);
         sorted_indexes=NULL;
     }

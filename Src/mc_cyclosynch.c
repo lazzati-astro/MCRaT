@@ -191,7 +191,7 @@ double calcCyclosynchRLimits(int frame_scatt, int frame_inj, double fps,  double
     return val;
 }
 
-int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_ph, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, double **all_time_steps, int **sorted_indexes, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
+int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_ph, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int **sorted_indexes, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
 {
     int i=0, j=0, k=0, count=0, count_x=0, count_y=0, count_z=0, count_c_ph=0, end_count=(*scatt_cyclosynch_num_ph), idx=0, num_thread=1;
     #if defined(_OPENMP)
@@ -806,6 +806,7 @@ int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_n
 
         
         //also expand memory of other arrays
+        /* this isnt needed since the time steps are contained in the photon struct
         tmp_double=realloc(*all_time_steps, ((*num_ph)+total_bins-count_c_ph+(*num_null_ph))*sizeof(double));
         if (tmp_double!=NULL)
         {
@@ -817,7 +818,7 @@ int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_n
             exit(1);
 
         }
-        
+        */
         //fprintf(fPtr, "Rebin: Allocating %d space good in 2nd realloc\n", ((*num_ph)+num_bins-count_c_ph+(*num_null_ph) ));
         //fflush(fPtr);
 
@@ -1029,7 +1030,7 @@ int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_n
 }
 
 
-int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, double **all_time_steps, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr)
+int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr)
 {
     double rmin=0, rmax=0, max_photons=CYCLOSYNCHROTRON_REBIN_E_PERC*maximum_photons; //have 10% as default, can change later need to figure out how many photons across simulations I want emitted
     double ph_weight_adjusted=0, position_phi=0;
@@ -1242,6 +1243,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         }
         
         //also expand memory of other arrays
+        /* this isnt needed since the time steps are contained in the photon struct
         tmp_double=realloc(*all_time_steps, ((*num_ph)+ph_tot-null_ph_count)*sizeof(double));
         if (tmp_double!=NULL)
         {
@@ -1251,6 +1253,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         {
             printf("Error with reallocating space to hold data about each photon's time step until an interaction occurs\n");
         }
+        */
         tmp_int=realloc(*sorted_indexes, ((*num_ph)+ph_tot-null_ph_count)*sizeof(int));
         if (tmp_int!=NULL)
         {
