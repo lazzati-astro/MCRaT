@@ -634,7 +634,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
                 thread_id=omp_get_thread_num();
             #endif
 
-            calculateOpticalDepth((ph+i), hydro_data, rng[thread_id], fPtr);
+            //calculateOpticalDepth((ph+i), hydro_data, rng[thread_id], fPtr);
 
             rnd_tracker=gsl_rng_uniform_pos(rng[thread_id]);
             //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
@@ -648,7 +648,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
             mfp=default_mfp;
         }
 
-    *(all_time_steps+i)=mfp/C_LIGHT;
+    //*(all_time_steps+i)=mfp/C_LIGHT;
     ((ph+i)->time_to_scatter)=mfp/C_LIGHT;
 
     //fprintf(fPtr,"Photon %d has time %e\n", i, *(all_time_steps+i));
@@ -667,6 +667,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
     for (i=0;i<num_ph;i++)
     {
         *(sorted_indexes+i)= i; //save  indexes to array to use in qsort
+        *(all_time_steps+i)=(ph+i)->time_to_scatter;
     }
 
     reverseSortIndexes(sorted_indexes, num_ph, sizeof (int),  all_time_steps);
@@ -1086,7 +1087,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_tim
     {
         ph_index=(*(sorted_indexes+i));
         
-        scatt_time= *(all_time_steps+ph_index); //get the time until the photon scatters
+        scatt_time= (ph+ph_index)->time_to_scatter; //*(all_time_steps+ph_index); //get the time until the photon scatters
         
         //IF THE TIME IS GREATER THAN dt_max dont let the photons positions be updated
         if (scatt_time<dt_max)
