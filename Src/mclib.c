@@ -627,13 +627,14 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
         {
             //fprintf(fPtr,"ph_block Index: %d\n", ph_block_index);
 
-            calculateOpticalDepth((ph+i), hydro_data, rng[thread_id], fPtr);
 
             //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
             rnd_tracker=0;
             #if defined(_OPENMP)
                 thread_id=omp_get_thread_num();
             #endif
+
+            calculateOpticalDepth((ph+i), hydro_data, rng[thread_id], fPtr);
 
             rnd_tracker=gsl_rng_uniform_pos(rng[thread_id]);
             //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
@@ -647,7 +648,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
             mfp=default_mfp;
         }
 
-    //*(all_time_steps+i)=mfp/C_LIGHT;
+    *(all_time_steps+i)=mfp/C_LIGHT;
     ((ph+i)->time_to_scatter)=mfp/C_LIGHT;
 
     //fprintf(fPtr,"Photon %d has time %e\n", i, *(all_time_steps+i));
