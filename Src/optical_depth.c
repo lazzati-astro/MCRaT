@@ -64,7 +64,8 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
         //calculate the nonthermal tau
         for (i=0;i<N_GAMMA;i++)
         {
-            nonthermal_n_dens_lab_i=100; //nonthermal_n_dens_lab*electron_subgroup_dist_dens
+            nonthermal_n_dens_lab=thermal_n_dens_lab;//this is just for testing
+            nonthermal_n_dens_lab_i=thermal_n_dens_lab*(hydro_data->electron_dens_subgroup)[i]
             (ph->optical_depths)[i+1] = 1/(nonthermal_n_dens_lab_i)/(THOM_X_SECT*(*(norm_cross_section+(i+1))))/fluid_factor;
         }
 
@@ -118,7 +119,7 @@ double getThermalCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *
         double normalized_photon_comv_e=photon_comv_e/(M_EL*C_LIGHT ); //h*nu / mc^2 , units of p0 is erg/c
 
         interpolateSubgroupNonThermalHotCrossSection(log10(normalized_photon_comv_e), subgroup_interpolated_results, rand, fPtr);
-        fprintf(fPtr, "NonThermal test: %g %g %g %g\n", log10(normalized_photon_comv_e), *(subgroup_interpolated_results+0), *(subgroup_interpolated_results+1), *(subgroup_interpolated_results+2));
+        //fprintf(fPtr, "NonThermal test: %g %g %g %g\n", log10(normalized_photon_comv_e), *(subgroup_interpolated_results+0), *(subgroup_interpolated_results+1), *(subgroup_interpolated_results+2));
 
     }
 #endif
