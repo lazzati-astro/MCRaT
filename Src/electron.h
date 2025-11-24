@@ -27,3 +27,7 @@ double singleElectronPowerLaw(double x, double p, double gamma_min, double gamma
 void arrayElectronPowerLaw(const double *x, double *y, int n_points, double p, double gamma_min, double gamma_max);
 
 double singleMaxwellJuttner(double gamma, double theta);
+
+double nonThermalElectronDistIntegrand(double x, void * params);
+
+void calculateElectronDistSubgroupDens(double *subgroup_dens, FILE *fPtr);
