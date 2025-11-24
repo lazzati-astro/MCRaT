@@ -152,10 +152,10 @@ struct photon
     int nearest_block_index; //index that  allows for extraction of information of the hydro grid block that the photon si located within
     double time_to_scatter; //the sampled mean free path of the photon divided by C_LIGHT
     #if NONTHERMAL_E_DIST != OFF
-        double optical_depth[1+N_GAMMA]; //the optical depths that are calculated for thermal + non-thermal electrons with the nonthermal electron subgroups
-    #else
-        double optical_depth; //if we arent considering non-thernmal electrons, just save a single value for the thermal electrons
+        double optical_depths[1+N_GAMMA]; //the optical depths that are calculated for thermal + non-thermal electrons with the nonthermal electron subgroups
     #endif
+    //save the total calculated optical depth, if we only have thermal electrons this optical depth is that calcualted value otherwise it includes thermal-non-thermal electrons and the biases
+    double total_optical_depth;
 } ; //structure to hold photon information
 
 struct hydro_dataframe

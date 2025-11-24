@@ -536,7 +536,8 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
                     ((ph+i)->comv_p3)=ph_p_comv[3];
 
                     //need to also recalculate the optical depth
-                    
+                    calculateOpticalDepth((ph+i), hydro_data, rng, fPtr);
+
                     num_photons_find_new_element+=1;
                 }
                 else
@@ -607,7 +608,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
         {
             //fprintf(fPtr,"ph_block Index: %d\n", ph_block_index);
 
-            tau = calculateOpticalDepth((ph+i), hydro_data, rng, fPtr);
+            calculateOpticalDepth((ph+i), hydro_data, rng, fPtr);
 
             //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
             rnd_tracker=0;
@@ -627,7 +628,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
             mfp=default_mfp;
         }
 
-    *(all_time_steps+i)=mfp/C_LIGHT;
+    //*(all_time_steps+i)=mfp/C_LIGHT;
     ((ph+i)->time_to_scatter)=mfp/C_LIGHT;
 
     //fprintf(fPtr,"Photon %d has time %e\n", i, *(all_time_steps+i));
