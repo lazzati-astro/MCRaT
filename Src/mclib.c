@@ -628,6 +628,8 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
         }
 
     *(all_time_steps+i)=mfp/C_LIGHT;
+    ((ph+i)->time_to_scatter)=mfp/C_LIGHT;
+
     //fprintf(fPtr,"Photon %d has time %e\n", i, *(all_time_steps+i));
     //fflush(fPtr);
 

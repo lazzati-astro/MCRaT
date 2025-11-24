@@ -7,7 +7,7 @@
 double calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data, gsl_rng *rand, FILE *fPtr)
 {
     int ph_block_index, i;
-    double tau=0;
+    double tau=0; //this returns the total optical depth (includes thermal and nonthermal photons)
     double ph_phi=0;
     double fl_v_x=0, fl_v_y=0, fl_v_z=0; //to hold the fluid velocity in MCRaT coordinates
     double ph_v_norm=0, fl_v_norm=0;
@@ -53,14 +53,21 @@ double calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_da
     //TODO: extend this to the non-thermal electron dist
     #if NONTHERMAL_E_DIST == OFF
         getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index], &norm_cross_section,  rand, fPtr);
-        tau = 1/(thermal_n_dens_lab)/(THOM_X_SECT*norm_cross_section)/fluid_factor;
+        (ph->optical_depth) = 1/(thermal_n_dens_lab)/(THOM_X_SECT*norm_cross_section)/fluid_factor;
+        tau = (ph->optical_depth);
     #else
         getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index], norm_cross_section,  rand, fPtr);
 
         //calculate the thermal tau
-        tau = 1/(thermal_n_dens_lab)/(THOM_X_SECT*(*(norm_cross_section+0)))/fluid_factor;
+        (ph->optical_depth)[0] = 1/(thermal_n_dens_lab)/(THOM_X_SECT*(*(norm_cross_section+0)))/fluid_factor;
 
         //calculate the nonthermal tau
+
+        tau=0;
+        for (i=0;i<N_GAMMA+1;i++)
+        {
+            tau += (ph->optical_depth)[i];
+        }
     #endif
 
     return tau;

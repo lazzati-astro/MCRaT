@@ -150,7 +150,7 @@ struct photon
     double num_scatt;
     double weight; //each photon should have equal weight, sp this shouldnt matter, weight in mc.par file but across injections can have varying weights
     int nearest_block_index; //index that  allows for extraction of information of the hydro grid block that the photon si located within
-    double mean_free_path; //the mean free path of the photon that was sampled
+    double time_to_scatter; //the sampled mean free path of the photon divided by C_LIGHT
     #if NONTHERMAL_E_DIST != OFF
         double optical_depth[1+N_GAMMA]; //the optical depths that are calculated for thermal + non-thermal electrons with the nonthermal electron subgroups
     #else
