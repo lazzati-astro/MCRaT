@@ -4,7 +4,7 @@
 
 double calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data, gsl_rng *rand, FILE *fPtr);
 
-double getCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *rand, FILE *fPtr);
+void getCrossSection(double photon_comv_e, double fluid_temp, double *cross_section, gsl_rng *rand, FILE *fPtr);
 
 double getThermalCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *rand, FILE *fPtr);
 
