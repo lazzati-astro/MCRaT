@@ -790,7 +790,7 @@ int main(int argc, char **argv)
                 find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
                 
                 //if (*(all_time_steps+(*(sorted_indexes+0)))<remaining_time)
-                if ((phPtr+(*(sorted_indexes+0))).time_to_scatter < remaining_time)
+                if ((phPtr+(*(sorted_indexes+0)))->time_to_scatter < remaining_time)
                 {
                     //scatter the photon
                     //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
