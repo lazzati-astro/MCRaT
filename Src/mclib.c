@@ -534,6 +534,8 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
                     ((ph+i)->comv_p1)=ph_p_comv[1];
                     ((ph+i)->comv_p2)=ph_p_comv[2];
                     ((ph+i)->comv_p3)=ph_p_comv[3];
+
+                    //need to also recalculate the optical depth
                     
                     num_photons_find_new_element+=1;
                 }
