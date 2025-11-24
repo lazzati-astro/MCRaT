@@ -30,4 +30,6 @@ double singleMaxwellJuttner(double gamma, double theta);
 
 double nonThermalElectronDistIntegrand(double x, void * params);
 
-void calculateElectronDistSubgroupDens(double *subgroup_dens, FILE *fPtr);
+#if NONTHERMAL_E_DIST != OFF
+    void calculateElectronDistSubgroupDens(double *subgroup_dens, FILE *fPtr);
+#endif
