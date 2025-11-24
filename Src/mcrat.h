@@ -115,6 +115,8 @@ extern const double R_EL;
 #include <gsl/gsl_monte_vegas.h>
 #include <gsl/gsl_interp2d.h>
 #include <gsl/gsl_spline2d.h>
+#include <gsl/gsl_integration.h>
+#include <gsl/gsl_sf_gamma.h>
 
 //include all other header files in mcrat
 #include "mcrat_input.h"
@@ -201,6 +203,10 @@ struct hydro_dataframe
     int last_frame;
     int increment_inj_frame; //the change in between each injection frame which may change if different number of fps is used in each portion of hydro code
     int increment_scatt_frame; //same as above expect for frames that photons are acattered in
+    #if NONTHERMAL_E_DIST != OFF
+        double electron_dens_subgroup[N_GAMMA]; //the density of nonthermal electrons in each subgroup (needs to be multiplied by the number density of nonthermal electrons to get the actual number density)
+    #endif
+
 }; // structure to hold all information for a given hydro simulation
 
 

@@ -16,7 +16,7 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
     #if NONTHERMAL_E_DIST == OFF
         double norm_cross_section=0;
     #else
-        double norm_cross_section[1+N_GAMMA];
+        double norm_cross_section[1+N_GAMMA], nonthermal_n_dens_lab_i;
     #endif
 
 
@@ -62,6 +62,11 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
         (ph->optical_depths)[0] = 1/(thermal_n_dens_lab)/(THOM_X_SECT*(*(norm_cross_section+0)))/fluid_factor;
 
         //calculate the nonthermal tau
+        for (i=0;i<N_GAMMA;i++)
+        {
+            nonthermal_n_dens_lab_i=100; //nonthermal_n_dens_lab*electron_subgroup_dist_dens
+            (ph->optical_depths)[i+1] = 1/(nonthermal_n_dens_lab_i)/(THOM_X_SECT*(*(norm_cross_section+(i+1))))/fluid_factor;
+        }
 
         tau=0;
         for (i=0;i<N_GAMMA+1;i++)

@@ -448,3 +448,44 @@ double singleMaxwellJuttner(double gamma, double theta)
 
     return result;
 }
+
+double nonThermalElectronDistIntegrand(double x, void * params)
+{
+    double result=0;
+    #if NONTHERMAL_E_DIST != OFF
+
+        #if NONTHERMAL_E_DIST == POWERLAW
+            result = singleElectronPowerLaw(x, POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX);
+        #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
+            result = singleElectronBrokenPowerLaw(x, POWERLAW_INDEX_1, POWERLAW_INDEX_2, GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK);
+        #else
+            #error Unnknown nonthermal electron distribution.
+        #endif
+    #endif
+
+    return result;
+}
+
+void calculateElectronDistSubgroupDens(double *subgroup_dens, FILE *fPtr)
+{
+    gsl_integration_workspace * w = gsl_integration_workspace_alloc (1000);
+
+    double result, error;
+    double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
+    double gamma_min, gamma_max;
+    gsl_function F;
+    F.function = &nonThermalElectronDistIntegrand;
+
+    for (i=0;i<N_GAMMA; i++)
+    {
+        gamma_min = pow(10.0, log10(GAMMA_MIN) + i * dgamma);
+        gamma_max = pow(10.0, log10(GAMMA_MIN) + (i+1) * dgamma);
+
+        gsl_integration_qags (&F, gamma_min, gamma_max, 0, 1e-7, 1000, w, &result, &error);
+        fprintf(fPtr, "gamma_min: %e gamma_max: %e, result: %e\n", gamma_min, gamma_max, result);
+
+        subgroup_dens[i] = result;
+    }
+
+}
+
