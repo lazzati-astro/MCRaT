@@ -148,6 +148,7 @@ struct photon
     double s2; //stokes U/I
     double s3; //Stokes V/I
     double num_scatt;
+    int recalc_properties; //if this is 1 then the photon has scattered and we need to recalc the optical depths or the photon is in a new hydro cell and we need to recalc the optical depths
     double weight; //each photon should have equal weight, sp this shouldnt matter, weight in mc.par file but across injections can have varying weights
     int nearest_block_index; //index that  allows for extraction of information of the hydro grid block that the photon si located within
     double time_to_scatter; //the sampled mean free path of the photon divided by C_LIGHT
