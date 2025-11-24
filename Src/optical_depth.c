@@ -52,10 +52,10 @@ double calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_da
 
     //TODO: extend this to the non-thermal electron dist
     #if NONTHERMAL_E_DIST == OFF
-        getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index], &norm_cross_section  rand, fPtr);
+        getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index], &norm_cross_section,  rand, fPtr);
         tau = 1/(thermal_n_dens_lab)/(THOM_X_SECT*norm_cross_section)/fluid_factor;
     #else
-        getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index], norm_cross_section  rand, fPtr);
+        getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index], norm_cross_section,  rand, fPtr);
 
         //calculate the thermal tau
         tau = 1/(thermal_n_dens_lab)/(THOM_X_SECT*norm_cross_section)/fluid_factor;
