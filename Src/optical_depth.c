@@ -96,7 +96,7 @@ double getThermalCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *
 
     #if TAU_CALCULATION == TABLE
         double normalized_photon_comv_e=photon_comv_e/(M_EL*C_LIGHT ); //h*nu / mc^2 , units of p0 is erg/c
-        double theta=fluid_temp*(K_B/(M_EL*C_LIGHT*C_LIGHT ));
+        double theta=calcDimlessTheta(fluid_temp);
         //fprintf(fPtr, "normalized_photon_comv_e: %e, theta: %e\n", normalized_photon_comv_e, theta);
         //fflush(fPtr);
         result = pow(10.0, interpolateThermalHotCrossSection(log10(normalized_photon_comv_e), log10(theta), rand, fPtr));
