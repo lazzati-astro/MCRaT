@@ -588,7 +588,7 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
     
 }
 
-void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr)
+void calcMeanFreePath(struct photon *ph, int num_ph, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr)
 {
     int i=0, ph_block_index=0, num_thread=1, thread_id=0;
     double mfp=0, default_mfp=1e12, tau=0;
@@ -667,7 +667,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
     for (i=0;i<num_ph;i++)
     {
         *(sorted_indexes+i)= i; //save  indexes to array to use in qsort
-        *(all_time_steps+i)=(ph+i)->time_to_scatter;
+        *(all_time_steps+i)=(ph+i)->time_to_scatter; //save values to use in qsort
     }
 
     reverseSortIndexes(sorted_indexes, num_ph, sizeof (int),  all_time_steps);
@@ -1063,7 +1063,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
 
 
 
-double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt,  gsl_rng * rand, FILE *fPtr)//(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt, gsl_rng * rand, FILE *fPtr)
+double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_indexes, struct hydro_dataframe *hydro_data, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt,  gsl_rng * rand, FILE *fPtr)//(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt, gsl_rng * rand, FILE *fPtr)
 {
     //function to perform single photon scattering
     int  i=0, index=0, ph_index=0, event_did_occur=0; //variable event_did_occur is to keep track of wether a scattering or absorption actually occured or not,

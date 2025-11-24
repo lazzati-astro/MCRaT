@@ -785,7 +785,7 @@ int main(int argc, char **argv)
                 num_photons_find_new_element+=findContainingHydroCell(phPtr, num_ph, &hydrodata, find_nearest_grid_switch, rng, fPtr);
 
                 //now calculate all the mean free paths (and get a sorted index array)
-                calcMeanFreePath(phPtr, num_ph, all_time_steps, sorted_indexes, &hydrodata, rng, fPtr);
+                calcMeanFreePath(phPtr, num_ph, sorted_indexes, &hydrodata, rng, fPtr);
 
                 find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
                 
@@ -795,7 +795,7 @@ int main(int argc, char **argv)
                     //scatter the photon
                     //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
-                    time_step=photonEvent( phPtr, num_ph, remaining_time, all_time_steps, sorted_indexes, &hydrodata, &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );
+                    time_step=photonEvent( phPtr, num_ph, remaining_time, sorted_indexes, &hydrodata, &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );
                     time_now+=time_step;
                     
                     remaining_time-=time_step; //update the remaining time subtracting off the time that has been accumulated through photon scatterings.

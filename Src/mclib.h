@@ -7,7 +7,7 @@ double *zeroNorm(double *p_ph);
 
 int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_dataframe *hydro_data, int find_nearest_block_switch, gsl_rng * rand, FILE *fPtr);
 
-void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr);
+void calcMeanFreePath(struct photon *ph, int num_ph, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr);
 
 void reverseSortIndexes(void *sorted_indexes, int num_elements, size_t element_size, void *context_array);
 
@@ -20,7 +20,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     
 void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr);
 
-double photonEvent(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, struct hydro_dataframe *hydro_data, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt,  gsl_rng * rand, FILE *fPtr);
+double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_indexes, struct hydro_dataframe *hydro_data, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt,  gsl_rng * rand, FILE *fPtr);
 
 double averagePhotonEnergy(struct photon *ph, int num_ph);
 
