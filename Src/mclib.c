@@ -430,9 +430,9 @@ double *zeroNorm(double *p_ph)
     return p_ph;
 }
 
-int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_dataframe *hydro_data, int find_nearest_block_switch, FILE *fPtr)
+int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_dataframe *hydro_data, int find_nearest_block_switch, gsl_rng * rand, FILE *fPtr)
 {
-    int i=0, min_index=0, ph_block_index=0, num_thread=1, num_photons_find_new_element=0;
+    int i=0, min_index=0, ph_block_index=0, num_thread=1, thread_id=0, num_photons_find_new_element=0;
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
     double ph_phi=0;
     double ph_p_comv[4], ph_p[4], fluid_beta[3], photon_hydro_coord[3];
@@ -441,6 +441,21 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
     num_thread=omp_get_num_threads(); //default is one above if theres no openmp usage
     #endif
 
+    //initialize gsl random number generator fo each thread
+    const gsl_rng_type *rng_t;
+    gsl_rng **rng;
+    gsl_rng_env_setup();
+    rng_t = gsl_rng_ranlxs0;
+
+    rng = (gsl_rng **) malloc((num_thread ) * sizeof(gsl_rng *));
+    rng[0]=rand;
+
+    //#pragma omp parallel for num_threads(nt)
+    for(i=1;i<num_thread;i++)
+    {
+        rng[i] = gsl_rng_alloc (rng_t);
+        gsl_rng_set(rng[i],gsl_rng_get(rand));
+    }
 
     //go through each photon and find the blocks around it and then get the distances to all of those blocks and choose the one thats the shortest distance away
     //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
@@ -535,8 +550,12 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
                     ((ph+i)->comv_p2)=ph_p_comv[2];
                     ((ph+i)->comv_p3)=ph_p_comv[3];
 
+                    #if defined(_OPENMP)
+                        thread_id=omp_get_thread_num();
+                    #endif
+
                     //need to also recalculate the optical depth
-                    calculateOpticalDepth((ph+i), hydro_data, rng, fPtr);
+                    calculateOpticalDepth((ph+i), hydro_data, rng[thread_id], fPtr);
 
                     num_photons_find_new_element+=1;
                 }
@@ -608,7 +627,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
         {
             //fprintf(fPtr,"ph_block Index: %d\n", ph_block_index);
 
-            calculateOpticalDepth((ph+i), hydro_data, rng, fPtr);
+            calculateOpticalDepth((ph+i), hydro_data, rng[thread_id], fPtr);
 
             //put this in to double check that random number is between 0 and 1 (exclusive) because there was a problem with this for parallel case
             rnd_tracker=0;
