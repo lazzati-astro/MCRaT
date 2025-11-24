@@ -557,6 +557,13 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
 
                     //need to also recalculate the optical depth
                     calculateOpticalDepth((ph+i), hydro_data, rng[thread_id], fPtr);
+                    if (((ph+i)->recalc_properties)==1)
+                    {
+                        //if we already needed to recalc the optical depth (due to a scattering or something) else
+                        //so just set to 0 since we already got this done
+                        ((ph+i)->recalc_properties)=0;
+                    }
+
 
                     num_photons_find_new_element+=1;
                 }
@@ -636,7 +643,12 @@ void calcMeanFreePath(struct photon *ph, int num_ph, int *sorted_indexes, struct
                 thread_id=omp_get_thread_num();
             #endif
 
-            calculateOpticalDepth((ph+i), hydro_data, rng[thread_id], fPtr);
+            if (((ph+i)->recalc_properties)==1)
+            {
+                //if we need to recalc the optical depth (due to a scattering or something) else then do so
+                calculateOpticalDepth((ph+i), hydro_data, rng[thread_id], fPtr);
+                ((ph+i)->recalc_properties)=0;
+            }
 
             rnd_tracker=gsl_rng_uniform_pos(rng[thread_id]);
             //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
@@ -1273,6 +1285,10 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_ind
                 //incremement that photons number of scatterings
                 ((ph+ph_index)->num_scatt)+=1;
                 *frame_scatt_cnt+=1; //incrememnt total number of scatterings
+
+                //we need to make sure that the tau for this photon gets recalculated since we have a new comoving
+                //4 momentum
+                ((ph+ph_index)->recalc_properties)=1;
             
             }
                 
