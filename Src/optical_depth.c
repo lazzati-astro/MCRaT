@@ -58,7 +58,7 @@ double calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_da
         getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index], norm_cross_section,  rand, fPtr);
 
         //calculate the thermal tau
-        tau = 1/(thermal_n_dens_lab)/(THOM_X_SECT*(*(norm_cross_section+0))/fluid_factor;
+        tau = 1/(thermal_n_dens_lab)/(THOM_X_SECT*(*(norm_cross_section+0)))/fluid_factor;
 
         //calculate the nonthermal tau
     #endif
