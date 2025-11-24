@@ -1903,7 +1903,7 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
     #endif
 
     #if NONTHERMAL_E_DIST != OFF
-    calculateElectronDistSubgroupDens(hydro_data->electron_dens_subgroup, fPtr)
+        calculateElectronDistSubgroupDens(hydro_data->electron_dens_subgroup, fPtr);
     #endif
         
     return 0;
