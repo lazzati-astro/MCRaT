@@ -634,7 +634,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, double *all_time_steps, int
                 thread_id=omp_get_thread_num();
             #endif
 
-            //calculateOpticalDepth((ph+i), hydro_data, rng[thread_id], fPtr);
+            calculateOpticalDepth((ph+i), hydro_data, rng[thread_id], fPtr);
 
             rnd_tracker=gsl_rng_uniform_pos(rng[thread_id]);
             //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
