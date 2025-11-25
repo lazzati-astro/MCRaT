@@ -577,7 +577,7 @@ double calculateNormBrokenPowerLawEnergyDens(double p1, double p2, double gamma_
         for (i=0; i<hydro_data->num_elements; i++)
         {
 
-            b_field = getMagneticFieldMagnitude(hydro_data, i)
+            b_field = getMagneticFieldMagnitude(hydro_data, i);
             #if NONTHERMAL_E_DIST == POWERLAW
                 energy_dens_per_particle = calculateNormPowerLawEnergyDens(POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX);
             #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
