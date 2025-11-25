@@ -459,11 +459,86 @@ double nonThermalElectronDistIntegrand(double x, void * params)
         #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
             result = singleElectronBrokenPowerLaw(x, POWERLAW_INDEX_1, POWERLAW_INDEX_2, GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK);
         #else
-            #error Unnknown nonthermal electron distribution.
+            #error Unknown nonthermal electron distribution.
         #endif
     #endif
 
     return result;
+}
+
+
+
+double calculateNormPowerLawEnergyDens(double p, double gamma_min, double gamma_max)
+{
+    //calcualte \gamma*m*c^2 times the power law electron distribution
+    double result=0;
+    bool p_is_2 = (fabs(p - 2.0) < 1e-10);
+
+    if (p_is_2)
+    {
+        // Special case: p = 2 (logarithmic distribution)
+        result = log(gamma_max / gamma_min);
+    }
+    else
+    {
+        // General case: p != 2
+        result = (pow(gamma_max, 2.0 - p) - pow(gamma_min, 2.0 - p)) / (2.0 - p);
+    }
+
+    //now multiply by the actual normalization of the distribution
+    result*=powerLawNorm(p, gamma_min, gamma_max);
+
+    /now multiply by electron rest mass
+    result*=(M_EL*C_LIGHT*C_LIGHT);
+    return  result;
+
+}
+
+double calculateNormBrokenPowerLawEnergyDens(double p1, double p2, double gamma_min, double gamma_max, double gamma_break)
+{
+    //calcualte \gamma*m*c^2 times the broken power law electron distribution
+    bool p1_is_2 = (fabs(p1 - 2.0) < 1e-10);
+    bool p2_is_2 = (fabs(p2 - 2.0) < 1e-10);
+    double result=0, term1, term2;
+
+    // Case 1: Neither p1 nor p2 equals 1
+    if (!p1_is_2 && !p2_is_2)
+    {
+        term1 = (pow(gamma_break, 2.0 - p1) - pow(gamma_min, 2.0 - p1)) / (2.0 - p1);
+        term2 = pow(gamma_break, -p1 + p2) *
+                       (pow(gamma_max, 2.0 - p2) - pow(gamma_break, 2.0 - p2)) / (2.0 - p2);
+        result=term1 + term2;
+    }
+    // Case 2: p1 equals 1, p2 does not
+    else if (p1_is_2 && !p2_is_2)
+    {
+        term1 = log(gamma_break / gamma_min);
+        term2 = pow(gamma_break, p2 - 2.0) *
+                       (pow(gamma_max, 2.0 - p2) - pow(gamma_break, 2.0 - p2)) / (2.0 - p2);
+        result = term1 + term2;
+    }
+    // Case 3: p1 does not equal 1, p2 equals 1
+    else if (!p1_is_2 && p2_is_2)
+    {
+        term1 = (pow(gamma_break, -p1 + 2.0) - pow(gamma_min, -p1 + 2.0)) / (-p1 + 2.0);
+        term2 = pow(gamma_break, -p1 + 2.0) * log(gamma_max / gamma_break);
+        result = (term1 + term2);
+    }
+    // Case 4: Both equal 2 (should not occur in practice)
+    else
+    {
+        // Handle this edge case - could use double logarithmic form
+        result = 0;
+    }
+
+    //now multiply by the actual normalization of the distribution
+    result*=brokenPowerLawNorm(p1, p2, gamma_min, gamma_max, gamma_break);
+
+    /now multiply by electron rest mass
+    result*=(M_EL*C_LIGHT*C_LIGHT);
+
+    return result;
+
 }
 
 #if NONTHERMAL_E_DIST != OFF
@@ -487,6 +562,27 @@ double nonThermalElectronDistIntegrand(double x, void * params)
 
             subgroup_dens[i] = result;
         }
-
     }
+
+    double calculateNonthermalElectronDens(struct hydro_dataframe *hydro_data, int hydro_grid_index)
+    {
+        /*
+            set the non-thermal electron energy density to the magnetic field energy density
+        */
+        double result=0;
+
+        double b_field = getMagneticFieldMagnitude(hydro_data, hydro_grid_index);
+        double energy_dens_per_particle=0;
+
+        #if NONTHERMAL_E_DIST == POWERLAW
+            energy_dens_per_particle = calculateNormPowerLawEnergyDens(POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX);
+        #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
+            energy_dens_per_particle = calculateNormBrokenPowerLawEnergyDens(POWERLAW_INDEX_1, POWERLAW_INDEX_2, GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK);
+        #else
+            #error Unknown nonthermal electron distribution.
+        #endif
+
+        return (b_field * b_field)/(8.0*M_PI* energy_dens_per_particle);
+    }
+
 #endif

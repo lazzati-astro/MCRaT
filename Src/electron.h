@@ -30,6 +30,11 @@ double singleMaxwellJuttner(double gamma, double theta);
 
 double nonThermalElectronDistIntegrand(double x, void * params);
 
+double calculateNormPowerLawEnergyDens(double p, double gamma_min, double gamma_max);
+
+double calculateNormBrokenPowerLawEnergyDens(double p1, double p2, double gamma_min, double gamma_max, double gamma_break);
+
+
 #if NONTHERMAL_E_DIST != OFF
     void calculateElectronDistSubgroupDens(double *subgroup_dens, FILE *fPtr);
 #endif
