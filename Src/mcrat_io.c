@@ -1778,6 +1778,10 @@ void hydroDataFrameInitialize(struct hydro_dataframe *hydro_data)
     hydro_data->B0=NULL;
     hydro_data->B1=NULL;
     hydro_data->B2=NULL;
+    #if NONTHERMAL_E_DIST != OFF
+        hydro_data->nonthermal_dens=NULL;
+    #endif
+
 }
 
 void freeHydroDataFrame(struct hydro_dataframe *hydro_data)
@@ -1822,6 +1826,54 @@ void freeHydroDataFrame(struct hydro_dataframe *hydro_data)
     hydro_data->B0=NULL;
     hydro_data->B1=NULL;
     hydro_data->B2=NULL;
+
+    #if NONTHERMAL_E_DIST != OFF
+        free(hydro_data->nonthermal_dens);
+        hydro_data->nonthermal_dens=NULL;
+    #endif
+
+}
+
+void allocateHydroDataFrameMemory(struct hydro_dataframe *hydro_data, int n_elements)
+{
+
+    hydro_data->r0=malloc (n_elements * sizeof (double ));
+    hydro_data->r1=malloc (n_elements * sizeof (double ));
+    hydro_data->r0_size=malloc (n_elements * sizeof (double ));
+    hydro_data->r1_size=malloc (n_elements * sizeof (double ));
+    hydro_data->r=malloc (n_elements * sizeof (double ));
+    hydro_data->theta=malloc (n_elements * sizeof (double ));
+    hydro_data->v0=malloc (n_elements * sizeof (double ));
+    hydro_data->v1=malloc (n_elements * sizeof (double ));
+    hydro_data->dens=malloc (n_elements * sizeof (double ));
+    hydro_data->dens_lab=malloc (n_elements * sizeof (double ));
+    hydro_data->pres=malloc (n_elements * sizeof (double ));
+    hydro_data->temp=malloc (n_elements * sizeof (double ));
+    hydro_data->gamma=malloc (n_elements * sizeof (double ));
+
+    #if NONTHERMAL_E_DIST != OFF
+        hydro_data->nonthermal_dens=malloc (n_elements * sizeof (double ));
+    #endif
+
+    #if B_FIELD_CALC == SIMULATION
+        (hydro_data->B0)= malloc (n_elements * sizeof (double));
+        (hydro_data->B1)= malloc (n_elements * sizeof (double));
+    #endif
+
+
+    #if DIMENSIONS == THREE
+        (hydro_data->r2)=malloc(n_elements*sizeof (double));
+        (hydro_data->r2_size)=malloc(n_elements*sizeof (double));
+    #endif
+
+    #if DIMENSIONS == THREE || DIMENSIONS == TWO_POINT_FIVE
+        (hydro_data->v2)=malloc (n_elements * sizeof (double));
+        #if B_FIELD_CALC==SIMULATION
+            (hydro_data->B2)= malloc (n_elements * sizeof (double));
+        #endif
+    #endif
+
+
 }
 
 int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radius, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr)
@@ -1892,6 +1944,14 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
     //convert hydro coordinates to spherical so we can inject photons, overwriting values, etc.
     fillHydroCoordinateToSpherical(hydro_data);
 
+    #if NONTHERMAL_E_DIST != OFF
+        calculateElectronDistSubgroupDens(hydro_data->electron_dens_subgroup, fPtr);
+        fprintf(fPtr, "electorn dist subgroups: %e %e %e \n", (hydro_data->electron_dens_subgroup)[0], (hydro_data->electron_dens_subgroup)[1], (hydro_data->electron_dens_subgroup)[2]);
+        calculateAverageDimlessTheta(hydro_data, fPtr);
+        calculateNonthermalElectronDens(hydro_data, fPtr)
+    #endif
+
+
     //check for run type see if we need to rewrite any data
     
     #if SIMULATION_TYPE == CYLINDRICAL_OUTFLOW
@@ -1902,11 +1962,7 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
         structuredFireballPrep(hydro_data, fPtr);
     #endif
 
-    #if NONTHERMAL_E_DIST != OFF
-        calculateElectronDistSubgroupDens(hydro_data->electron_dens_subgroup, fPtr);
-        fprintf(fPtr, "electorn dist subgroups: %e %e %e \n", (hydro_data->electron_dens_subgroup)[0], (hydro_data->electron_dens_subgroup)[1], (hydro_data->electron_dens_subgroup)[2]);
-    #endif
-        
+
     return 0;
 }
 

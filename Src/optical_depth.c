@@ -63,7 +63,7 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
 
         //get the nonthermal electron density based on magnetic energy density and electron distribution
         //then multiply by gamma to get the nonthermal electron density in lab frame
-        nonthermal_n_dens_lab=calculateNonthermalElectronDens(hydro_data, ph_block_index)*(hydro_data->gamma)[ph_block_index] ;
+        nonthermal_n_dens_lab=(hydro_data->nonthermal_dens)[ph_block_index]*(hydro_data->gamma)[ph_block_index]; // calculateNonthermalElectronDens(hydro_data, ph_block_index)*(hydro_data->gamma)[ph_block_index] ;
 
         //calculate the nonthermal tau
         for (i=0;i<N_GAMMA;i++)
@@ -127,3 +127,12 @@ double getThermalCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *
     }
 #endif
 
+double calculateThermalScatteringBias(double alpha_parameter, double average_dimless_theta, double cell_dimless_theta, double tau)
+{
+    return fmax(1.0, alpha_parameter*cell_dimless_theta/(average_dimless_theta*tau);
+}
+
+void getScatteringBias(double alpha_parameter, double average_dimless_theta, double cell_dimless_theta, double tau)
+{
+
+}

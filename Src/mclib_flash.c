@@ -328,6 +328,7 @@ void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_
     fflush(fPtr);
     
     //allocate memory to hold processed data in the hydro data frame
+    /*
     (hydro_data->pres)=malloc (r_count * sizeof (double ));
     (hydro_data->dens)=malloc (r_count * sizeof (double ));
     (hydro_data->gamma)=malloc (r_count * sizeof (double ));
@@ -342,6 +343,8 @@ void readAndDecimate(char flash_file[STR_BUFFER], struct hydro_dataframe *hydro_
     (hydro_data->r1)=malloc (r_count * sizeof (double ));//y
     (hydro_data->r)=malloc (r_count * sizeof (double ));//r
     (hydro_data->theta)=malloc (r_count * sizeof (double ));//theta
+    */
+    allocateHydroDataFrameMemory(hydro_data, r_count);
 
 
     //assign values based on r> 0.95*r_inj

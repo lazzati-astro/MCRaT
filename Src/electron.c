@@ -564,25 +564,31 @@ double calculateNormBrokenPowerLawEnergyDens(double p1, double p2, double gamma_
         }
     }
 
-    double calculateNonthermalElectronDens(struct hydro_dataframe *hydro_data, int hydro_grid_index)
+    void calculateNonthermalElectronDens(struct hydro_dataframe *hydro_data, FILE *fPtr)
     {
         /*
             set the non-thermal electron energy density to the magnetic field energy density
         */
+        int i=0;
         double result=0;
-
-        double b_field = getMagneticFieldMagnitude(hydro_data, hydro_grid_index);
+        double b_field = 0;
         double energy_dens_per_particle=0;
 
-        #if NONTHERMAL_E_DIST == POWERLAW
-            energy_dens_per_particle = calculateNormPowerLawEnergyDens(POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX);
-        #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
-            energy_dens_per_particle = calculateNormBrokenPowerLawEnergyDens(POWERLAW_INDEX_1, POWERLAW_INDEX_2, GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK);
-        #else
-            #error Unknown nonthermal electron distribution.
-        #endif
+        for (i=0; i<hydro_data->num_elements; i++)
+        {
 
-        return (b_field * b_field)/(8.0*M_PI* energy_dens_per_particle);
+            b_field = getMagneticFieldMagnitude(hydro_data, i)
+            #if NONTHERMAL_E_DIST == POWERLAW
+                energy_dens_per_particle = calculateNormPowerLawEnergyDens(POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX);
+            #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
+                energy_dens_per_particle = calculateNormBrokenPowerLawEnergyDens(POWERLAW_INDEX_1, POWERLAW_INDEX_2, GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK);
+            #else
+                #error Unknown nonthermal electron distribution.
+            #endif
+
+
+            (hydro_data->nonthermal_dens)[i] =  (b_field * b_field)/(8.0*M_PI* energy_dens_per_particle);
+        }
     }
 
 #endif

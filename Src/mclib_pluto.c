@@ -713,6 +713,7 @@ void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro
 
     
     //allocate memory to hold processed data
+    /*
    (hydro_data->pres)=malloc (r_count * sizeof (double ));
    (hydro_data->v0)=malloc (r_count * sizeof (double ));
    (hydro_data->v1)=malloc (r_count * sizeof (double ));
@@ -744,6 +745,8 @@ void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro
            (hydro_data->B2)= malloc (r_count * sizeof (double));
         #endif
     #endif
+    */
+    allocateHydroDataFrameMemory(hydro_data, r_count);
 
     
     //assign values based on r> 0.95*r_inj
@@ -1401,6 +1404,8 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
                (hydro_data->B2)= malloc (r_count * sizeof (double));
             #endif
         #endif
+
+
         
         fprintf(fPtr, ">> MCRaT is saving the necessary data to memory.\n");
         fflush(fPtr);
