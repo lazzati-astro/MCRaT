@@ -61,10 +61,13 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
         //calculate the thermal tau
         (ph->optical_depths)[0] = 1/(thermal_n_dens_lab)/(THOM_X_SECT*(*(norm_cross_section+0)))/fluid_factor;
 
+        //get the nonthermal electron density based on magnetic energy density and electron distribution
+        //then multiply by gamma to get the nonthermal electron density in lab frame
+        nonthermal_n_dens_lab=calculateNonthermalElectronDens(hydro_data, ph_block_index)*(hydro_data->gamma)[ph_block_index] ;
+
         //calculate the nonthermal tau
         for (i=0;i<N_GAMMA;i++)
         {
-            nonthermal_n_dens_lab=thermal_n_dens_lab;//this is just for testing
             nonthermal_n_dens_lab_i=thermal_n_dens_lab*(hydro_data->electron_dens_subgroup)[i];
             (ph->optical_depths)[i+1] = 1/(nonthermal_n_dens_lab_i)/(THOM_X_SECT*(*(norm_cross_section+(i+1))))/fluid_factor;
         }
