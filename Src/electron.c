@@ -589,7 +589,7 @@ double calculateNormBrokenPowerLawEnergyDens(double p1, double p2, double gamma_
             //this is the number density
             (hydro_data->nonthermal_dens)[i] =  (b_field * b_field)/(8.0*M_PI* energy_dens_per_particle);
 
-            fprintf("in cell %d the particle number density is: %e, the nonthermal number density is: %e\n", i, (hydro_data->dens)[i]/M_P, (hydro_data->nonthermal_dens)[i]);
+            fprintf(fPtr, "in cell %d the particle number density is: %e, the nonthermal number density is: %e\n", i, (hydro_data->dens)[i]/M_P, (hydro_data->nonthermal_dens)[i]);
         }
     }
 
