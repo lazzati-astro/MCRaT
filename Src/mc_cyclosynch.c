@@ -41,6 +41,22 @@ double calcB(double el_dens, double temp)
     #endif
 }
 
+double getMagneticFieldMagnitude(struct hydro_dataframe *hydro_data, int hydro_grid_index)
+{
+    double result=0;
+    #if B_FIELD_CALC == TOTAL_E || B_FIELD_CALC == INTERNAL_E
+        double el_dens= ((hydro_data->dens)[i])/M_P;
+        result=calcB(el_dens,(hydro_data->temp)[hydro_grid_index]);
+    #else
+        #if DIMENSIONS == TWO
+            result=vectorMagnitude((hydro_data->B0)[hydro_grid_index], (hydro_data->B1)[hydro_grid_index], 0);
+        #else
+            result=vectorMagnitude((hydro_data->B0)[hydro_grid_index], (hydro_data->B1)[hydro_grid_index], (hydro_data->B2)[hydro_grid_index]);
+        #endif
+    #endif
+    return result;
+}
+
 double n_el_MJ(double el_dens, double dimlesstheta, double gamma)
 {
     //function to calulate the number density of electrons using the maxwell juttner distribution
@@ -1135,15 +1151,8 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                 {
                     //set parameters fro integration fo phtoons spectrum
                     el_dens= ((hydro_data->dens)[i])/M_P;
-                    #if B_FIELD_CALC == TOTAL_E || B_FIELD_CALC == INTERNAL_E
-                        b_field=calcB(el_dens,(hydro_data->temp)[i]);
-                    #else
-                        #if DIMENSIONS == TWO
-                            b_field=vectorMagnitude((hydro_data->B0)[i], (hydro_data->B1)[i], 0);
-                        #else
-                            b_field=vectorMagnitude((hydro_data->B0)[i], (hydro_data->B1)[i], (hydro_data->B2)[i]);
-                        #endif
-                    #endif
+
+                    b_field=getMagneticFieldMagnitude(hydro_data,i);
                     nu_c=calcCyclotronFreq(b_field);
                     dimlesstheta=calcDimlessTheta( (hydro_data->temp)[i]);
                     //fprintf(fPtr, "B field is:%e %e %e with magnitude %e nu_c is %e at r=%e\n", (hydro_data->B0)[i], (hydro_data->B1)[i], (hydro_data->B2)[i], b_field, nu_c, (hydro_data->r)[i]);
@@ -1349,16 +1358,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
             if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  < rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner < theta_max))
             {
                 
-                el_dens= ((hydro_data->dens)[i])/M_P;
-                #if B_FIELD_CALC == TOTAL_E || B_FIELD_CALC == INTERNAL_E
-                    b_field=calcB(el_dens,(hydro_data->temp)[i]);
-                #else
-                    #if DIMENSIONS == TWO
-                        b_field=vectorMagnitude((hydro_data->B0)[i], (hydro_data->B1)[i], 0);
-                    #else
-                        b_field=vectorMagnitude((hydro_data->B0)[i], (hydro_data->B1)[i], (hydro_data->B2)[i]);
-                    #endif
-                #endif
+                b_field=getMagneticFieldMagnitude(hydro_data,i);
                 nu_c=calcCyclotronFreq(b_field);
 
                 dimlesstheta=calcDimlessTheta( (hydro_data->temp)[i]);
@@ -1459,17 +1459,8 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         //place new photon near the old one and make sure that it has the same nu_c as the other unscattered synch photons
         idx=(*(null_ph_indexes+count_null_indexes-1));
         i=(*ph_orig)[scatt_ph_index].nearest_block_index;
-        
-        el_dens= ((hydro_data->dens)[i])/M_P;
-        #if B_FIELD_CALC == TOTAL_E || B_FIELD_CALC == INTERNAL_E
-            b_field=calcB(el_dens,(hydro_data->temp)[i]);
-        #else
-            #if DIMENSIONS == TWO
-                b_field=vectorMagnitude((hydro_data->B0)[i], (hydro_data->B1)[i], 0);
-            #else
-                b_field=vectorMagnitude((hydro_data->B0)[i], (hydro_data->B1)[i], (hydro_data->B2)[i]);
-            #endif
-        #endif
+
+        b_field=getMagneticFieldMagnitude(hydro_data, i);
         nu_c=calcCyclotronFreq(b_field);
         
         fr_dum=nu_c; //_scatt; //set the frequency directly to the cyclotron frequency
@@ -1586,16 +1577,7 @@ double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, in
         {
             // if the photon isnt a null photon already, see if it should be absorbed
             
-            el_dens= (hydro_data->dens)[(*ph_orig)[i].nearest_block_index]/M_P;//(*(dens+(*ph_orig)[i].nearest_block_index))/M_P;
-            #if B_FIELD_CALC == TOTAL_E || B_FIELD_CALC == INTERNAL_E
-                b_field=calcB(el_dens,(hydro_data->temp)[(*ph_orig)[i].nearest_block_index]);
-            #else
-                #if DIMENSIONS == TWO
-                    b_field=vectorMagnitude((hydro_data->B0)[(*ph_orig)[i].nearest_block_index], (hydro_data->B1)[(*ph_orig)[i].nearest_block_index], 0);
-                #else
-                    b_field=vectorMagnitude((hydro_data->B0)[(*ph_orig)[i].nearest_block_index], (hydro_data->B1)[(*ph_orig)[i].nearest_block_index], (hydro_data->B2)[(*ph_orig)[i].nearest_block_index]);
-                #endif
-            #endif
+            b_field=getMagneticFieldMagnitude(hydro_data, (*ph_orig)[i].nearest_block_index)
             nu_c=calcCyclotronFreq(b_field);
 
             //nu_c=calcCyclotronFreq(calcB(el_dens, (hydro_data->temp)[(*ph_orig)[i].nearest_block_index])); old way //*(temp+(*ph_orig)[i].nearest_block_index)));

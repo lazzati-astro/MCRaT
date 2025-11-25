@@ -12,6 +12,8 @@ double calcDimlessTheta(double temp);
 
 double calcB(double el_dens, double temp);
 
+double getMagneticFieldMagnitude(struct hydro_dataframe *hydro_data, int hydro_grid_index);
+
 double n_el_MJ(double el_dens, double dimlesstheta, double gamma);
 
 double n_el_MB(double el_dens, double dimlesstheta, double gamma);
