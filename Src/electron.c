@@ -488,7 +488,7 @@ double calculateNormPowerLawEnergyDens(double p, double gamma_min, double gamma_
     //now multiply by the actual normalization of the distribution
     result*=powerLawNorm(p, gamma_min, gamma_max);
 
-    /now multiply by electron rest mass
+    //now multiply by electron rest mass
     result*=(M_EL*C_LIGHT*C_LIGHT);
     return  result;
 
@@ -534,7 +534,7 @@ double calculateNormBrokenPowerLawEnergyDens(double p1, double p2, double gamma_
     //now multiply by the actual normalization of the distribution
     result*=brokenPowerLawNorm(p1, p2, gamma_min, gamma_max, gamma_break);
 
-    /now multiply by electron rest mass
+    //now multiply by electron rest mass
     result*=(M_EL*C_LIGHT*C_LIGHT);
 
     return result;
