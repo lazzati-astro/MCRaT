@@ -574,22 +574,24 @@ double calculateNormBrokenPowerLawEnergyDens(double p1, double p2, double gamma_
         double b_field = 0;
         double energy_dens_per_particle=0;
 
+        #if NONTHERMAL_E_DIST == POWERLAW
+            energy_dens_per_particle = calculateNormPowerLawEnergyDens(POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX);
+        #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
+            energy_dens_per_particle = calculateNormBrokenPowerLawEnergyDens(POWERLAW_INDEX_1, POWERLAW_INDEX_2, GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK);
+        #else
+            #error Unknown nonthermal electron distribution.
+        #endif
+
+
         for (i=0; i<hydro_data->num_elements; i++)
         {
 
             b_field = getMagneticFieldMagnitude(hydro_data, i);
-            #if NONTHERMAL_E_DIST == POWERLAW
-                energy_dens_per_particle = calculateNormPowerLawEnergyDens(POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX);
-            #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
-                energy_dens_per_particle = calculateNormBrokenPowerLawEnergyDens(POWERLAW_INDEX_1, POWERLAW_INDEX_2, GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK);
-            #else
-                #error Unknown nonthermal electron distribution.
-            #endif
 
             //this is the number density
             (hydro_data->nonthermal_dens)[i] =  (b_field * b_field)/(8.0*M_PI* energy_dens_per_particle);
 
-            fprintf(fPtr, "in cell %d the particle number density is: %e, the nonthermal number density is: %e\n", i, (hydro_data->dens)[i]/M_P, (hydro_data->nonthermal_dens)[i]);
+            fprintf(fPtr, "in cell %d B: %e, energy_dens_per_particle %e, the particle number density is: %e, the nonthermal number density is: %e\n", i,b_field, energy_dens_per_particle, (hydro_data->dens)[i]/M_P, (hydro_data->nonthermal_dens)[i]);
         }
     }
 
