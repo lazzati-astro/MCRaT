@@ -34,8 +34,12 @@ double calcB(double el_dens, double temp)
     //calc the B field from assuming its some fraction of the matter energy density
     //assume equipartition here
     #if B_FIELD_CALC == INTERNAL_E
+        printf(">> in INTERNAL_E, EPSILON_B is %e \n", EPSILON_B);
+
         return sqrt(EPSILON_B*8*M_PI*3*el_dens*K_B*temp/2);
     #elif B_FIELD_CALC == TOTAL_E
+        printf(">> in TOTAL_E, EPSILON_B is %e \n", EPSILON_B);
+
         //otherwise calculate B from the total energy
         return sqrt(8*M_PI*EPSILON_B*(el_dens*M_P*C_LIGHT*C_LIGHT+4*A_RAD*temp*temp*temp*temp/3));
     #endif
