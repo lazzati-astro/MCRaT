@@ -1493,16 +1493,18 @@ void logspace(double start, double stop, int num, double *array)
     }
 }
 
-void calculateAverageDimlessTheta(struct hydro_dataframe *hydro_data, FILE *fPtr)
-{
-    int i;
-    double result=0, temp=0, volume=0;
-
-    for (i=0; i<hydro_data->num_elements; i++)
+#if NONTHERMAL_E_DIST != OFF
+    void calculateAverageDimlessTheta(struct hydro_dataframe *hydro_data, FILE *fPtr)
     {
-        temp+=calcDimlessTheta((hydro_data->temp)[i])*hydroElementVolume(hydro_data, i);
-        volume+=hydroElementVolume(hydro_data, i);
-    }
+        int i;
+        double result=0, temp=0, volume=0;
 
-    hydro_data->average_dimless_theta=temp/volume;
-}
+        for (i=0; i<hydro_data->num_elements; i++)
+        {
+            temp+=calcDimlessTheta((hydro_data->temp)[i])*hydroElementVolume(hydro_data, i);
+            volume+=hydroElementVolume(hydro_data, i);
+        }
+
+        hydro_data->average_dimless_theta=temp/volume;
+    }
+#endif
