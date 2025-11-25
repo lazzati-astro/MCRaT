@@ -45,7 +45,7 @@ double getMagneticFieldMagnitude(struct hydro_dataframe *hydro_data, int hydro_g
 {
     double result=0;
     #if B_FIELD_CALC == TOTAL_E || B_FIELD_CALC == INTERNAL_E
-        double el_dens= ((hydro_data->dens)[i])/M_P;
+        double el_dens= ((hydro_data->dens)[hydro_grid_index])/M_P;
         result=calcB(el_dens,(hydro_data->temp)[hydro_grid_index]);
     #else
         #if DIMENSIONS == TWO
