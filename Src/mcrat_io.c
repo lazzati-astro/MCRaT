@@ -1944,14 +1944,6 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
     //convert hydro coordinates to spherical so we can inject photons, overwriting values, etc.
     fillHydroCoordinateToSpherical(hydro_data);
 
-    #if NONTHERMAL_E_DIST != OFF
-        calculateElectronDistSubgroupDens(hydro_data->electron_dens_subgroup, fPtr);
-        fprintf(fPtr, "electorn dist subgroups: %e %e %e \n", (hydro_data->electron_dens_subgroup)[0], (hydro_data->electron_dens_subgroup)[1], (hydro_data->electron_dens_subgroup)[2]);
-        calculateAverageDimlessTheta(hydro_data, fPtr);
-        fprintf(fPtr,">> The average dimless temp is %e\n", hydro_data->average_dimless_theta);
-        calculateNonthermalElectronDens(hydro_data, fPtr);
-    #endif
-
 
     //check for run type see if we need to rewrite any data
     
@@ -1962,6 +1954,15 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
     #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
         structuredFireballPrep(hydro_data, fPtr);
     #endif
+
+    #if NONTHERMAL_E_DIST != OFF
+        calculateElectronDistSubgroupDens(hydro_data->electron_dens_subgroup, fPtr);
+        fprintf(fPtr, "electorn dist subgroups: %e %e %e \n", (hydro_data->electron_dens_subgroup)[0], (hydro_data->electron_dens_subgroup)[1], (hydro_data->electron_dens_subgroup)[2]);
+        calculateAverageDimlessTheta(hydro_data, fPtr);
+        fprintf(fPtr,">> The average dimless temp is %e\n", hydro_data->average_dimless_theta);
+        calculateNonthermalElectronDens(hydro_data, fPtr);
+    #endif
+
 
 
     return 0;
