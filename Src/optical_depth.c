@@ -132,7 +132,7 @@ double calculateThermalScatteringBias(double alpha_parameter, double average_dim
     return fmax(1.0, alpha_parameter*cell_dimless_theta/(average_dimless_theta*tau);
 }
 
-void getScatteringBias(double alpha_parameter, double average_dimless_theta, double cell_dimless_theta, double tau)
+double calculateNonthermalScatteringBias(double thermal_scatt_bias, double thermal_tau, double nonthermal_tau)
 {
-
+    return thermal_scatt_bias*thermal_tau/nonthermal_tau;
 }
