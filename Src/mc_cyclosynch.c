@@ -1577,7 +1577,7 @@ double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, in
         {
             // if the photon isnt a null photon already, see if it should be absorbed
             
-            b_field=getMagneticFieldMagnitude(hydro_data, (*ph_orig)[i].nearest_block_index)
+            b_field=getMagneticFieldMagnitude(hydro_data, (*ph_orig)[i].nearest_block_index);
             nu_c=calcCyclotronFreq(b_field);
 
             //nu_c=calcCyclotronFreq(calcB(el_dens, (hydro_data->temp)[(*ph_orig)[i].nearest_block_index])); old way //*(temp+(*ph_orig)[i].nearest_block_index)));
