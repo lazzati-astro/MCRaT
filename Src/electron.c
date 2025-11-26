@@ -18,6 +18,8 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
         double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
         double gamma_min, gamma_max;
 
+        random_num=1; //for testing
+
         if (cumulative_tau/(ph->total_optical_depth) >= random_num)
         {
             //generate a thermal electron
@@ -32,8 +34,10 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
             {
                 subgroup_tau_1=cumulative_tau+(ph->scattering_bias)[i]*(ph->optical_depths)[i];
                 subgroup_tau_2=subgroup_tau_1+(ph->scattering_bias)[i+1]*(ph->optical_depths)[i+1];
+                fprintf(fPtr, "iteration %d: %e %e\n",i, subgroup_tau_1/(ph->total_optical_depth), subgroup_tau_2/(ph->total_optical_depth));
                 if ((subgroup_tau_1/(ph->total_optical_depth) < random_num) && (random_num <= subgroup_tau_2/(ph->total_optical_depth)))
                 {
+                    fprintf(fPtr, "in if\n");
                     result=i;
                 }
                 cumulative_tau=subgroup_tau_1;
@@ -42,17 +46,19 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
             if ((i==N_GAMMA-1) && (result==-1))
             {
                 //none of the subgroups were chosen, so we know the last electron dist subgroup has to be used
+                fprintf(fPtr, "Choosing max gamma\n");
                 result=N_GAMMA;
             }
 
             gamma_min = log10(GAMMA_MIN) + i * dgamma;
             gamma_max = gamma_min + dgamma;
+            fprintf(fPtr, "chosen gamma range of %d: %e %e\n",result, pow(10, gamma_min), pow(10,gamma_max));
 
-            singleNonThermalElectron(el_p, ph_p, gamma_min, gamma_max, rand, fPtr);
+            singleNonThermalElectron(el_p, ph_p, pow(10, gamma_min), pow(10,gamma_max), rand, fPtr);
         }
 
-
     #endif
+
     return result;
 }
 
