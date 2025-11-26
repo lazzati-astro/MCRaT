@@ -225,6 +225,11 @@ struct hydro_dataframe
 #include "electron.h"
 
 
+//if the user doesnt specify NONTHERMAL_E_DIST set it to be off
+#ifndef NONTHERMAL_E_DIST
+    #define NONTHERMAL_E_DIST OFF
+#endif
+
 //if the user specifies the NONTHERMAL_E_DIST then they need to also specify
 // TAU_CALCULATION = TABLE to use the tabulated cross sectional values
 #if NONTHERMAL_E_DIST != OFF
@@ -265,7 +270,7 @@ struct hydro_dataframe
 #endif
 
 //take care of synchrotron defaults here
-#if CYCLOSYNCHROTRON_SWITCH == ON
+#ifdef CYCLOSYNCHROTRON_SWITCH
 
     //if the percentage of max photon that will be used to create the energy bins isnt defined, define it to be 10%, also applies to emiting synch photons
     #ifndef CYCLOSYNCHROTRON_REBIN_E_PERC
@@ -282,22 +287,20 @@ struct hydro_dataframe
         #define CYCLOSYNCHROTRON_REBIN_ANG_PHI 10 //0.5
     #endif
 
-    //if the user hasnt defined anything for how to calculate the B field, assume that they want it calculated from the total energy
-    #ifndef B_FIELD_CALC
-        #define B_FIELD_CALC TOTAL_E
-    #endif
-    //it is defined therefore see if EPSILON_B has been set and B_FIELD_CALC != SIMULATION
-    #if B_FIELD_CALC == TOTAL_E || B_FIELD_CALC == INTERNAL_E
-        //see if epsilon_b has been set
-        #ifndef EPSILON_B
-            //if not set it to be 0.5 by default
-            #define EPSILON_B 0.5
+    #if NONTHERMAL_E_DIST == OFF
+        //if the user hasnt defined anything for how to calculate the B field, assume that they want it calculated from the total energy
+        #ifndef B_FIELD_CALC
+            #define B_FIELD_CALC TOTAL_E
+        #endif
+        //it is defined therefore see if EPSILON_B has been set and B_FIELD_CALC != SIMULATION
+        #if B_FIELD_CALC == TOTAL_E || B_FIELD_CALC == INTERNAL_E
+            //see if epsilon_b has been set
+            #ifndef EPSILON_B
+                //if not set it to be 0.5 by default
+                #define EPSILON_B 0.5
+            #endif
         #endif
     #endif
-#else
-    //if its not defined set it to be off by default
-    #define CYCLOSYNCHROTRON_SWITCH OFF
-
 #endif
 
 #if NONTHERMAL_E_DIST != OFF
