@@ -156,6 +156,7 @@ struct photon
     double time_to_scatter; //the sampled mean free path of the photon divided by C_LIGHT
     #if NONTHERMAL_E_DIST != OFF
         double optical_depths[1+N_GAMMA]; //the optical depths that are calculated for thermal + non-thermal electrons with the nonthermal electron subgroups
+        double scattering_bias[1+N_GAMMA];
     #endif
     //save the total calculated optical depth, if we only have thermal electrons this optical depth is that calcualted value otherwise it includes thermal-non-thermal electrons and the biases
     double total_optical_depth;
