@@ -4,6 +4,8 @@
 
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr);
 
+void rotateElectron(double *el_p, double *ph_p, FILE *fPtr);
+
 double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr);
 
 double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr);

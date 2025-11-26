@@ -7,10 +7,7 @@
 void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr)
 {
     //generates an electron with random energy
-    double gamma=0, beta=0, phi=0, theta=0, ph_theta=0, ph_phi=0;
-    gsl_matrix *rot= gsl_matrix_calloc (3, 3); //create matrix thats 3x3 to do rotation
-    gsl_vector_view el_p_prime ; //create vector to hold rotated electron 4 momentum
-    gsl_vector *result=gsl_vector_alloc (3);
+    double gamma=0, beta=0, phi=0, theta=0;
 
     gamma=sampleThermalElectron(temp, rand, fPtr);
 
@@ -30,6 +27,16 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
     *(el_p+3)=gamma*(M_EL)*(C_LIGHT)*beta*sin(theta)*cos(phi);
 
     //printf("Old: %e, %e, %e,%e\n", *(el_p+0), *(el_p+1), *(el_p+2), *(el_p+3));
+    rotateElectron(el_p, ph_p, fPtr);
+}
+
+void rotateElectron(double *el_p, double *ph_p, FILE *fPtr)
+{
+    double ph_theta=0, ph_phi=0;
+    gsl_matrix *rot= gsl_matrix_calloc (3, 3); //create matrix thats 3x3 to do rotation
+    gsl_vector_view el_p_prime ; //create vector to hold rotated electron 4 momentum
+    gsl_vector *result=gsl_vector_alloc (3);
+
 
     el_p_prime=gsl_vector_view_array((el_p+1), 3);
 
@@ -70,8 +77,8 @@ void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FIL
     printf("Final EL_P_vec: %e, %e, %e,%e\n", *(el_p+0), gsl_vector_get(&el_p_prime.vector,0), gsl_vector_get(&el_p_prime.vector,1), gsl_vector_get(&el_p_prime.vector,2));
     */
 
-
     gsl_matrix_free (rot);gsl_vector_free(result);
+
 }
 
 double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr)
