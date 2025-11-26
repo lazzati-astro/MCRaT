@@ -34,7 +34,7 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
                 subgroup_tau_2=subgroup_tau_1+(ph->scattering_bias)[i+1]*(ph->optical_depths)[i+1];
                 if ((subgroup_tau_1<random_num) && (random_num<=subgroup_tau_2))
                 {
-                    result=i
+                    result=i;
                 }
                 cumulative_tau=subgroup_tau_1;
             }
