@@ -15,6 +15,9 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
         int i=0;
         double cumulative_tau=(ph->scattering_bias)[i]*(ph->optical_depths)[i], random_num=gsl_rng_uniform_pos(rand);
         double subgroup_tau_1=0, subgroup_tau_2=0;
+        double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
+        double gamma_min, gamma_max;
+
         if (cumulative_tau/(ph->total_optical_depth) >= random_num)
         {
             //generate a thermal electron
@@ -29,21 +32,19 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
             {
                 subgroup_tau_1=cumulative_tau+(ph->scattering_bias)[i]*(ph->optical_depths)[i];
                 subgroup_tau_2=subgroup_tau_1+(ph->scattering_bias)[i+1]*(ph->optical_depths)[i+1];
-                if (subgroup_tau_1<random_num) && (random_num<=subgroup_tau_2)
+                if ((subgroup_tau_1<random_num) && (random_num<=subgroup_tau_2))
                 {
                     result=i
                 }
                 cumulative_tau=subgroup_tau_1;
             }
 
-            if (i==N_GAMMA-1) && (result==-1)
+            if ((i==N_GAMMA-1) && (result==-1))
             {
                 //none of the subgroups were chosen, so we know the last electron dist subgroup has to be used
                 result=N_GAMMA;
             }
 
-            double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
-            double gamma_min, gamma_max;
             gamma_min = log10(GAMMA_MIN) + i * dgamma;
             gamma_max = gamma_min + dgamma;
 
