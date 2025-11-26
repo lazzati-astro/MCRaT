@@ -2,7 +2,11 @@
 // Created by Tyler Parsotan on 11/10/25.
 //
 
+int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photon *ph, gsl_rng * rand, FILE *fPtr);
+
 void singleThermalElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr);
+
+void singleNonThermalElectron(double *el_p, double *ph_p, double gamma_min, double gamma_max, gsl_rng * rand, FILE *fPtr);
 
 void rotateElectron(double *el_p, double *ph_p, FILE *fPtr);
 
@@ -10,7 +14,7 @@ double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr);
 
 double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr);
 
-double sampleNonthermalElectron(double p, gsl_rng * rand, FILE *fPtr);
+double sampleNonthermalElectron(gsl_rng * rand, FILE *fPtr);
 
 double samplePowerLaw(double p, double gamma_min, double gamma_max, gsl_rng * rand, FILE *fPtr);
 
