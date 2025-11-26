@@ -126,10 +126,18 @@ double getThermalCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *
 #if NONTHERMAL_E_DIST != OFF
     double getNonThermalCrossSection(double photon_comv_e, double *subgroup_interpolated_results, gsl_rng *rand, FILE *fPtr)
     {
+        int i=0;
         double normalized_photon_comv_e=photon_comv_e/(M_EL*C_LIGHT ); //h*nu / mc^2 , units of p0 is erg/c
 
         interpolateSubgroupNonThermalHotCrossSection(log10(normalized_photon_comv_e), subgroup_interpolated_results, rand, fPtr);
         //fprintf(fPtr, "NonThermal test: %g %g %g %g\n", log10(normalized_photon_comv_e), *(subgroup_interpolated_results+0), *(subgroup_interpolated_results+1), *(subgroup_interpolated_results+2));
+
+        //the interpolated results are returned as log(cross section/thompson cross section) so we want to raise to
+        //power 10 to get back to the ratio  cross section/thompson cross section that we expect from this function
+        for (i=0;i<N_GAMMA+1;i++)
+        {
+            *(subgroup_interpolated_results+i) = pow(10, *(subgroup_interpolated_results+i));
+        }
 
     }
 #endif
