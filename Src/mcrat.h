@@ -260,6 +260,10 @@ struct hydro_dataframe
     #endif
 #endif
 
+#ifndef CYCLOSYNCHROTRON_SWITCH
+    #define CYCLOSYNCHROTRON_SWITCH OFF
+#endif
+
 //take care of synchrotron defaults here
 #if CYCLOSYNCHROTRON_SWITCH == ON
 
