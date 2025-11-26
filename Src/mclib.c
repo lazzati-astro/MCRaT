@@ -655,7 +655,7 @@ void calcMeanFreePath(struct photon *ph, int num_ph, int *sorted_indexes, struct
 
             //mfp=(-1)*log(rnd_tracker)*(M_P/((n_dens_tmp))/(THOM_X_SECT)); ///(1.0-beta*((n_cosangle)))) ; // the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths IN COMOV FRAME for reference
 
-            mfp = -1.0*((ph+i)->total_optical_depth)*log(rnd_tracker);
+            mfp = (-1.0/(ph+i)->total_optical_depth)*log(rnd_tracker);
         }
         else
         {

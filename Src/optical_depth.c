@@ -22,8 +22,6 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
 
     ph_block_index=ph->nearest_block_index;
 
-    //save values
-    thermal_n_dens_lab = (hydro_data->dens_lab)[ph_block_index]/M_P;
 
     #if DIMENSIONS == THREE
         hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[ph_block_index], (hydro_data->v1)[ph_block_index], (hydro_data->v2)[ph_block_index], (hydro_data->r0)[ph_block_index], (hydro_data->r1)[ph_block_index], (hydro_data->r2)[ph_block_index]);
@@ -50,16 +48,19 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
 
     fluid_factor=(1.0-beta*n_cosangle);
 
+    //save values
+    thermal_n_dens_lab = (hydro_data->dens_lab)[ph_block_index]/M_P;
+
     //TODO: extend this to the non-thermal electron dist
     #if NONTHERMAL_E_DIST == OFF
         getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index], &norm_cross_section,  rand, fPtr);
-        (ph->total_optical_depth) = 1/(thermal_n_dens_lab)/(THOM_X_SECT*norm_cross_section)/fluid_factor;
+        (ph->total_optical_depth) = (thermal_n_dens_lab)*(THOM_X_SECT*norm_cross_section)*fluid_factor;
         tau = (ph->total_optical_depth);
     #else
         getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index], norm_cross_section,  rand, fPtr);
 
         //calculate the thermal tau
-        (ph->optical_depths)[0] = 1/(thermal_n_dens_lab)/(THOM_X_SECT*(*(norm_cross_section+0)))/fluid_factor;
+        (ph->optical_depths)[0] = (thermal_n_dens_lab)*(THOM_X_SECT*(*(norm_cross_section+0)))*fluid_factor;
         fprintf(fPtr, "thermal tau: %e\n", (ph->optical_depths)[0] );
 
         //get the nonthermal electron density based on magnetic energy density and electron distribution
