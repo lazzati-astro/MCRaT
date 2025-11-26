@@ -1082,6 +1082,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_ind
 {
     //function to perform single photon scattering
     int  i=0, index=0, ph_index=0, event_did_occur=0; //variable event_did_occur is to keep track of wether a scattering or absorption actually occured or not,
+    int scattering_subgroup=0; //this is meant for when we have nonthermal electrons to identify which subgroup of electrons we may scatter with
     double scatt_time=0, old_scatt_time=0; //keep track of new time to scatter vs old time to scatter to know how much to incrementally propagate the photons if necessary
     double phi=0, theta=0; //phi and theta for the 4 momentum 
     double ph_phi=0, flash_vx=0, flash_vy=0, flash_vz=0, fluid_temp=0;    
