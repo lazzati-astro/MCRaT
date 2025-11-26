@@ -14,7 +14,7 @@ double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr);
 
 double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr);
 
-double sampleNonthermalElectron(gsl_rng * rand, FILE *fPtr);
+double sampleNonThermalElectron(gsl_rng * rand, FILE *fPtr);
 
 double samplePowerLaw(double p, double gamma_min, double gamma_max, gsl_rng * rand, FILE *fPtr);
 

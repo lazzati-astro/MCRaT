@@ -222,7 +222,7 @@ double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr)
     return gamma;
 }
 
-double sampleNonthermalElectron(gsl_rng * rand, FILE *fPtr)
+double sampleNonThermalElectron(gsl_rng * rand, FILE *fPtr)
 {
     double result=0;
     #if NONTHERMAL_E_DIST == POWERLAW
