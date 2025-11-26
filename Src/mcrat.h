@@ -261,7 +261,7 @@ struct hydro_dataframe
 #endif
 
 //take care of synchrotron defaults here
-#ifdef CYCLOSYNCHROTRON_SWITCH
+#if CYCLOSYNCHROTRON_SWITCH == ON
 
     //if the percentage of max photon that will be used to create the energy bins isnt defined, define it to be 10%, also applies to emiting synch photons
     #ifndef CYCLOSYNCHROTRON_REBIN_E_PERC
