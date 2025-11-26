@@ -16,7 +16,7 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
     #if NONTHERMAL_E_DIST == OFF
         double norm_cross_section=0;
     #else
-        double norm_cross_section[1+N_GAMMA], nonthermal_n_dens_lab_i, nonthermal_n_dens_lab;
+        double norm_cross_section[1+N_GAMMA], nonthermal_n_dens_lab_i, nonthermal_n_dens_lab, thermal_bias;
     #endif
 
 
@@ -61,7 +61,11 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
 
         //calculate the thermal tau
         (ph->optical_depths)[0] = (thermal_n_dens_lab)*(THOM_X_SECT*(*(norm_cross_section+0)))*fluid_factor;
-        //fprintf(fPtr, "thermal tau: %e\n", (ph->optical_depths)[0] );
+        fprintf(fPtr, "thermal tau: %e\n", (ph->optical_depths)[0] );
+
+        //set to 1 for now, this is most likely the best value for us
+        thermal_bias= 1.0; //calculateThermalScatteringBias(1, (hydro_data->average_dimless_theta, (hydro_data->temp)[ph_block_index], (ph->optical_depths)[0])
+        (ph->scattering_bias)[0]=thermal_bias;
 
         //get the nonthermal electron density based on magnetic energy density and electron distribution
         //then multiply by gamma to get the nonthermal electron density in lab frame
@@ -72,19 +76,20 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
         {
             nonthermal_n_dens_lab_i=nonthermal_n_dens_lab*(hydro_data->electron_dens_subgroup)[i];
             (ph->optical_depths)[i+1] = (nonthermal_n_dens_lab_i)*(THOM_X_SECT*(*(norm_cross_section+(i+1))))*fluid_factor;
-            //fprintf(fPtr, "nonthermal_n_dens_lab_i: %e, subgroup_dens: %e, norm_cross_section: %e ith tau: %e\n", nonthermal_n_dens_lab_i, (hydro_data->electron_dens_subgroup)[i], *(norm_cross_section+(i+1)), (ph->optical_depths)[i+1] );
-            //fflush(fPtr);
+            (ph->scattering_bias)[i+1]=calculateNonthermalScatteringBias((ph->scattering_bias)[0], (ph->optical_depths)[0],(ph->optical_depths)[i+1]) ;
+            fprintf(fPtr, "nonthermal_n_dens_lab_i: %e, subgroup_dens: %e, norm_cross_section: %e ith tau: %e, ith bias: %e\n", nonthermal_n_dens_lab_i, (hydro_data->electron_dens_subgroup)[i], *(norm_cross_section+(i+1)), (ph->optical_depths)[i+1], (ph->scattering_bias)[i+1] );
+            fflush(fPtr);
         }
 
         tau=0;
         for (i=0;i<N_GAMMA+1;i++)
         {
-            tau += (ph->optical_depths)[i];
+            tau += (ph->scattering_bias)[i]*(ph->optical_depths)[i];
         }
         (ph->total_optical_depth) = tau;
 
-        //fprintf(fPtr, "total tau: %e\n", (ph->total_optical_depth) );
-        //fflush(fPtr);
+        fprintf(fPtr, "total tau: %e\n", (ph->total_optical_depth) );
+        fflush(fPtr);
 
     #endif
 
@@ -143,9 +148,11 @@ double getThermalCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *
     }
 #endif
 
-double calculateThermalScatteringBias(double alpha_parameter, double average_dimless_theta, double cell_dimless_theta, double tau)
+double calculateThermalScatteringBias(double alpha_parameter, double average_dimless_theta, double cell_temp, double tau)
 {
-    return fmax(1.0, alpha_parameter*cell_dimless_theta/(average_dimless_theta*tau));
+    double result=0, cell_dimless_theta=calcDimlessTheta(cell_temp);
+    result=fmax(1.0, alpha_parameter*/(average_dimless_theta*tau));
+    return result;
 }
 
 double calculateNonthermalScatteringBias(double thermal_scatt_bias, double thermal_tau, double nonthermal_tau)
