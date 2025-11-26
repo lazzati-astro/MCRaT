@@ -336,15 +336,15 @@ struct hydro_dataframe
 
     //if the user hasnt defined anything for how to calculate the B field, assume that they want it calculated from the total energy
     #ifndef B_FIELD_CALC
-        #error Specify B_FIELD_CALC in mcrat_input.h file using B_FIELD_CALC
+        #error B_FIELD_CALC needs to be defined with NONTHERMAL_E_DIST. Specify B_FIELD_CALC in mcrat_input.h file using B_FIELD_CALC.
     #endif
 
     //it is defined therefore see if EPSILON_B has been set and B_FIELD_CALC != SIMULATION
     #if B_FIELD_CALC == TOTAL_E || B_FIELD_CALC == INTERNAL_E
     //see if epsilon_b has been set
         #ifndef EPSILON_B
-        //dont assume anything here
-        #error Specify EPSILON_B in mcrat_input.h file using EPSILON_B
+            //dont assume anything here
+            #error EPSILON_B needs to be defined with this B_FIELD_CALC setting. Specify EPSILON_B in mcrat_input.h file using EPSILON_B
         #endif
     #endif
 
