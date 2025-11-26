@@ -151,7 +151,7 @@ double getThermalCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *
 double calculateThermalScatteringBias(double alpha_parameter, double average_dimless_theta, double cell_temp, double tau)
 {
     double result=0, cell_dimless_theta=calcDimlessTheta(cell_temp);
-    result=fmax(1.0, alpha_parameter*/(average_dimless_theta*tau));
+    result=fmax(1.0, alpha_parameter*cell_dimless_theta*cell_dimless_theta/(average_dimless_theta*average_dimless_theta*tau));
     return result;
 }
 
