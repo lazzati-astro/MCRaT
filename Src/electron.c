@@ -4,12 +4,93 @@
 
 #include "mcrat.h"
 
-void singleElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr)
+int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photon *ph, gsl_rng * rand, FILE *fPtr)
+{
+    int result=-1;
+    #if NONTHERMAL_E_DIST == OFF
+        singleThermalElectron(el_p, temp, ph_p, rand, fPtr);
+        result=0; //se tthis to be 0 to be consistent with the nonthermal electron dist case below
+    #else
+        //determine if we need a thermal or nonthermal electron and if nonthermal from which subgroup
+        int i=0;
+        double cumulative_tau=(ph->scattering_bias)[i]*(ph->optical_depths)[i], random_num=gsl_rng_uniform_pos(rand);
+        double subgroup_tau_1=0, subgroup_tau_2=0;
+        if (cumulative_tau/(ph->total_optical_depth) >= random_num)
+        {
+            //generate a thermal electron
+            singleThermalElectron(el_p, temp, ph_p, rand, fPtr);
+            //set the subgroup to be 0, for thermal electrons we will need the scatter biasing after the scattering
+            result=0;
+        }
+        else
+        {
+            //need to keep adding the nonthermal eelctorn subgroup taus to see which subgroup we will choose
+            for (i=1;i<N_GAMMA;i++)
+            {
+                subgroup_tau_1=cumulative_tau+(ph->scattering_bias)[i]*(ph->optical_depths)[i];
+                subgroup_tau_2=subgroup_tau_1+(ph->scattering_bias)[i+1]*(ph->optical_depths)[i+1];
+                if (subgroup_tau_1<random_num) && (random_num<=subgroup_tau_2)
+                {
+                    result=i
+                }
+                cumulative_tau=subgroup_tau_1;
+            }
+
+            if (i==N_GAMMA-1) && (result==-1)
+            {
+                //none of the subgroups were chosen, so we know the last electron dist subgroup has to be used
+                result=N_GAMMA;
+            }
+
+            double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
+            double gamma_min, gamma_max;
+            gamma_min = log10(GAMMA_MIN) + i * dgamma;
+            gamma_max = gamma_min + dgamma;
+
+            singleNonThermalElectron(el_p, ph_p, gamma_min, gamma_max, rand, fPtr);
+        }
+
+
+    #endif
+    return result;
+}
+
+void singleThermalElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr)
 {
     //generates an electron with random energy
     double gamma=0, beta=0, phi=0, theta=0;
 
     gamma=sampleThermalElectron(temp, rand, fPtr);
+
+    //fprintf(fPtr,"Chosen Gamma: %e\n",gamma);
+
+    beta=sqrt( 1- (1/(gamma*gamma)) );
+    //printf("Beta is: %e in singleElectron\n", beta);
+    phi=gsl_rng_uniform(rand)*2*M_PI;
+
+    theta=sampleElectronTheta(beta, rand, fPtr);
+    //fprintf(fPtr,"Beta: %e\tPhi: %e\tTheta: %e\n",beta,phi, theta);
+    //fill in electron 4 momentum NOT SURE WHY THE ORDER IS AS SUCH SEEMS TO BE E/c, pz,py,px!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    *(el_p+0)=gamma*(M_EL)*(C_LIGHT);
+    *(el_p+1)=gamma*(M_EL)*(C_LIGHT)*beta*cos(theta);
+    *(el_p+2)=gamma*(M_EL)*(C_LIGHT)*beta*sin(theta)*sin(phi);
+    *(el_p+3)=gamma*(M_EL)*(C_LIGHT)*beta*sin(theta)*cos(phi);
+
+    //printf("Old: %e, %e, %e,%e\n", *(el_p+0), *(el_p+1), *(el_p+2), *(el_p+3));
+    rotateElectron(el_p, ph_p, fPtr);
+}
+
+void singleNonThermalElectron(double *el_p, double *ph_p, double gamma_min, double gamma_max, gsl_rng * rand, FILE *fPtr)
+{
+    //generates an electron with random energy
+    double gamma=0, beta=0, phi=0, theta=0;
+
+    //genertae a nonthermal electron within the subgroup that we had identified
+    while (gamma<gamma_min && gamma>gamma_max)
+    {
+        gamma=sampleNonThermalElectron(rand, fPtr);
+    }
 
     //fprintf(fPtr,"Chosen Gamma: %e\n",gamma);
 
@@ -141,10 +222,18 @@ double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr)
     return gamma;
 }
 
-double sampleNonthermalElectron(double p, gsl_rng * rand, FILE *fPtr)
+double sampleNonthermalElectron(gsl_rng * rand, FILE *fPtr)
 {
+    double result=0;
+    #if NONTHERMAL_E_DIST == POWERLAW
+        result = samplePowerLaw(POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX, rand, fPtr);
+    #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
+        result = sampleBrokenPowerLaw(POWERLAW_INDEX_1, POWERLAW_INDEX_2, GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK, rand, fPtr);
+    #else
+        result=0;
+    #endif
 
-    return 0;
+    return result;
 }
 
 double samplePowerLaw(double p, double gamma_min, double gamma_max, gsl_rng * rand, FILE *fPtr)

@@ -1202,8 +1202,8 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_ind
             #endif
             
             //exit(0);
-            //second we generate a thermal electron at the correct temperature
-            singleElectron(el_p_comov, fluid_temp, ph_p_comov, rand, fPtr);
+            //second we generate a thermal/non-thermal electron at the correct temperature
+            scattering_subgroup=generateSingleElectron(el_p_comov, fluid_temp, ph_p_comov, (ph+ph_index), rand, fPtr);
             
             /*
             if (((ph+ph_index)->type) == COMPTONIZED_PHOTON)
