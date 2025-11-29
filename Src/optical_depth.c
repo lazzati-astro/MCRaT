@@ -64,8 +64,11 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
         fprintf(fPtr, "thermal tau: %e\n", (ph->optical_depths)[0] );
 
         //set to 1 for now, this is most likely the best value for us
-        thermal_bias= 1.0; //calculateThermalScatteringBias(1, (hydro_data->average_dimless_theta, (hydro_data->temp)[ph_block_index], (ph->optical_depths)[0])
+        thermal_bias= calculateThermalScatteringBias(1, (hydro_data->average_dimless_theta, (hydro_data->temp)[ph_block_index], (ph->optical_depths)[0])
         (ph->scattering_bias)[0]=thermal_bias;
+
+        //todo: if thermal_n_dens_lab==0, we need to normalize the nonthermal scattering biases by the first subgroup's
+        //scattering bias
 
         //get the nonthermal electron density based on magnetic energy density and electron distribution
         //then multiply by gamma to get the nonthermal electron density in lab frame
@@ -152,10 +155,13 @@ double calculateThermalScatteringBias(double alpha_parameter, double average_dim
 {
     double result=0, cell_dimless_theta=calcDimlessTheta(cell_temp);
     result=fmax(1.0, alpha_parameter*cell_dimless_theta*cell_dimless_theta/(average_dimless_theta*average_dimless_theta*tau));
-    return result;
+    return 1.0; //result; //set to 1 for testing/may be the best value for us
 }
 
-double calculateNonthermalScatteringBias(double thermal_scatt_bias, double thermal_tau, double nonthermal_tau)
+double calculateNonthermalScatteringBias(double initial_scatt_bias, double initial_tau, double nonthermal_tau)
 {
-    return thermal_scatt_bias*thermal_tau/nonthermal_tau;
+    //initial_scatt_bias is typically the thermal electron scattering bias and initial_tau is typically the optical depth
+    // of scattering with thermal electrons. If we have no thermal electrons, these get replaced with the bias/tau of
+    //interacting with electrons in the first subgroup
+    return initial_scatt_bias*initial_tau/nonthermal_tau;
 }
