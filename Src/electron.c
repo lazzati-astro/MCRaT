@@ -30,10 +30,11 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
         else
         {
             //need to keep adding the nonthermal eelctorn subgroup taus to see which subgroup we will choose
+            cumulative_tau=0;
             for (i=1;i<N_GAMMA;i++)
             {
-                subgroup_tau_1=cumulative_tau+(ph->scattering_bias)[i]*(ph->optical_depths)[i];
-                subgroup_tau_2=subgroup_tau_1+(ph->scattering_bias)[i+1]*(ph->optical_depths)[i+1];
+                subgroup_tau_1=cumulative_tau+(ph->scattering_bias)[i-1]*(ph->optical_depths)[i-1];
+                subgroup_tau_2=subgroup_tau_1+(ph->scattering_bias)[i]*(ph->optical_depths)[i];
                 fprintf(fPtr, "iteration %d: %e %e\n",i, subgroup_tau_1/(ph->total_optical_depth), subgroup_tau_2/(ph->total_optical_depth));
                 if ((subgroup_tau_1/(ph->total_optical_depth) < random_num) && (random_num <= subgroup_tau_2/(ph->total_optical_depth)))
                 {
