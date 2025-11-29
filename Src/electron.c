@@ -55,7 +55,7 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
             //result because we start iterating at i=1 instead of 0. This gives result as the index in the
             //photon struct and the index for calcualting the gammamin/max interval of the subgroup from the
             //hot cross section calculations
-            gamma_min = log10(GAMMA_MIN) + result * dgamma;
+            gamma_min = log10(GAMMA_MIN) + (result-1) * dgamma;
             gamma_max = gamma_min + dgamma;
             fprintf(fPtr, "chosen gamma range of %d: %e %e\n",result, pow(10, gamma_min), pow(10,gamma_max));
 
