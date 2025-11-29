@@ -16,6 +16,7 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
     #if NONTHERMAL_E_DIST == OFF
         double norm_cross_section=0;
     #else
+        int i_start=0;
         double norm_cross_section[1+N_GAMMA], nonthermal_n_dens_lab_i, nonthermal_n_dens_lab, thermal_bias, norm_optical_depth;
     #endif
 
