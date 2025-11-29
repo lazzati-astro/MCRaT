@@ -1244,6 +1244,9 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_ind
                     fflush(fPtr);
                 }
                  */
+
+
+
                 
                 #if STOKES_SWITCH == ON
                 {

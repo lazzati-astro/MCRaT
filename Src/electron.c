@@ -39,6 +39,7 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
                 {
                     fprintf(fPtr, "in if\n");
                     result=i;
+                    i=N_GAMMA; //set this so we can exit the loop
                 }
                 cumulative_tau=subgroup_tau_1;
             }
