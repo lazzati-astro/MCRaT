@@ -162,6 +162,13 @@ struct photon
     double total_optical_depth;
 } ; //structure to hold photon information
 
+struct photon_list
+{
+    struct photon *photons;
+    int num_photons;
+    int list_capacity;
+};
+
 struct hydro_dataframe
 {
     /*
