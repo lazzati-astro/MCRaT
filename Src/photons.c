@@ -1,3 +1,5 @@
+#include "mcrat.h"
+
 void initalizePhotonList(struct photonList *photon_list)
 {
     //initialize pointers in photon_list to NULL for debugging
@@ -50,13 +52,13 @@ void appendToPhotonList(struct photonList *photon_list, struct photon *ph)
     // If list is full, double capacity
     if (photon_list->num_photons >= photon_list->list_capacity)
     {
-        int new_capacity = plist->list_capacity * 2;
-        photon_list_resize(plist, new_capacity);
+        int new_capacity = photon_list->list_capacity * 2;
+        photon_list_resize(photon_list, new_capacity);
     }
     
     // Copy photon into list
-    memcpy(&plist->photons[plist->num_photons], ph, sizeof(struct photon));
-    plist->num_photons++;
+    memcpy(&photon_list->photons[plist->num_photons], ph, sizeof(struct photon));
+    photon_list->num_photons++;
     
 }
 

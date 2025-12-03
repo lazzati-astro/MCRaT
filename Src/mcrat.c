@@ -119,7 +119,8 @@ int main(int argc, char **argv)
     //have each thread check if its directory is made and if its restarting (delete evrything) or if its continuing with a previous simulation
     //the angle and the injection frames will be the names of mc_dir, therefore read mc.par first in MC_XXX directory
     
- 
+    
+    initalizePhotonList(&photon_list);
     hydroDataFrameInitialize(&hydrodata);
     
     readMcPar(&hydrodata, &theta_jmin, &theta_jmax, &num_theta_bins, &inj_radius_input, &frm0_input , &frm2_input, &min_photons, &max_photons, &spect, &restrt); //thetas that comes out is in degrees, need to free input frame and injection radius pointers
