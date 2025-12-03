@@ -166,6 +166,7 @@ struct photon
 struct photonList
 {
     struct photon *photons;
+    int sorted_indexes
     int num_photons;
     int num_null_photons;
     int list_capacity;

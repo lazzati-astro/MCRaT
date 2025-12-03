@@ -4,6 +4,7 @@ void initalizePhotonList(struct photonList *photon_list)
 {
     //initialize pointers in photon_list to NULL for debugging
     photon_list->photons=NULL;
+    photon_list->sorted_indexes=NULL;
     
     //initalize the number of photons, number of null photons, and the list capacity to 0
     photon_list->num_photons=0;
@@ -15,12 +16,15 @@ void initalizePhotonList(struct photonList *photon_list)
 void freePhotonList(struct photonList *photon_list)
 {
     free(photon_list->photons);
+    free(photon_list->sorted_indexes);
     photon_list->photons=NULL;
+    photon_list->sorted_indexes=NULL;
 }
 
 void allocatePhotonListMemory(struct photonList *photon_list, int n_photons)
 {
-    photon_list->photons=malloc (n_photons * sizeof (struct photon ));
+    photon_list->photons = malloc (n_photons * sizeof (struct photon ));
+    photon_list->sorted_indexes = malloc(n_photons*sizeof(int));
     
     photon_list->list_capacity=n_photons;
     
@@ -30,13 +34,13 @@ void reallocatePhotonListMemory(struct photonList *photon_list, int new_capacity
 {
     //extend the photon list to be new_capacity elements long
     struct photon *new_photons = realloc(photon_list->photons, new_capacity * sizeof(struct photon));
+    int *new_sorted_indexes = realloc(photon_list->sorted_indexes, new_capacity * sizeof(int));
     
     //make sure that the realloc worked
     if (new_photons != NULL)
     {
         /* everything ok */
         photon_list->photons = new_photons;
-        photon_list->list_capacity=new_capacity;
     }
     else
     {
@@ -44,6 +48,22 @@ void reallocatePhotonListMemory(struct photonList *photon_list, int new_capacity
         printf("Error with reserving space to hold new photons\n");
         exit(1);
     }
+
+    if (new_sorted_indexes != NULL)
+    {
+        /* everything ok */
+        photon_list->sorted_indexes = new_sorted_indexes;
+    }
+    else
+    {
+        /* problems!!!! */
+        printf("Error with reserving space to hold new sorted index array\n");
+        exit(1);
+    }
+    photon_list->list_capacity=new_capacity;
+
+
+    
     
 }
 
@@ -80,7 +100,7 @@ void addToPhotonList(struct photonList *photon_list, struct photon *ph)
     }
     
     // Copy photon into list
-    memcpy(&(photon_list->photons[idx]), ph, sizeof(struct photon));
+    memcpy(&photon_list->photons[idx], ph, sizeof(struct photon));
     photon_list->num_photons++;
     
 }
