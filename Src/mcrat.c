@@ -86,6 +86,7 @@ int main(int argc, char **argv)
     double min_r=0, max_r=0, min_theta=0, max_theta=0, nu_c_scatt=0, n_comptonized=0, remaining_time=0;
     int frame=0, scatt_frame=0, frame_scatt_cnt=0, frame_abs_cnt=0, scatt_framestart=0, framestart=0;
     struct photon *phPtr=NULL; //pointer to array of photons
+    struct photonList photon_list; //pointer to array of photons
     struct hydro_dataframe hydrodata; //pointer to array of hydro data
     
     int angle_count=0, num_cyclosynch_ph_emit=0;
