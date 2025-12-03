@@ -80,11 +80,22 @@ void addToPhotonList(struct photonList *photon_list, struct photon *ph)
     }
     
     // Copy photon into list
-    memcpy(&(photon_list->photons)[idx], ph, sizeof(struct photon));
+    memcpy(&(photon_list->photons[idx]), ph, sizeof(struct photon));
     photon_list->num_photons++;
     
 }
 
+void setNullPhoton(struct photonList *photon_list, int index)
+{
+    //we set a photon in the photon list at index to be NULL
+    photon_list->photons[index].type = NULL_PHOTON;
+    photon_list->photons[index].weight = 0;
+    photon_list->photons[index].nearest_block_index = -1;
+    photon_list->photons[index].recalc_properties = 0;
+    
+    photon_list->num_null_photons++;
+    photon_list->num_photons--;
 
+}
 
 
