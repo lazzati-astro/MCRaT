@@ -54,6 +54,7 @@
 #define CS_POOL_PHOTON 'p'
 #define UNABSORBED_CS_PHOTON 'c'
 #define REBINNED_PHOTON 'r'
+#define NULL_PHOTON 'N'
 
 //define nonthermal functions for electron distribution
 #define POWERLAW 1
@@ -166,6 +167,7 @@ struct photonList
 {
     struct photon *photons;
     int num_photons;
+    int num_null_photons;
     int list_capacity;
 };
 

@@ -5,8 +5,9 @@ void initalizePhotonList(struct photonList *photon_list)
     //initialize pointers in photon_list to NULL for debugging
     photon_list->photons=NULL;
     
-    //initalize the number of photons and the lsit capacity to 0
+    //initalize the number of photons, number of null photons, and the list capacity to 0
     photon_list->num_photons=0;
+    photon_list->num_null_photons=0;
     photon_list->list_capacity=0;
 
 }
@@ -46,7 +47,7 @@ void reallocatePhotonListMemory(struct photonList *photon_list, int new_capacity
     
 }
 
-void appendToPhotonList(struct photonList *photon_list, struct photon *ph)
+void addToPhotonList(struct photonList *photon_list, struct photon *ph)
 {
     //add a photon to the photonList photons array
     // If list is full, double capacity
@@ -57,7 +58,7 @@ void appendToPhotonList(struct photonList *photon_list, struct photon *ph)
     }
     
     // Copy photon into list
-    memcpy(&photon_list->photons[plist->num_photons], ph, sizeof(struct photon));
+    memcpy(&photon_list->photons[photon_list->num_photons], ph, sizeof(struct photon));
     photon_list->num_photons++;
     
 }
