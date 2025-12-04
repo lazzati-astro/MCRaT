@@ -433,12 +433,13 @@ double *zeroNorm(double *p_ph)
     return p_ph;
 }
 
-int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_dataframe *hydro_data, int find_nearest_block_switch, gsl_rng * rand, FILE *fPtr)
+int findContainingHydroCell( struct photonList *photon_list, struct hydro_dataframe *hydro_data, int find_nearest_block_switch, gsl_rng * rand, FILE *fPtr)
 {
     int i=0, min_index=0, ph_block_index=0, num_thread=1, thread_id=0, num_photons_find_new_element=0;
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
     double ph_phi=0;
     double ph_p_comv[4], ph_p[4], fluid_beta[3], photon_hydro_coord[3];
+    struct photon *ph=NULL;
 
     #if defined(_OPENMP)
     num_thread=omp_get_num_threads(); //default is one above if theres no openmp usage
@@ -464,22 +465,24 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
     //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
     //or just parallelize this part here
     
-    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index,  ph_phi, min_index, ph_p_comv, ph_p, fluid_beta) private(i) reduction(+:num_photons_find_new_element)
-    for (i=0;i<num_ph; i++)
+    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index,  ph_phi, min_index, ph_p_comv, ph_p, fluid_beta, ph) private(i) reduction(+:num_photons_find_new_element)
+    for (i=0;i<photon_list->list_capacity; i++)
     {
-        //fprintf(fPtr, "%d, %d,%e\n", i, ((ph+i)->nearest_block_index), ((ph+i)->weight));
+        ph=getPhoton(photon_list, i);
+
+        //fprintf(fPtr, "%d, %d,%e\n", i, (ph->nearest_block_index), (ph->weight));
         //fflush(fPtr);
         
         if (find_nearest_block_switch==0)
         {
-            ph_block_index=(ph+i)->nearest_block_index; //if starting a new frame the number of indexes can change and cause a seg fault here
+            ph_block_index=ph->nearest_block_index; //if starting a new frame the number of indexes can change and cause a seg fault here
         }
         else
         {
             ph_block_index=0; // therefore if starting a new frame set index=0 to avoid this issue
         }
         
-        mcratCoordinateToHydroCoordinate(&photon_hydro_coord, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2);//convert the photons coordinate to the hydro sim coordinate system
+        mcratCoordinateToHydroCoordinate(&photon_hydro_coord, ph->r0, ph->r1, ph->r2);//convert the photons coordinate to the hydro sim coordinate system
         
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         
@@ -490,14 +493,14 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
         if (((photon_hydro_coord[1]<(hydro_data->r1_domain)[1]) &&
              (photon_hydro_coord[1]>(hydro_data->r1_domain)[0]) &&
              (photon_hydro_coord[0]<(hydro_data->r0_domain)[1]) &&
-             (photon_hydro_coord[0]>(hydro_data->r0_domain)[0])) && ((ph+i)->nearest_block_index != -1) ) //can use sorted index to see which photons have been absorbed efficiently before printing and get the indexes
+             (photon_hydro_coord[0]>(hydro_data->r0_domain)[0])) && (ph->nearest_block_index != -1) ) //can use sorted index to see which photons have been absorbed efficiently before printing and get the indexes
         #else
         if (((photon_hydro_coord[2]<(hydro_data->r2_domain)[1]) &&
              (photon_hydro_coord[2]>(hydro_data->r2_domain)[0]) &&
              (photon_hydro_coord[1]<(hydro_data->r1_domain)[1]) &&
              (photon_hydro_coord[1]>(hydro_data->r1_domain)[0]) &&
              (photon_hydro_coord[0]<(hydro_data->r0_domain)[1]) &&
-             (photon_hydro_coord[0]>(hydro_data->r0_domain)[0])) && ((ph+i)->nearest_block_index != -1) )
+             (photon_hydro_coord[0]>(hydro_data->r0_domain)[0])) && (ph->nearest_block_index != -1) )
         #endif
         {
 
@@ -505,7 +508,7 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
             
             //when rebinning photons can have comoving 4 momenta=0 and nearest_block_index=0 (and block 0 be the actual block the photon is in making it not refind the proper index and reclaulate the comoving 4 momenta) which can make counting synch scattered photons be thrown off, thus take care of this case by forcing the function to recalc things
             #if CYCLOSYNCHROTRON_SWITCH == ON
-                if ((ph_block_index==0) && ( ((ph+i)->comv_p0)+((ph+i)->comv_p1)+((ph+i)->comv_p2)+((ph+i)->comv_p3) == 0 ) )
+                if ((ph_block_index==0) && ( (ph->comv_p0)+(ph->comv_p1)+(ph->comv_p2)+(ph->comv_p3) == 0 ) )
                 {
                     is_in_block=0; //say that photon is not in the block, force it to recompute things
                 }
@@ -524,23 +527,23 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
                 //find the new index of the block that the photon is actually in
                 min_index=findContainingBlock(photon_hydro_coord[0], photon_hydro_coord[1], photon_hydro_coord[2], hydro_data, fPtr); //(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, fPtr);
 
-                (ph+i)->nearest_block_index=min_index; //save the index if min_index != -1
+                ph->nearest_block_index=min_index; //save the index if min_index != -1
 
                 if (min_index != -1)
                 {
                     //also recalculate the photons' comoving frequency in this new fluid element
-                    ph_p[0]=((ph+i)->p0);
-                    ph_p[1]=((ph+i)->p1);
-                    ph_p[2]=((ph+i)->p2);
-                    ph_p[3]=((ph+i)->p3);
+                    ph_p[0]=(ph->p0);
+                    ph_p[1]=(ph->p1);
+                    ph_p[2]=(ph->p2);
+                    ph_p[3]=(ph->p3);
                     
                     #if DIMENSIONS == THREE
                         hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], (hydro_data->v2)[min_index], (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], (hydro_data->r2)[min_index]);
                     #elif DIMENSIONS == TWO_POINT_FIVE
-                        ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
+                        ph_phi=atan2((ph->r1), (ph->r0));
                         hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], (hydro_data->v2)[min_index], (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], ph_phi);
                     #else
-                        ph_phi=atan2(((ph+i)->r1), ((ph+i)->r0));
+                        ph_phi=atan2((ph->r1), (ph->r0));
                         //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
                         hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], 0, (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], ph_phi);
                     #endif
@@ -548,22 +551,22 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
                     
                     lorentzBoost(&fluid_beta, &ph_p, &ph_p_comv, 'p', fPtr);
                     
-                    ((ph+i)->comv_p0)=ph_p_comv[0];
-                    ((ph+i)->comv_p1)=ph_p_comv[1];
-                    ((ph+i)->comv_p2)=ph_p_comv[2];
-                    ((ph+i)->comv_p3)=ph_p_comv[3];
+                    (ph->comv_p0)=ph_p_comv[0];
+                    (ph->comv_p1)=ph_p_comv[1];
+                    (ph->comv_p2)=ph_p_comv[2];
+                    (ph->comv_p3)=ph_p_comv[3];
 
                     #if defined(_OPENMP)
                         thread_id=omp_get_thread_num();
                     #endif
 
                     //need to also recalculate the optical depth
-                    calculateOpticalDepth((ph+i), hydro_data, rng[thread_id], fPtr);
-                    if (((ph+i)->recalc_properties)==1)
+                    calculateOpticalDepth(ph, hydro_data, rng[thread_id], fPtr);
+                    if ((ph->recalc_properties)==1)
                     {
                         //if we already needed to recalc the optical depth (due to a scattering or something) else
                         //so just set to 0 since we already got this done
-                        ((ph+i)->recalc_properties)=0;
+                        (ph->recalc_properties)=0;
                     }
 
 
@@ -580,7 +583,7 @@ int findContainingHydroCell( struct photon *ph, int num_ph, struct hydro_datafra
         else
         {
             //later on we want to make sure that this photon gets assigned a large mfp so it doesnt erroneously scatter
-            (ph+i)->nearest_block_index=-1;
+            ph->nearest_block_index=-1;
             //fprintf(fPtr,"Photon %d In ELSE\n", i);
             //exit(0);
         }
@@ -1371,37 +1374,37 @@ void phScattStats(struct photonList *photon_list, int *max, int *min, double *av
         ph=getPhoton(photon_list, i);
         
         #if CYCLOSYNCHROTRON_SWITCH == ON
-        if ((ph.weight != 0)) //dont want account for null or absorbed UNABSORBED_CS_PHOTON photons
+        if ((ph->weight != 0)) //dont want account for null or absorbed UNABSORBED_CS_PHOTON photons
         #endif
         {
-            sum+=(ph.num_scatt);
-            avg_r_sum+=sqrt((ph.r0)*(ph.r0) + (ph.r1)*(ph.r1) + (ph.r2)*(ph.r2));
+            sum+=(ph->num_scatt);
+            avg_r_sum+=sqrt((ph->r0)*(ph->r0) + (ph->r1)*(ph->r1) + (ph->r2)*(ph->r2));
             
-            //printf("%d %c  %e %e %e %e %e %e\n", i, ph.type, ph.p0, ph.comv_p0, ph.r0, ph.r1, ph.r2, ph.num_scatt);
+            //printf("%d %c  %e %e %e %e %e %e\n", i, ph->type, ph->p0, ph->comv_p0, ph->r0, ph->r1, ph->r2, ph->num_scatt);
             
-            if ((ph.num_scatt) > temp_max )
+            if ((ph->num_scatt) > temp_max )
             {
-                temp_max=(ph.num_scatt);
+                temp_max=(ph->num_scatt);
                 //printf("The new max is: %d\n", temp_max);
             }
             
-            //if ((i==0) || ((ph.num_scatt)<temp_min))
-            if ((ph.num_scatt)<temp_min)
+            //if ((i==0) || ((ph->num_scatt)<temp_min))
+            if ((ph->num_scatt)<temp_min)
             {
-                temp_min=(ph.num_scatt);
+                temp_min=(ph->num_scatt);
                 //printf("The new min is: %d\n", temp_min);
             }
             
-            if ((ph.type) == INJECTED_PHOTON )
+            if ((ph->type) == INJECTED_PHOTON )
             {
-                avg_r_sum_inject+=sqrt((ph.r0)*(ph.r0) + (ph.r1)*(ph.r1) + (ph.r2)*(ph.r2));
+                avg_r_sum_inject+=sqrt((ph->r0)*(ph->r0) + (ph->r1)*(ph->r1) + (ph->r2)*(ph->r2));
                 count_i++;
             }
             
             #if CYCLOSYNCHROTRON_SWITCH == ON
-            if (((ph.type) == COMPTONIZED_PHOTON) || ((ph.type) == UNABSORBED_CS_PHOTON))
+            if (((ph->type) == COMPTONIZED_PHOTON) || ((ph->type) == UNABSORBED_CS_PHOTON))
             {
-                avg_r_sum_comp+=sqrt((ph.r0)*(ph.r0) + (ph.r1)*(ph.r1) + (ph.r2)*(ph.r2));
+                avg_r_sum_comp+=sqrt((ph->r0)*(ph->r0) + (ph->r1)*(ph->r1) + (ph->r2)*(ph->r2));
                 count_comp++;
             }
             #endif
@@ -1410,9 +1413,9 @@ void phScattStats(struct photonList *photon_list, int *max, int *min, double *av
         }
         
         #if CYCLOSYNCHROTRON_SWITCH == ON
-        if ((ph.type) == CS_POOL_PHOTON )
+        if ((ph->type) == CS_POOL_PHOTON )
         {
-            avg_r_sum_synch+=sqrt((ph.r0)*(ph.r0) + (ph.r1)*(ph.r1) + (ph.r2)*(ph.r2));
+            avg_r_sum_synch+=sqrt((ph->r0)*(ph->r0) + (ph->r1)*(ph->r1) + (ph->r2)*(ph->r2));
             count_synch++;
         }
         #endif
@@ -1448,34 +1451,34 @@ void phMinMax(struct photonList *photon_list, double *min, double *max, double *
     for (i=0; i<photon_list->list_capacity; i++)
     {
         ph=getPhoton(photon_list, i);
-        if (ph.weight != 0)
+        if (ph->weight != 0)
         {
-            ph_r=sqrt((ph.r0)*(ph.r0) + (ph.r1)*(ph.r1) + (ph.r2)*(ph.r2));
-            ph_theta=acos((ph.r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
+            ph_r=sqrt((ph->r0)*(ph->r0) + (ph->r1)*(ph->r1) + (ph->r2)*(ph->r2));
+            ph_theta=acos((ph->r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
             if (ph_r > temp_r_max )
             {
                 temp_r_max=ph_r;
-                //fprintf(fPtr, "The new max is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_max, i, (ph.r0), ph.r1, ph.r2);
+                //fprintf(fPtr, "The new max is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_max, i, (ph->r0), ph->r1, ph->r2);
             }
             
             //if ((i==0) || (ph_r<temp_r_min))
             if (ph_r<temp_r_min)
             {
                 temp_r_min=ph_r;
-                //fprintf(fPtr, "The new min is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_min, i, (ph.r0), ph.r1, ph.r2);
+                //fprintf(fPtr, "The new min is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_min, i, (ph->r0), ph->r1, ph->r2);
             }
             
             if (ph_theta > temp_theta_max )
             {
                 temp_theta_max=ph_theta;
-                //fprintf(fPtr, "The new max is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_max, i, (ph.r0), ph.r1, ph.r2);
+                //fprintf(fPtr, "The new max is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_max, i, (ph->r0), ph->r1, ph->r2);
             }
             
             //if ((i==0) || (ph_r<temp_r_min))
             if (ph_theta<temp_theta_min)
             {
                 temp_theta_min=ph_theta;
-                //fprintf(fPtr, "The new min is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_min, i, (ph.r0), ph.r1, ph.r2);
+                //fprintf(fPtr, "The new min is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_min, i, (ph->r0), ph->r1, ph->r2);
             }
         }
     }
