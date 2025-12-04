@@ -1088,7 +1088,7 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
 
 
 
-double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_indexes, struct hydro_dataframe *hydro_data, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt,  gsl_rng * rand, FILE *fPtr)//(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt, gsl_rng * rand, FILE *fPtr)
+double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_dataframe *hydro_data, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt,  gsl_rng * rand, FILE *fPtr)//(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt, gsl_rng * rand, FILE *fPtr)
 {
     //function to perform single photon scattering
     int  i=0, index=0, ph_index=0, event_did_occur=0; //variable event_did_occur is to keep track of wether a scattering or absorption actually occured or not,
@@ -1102,6 +1102,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_ind
     double *fluid_beta=malloc(3*sizeof(double));//pointer to hold fluid velocity vector
     double *negative_fluid_beta=malloc(3*sizeof(double));//pointer to hold negative fluid velocity vector
     double *s=malloc(4*sizeof(double)); //vector to hold the stokes parameters for a given photon
+    struct photon *ph=NULL; //pointer to a photon struct
     
     i=0;
     old_scatt_time=0;
@@ -1109,11 +1110,12 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_ind
     //fprintf(fPtr,"In this function Num_ph %d\n", num_ph);
     //fflush(fPtr);
         
-    while (i<num_ph && event_did_occur==0 )
+    while (i<photon_list->list_capacity && event_did_occur==0 )
     {
-        ph_index=(*(sorted_indexes+i));
+        ph=getPhoton(photon_list, photon_list->sorted_indexes[i]);
+        ph_index=photon_list->sorted_indexes[i]; //(*(sorted_indexes+i));
         
-        scatt_time= (ph+ph_index)->time_to_scatter; //*(all_time_steps+ph_index); //get the time until the photon scatters
+        scatt_time= ph->time_to_scatter; //*(all_time_steps+ph_index); //get the time until the photon scatters
         
         //IF THE TIME IS GREATER THAN dt_max dont let the photons positions be updated
         if (scatt_time<dt_max)
@@ -1126,15 +1128,15 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_ind
             
             //WHAT IF THE PHOTON MOVES TO A NEW BLOCK BETWEEN WHEN WE CALC MFP AND MOVE IT TO DO THE SCATTERING????
             //it mostly happens at low optical depth, near the photosphere so we would have a large mfp anyways so we probably wouldn't be in this function in that case
-            index=(ph+ph_index)->nearest_block_index; //the sorted_indexes gives index of photon with smallest time to potentially scatter then extract the index of the block closest to that photon
+            index=ph->nearest_block_index; //the sorted_indexes gives index of photon with smallest time to potentially scatter then extract the index of the block closest to that photon
     
             fluid_temp=(hydro_data->temp)[index];
             //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
     
-            ph_phi=atan2(((ph+ph_index)->r1), (((ph+ph_index)->r0)));
+            ph_phi=atan2((ph->r1), ((ph->r0)));
             
             /*
-            if (isnan((ph+ph_index)->r0) || isnan((ph+ph_index)->r1) || isnan((ph+ph_index)->r2))
+            if (isnan(ph->r0) || isnan(ph->r1) || isnan(ph->r2))
             {
                 printf("Not a number\n");
             }
@@ -1163,26 +1165,26 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_ind
             */
     
             //fill in photon 4 momentum
-            *(ph_p+0)=((ph+ph_index)->p0);
-            *(ph_p+1)=((ph+ph_index)->p1);
-            *(ph_p+2)=((ph+ph_index)->p2);
-            *(ph_p+3)=((ph+ph_index)->p3);
+            *(ph_p+0)=(ph->p0);
+            *(ph_p+1)=(ph->p1);
+            *(ph_p+2)=(ph->p2);
+            *(ph_p+3)=(ph->p3);
             
             //first we bring the photon to the fluid's comoving frame
             //already have comoving 4 momentum
-            *(ph_p_comov+0)=((ph+ph_index)->comv_p0);
-            *(ph_p_comov+1)=((ph+ph_index)->comv_p1);
-            *(ph_p_comov+2)=((ph+ph_index)->comv_p2);
-            *(ph_p_comov+3)=((ph+ph_index)->comv_p3);
+            *(ph_p_comov+0)=(ph->comv_p0);
+            *(ph_p_comov+1)=(ph->comv_p1);
+            *(ph_p_comov+2)=(ph->comv_p2);
+            *(ph_p_comov+3)=(ph->comv_p3);
         
             //fill in stokes parameters
-            *(s+0)=((ph+ph_index)->s0); //I ==1
-            *(s+1)=((ph+ph_index)->s1); //Q/I
-            *(s+2)=((ph+ph_index)->s2); //U/I
-            *(s+3)=((ph+ph_index)->s3); //V/I
+            *(s+0)=(ph->s0); //I ==1
+            *(s+1)=(ph->s1); //Q/I
+            *(s+2)=(ph->s2); //U/I
+            *(s+3)=(ph->s3); //V/I
             
             /*
-            if (((ph+ph_index)->type) == COMPTONIZED_PHOTON)
+            if ((ph->type) == COMPTONIZED_PHOTON)
             {
             fprintf(fPtr,"Unscattered Photon in Lab frame: %e, %e, %e,%e\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3), (ph->r0), (ph->r1), (ph->r2), *(s+0), *(s+1), *(s+2), *(s+3));
             fflush(fPtr);
@@ -1193,7 +1195,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_ind
             fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
             fflush(fPtr);
              
-            if (((ph+ph_index)->type) == COMPTONIZED_PHOTON)
+            if ((ph->type) == COMPTONIZED_PHOTON)
             {
                 fprintf(fPtr, "Before Scattering, In Comov_frame:\n");
                 fflush(fPtr);
@@ -1214,10 +1216,10 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_ind
             
             //exit(0);
             //second we generate a thermal/non-thermal electron at the correct temperature
-            scattering_subgroup=generateSingleElectron(el_p_comov, fluid_temp, ph_p_comov, (ph+ph_index), rand, fPtr);
+            scattering_subgroup=generateSingleElectron(el_p_comov, fluid_temp, ph_p_comov, ph, rand, fPtr);
             
             /*
-            if (((ph+ph_index)->type) == COMPTONIZED_PHOTON)
+            if ((ph->type) == COMPTONIZED_PHOTON)
             {
                 fprintf(fPtr,"el_comov: %e, %e, %e,%e\n", *(el_p_comov+0), *(el_p_comov+1), *(el_p_comov+2), *(el_p_comov+3));
                 fflush(fPtr);
@@ -1228,7 +1230,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_ind
             event_did_occur=singleScatter(el_p_comov, ph_p_comov, s, rand, fPtr);
         
             /*
-            if (((ph+ph_index)->type) == COMPTONIZED_PHOTON)
+            if ((ph->type) == COMPTONIZED_PHOTON)
             {
                 fprintf(fPtr,"After Scattering, After Lorentz Boost to Comov frame: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
                 fflush(fPtr);
@@ -1248,7 +1250,7 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_ind
                 lorentzBoost(negative_fluid_beta, ph_p_comov, ph_p, 'p',  fPtr);
                 
                 /*
-                if (((ph+ph_index)->type) == COMPTONIZED_PHOTON)
+                if ((ph->type) == COMPTONIZED_PHOTON)
                 {
                     fprintf(fPtr,"Scattered Photon in Lab frame: %e, %e, %e,%e\n\n", *(ph_p+0), *(ph_p+1), *(ph_p+2), *(ph_p+3));
                     fflush(fPtr);
@@ -1263,10 +1265,10 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_ind
                     stokesRotation(negative_fluid_beta, (ph_p_comov+1), (ph_p+1), s, fPtr); //rotate to boost back to lab frame
                     
                     //save stokes parameters
-                    ((ph+ph_index)->s0)= *(s+0); //I ==1
-                    ((ph+ph_index)->s1)= *(s+1);
-                    ((ph+ph_index)->s2)= *(s+2);
-                    ((ph+ph_index)->s3)= *(s+3);
+                    (ph->s0)= *(s+0); //I ==1
+                    (ph->s1)= *(s+1);
+                    (ph->s2)= *(s+2);
+                    (ph->s3)= *(s+3);
                 }
                 #endif
             
@@ -1283,26 +1285,26 @@ double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_ind
                 
     
                 //assign the photon its new lab 4 momentum
-                ((ph+ph_index)->p0)=(*(ph_p+0));
-                ((ph+ph_index)->p1)=(*(ph_p+1));
-                ((ph+ph_index)->p2)=(*(ph_p+2));
-                ((ph+ph_index)->p3)=(*(ph_p+3));
+                (ph->p0)=(*(ph_p+0));
+                (ph->p1)=(*(ph_p+1));
+                (ph->p2)=(*(ph_p+2));
+                (ph->p3)=(*(ph_p+3));
                 
                 //assign it the comoving frame 4 momentum
-                ((ph+ph_index)->comv_p0)=(*(ph_p_comov+0));
-                ((ph+ph_index)->comv_p1)=(*(ph_p_comov+1));
-                ((ph+ph_index)->comv_p2)=(*(ph_p_comov+2));
-                ((ph+ph_index)->comv_p3)=(*(ph_p_comov+3));
+                (ph->comv_p0)=(*(ph_p_comov+0));
+                (ph->comv_p1)=(*(ph_p_comov+1));
+                (ph->comv_p2)=(*(ph_p_comov+2));
+                (ph->comv_p3)=(*(ph_p_comov+3));
                 
                 //printf("Done assigning values to original struct\n");
     
                 //incremement that photons number of scatterings
-                ((ph+ph_index)->num_scatt)+=1;
+                (ph->num_scatt)+=1;
                 *frame_scatt_cnt+=1; //incrememnt total number of scatterings
 
                 //we need to make sure that the tau for this photon gets recalculated since we have a new comoving
                 //4 momentum
-                ((ph+ph_index)->recalc_properties)=1;
+                (ph->recalc_properties)=1;
             
             }
                 

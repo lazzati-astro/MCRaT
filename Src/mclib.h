@@ -20,7 +20,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
     
 void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr);
 
-double photonEvent(struct photon *ph, int num_ph, double dt_max, int *sorted_indexes, struct hydro_dataframe *hydro_data, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt,  gsl_rng * rand, FILE *fPtr);
+double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_dataframe *hydro_data, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt,  gsl_rng * rand, FILE *fPtr);
 
 double averagePhotonEnergy(struct photon *ph, int num_ph);
 

@@ -799,7 +799,7 @@ int main(int argc, char **argv)
                     //scatter the photon
                     //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
-                    time_step=photonEvent( phPtr, num_ph, remaining_time, sorted_indexes, &hydrodata, &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );
+                    time_step=photonEvent( &photon_list, remaining_time, &hydrodata, &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );
                     time_now+=time_step;
                     
                     remaining_time-=time_step; //update the remaining time subtracting off the time that has been accumulated through photon scatterings.
