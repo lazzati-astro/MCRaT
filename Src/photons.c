@@ -61,9 +61,33 @@ void reallocatePhotonListMemory(struct photonList *photon_list, int new_capacity
         exit(1);
     }
     photon_list->list_capacity=new_capacity;
+}
 
+void setPhotonList(struct photonList *photon_list, struct photon *ph_array, int num_photons)
+{
+    int i=0, null_photon_count=0;
+    //this copies an array of photons into the Photon list struct. This overwrites any prior list that was saved in the struct.
+    if (photon_list->photons != NULL)
+    {
+        freePhotonList(photon_list);
+        allocatePhotonListMemory(photon_list, num_photons)
+    }
+    
+    memcpy(photon_list->photons, ph_array, num_photons*sizeof(struct photon));
+    photon_list->list_capacity=num_photons;
+    photon_list->num_photons=num_photons;
+    
+    //get the actual number of null photons in the array we dont want to assume that there are 0.
+    for (i = 0; i < num_photons; i++)
+    {
+        if (photon_list->photons[i].type == NULL_PHOTON)
+        {
+            null_photon_count++;
+        }
+    }
 
     
+    photon_list->num_null_photons=null_photon_count;
     
 }
 
@@ -117,5 +141,7 @@ void setNullPhoton(struct photonList *photon_list, int index)
     photon_list->num_photons--;
 
 }
+
+
 
 
