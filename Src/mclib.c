@@ -1122,7 +1122,7 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
         //IF THE TIME IS GREATER THAN dt_max dont let the photons positions be updated
         if (scatt_time<dt_max)
         {
-            updatePhotonPosition(ph, num_ph, scatt_time-old_scatt_time, fPtr);
+            updatePhotonPosition(photon_list, scatt_time-old_scatt_time, fPtr);
         
             //fprintf(fPtr,"i: %d, Photon: %d, Delta t=%e\n", i, ph_index, scatt_time-old_scatt_time);
             //fflush(fPtr);
@@ -1316,7 +1316,7 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
             // if the photon scatt_time > dt_max
             //have to adjust the time properly so that the time si now appropriate for the next frame
             scatt_time=dt_max;
-            updatePhotonPosition(ph, num_ph, scatt_time-old_scatt_time, fPtr); 
+            updatePhotonPosition(photon_list, scatt_time-old_scatt_time, fPtr); 
             event_did_occur=1; //set equal to 1 to get out of the loop b/c other subsequent photons will have scatt_time > dt_max
             
         }

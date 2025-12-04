@@ -856,7 +856,7 @@ int main(int argc, char **argv)
                     
                     //for each photon update its position based on its momentum and the remaining time to the next frame
                     
-                    updatePhotonPosition(phPtr, num_ph, remaining_time, fPtr);
+                    updatePhotonPosition(&photon_list, remaining_time, fPtr);
                     
                     //if we are here, then we need to load the next frame and we can set the timestep=remaining_time and then set remaining_time=0
                     time_step=remaining_time;
