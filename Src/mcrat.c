@@ -716,7 +716,7 @@ int main(int argc, char **argv)
             gsl_rng_set(rng, gsl_rng_get(rng));
             
             //calc min and max positions of photons
-            phMinMax(phPtr, num_ph, &min_r, &max_r, &min_theta, &max_theta, fPtr);
+            phMinMax(&photon_list, &min_r, &max_r, &min_theta, &max_theta, fPtr);
             #if CYCLOSYNCHROTRON_SWITCH == ON
                 if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE))
                 //if ((scatt_frame == scatt_framestart) || (restrt==CONTINUE))//for testing
@@ -740,7 +740,7 @@ int main(int argc, char **argv)
             
             //by default want to allocat ememory for time_steps and sorted indexes to scatter
             // all_time_steps=malloc(num_ph*sizeof(double)); this is now in the photon struct
-            sorted_indexes=malloc(num_ph*sizeof(int));
+            //sorted_indexes=malloc(num_ph*sizeof(int)); this is no longer needed since creating the photonList struct
             
             #if CYCLOSYNCHROTRON_SWITCH == ON
                 if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //remember to revert back to !=
@@ -761,7 +761,7 @@ int main(int argc, char **argv)
                     #endif
                     //fprintf(fPtr, "HYDRO_B_SCALE %lf.\n", HYDRO_B_SCALE);
                     
-                    phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
+                    phScattStats(&photon_list, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
 
                     num_cyclosynch_ph_emit=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 0, 0, fPtr);
                 }

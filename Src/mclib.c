@@ -1354,50 +1354,54 @@ double averagePhotonEnergy(struct photon *ph, int num_ph)
     return (e_sum*C_LIGHT)/w_sum;
 }
 
-void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg, double *r_avg, FILE *fPtr  )
+void phScattStats(struct photonList *photon_list, int *max, int *min, double *avg, double *r_avg, FILE *fPtr  )
 {
     int temp_max=0, temp_min=INT_MAX,  i=0, count=0, count_synch=0, count_comp=0, count_i=0;
     #if defined(_OPENMP)
     int num_thread=omp_get_num_threads();
     #endif
     double sum=0, avg_r_sum=0, avg_r_sum_synch=0, avg_r_sum_comp=0, avg_r_sum_inject=0;
+    struct photon *ph=NULL;
+
     
     //printf("Num threads: %d", num_thread);
-#pragma omp parallel for num_threads(num_thread) reduction(min:temp_min) reduction(max:temp_max) reduction(+:sum) reduction(+:avg_r_sum) reduction(+:count)
-    for (i=0;i<ph_num;i++)
+#pragma omp parallel for num_threads(num_thread) firstprivate(ph) reduction(min:temp_min) reduction(max:temp_max) reduction(+:sum) reduction(+:avg_r_sum) reduction(+:count)
+    for (i=0;i<photon_list->list_capacity;i++)
     {
+        ph=getPhoton(photon_list, i);
+        
         #if CYCLOSYNCHROTRON_SWITCH == ON
-        if (((ph+i)->weight != 0)) //dont want account for null or absorbed UNABSORBED_CS_PHOTON photons
+        if ((ph.weight != 0)) //dont want account for null or absorbed UNABSORBED_CS_PHOTON photons
         #endif
         {
-            sum+=((ph+i)->num_scatt);
-            avg_r_sum+=sqrt(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2));
+            sum+=(ph.num_scatt);
+            avg_r_sum+=sqrt((ph.r0)*(ph.r0) + (ph.r1)*(ph.r1) + (ph.r2)*(ph.r2));
             
-            //printf("%d %c  %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt);
+            //printf("%d %c  %e %e %e %e %e %e\n", i, ph.type, ph.p0, ph.comv_p0, ph.r0, ph.r1, ph.r2, ph.num_scatt);
             
-            if (((ph+i)->num_scatt) > temp_max )
+            if ((ph.num_scatt) > temp_max )
             {
-                temp_max=((ph+i)->num_scatt);
+                temp_max=(ph.num_scatt);
                 //printf("The new max is: %d\n", temp_max);
             }
             
-            //if ((i==0) || (((ph+i)->num_scatt)<temp_min))
-            if (((ph+i)->num_scatt)<temp_min)
+            //if ((i==0) || ((ph.num_scatt)<temp_min))
+            if ((ph.num_scatt)<temp_min)
             {
-                temp_min=((ph+i)->num_scatt);
+                temp_min=(ph.num_scatt);
                 //printf("The new min is: %d\n", temp_min);
             }
             
-            if (((ph+i)->type) == INJECTED_PHOTON )
+            if ((ph.type) == INJECTED_PHOTON )
             {
-                avg_r_sum_inject+=sqrt(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2));
+                avg_r_sum_inject+=sqrt((ph.r0)*(ph.r0) + (ph.r1)*(ph.r1) + (ph.r2)*(ph.r2));
                 count_i++;
             }
             
             #if CYCLOSYNCHROTRON_SWITCH == ON
-            if ((((ph+i)->type) == COMPTONIZED_PHOTON) || (((ph+i)->type) == UNABSORBED_CS_PHOTON))
+            if (((ph.type) == COMPTONIZED_PHOTON) || ((ph.type) == UNABSORBED_CS_PHOTON))
             {
-                avg_r_sum_comp+=sqrt(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2));
+                avg_r_sum_comp+=sqrt((ph.r0)*(ph.r0) + (ph.r1)*(ph.r1) + (ph.r2)*(ph.r2));
                 count_comp++;
             }
             #endif
@@ -1406,9 +1410,9 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
         }
         
         #if CYCLOSYNCHROTRON_SWITCH == ON
-        if (((ph+i)->type) == CS_POOL_PHOTON )
+        if ((ph.type) == CS_POOL_PHOTON )
         {
-            avg_r_sum_synch+=sqrt(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2));
+            avg_r_sum_synch+=sqrt((ph.r0)*(ph.r0) + (ph.r1)*(ph.r1) + (ph.r2)*(ph.r2));
             count_synch++;
         }
         #endif
@@ -1438,38 +1442,40 @@ void phMinMax(struct photonList *photon_list, double *min, double *max, double *
     int num_thread=omp_get_num_threads();
     #endif
     double ph_r=0, ph_theta=0;
+    struct photon *ph=NULL;
     
-#pragma omp parallel for num_threads(num_thread) firstprivate(ph_r, ph_theta) reduction(min:temp_r_min) reduction(max:temp_r_max) reduction(min:temp_theta_min) reduction(max:temp_theta_max)
+#pragma omp parallel for num_threads(num_thread) firstprivate(ph_r, ph_theta, ph) reduction(min:temp_r_min) reduction(max:temp_r_max) reduction(min:temp_theta_min) reduction(max:temp_theta_max)
     for (i=0; i<photon_list->list_capacity; i++)
     {
-        if ((ph+i)->weight != 0)
+        ph=getPhoton(photon_list, i);
+        if (ph.weight != 0)
         {
-            ph_r=sqrt(((ph+i)->r0)*((ph+i)->r0) + ((ph+i)->r1)*((ph+i)->r1) + ((ph+i)->r2)*((ph+i)->r2));
-            ph_theta=acos(((ph+i)->r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
+            ph_r=sqrt((ph.r0)*(ph.r0) + (ph.r1)*(ph.r1) + (ph.r2)*(ph.r2));
+            ph_theta=acos((ph.r2) /ph_r); //this is the photons theta psition in the FLASH grid, gives in radians
             if (ph_r > temp_r_max )
             {
                 temp_r_max=ph_r;
-                //fprintf(fPtr, "The new max is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_max, i, ((ph+i)->r0), (ph+i)->r1, (ph+i)->r2);
+                //fprintf(fPtr, "The new max is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_max, i, (ph.r0), ph.r1, ph.r2);
             }
             
             //if ((i==0) || (ph_r<temp_r_min))
             if (ph_r<temp_r_min)
             {
                 temp_r_min=ph_r;
-                //fprintf(fPtr, "The new min is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_min, i, ((ph+i)->r0), (ph+i)->r1, (ph+i)->r2);
+                //fprintf(fPtr, "The new min is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_min, i, (ph.r0), ph.r1, ph.r2);
             }
             
             if (ph_theta > temp_theta_max )
             {
                 temp_theta_max=ph_theta;
-                //fprintf(fPtr, "The new max is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_max, i, ((ph+i)->r0), (ph+i)->r1, (ph+i)->r2);
+                //fprintf(fPtr, "The new max is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_max, i, (ph.r0), ph.r1, ph.r2);
             }
             
             //if ((i==0) || (ph_r<temp_r_min))
             if (ph_theta<temp_theta_min)
             {
                 temp_theta_min=ph_theta;
-                //fprintf(fPtr, "The new min is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_min, i, ((ph+i)->r0), (ph+i)->r1, (ph+i)->r2);
+                //fprintf(fPtr, "The new min is: %e from photon %d with x: %e y: %e z: %e\n", temp_r_min, i, (ph.r0), ph.r1, ph.r2);
             }
         }
     }
