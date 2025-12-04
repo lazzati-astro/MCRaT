@@ -507,7 +507,7 @@ int main(int argc, char **argv)
         if (restrt==CONTINUE)
         {
             printf(">> Rank %d: Starting from photons injected at frame: %d out of %d\n", angle_id,framestart, frm2);
-            printf(">> Rank %d with angles %0.1lf-%0.1lf: Continuing scattering %d photons from frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph, scatt_framestart);
+            printf(">> Rank %d with angles %0.1lf-%0.1lf: Continuing scattering %d photons from frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,photon_list.num_photons, scatt_framestart);
             printf(">> Rank %d with angles %0.1lf-%0.1lf: The time now is: %e\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,time_now);
         }
         else
@@ -656,7 +656,7 @@ int main(int argc, char **argv)
             fprintf(fPtr,">>  Proc: %d with angles %0.1lf-%0.1lf: Injecting photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
             fflush(fPtr);
             
-            photonInjection(&phPtr, &num_ph, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, theta_jmin_thread, theta_jmax_thread, &hydrodata,rng, fPtr );
+            photonInjection(&photon_list, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, theta_jmin_thread, theta_jmax_thread, &hydrodata,rng, fPtr );
             
             //printf("This many Photons: %d\n",num_ph); //num_ph is one more photon than i actually have
             

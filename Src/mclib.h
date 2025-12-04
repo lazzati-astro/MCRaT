@@ -1,5 +1,5 @@
  
-void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr);
+void photonInjection(struct photonList *photon_list, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr);
 
 void lorentzBoost(double *boost, double *p_ph, double *result, char object,  FILE *fPtr);
 

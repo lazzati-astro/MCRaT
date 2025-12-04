@@ -5,7 +5,7 @@ const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27, FINE
 const double K_B=1.380658e-16, M_P=1.6726231e-24, THOM_X_SECT=6.65246e-25, M_EL=9.1093879e-28 , R_EL=2.817941499892705e-13;
 
 
-void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr)
+void photonInjection(struct photonList *photon_list, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr)
 {
     int i=0, block_cnt=0, *ph_dens=NULL, ph_tot=0, j=0,k=0;
     double ph_dens_calc=0.0, fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, fr_max=0, bb_norm=0, position_phi, ph_weight_adjusted, rmin, rmax;
@@ -14,6 +14,7 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
     float num_dens_coeff;
     double r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
     double position_rand=0, position2_rand=0, position3_rand=0, cartesian_position_rand_array[3];
+    struct photon *ph=NULL;
     
     if (spect=='w') //from MCRAT paper, w for wien spectrum 
     {
@@ -135,7 +136,7 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
     //printf("%d\n", ph_tot);
     
     //allocate memory for that many photons and also allocate memory to hold comoving 4 momentum of each photon and the velocity of the fluid
-    (*ph)=malloc (ph_tot * sizeof (struct photon ));
+    ph=malloc (ph_tot * sizeof (struct photon ));
     
     p_comv=malloc(4*sizeof(double));
     boost=malloc(3*sizeof(double));
@@ -248,14 +249,14 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
                 lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
                 //printf("Assignemnt: %e, %e, %e, %e\n", *(l_boost+0), *(l_boost+1), *(l_boost+2),*(l_boost+3));
                
-                (*ph)[ph_tot].p0=(*(l_boost+0));
-                (*ph)[ph_tot].p1=(*(l_boost+1));
-                (*ph)[ph_tot].p2=(*(l_boost+2));
-                (*ph)[ph_tot].p3=(*(l_boost+3));
-                (*ph)[ph_tot].comv_p0=(*(p_comv+0));
-                (*ph)[ph_tot].comv_p1=(*(p_comv+1));
-                (*ph)[ph_tot].comv_p2=(*(p_comv+2));
-                (*ph)[ph_tot].comv_p3=(*(p_comv+3));
+                ph[ph_tot].p0=(*(l_boost+0));
+                ph[ph_tot].p1=(*(l_boost+1));
+                ph[ph_tot].p2=(*(l_boost+2));
+                ph[ph_tot].p3=(*(l_boost+3));
+                ph[ph_tot].comv_p0=(*(p_comv+0));
+                ph[ph_tot].comv_p1=(*(p_comv+1));
+                ph[ph_tot].comv_p2=(*(p_comv+2));
+                ph[ph_tot].comv_p3=(*(p_comv+3));
                 
                 //place photons in rand positions within fluid element
                 position_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r0_size)[i])-0.5*((hydro_data->r0_size)[i]); //choose between -size/2 to size/2
@@ -268,21 +269,21 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
                 #endif
                 
                 //assign random position
-                (*ph)[ph_tot].r0=cartesian_position_rand_array[0];
-                (*ph)[ph_tot].r1=cartesian_position_rand_array[1];
-                (*ph)[ph_tot].r2=cartesian_position_rand_array[2];
+                ph[ph_tot].r0=cartesian_position_rand_array[0];
+                ph[ph_tot].r1=cartesian_position_rand_array[1];
+                ph[ph_tot].r2=cartesian_position_rand_array[2];
                 
-                //fprintf(fPtr,"%d %e %e %e\n", ph_tot, (*ph)[ph_tot].r0, (*ph)[ph_tot].r1, (*ph)[ph_tot].r2);
+                //fprintf(fPtr,"%d %e %e %e\n", ph_tot, ph[ph_tot].r0, ph[ph_tot].r1, ph[ph_tot].r2);
                 
-                (*ph)[ph_tot].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1 
-                (*ph)[ph_tot].s1=0;
-                (*ph)[ph_tot].s2=0;
-                (*ph)[ph_tot].s3=0;
-                (*ph)[ph_tot].num_scatt=0;
-                (*ph)[ph_tot].weight=ph_weight_adjusted;
-                (*ph)[ph_tot].nearest_block_index=0;
-                (*ph)[ph_tot].type=INJECTED_PHOTON; //i for injected
-                (*ph)[ph_tot].recalc_properties=1; //set to 1 so we are sure that we calculate tau values later on
+                ph[ph_tot].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1 
+                ph[ph_tot].s1=0;
+                ph[ph_tot].s2=0;
+                ph[ph_tot].s3=0;
+                ph[ph_tot].num_scatt=0;
+                ph[ph_tot].weight=ph_weight_adjusted;
+                ph[ph_tot].nearest_block_index=0;
+                ph[ph_tot].type=INJECTED_PHOTON; //i for injected
+                ph[ph_tot].recalc_properties=1; //set to 1 so we are sure that we calculate tau values later on
                 //printf("%d\n",ph_tot);
                 ph_tot++;
             }
@@ -290,9 +291,10 @@ void photonInjection(struct photon **ph, int *ph_num, double r_inj, double ph_we
         }
     }
     
-    *ph_num=ph_tot; //save number of photons
+    //save the whole array to our photon list struct
+    setPhotonList(photon_list, ph, ph_tot);
     //printf(" %d: %d\n", *(ph_dens+(k-1)), *ph_num);
-    free(ph_dens); free(p_comv);free(boost); free(l_boost);
+    free(ph_dens); free(p_comv);free(boost); free(l_boost); free(ph);
     //exit(0);
 }
 
