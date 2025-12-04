@@ -1430,7 +1430,7 @@ void phScattStats(struct photon *ph, int ph_num, int *max, int *min, double *avg
 }
 
 
-void phMinMax(struct photon *ph, int ph_num, double *min, double *max, double *min_theta, double *max_theta, FILE *fPtr)
+void phMinMax(struct photonList *photon_list, double *min, double *max, double *min_theta, double *max_theta, FILE *fPtr)
 {
     double temp_r_max=0, temp_r_min=DBL_MAX, temp_theta_max=0, temp_theta_min=DBL_MAX;
     int i=0;
@@ -1440,7 +1440,7 @@ void phMinMax(struct photon *ph, int ph_num, double *min, double *max, double *m
     double ph_r=0, ph_theta=0;
     
 #pragma omp parallel for num_threads(num_thread) firstprivate(ph_r, ph_theta) reduction(min:temp_r_min) reduction(max:temp_r_max) reduction(min:temp_theta_min) reduction(max:temp_theta_max)
-    for (i=0;i<ph_num;i++)
+    for (i=0; i<photon_list->list_capacity; i++)
     {
         if ((ph+i)->weight != 0)
         {

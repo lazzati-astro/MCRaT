@@ -33,6 +33,7 @@ void allocatePhotonListMemory(struct photonList *photon_list, int n_photons)
 void reallocatePhotonListMemory(struct photonList *photon_list, int new_capacity)
 {
     //extend the photon list to be new_capacity elements long
+    int i=0, old_list_capacity=photon_list->list_capacity;
     struct photon *new_photons = realloc(photon_list->photons, new_capacity * sizeof(struct photon));
     int *new_sorted_indexes = realloc(photon_list->sorted_indexes, new_capacity * sizeof(int));
     
@@ -61,6 +62,17 @@ void reallocatePhotonListMemory(struct photonList *photon_list, int new_capacity
         exit(1);
     }
     photon_list->list_capacity=new_capacity;
+    
+    /*
+     we only do this when there are no more null photons to replace with real ones and we need to grow the list. so we can artificially say that all the newly added photons are real and in the next loop we make them all null photons explicity and keep track of them appropriately
+     */
+    photon_list->num_photons+=(new_capacity-old_list_capacity);
+    
+    //assign all new elements to be null photons, setNullPhoton decreases num_photons by 1 each time it is called
+    for (i=old_list_capacity;i<new_capacity;i++)
+    {
+        setNullPhoton(photon_list, i);
+    }
 }
 
 void setPhotonList(struct photonList *photon_list, struct photon *ph_array, int num_photons)
@@ -112,7 +124,7 @@ void addToPhotonList(struct photonList *photon_list, struct photon *ph)
     else
     {
         //we need to find the null photon index and overwrite the photon there
-        for (i = 0; i < photon_list->num_photons; i++)
+        for (i = 0; i < photon_list->list_capacity; i++)
         {
             if (photon_list->photons[i].type == NULL_PHOTON)
             {
@@ -143,5 +155,8 @@ void setNullPhoton(struct photonList *photon_list, int index)
 }
 
 
-
+struct photon* getPhoton(struct photonList *photon_list, int index)
+{
+    return &photon_list->photons[index];
+}
 
