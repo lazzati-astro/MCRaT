@@ -7,7 +7,7 @@ double *zeroNorm(double *p_ph);
 
 int findContainingHydroCell( struct photonList *photon_list, struct hydro_dataframe *hydro_data, int find_nearest_block_switch, gsl_rng * rand, FILE *fPtr);
 
-void calcMeanFreePath(struct photon *ph, int num_ph, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr);
+void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr);
 
 void reverseSortIndexes(void *sorted_indexes, int num_elements, size_t element_size, void *context_array);
 

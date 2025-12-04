@@ -788,7 +788,7 @@ int main(int argc, char **argv)
                 num_photons_find_new_element+=findContainingHydroCell(&photon_list, &hydrodata, find_nearest_grid_switch, rng, fPtr);
 
                 //now calculate all the mean free paths (and get a sorted index array)
-                calcMeanFreePath(phPtr, num_ph, sorted_indexes, &hydrodata, rng, fPtr);
+                calcMeanFreePath(&photon_list, &hydrodata, rng, fPtr);
 
                 find_nearest_grid_switch=0; //set to zero (false) since we do not absolutely need to refind the index, this makes the function findNearestPropertiesAndMinMFP just check if the photon is w/in the given grid box still
                 

@@ -601,12 +601,14 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
     
 }
 
-void calcMeanFreePath(struct photon *ph, int num_ph, int *sorted_indexes, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr)
+void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr)
 {
     int i=0, ph_block_index=0, num_thread=1, thread_id=0;
     double mfp=0, default_mfp=1e12, tau=0;
     double rnd_tracker=0;
     double *all_time_steps=malloc(num_ph*sizeof(double));
+    struct photon *ph=NULL;
+
     #if defined(_OPENMP)
         num_thread=omp_get_num_threads(); //default is one above if theres no openmp usage
     #endif
@@ -627,10 +629,12 @@ void calcMeanFreePath(struct photon *ph, int num_ph, int *sorted_indexes, struct
         gsl_rng_set(rng[i],gsl_rng_get(rand));
     }
 
-    #pragma omp parallel for num_threads(num_thread) firstprivate(ph_block_index, mfp, rnd_tracker) private(i) shared(default_mfp)
-    for (i=0;i<num_ph; i++)
+    #pragma omp parallel for num_threads(num_thread) firstprivate(ph_block_index, mfp, rnd_tracker, ph) private(i) shared(default_mfp)
+    for (i=0;i<photon_list->list_capacity; i++)
     {
-        ph_block_index=(ph+i)->nearest_block_index;
+        ph=getPhoton(photon_list, i);
+        
+        ph_block_index=ph->nearest_block_index;
 
         //if the location of the photon is inside the domain of the hydro simulation then do all of this, otherwise assign huge mfp value so no scattering occurs and the next frame is loaded
         // absorbed photons have ph_block_index=-1, therefore if this value is not less than 0, calulate the mfp properly but doesnt work when go to new frame and find new indexes (will change b/c will get rid of these photons when printing)
@@ -648,11 +652,11 @@ void calcMeanFreePath(struct photon *ph, int num_ph, int *sorted_indexes, struct
                 thread_id=omp_get_thread_num();
             #endif
 
-            if (((ph+i)->recalc_properties)==1)
+            if ((ph->recalc_properties)==1)
             {
                 //if we need to recalc the optical depth (due to a scattering or something) else then do so
-                calculateOpticalDepth((ph+i), hydro_data, rng[thread_id], fPtr);
-                ((ph+i)->recalc_properties)=0;
+                calculateOpticalDepth(ph, hydro_data, rng[thread_id], fPtr);
+                (ph->recalc_properties)=0;
             }
 
             rnd_tracker=gsl_rng_uniform_pos(rng[thread_id]);
@@ -660,17 +664,17 @@ void calcMeanFreePath(struct photon *ph, int num_ph, int *sorted_indexes, struct
 
             //mfp=(-1)*log(rnd_tracker)*(M_P/((n_dens_tmp))/(THOM_X_SECT)); ///(1.0-beta*((n_cosangle)))) ; // the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths IN COMOV FRAME for reference
 
-            mfp = (-1.0/(ph+i)->total_optical_depth)*log(rnd_tracker);
+            mfp = (-1.0/ph->total_optical_depth)*log(rnd_tracker);
         }
         else
         {
             mfp=default_mfp;
         }
 
-    ((ph+i)->time_to_scatter)=mfp/C_LIGHT;
+        (ph->time_to_scatter)=mfp/C_LIGHT;
 
-    //fprintf(fPtr,"Photon %d has time %e\n", i, *(all_time_steps+i));
-    //fflush(fPtr);
+        //fprintf(fPtr,"Photon %d has time %e\n", i, *(all_time_steps+i));
+        //fflush(fPtr);
 
     }
     //exit(0);
@@ -682,13 +686,14 @@ void calcMeanFreePath(struct photon *ph, int num_ph, int *sorted_indexes, struct
     free(rng);
 
     //printf("HERE\n");
-    for (i=0;i<num_ph;i++)
+    for (i=0;i<photon_list->list_capacity;i++)
     {
-        *(sorted_indexes+i)= i; //save  indexes to array to use in qsort
-        *(all_time_steps+i)=(ph+i)->time_to_scatter; //save values to use in qsort
+        //*(sorted_indexes+i)= i; //save  indexes to array to use in qsort, not needed since we created the photonList struct
+        photon_list->sorted_indexes[i]=i; //save  indexes to array to use in qsort
+        *(all_time_steps+i)=ph->time_to_scatter; //save values to use in qsort
     }
 
-    reverseSortIndexes(sorted_indexes, num_ph, sizeof (int),  all_time_steps);
+    reverseSortIndexes(photon_list->sorted_indexes, photon_list->list_capacity, sizeof (int),  all_time_steps);
 
     free(all_time_steps);
 
