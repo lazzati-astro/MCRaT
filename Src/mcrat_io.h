@@ -11,7 +11,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
 
 int saveCheckpoint(char dir[STR_BUFFER], int frame,  int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph , int last_frame, int angle_rank, int angle_size);
 
-int readCheckpoint(char dir[STR_BUFFER], struct photon **ph,  int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size );
+int readCheckpoint(char dir[STR_BUFFER], struct photonList *photon_list, int *frame2, int *framestart, int *scatt_framestart, char *restart, double *time, int angle_rank, int *angle_size );
 
 void readMcPar(struct hydro_dataframe *hydro_data, double *theta_jmin, double *theta_j, double *n_theta_j, double **inj_radius, int **frm0, int **frm2, int *min_photons, int *max_photons, char *spect, char *restart);
 
