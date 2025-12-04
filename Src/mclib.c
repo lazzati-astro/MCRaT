@@ -1037,7 +1037,7 @@ int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num
 }
 
 
-void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
+void updatePhotonPosition(struct photonList *photon_list, double t, FILE *fPtr)
 {
     //move photons by speed of light
  
@@ -1046,36 +1046,38 @@ void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr)
     int num_thread=omp_get_num_threads();
     #endif
     double old_position=0, new_position=0, divide_p0=0;
+    struct photon *ph=NULL; //pointer to a photon struct
     
     
-    #pragma omp parallel for num_threads(num_thread) firstprivate(old_position, new_position, divide_p0)
-    for (i=0;i<num_ph;i++)
+    #pragma omp parallel for num_threads(num_thread) firstprivate(old_position, new_position, divide_p0, ph)
+    for (i=0;i<photon_list->list_capacity;i++)
     {
-        if (((ph+i)->type != CS_POOL_PHOTON) && ((ph+i)->weight != 0))
+        ph=getPhoton(photon_list, i);
+        if ((ph->type != CS_POOL_PHOTON) && (ph->weight != 0))
         {
-            old_position= sqrt(((ph+i)->r0)*((ph+i)->r0)+((ph+i)->r1)*((ph+i)->r1)+((ph+i)->r2)*((ph+i)->r2)); //uncommented checks since they were not necessary anymore
+            old_position= sqrt((ph->r0)*(ph->r0)+(ph->r1)*(ph->r1)+(ph->r2)*(ph->r2)); //uncommented checks since they were not necessary anymore
             
-            divide_p0=1.0/((ph+i)->p0);
+            divide_p0=1.0/(ph->p0);
             
-            ((ph+i)->r0)+=((ph+i)->p1)*divide_p0*C_LIGHT*t; //update x position
+            (ph->r0)+=(ph->p1)*divide_p0*C_LIGHT*t; //update x position
             
-            ((ph+i)->r1)+=((ph+i)->p2)*divide_p0*C_LIGHT*t;//update y
+            (ph->r1)+=(ph->p2)*divide_p0*C_LIGHT*t;//update y
             
-            ((ph+i)->r2)+=((ph+i)->p3)*divide_p0*C_LIGHT*t;//update z
+            (ph->r2)+=(ph->p3)*divide_p0*C_LIGHT*t;//update z
             
-            new_position= sqrt(((ph+i)->r0)*((ph+i)->r0)+((ph+i)->r1)*((ph+i)->r1)+((ph+i)->r2)*((ph+i)->r2));
+            new_position= sqrt((ph->r0)*(ph->r0)+(ph->r1)*(ph->r1)+(ph->r2)*(ph->r2));
             /*
             if ((new_position-old_position)/t > C_LIGHT)
             {
                 fprintf(fPtr, "PHOTON NUMBER %d IS SUPERLUMINAL. ITS SPEED IS %e c.\n", i, ((new_position-old_position)/t)/C_LIGHT);
             }
             */
-            //if ( (ph+i)->s0 != 1)
+            //if ( ph->s0 != 1)
             {
-            //	fprintf(fPtr, "PHOTON NUMBER %d DOES NOT HAVE I=1. Instead it is: %e\n", i, (ph+i)->s0);
+            //	fprintf(fPtr, "PHOTON NUMBER %d DOES NOT HAVE I=1. Instead it is: %e\n", i, ph->s0);
             }
             
-            //printf("In update  function: %e, %e, %e, %e, %e, %e, %e\n",((ph+i)->r0), ((ph+i)->r1), ((ph+i)->r2), t, ((ph+i)->p1)/((ph+i)->p0), ((ph+i)->p2)/((ph+i)->p0), ((ph+i)->p3)/((ph+i)->p0) );
+            //printf("In update  function: %e, %e, %e, %e, %e, %e, %e\n",(ph->r0), (ph->r1), (ph->r2), t, (ph->p1)/(ph->p0), (ph->p2)/(ph->p0), (ph->p3)/(ph->p0) );
         }
     }
         

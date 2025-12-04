@@ -18,7 +18,7 @@ int compare2( const void *a, const void *b, void *ar);
 int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
                                    double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr);
     
-void updatePhotonPosition(struct photon *ph, int num_ph, double t, FILE *fPtr);
+void updatePhotonPosition(struct photonList *photon_list, double t, FILE *fPtr);
 
 double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_dataframe *hydro_data, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt,  gsl_rng * rand, FILE *fPtr);
 
