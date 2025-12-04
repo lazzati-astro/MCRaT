@@ -70,8 +70,8 @@ void setPhotonList(struct photonList *photon_list, struct photon *ph_array, int 
     if (photon_list->photons != NULL)
     {
         freePhotonList(photon_list);
-        allocatePhotonListMemory(photon_list, num_photons)
     }
+    allocatePhotonListMemory(photon_list, num_photons)
     
     memcpy(photon_list->photons, ph_array, num_photons*sizeof(struct photon));
     photon_list->list_capacity=num_photons;

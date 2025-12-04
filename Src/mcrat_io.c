@@ -997,16 +997,16 @@ int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame,
     return success;
 }
 
-int readCheckpoint(char dir[STR_BUFFER], struct photon **ph, int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size )
+int readCheckpoint(char dir[STR_BUFFER], struct photonList *photon_list, int *frame2, int *framestart, int *scatt_framestart, char *restart, double *time, int angle_rank, int *angle_size )
 {
     //function to read in data from checkpoint file
     FILE *fPtr=NULL;
     char checkptfile[STR_BUFFER]="";
-    int i=0;
+    int i=0, ph_num=0;
     int scatt_cyclosynch_num_ph=0;//count the number of scattered synchrotron photons from the previosu frame that were saved
     //int frame, scatt_frame, ph_num, i=0;
     struct photon *phHolder=NULL; //pointer to struct to hold data read in from checkpoint file
-    
+    struct photon *ph=NULL; //array of photons that are read in
     
     snprintf(checkptfile,sizeof(checkptfile),"%s%s%d%s",dir,"mc_chkpt_", angle_rank,".dat" );
         
@@ -1044,11 +1044,11 @@ int readCheckpoint(char dir[STR_BUFFER], struct photon **ph, int *frame2, int *f
             //printf("%d\n", *scatt_framestart);
             fread(time, sizeof(double), 1, fPtr);
             //printf("%e\n", *time);
-            fread(ph_num, sizeof(int), 1, fPtr);
+            fread(&ph_num, sizeof(int), 1, fPtr);
             //printf("%d\n", *ph_num);
             
             phHolder=malloc(sizeof(struct photon));
-            (*ph)=malloc(sizeof(struct photon)*(*ph_num)); //allocate memory to hold photon data
+            (ph)=malloc(sizeof(struct photon)*(ph_num)); //allocate memory to hold photon data
             
             
             for (i=0;i<(*ph_num);i++)
@@ -1056,36 +1056,40 @@ int readCheckpoint(char dir[STR_BUFFER], struct photon **ph, int *frame2, int *f
                 fread(phHolder, sizeof(struct photon), 1, fPtr);
                 //printf("%e,%e,%e, %e,%e,%e, %e, %e\n",(ph)->p0, (ph)->p1, (ph)->p2, ph->p3, (ph)->r0, (ph)->r1, (ph)->r2, ph->num_scatt );
                 
-                (*ph)[i].p0=phHolder->p0;
-                (*ph)[i].p1=phHolder->p1;
-                (*ph)[i].p2=phHolder->p2;
-                (*ph)[i].p3=phHolder->p3;
-                (*ph)[i].comv_p0=phHolder->comv_p0;
-                (*ph)[i].comv_p1=phHolder->comv_p1;
-                (*ph)[i].comv_p2=phHolder->comv_p2;
-                (*ph)[i].comv_p3=phHolder->comv_p3;
-                (*ph)[i].r0= phHolder->r0;
-                (*ph)[i].r1=phHolder->r1 ;
-                (*ph)[i].r2=phHolder->r2;
-                (*ph)[i].s0=phHolder->s0;
-                (*ph)[i].s1=phHolder->s1;
-                (*ph)[i].s2=phHolder->s2;
-                (*ph)[i].s3=phHolder->s3;
-                (*ph)[i].num_scatt=phHolder->num_scatt;
-                (*ph)[i].weight=phHolder->weight;
-                (*ph)[i].nearest_block_index= phHolder->nearest_block_index;
-                (*ph)[i].type= phHolder->type;
+                ph[i].p0=phHolder->p0;
+                ph[i].p1=phHolder->p1;
+                ph[i].p2=phHolder->p2;
+                ph[i].p3=phHolder->p3;
+                ph[i].comv_p0=phHolder->comv_p0;
+                ph[i].comv_p1=phHolder->comv_p1;
+                ph[i].comv_p2=phHolder->comv_p2;
+                ph[i].comv_p3=phHolder->comv_p3;
+                ph[i].r0= phHolder->r0;
+                ph[i].r1=phHolder->r1 ;
+                ph[i].r2=phHolder->r2;
+                ph[i].s0=phHolder->s0;
+                ph[i].s1=phHolder->s1;
+                ph[i].s2=phHolder->s2;
+                ph[i].s3=phHolder->s3;
+                ph[i].num_scatt=phHolder->num_scatt;
+                ph[i].weight=phHolder->weight;
+                ph[i].nearest_block_index= phHolder->nearest_block_index;
+                ph[i].type= phHolder->type;
                 
                 #if CYCLOSYNCHROTRON_SWITCH == ON
-                    if (((*ph)[i].weight != 0) && (((*ph)[i].type == COMPTONIZED_PHOTON) || ((*ph)[i].type == UNABSORBED_CS_PHOTON)) && ((*ph)[i].p0 > 0))
+                    if ((ph[i].weight != 0) && ((ph[i].type == COMPTONIZED_PHOTON) || (ph[i].type == UNABSORBED_CS_PHOTON)) && (ph[i].p0 > 0))
                     {
                         scatt_cyclosynch_num_ph++;
                     }
-                //printf("%d %c %e %e %e %e %e %e %e\n", i, (*ph)[i].type, (*ph)[i].r0, (*ph)[i].r1, (*ph)[i].r2, (*ph)[i].num_scatt, (*ph)[i].weight, (*ph)[i].p0*C_LIGHT/1.6e-9, (*ph)[i].comv_p0);
+                //printf("%d %c %e %e %e %e %e %e %e\n", i, ph[i].type, ph[i].r0, ph[i].r1, ph[i].r2, ph[i].num_scatt, ph[i].weight, ph[i].p0*C_LIGHT/1.6e-9, ph[i].comv_p0);
                 #endif
             }
             
+            //szve the whole array to our photon list struct
+            setPhotonList(photon_list, ph, num_ph);
+            
             free(phHolder);
+            free(ph);
             //printf("In readcheckpoint count=%d\n", count);
         }
         else

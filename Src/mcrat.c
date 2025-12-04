@@ -496,7 +496,7 @@ int main(int argc, char **argv)
         printf(">> MCRaT: Reading checkpoint\n");
         //#pragma omp critical
         
-            scatt_cyclosynch_num_ph=readCheckpoint(mc_dir, &phPtr, &frm2, &framestart, &scatt_framestart, &num_ph, &restrt, &time_now, angle_id, &angle_procs);
+            scatt_cyclosynch_num_ph=readCheckpoint(mc_dir, &photon_list, &frm2, &framestart, &scatt_framestart, &restrt, &time_now, angle_id, &angle_procs);
         
         /*
         for (i=0;i<num_ph;i++)
