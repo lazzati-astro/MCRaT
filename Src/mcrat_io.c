@@ -1086,7 +1086,7 @@ int readCheckpoint(char dir[STR_BUFFER], struct photonList *photon_list, int *fr
             }
             
             //szve the whole array to our photon list struct
-            setPhotonList(photon_list, ph, num_ph);
+            setPhotonList(photon_list, ph, ph_num);
             
             free(phHolder);
             free(ph);
