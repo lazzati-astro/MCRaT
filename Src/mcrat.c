@@ -900,7 +900,7 @@ int main(int argc, char **argv)
             #endif
             
             //get scattering statistics
-            phScattStats(phPtr, num_ph, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr);
+            phScattStats(&photon_list, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr);
                 
             fprintf(fPtr,"The number of scatterings in this frame is: %d\n", frame_scatt_cnt);
             #if CYCLOSYNCHROTRON_SWITCH == ON
@@ -921,7 +921,7 @@ int main(int argc, char **argv)
             //fprintf(fPtr,"n_comptonized in this frame is: %e\n ", n_comptonized);
             //fflush(fPtr);
             
-            save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, num_ph, time_now, phPtr, last_frm, angle_id, old_num_angle_procs);
+            save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, time_now, &photon_list, last_frm, angle_id, old_num_angle_procs);
             
             if (save_chkpt_success==0)
             {

@@ -832,7 +832,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
 
 }
 
-int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph, int last_frame, int angle_rank,int angle_size )
+int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame, double time_now, struct photonList *photon_list, int last_frame, int angle_rank,int angle_size )
 {
     //function to save data necessary to restart simulation if it ends
     //need to save all photon data
@@ -840,7 +840,8 @@ int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame,
     char checkptfile[2000]="";
     char command[2000]="";
     char restart;
-    int i=0, success=0;
+    int i=0, success=0, ph_num=0;
+    struct photon *ph=NULL;
     
     
     snprintf(checkptfile,sizeof(checkptfile),"%s%s%d%s",dir,"mc_chkpt_", angle_rank,".dat" );
@@ -881,18 +882,21 @@ int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame,
             fwrite(&time_now, sizeof(double), 1, fPtr);
             //printf("Rank: %d wrote time_now\n",  angle_rank);
             fflush(stdout);
+            ph_num=photon_list->list_capacity;
             fwrite(&ph_num, sizeof(int), 1, fPtr);
             //printf("Rank: %d wrote ph_num\n",  angle_rank);
             fflush(stdout);
-            for(i=0;i<ph_num;i++)
+            for(i=0;i<photon_list->list_capacity;i++)
             {
+                ph=getPhoton(photon_list, i);
+
                 #if CYCLOSYNCHROTRON_SWITCH == ON
-                if (((ph+i)->type == COMPTONIZED_PHOTON) && ((ph+i)->weight != 0))
+                if ((ph->type == COMPTONIZED_PHOTON) && (ph->weight != 0))
                 {
-                    (ph+i)->type = UNABSORBED_CS_PHOTON; //set this to be an old synchrotron scattered photon
+                    ph->type = UNABSORBED_CS_PHOTON; //set this to be an old synchrotron scattered photon
                 }
                 #endif
-                fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
+                fwrite(ph, sizeof(struct photon ), 1, fPtr);
                 //fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
             }
             success=0;
@@ -933,19 +937,22 @@ int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame,
             fwrite(&time_now, sizeof(double), 1, fPtr);
             //printf("Rank: %d wrote time_now\n",  angle_rank);
             fflush(stdout);
+            ph_num=photon_list->list_capacity;
             fwrite(&ph_num, sizeof(int), 1, fPtr);
             //printf("Rank: %d wrote ph_num\n",  angle_rank);
             fflush(stdout);
-            for(i=0;i<ph_num;i++)
+            for(i=0;i<photon_list->list_capacity;i++)
             {
+                ph=getPhoton(photon_list, i);
+                
                 #if CYCLOSYNCHROTRON_SWITCH == ON
-                if (((ph+i)->type == COMPTONIZED_PHOTON) && ((ph+i)->weight != 0))
+                if ((ph->type == COMPTONIZED_PHOTON) && (ph->weight != 0))
                 {
-                    (ph+i)->type = UNABSORBED_CS_PHOTON; //set this to be an old synchrotron scattered photon
+                    ph->type = UNABSORBED_CS_PHOTON; //set this to be an old synchrotron scattered photon
                 }
                 #endif
                 //fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
-                fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
+                fwrite(ph, sizeof(struct photon ), 1, fPtr);
             }
             //printf("Rank: %d wrote photons\n",  angle_rank);
             success=0;
@@ -975,15 +982,16 @@ int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame,
             fwrite(&restart, sizeof(char), 1, fPtr);
             fwrite(&frame, sizeof(int), 1, fPtr);
             fwrite(&frame2, sizeof(int), 1, fPtr);
-            for(i=0;i<ph_num;i++)
+            for(i=0;i<photon_list->list_capacity;i++)
             {
+                ph=getPhoton(photon_list, i);
                 #if CYCLOSYNCHROTRON_SWITCH == ON
-                if (((ph+i)->type == COMPTONIZED_PHOTON) && ((ph+i)->weight != 0))
+                if ((ph->type == COMPTONIZED_PHOTON) && (ph->weight != 0))
                 {
-                    (ph+i)->type = UNABSORBED_CS_PHOTON; //set this to be an old synchrotron scattered photon
+                    ph->type = UNABSORBED_CS_PHOTON; //set this to be an old synchrotron scattered photon
                 }
                 #endif
-                fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
+                fwrite(ph, sizeof(struct photon ), 1, fPtr);
             }
 
             success=0;
