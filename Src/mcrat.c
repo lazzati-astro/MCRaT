@@ -967,7 +967,8 @@ int main(int argc, char **argv)
         free(sorted_indexes);
         sorted_indexes=NULL;
     }
-    save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, 0, time_now, phPtr, last_frm, angle_id, old_num_angle_procs); //this is for processes using the old code that didnt restart efficiently
+    save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, time_now, &photon_list, last_frm, angle_id, old_num_angle_procs); //this is for processes using the old code that didnt restart efficiently
+
     fprintf(fPtr, "Process %d has completed the MC calculation.\n", angle_id);
     fflush(fPtr);
     
