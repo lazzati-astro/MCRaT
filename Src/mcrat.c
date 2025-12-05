@@ -86,6 +86,7 @@ int main(int argc, char **argv)
     double min_r=0, max_r=0, min_theta=0, max_theta=0, nu_c_scatt=0, n_comptonized=0, remaining_time=0;
     int frame=0, scatt_frame=0, frame_scatt_cnt=0, frame_abs_cnt=0, scatt_framestart=0, framestart=0;
     struct photon *phPtr=NULL; //pointer to array of photons
+    struct photon *scattered_photon=NULL; //pointer to the most recently scattered photon
     struct photonList photon_list; //pointer to array of photons
     struct hydro_dataframe hydrodata; //pointer to array of hydro data
     
@@ -803,17 +804,20 @@ int main(int argc, char **argv)
                     time_now+=time_step;
                     
                     remaining_time-=time_step; //update the remaining time subtracting off the time that has been accumulated through photon scatterings.
+                    
+                    //get the photon so we can easily access of its properties
+                    scattered_photon=getPhoton(&photon_list, ph_scatt_index)
 
                     
                     //see if the scattered phton was a seed photon, if so replenish the seed photon
                     #if CYCLOSYNCHROTRON_SWITCH == ON
-                    if ((phPtr+ph_scatt_index)->type == CS_POOL_PHOTON)
+                    if (scattered_photon->type == CS_POOL_PHOTON)
                     {
-                        n_comptonized+=(phPtr+ph_scatt_index)->weight;
-                        (phPtr+ph_scatt_index)->type = COMPTONIZED_PHOTON; //c for compton scattered synchrotron photon
+                        n_comptonized+=scattered_photon->weight;
+                        scattered_photon->type = COMPTONIZED_PHOTON; //c for compton scattered synchrotron photon
                         
                         //fprintf(fPtr, "num_null_ph %d\n", num_null_ph);
-                        //printf("The previous scattered photon was a seed photon %c.\n", (phPtr+ph_scatt_index)->type);
+                        //printf("The previous scattered photon was a seed photon %c.\n", scattered_photon->type);
                         num_cyclosynch_ph_emit+=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 1, ph_scatt_index, fPtr);
                         //fprintf(fPtr, " num_photon: %d\n",num_ph  );
                         //fflush(fPtr);
@@ -828,7 +832,7 @@ int main(int argc, char **argv)
                     if ((frame_scatt_cnt%1000 == 0) && (frame_scatt_cnt != 0)) //modified this so it doesn't print when all photons get absorbed at first and frame_scatt_cnt=0
                     {
                         fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
-                        fprintf(fPtr,"The local temp is: %e K\n", *(hydrodata.temp + (phPtr+ph_scatt_index)->nearest_block_index) );
+                        fprintf(fPtr,"The local temp is: %e K\n", *(hydrodata.temp + scattered_photon->nearest_block_index) );
                         fprintf(fPtr,"Average photon energy is: %e ergs\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 can then do (1.6e-9) to get keV
                         fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                         //fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
@@ -864,7 +868,7 @@ int main(int argc, char **argv)
                 }
                 
                 
-                //printf("In main 2: %e, %d, %e, %e\n", ((phPtr+ph_scatt_index)->num_scatt), ph_scatt_index, time_step, time_now);
+                //printf("In main 2: %e, %d, %e, %e\n", (scattered_photon->num_scatt), ph_scatt_index, time_step, time_now);
 
             }
             
