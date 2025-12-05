@@ -19,6 +19,10 @@ void freePhotonList(struct photonList *photon_list)
     free(photon_list->sorted_indexes);
     photon_list->photons=NULL;
     photon_list->sorted_indexes=NULL;
+    photon_list->num_photons=0;
+    photon_list->list_capacity=0;
+    photon_list->num_null_photons=0;
+
 }
 
 void allocatePhotonListMemory(struct photonList *photon_list, int n_photons)
