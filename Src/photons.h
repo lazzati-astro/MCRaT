@@ -6,7 +6,7 @@ void allocatePhotonListMemory(struct photonList *photon_list, int n_photons);
 
 void reallocatePhotonListMemory(struct photonList *photon_list, int new_capacity);
 
-void addToPhotonList(struct photonList *photon_list, struct photon *ph);
+void addToPhotonList(struct photonList *photon_list, struct photon *ph, size_t num_photons);
 
 void setNullPhoton(struct photonList *photon_list, int index);
 

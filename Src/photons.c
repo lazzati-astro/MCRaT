@@ -107,41 +107,91 @@ void setPhotonList(struct photonList *photon_list, struct photon *ph_array, int 
     
 }
 
-void addToPhotonList(struct photonList *photon_list, struct photon *ph)
+void addToPhotonList(struct photonList *photon_list, struct photon *ph, size_t num_photons)
 {
-    int idx=0, i=0;
+    int idx=0, i=0, j=0, new_capacity=0;
+    int *null_ph_indexes=NULL;
     
     //add a photon to the photonList photons array
     // If list is full, and we have no null photons to fill in then double capacity
-    if ((photon_list->num_photons >= photon_list->list_capacity) && (photon_list->num_null_photons == 0))
+    if ((photon_list->num_photons >= photon_list->list_capacity) && (photon_list->num_null_photons <= num_photons))
     {
-        int new_capacity = photon_list->list_capacity * 2;
+        if (photon_list->list_capacity * 2 > photon_list->list_capacity + num_photons)
+        {
+            new_capacity = photon_list->list_capacity * 2;
+        }
+        else
+        {
+            //take care of the case where doubling the memory is not enough
+            new_capacity = photon_list->list_capacity * (num_photons/photon_list->list_capacity) ;
+        }
         reallocatePhotonListMemory(photon_list, new_capacity);
     }
     
-    //if we have no null photons, just append the photon to the list
-    if (photon_list->num_null_photons == 0)
+    //if we have just 1 photons to append we can just assign it to end of list or first location of NULL  photon
+    if (num_photons == 1)
     {
-        idx=photon_list->num_photons;
+        //if we have no null photons, just append the photon to the list
+        if (photon_list->num_null_photons == 0)
+        {
+            idx=photon_list->num_photons;
+            
+        }
+        else
+        {
+            //we need to find the null photon index and overwrite the photon there
+            for (i = 0; i < photon_list->list_capacity; i++)
+            {
+                if (photon_list->photons[i].type == NULL_PHOTON)
+                {
+                    idx=i;
+                    i=photon_list->num_photons;
+                }
+            }
+            photon_list->num_null_photons--;
+        }
         
+        // Copy photon into list
+        memcpy(&photon_list->photons[idx], ph, sizeof(struct photon));
+        photon_list->num_photons++;
     }
     else
     {
-        //we need to find the null photon index and overwrite the photon there
-        for (i = 0; i < photon_list->list_capacity; i++)
+        //if we have many phtons we are appending, we want to find any/all null photons and assign all the photons to these spots. Note when we reallocate memory above, we set all new photons to be null
+        null_ph_indexes=malloc((photon_list->num_null_photons)*sizeof(int));
+        
+        //verify that num of null phtons is greater than number of photons to append
+        if  (num_photons>(photon_list->num_null_photons))
+        {
+            printf("Adding to the photon list has failed. the number of null photons in the list is less than the number of photons to add to the list. %d vs %d", (photon_list->num_null_photons), num_photons );
+            exit(1);
+        }
+        
+        for (i=0;i<photon_list->list_capacity; i++)
         {
             if (photon_list->photons[i].type == NULL_PHOTON)
             {
-                idx=i;
-                i=photon_list->num_photons;
+                // if the weight is 0, this is a photons that has been absorbed and is now null
+                *(null_ph_indexes+j)=i;
+                j++;
+                //fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
+                //fflush(fPtr);
+                
             }
         }
-        photon_list->num_null_photons--;
+        
+        //now we have the null photon indexes, we can assign the photons to these indexes
+        for (i=0;i<num_photons;i++)
+        {
+            idx=(*(null_ph_indexes+i));
+            // Copy photon into list
+            memcpy(&photon_list->photons[idx], ph[i], sizeof(struct photon));
+            photon_list->num_photons++;
+            photon_list->num_null_photons--;
+        }
+
+        
     }
-    
-    // Copy photon into list
-    memcpy(&photon_list->photons[idx], ph, sizeof(struct photon));
-    photon_list->num_photons++;
     
 }
 
