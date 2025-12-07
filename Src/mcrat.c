@@ -926,7 +926,7 @@ int main(int argc, char **argv)
             if (save_chkpt_success==0)
             {
                 //if we saved the checkpoint successfully also save the photons to the hdf5 file, else there may be something wrong with the file system
-                printPhotons(phPtr, num_ph, frame_abs_cnt, num_cyclosynch_ph_emit, num_null_ph, scatt_cyclosynch_num_ph, scatt_frame , frame, last_frm, mc_dir, angle_id, fPtr);
+                printPhotons(&photon_list, frame_abs_cnt, num_cyclosynch_ph_emit, scatt_cyclosynch_num_ph, scatt_frame , frame, last_frm, mc_dir, angle_id, fPtr);
             }
             else
             {

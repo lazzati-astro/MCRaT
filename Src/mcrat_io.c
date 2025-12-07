@@ -112,7 +112,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[STR
     return original_num_procs;
 }
 
-void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosynch_ph_emit, int num_null_ph, int scatt_cyclosynch_num_ph, int frame,int frame_inj, int frame_last, char dir[STR_BUFFER], int angle_rank, FILE *fPtr )
+void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclosynch_ph_emit, int num_null_ph, int scatt_cyclosynch_num_ph, int frame,int frame_inj, int frame_last, char dir[STR_BUFFER], int angle_rank, FILE *fPtr )
 {
     //function to save the photons' positions and 4 momentum
     
@@ -123,7 +123,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
      //if the frame does exist then read information from the prewritten data and then add new data to it as extended chunk
      
      
-    int i=0, count=0, rank=1, net_num_ph=num_ph-num_ph_abs-num_null_ph; //can have more photons absorbed than emitted, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : scatt_cyclosynch_num_ph
+    int i=0, count=0, rank=1, net_num_ph=photon_list->num_photons; //can have more photons absorbed than emitted, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : scatt_cyclosynch_num_ph
     #if defined(_OPENMP)
     int num_thread=omp_get_num_threads();
     #endif
@@ -134,57 +134,61 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
     hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_2, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_ph_type;
     herr_t status, status_group, status_weight, status_weight_2;
     hsize_t dims[1]={net_num_ph}, dims_weight[1]={net_num_ph}, dims_old[1]={0}; //1 is the number of dimansions for the dataset, called rank
+    struct photon *ph=NULL; //pointer to a photon struct
+
 
     
     hsize_t maxdims[1]={H5S_UNLIMITED};
     hsize_t      size[1];
     hsize_t      offset[1];
     
-    fprintf(fPtr, "num_ph %d num_ph_abs %d num_null_ph %d num_cyclosynch_ph_emit %d\nAllocated weight to be %d values large and other arrays to be %d\n",num_ph,num_ph_abs,num_null_ph,num_cyclosynch_ph_emit, net_num_ph, net_num_ph);
+    fprintf(fPtr, "num_ph %d num_ph_abs %d num_null_ph %d num_cyclosynch_ph_emit %d\nAllocated weight to be %d values large and other arrays to be %d\n",photon_list->num_photons,num_ph_abs,num_null_ph,num_cyclosynch_ph_emit, net_num_ph, net_num_ph);
     
     ph_type=malloc((net_num_ph)*sizeof(char));
     
     //save photon data into large arrays, NEED TO KNOW HOW MANY NULL PHOTONS WE HAVE AKA SAVED SPACE THAT AREN'T ACTUALLY PHOTONS TO PROPERLY SAVE SPACE FOR ARRAYS ABOVE
     count=0;//used to keep track of weight values since it may not be the same as num_ph
     //#pragma omp parallel for num_threads(num_thread) reduction(+:weight_net_num_ph)
-    for (i=0;i<num_ph;i++)
+    for (i=0;i<photon_list->list_capacity;i++)
     {
-        if ((ph+i)->weight != 0)
+        ph=getPhoton(photon_list, i);
+        
+        if (ph->weight != 0)
         {
-            p0[count]= ((ph+i)->p0);
-            p1[count]= ((ph+i)->p1);
-            p2[count]= ((ph+i)->p2);
-            p3[count]= ((ph+i)->p3);
-            r0[count]= ((ph+i)->r0);
-            r1[count]= ((ph+i)->r1);
-            r2[count]= ((ph+i)->r2);
+            p0[count]= (ph->p0);
+            p1[count]= (ph->p1);
+            p2[count]= (ph->p2);
+            p3[count]= (ph->p3);
+            r0[count]= (ph->r0);
+            r1[count]= (ph->r1);
+            r2[count]= (ph->r2);
             #if COMV_SWITCH == ON
             {
-                comv_p0[count]= ((ph+i)->comv_p0);
-                comv_p1[count]= ((ph+i)->comv_p1);
-                comv_p2[count]= ((ph+i)->comv_p2);
-                comv_p3[count]= ((ph+i)->comv_p3);
+                comv_p0[count]= (ph->comv_p0);
+                comv_p1[count]= (ph->comv_p1);
+                comv_p2[count]= (ph->comv_p2);
+                comv_p3[count]= (ph->comv_p3);
             }
             #endif
             #if STOKES_SWITCH == ON
             {
-                s0[count]= ((ph+i)->s0);
-                s1[count]= ((ph+i)->s1);
-                s2[count]= ((ph+i)->s2);
-                s3[count]= ((ph+i)->s3);
+                s0[count]= (ph->s0);
+                s1[count]= (ph->s1);
+                s2[count]= (ph->s2);
+                s3[count]= (ph->s3);
             }
             #endif
-            num_scatt[count]= ((ph+i)->num_scatt);
-            weight[count]= ((ph+i)->weight);
-             //fprintf(fPtr, "%d %c %e %e %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9);
+            num_scatt[count]= (ph->num_scatt);
+            weight[count]= (ph->weight);
+             //fprintf(fPtr, "%d %c %e %e %e %e %e %e %e %e\n", i, ph->type, ph->r0, ph->r1, ph->r2, ph->num_scatt, ph->weight, ph->p0, ph->comv_p0, ph->p0*C_LIGHT/1.6e-9);
             
             if ((frame==frame_last))
             {
-                global_weight[count]=((ph+i)->weight);
+                global_weight[count]=(ph->weight);
             }
             
-            *(ph_type+count)=(ph+i)->type;
-            //printf("%d %c %e %e %e %e %e %e %e %e %c\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9, *(ph_type+count));
+            *(ph_type+count)=ph->type;
+            //printf("%d %c %e %e %e %e %e %e %e %e %c\n", i, ph->type, ph->r0, ph->r1, ph->r2, ph->num_scatt, ph->weight, ph->p0, ph->comv_p0, ph->p0*C_LIGHT/1.6e-9, *(ph_type+count));
             
             count++;
         }
