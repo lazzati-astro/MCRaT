@@ -234,6 +234,7 @@ struct hydro_dataframe
 #include "analytic_outflows.h"
 #include "optical_depth.h"
 #include "electron.h"
+#include "photons.h"
 
 
 //if the user doesnt specify NONTHERMAL_E_DIST set it to be off
