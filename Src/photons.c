@@ -148,12 +148,13 @@ void addToPhotonList(struct photonList *photon_list, struct photon *ph, size_t n
                     i=photon_list->num_photons;
                 }
             }
-            photon_list->num_null_photons--;
         }
         
         // Copy photon into list
         memcpy(&photon_list->photons[idx], ph, sizeof(struct photon));
         photon_list->num_photons++;
+        photon_list->num_null_photons--;
+
     }
     else
     {
@@ -166,7 +167,7 @@ void addToPhotonList(struct photonList *photon_list, struct photon *ph, size_t n
             printf("Adding to the photon list has failed. the number of null photons in the list is less than the number of photons to add to the list. %d vs %d", (photon_list->num_null_photons), num_photons );
             exit(1);
         }
-        
+        //TODO: this finds all the null photons even if we only need some number that is less than photon_list->num_null_photons, this can be optimized.
         for (i=0;i<photon_list->list_capacity; i++)
         {
             if (photon_list->photons[i].type == NULL_PHOTON)
@@ -189,6 +190,8 @@ void addToPhotonList(struct photonList *photon_list, struct photon *ph, size_t n
             photon_list->num_photons++;
             photon_list->num_null_photons--;
         }
+        
+        free(null_ph_indexes);
 
         
     }
