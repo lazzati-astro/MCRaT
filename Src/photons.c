@@ -186,7 +186,7 @@ void addToPhotonList(struct photonList *photon_list, struct photon *ph, size_t n
         {
             idx=(*(null_ph_indexes+i));
             // Copy photon into list
-            memcpy(&photon_list->photons[idx], ph[i], sizeof(struct photon));
+            memcpy(&photon_list->photons[idx], (ph+i), sizeof(struct photon));
             photon_list->num_photons++;
             photon_list->num_null_photons--;
         }
