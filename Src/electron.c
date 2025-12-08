@@ -52,8 +52,8 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
                 result=N_GAMMA; //the index of the last interval of our electron distribution subgroup is N_GAMMA-1
             }
 
-            //result because we start iterating at i=1 instead of 0. This gives result as the index in the
-            //photon struct and the index for calcualting the gammamin/max interval of the subgroup from the
+            //result-1 because we start iterating at i=1 instead of 0. This gives result as the index in the
+            //photon struct and we need to subtract -1 to get the index for calcualting the gammamin/max interval of the subgroup from the
             //hot cross section calculations
             gamma_min = log10(GAMMA_MIN) + (result-1) * dgamma;
             gamma_max = gamma_min + dgamma;
