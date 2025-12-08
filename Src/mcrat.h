@@ -166,7 +166,7 @@ struct photon
 struct photonList
 {
     struct photon *photons; //array of list_capacity length
-    int *sorted_indexes //array of list_capacity length
+    int *sorted_indexes; //array of list_capacity length
     int num_photons; //number of real, non-null photons in the array
     int num_null_photons; //number of null photons in the full array
     int list_capacity; //number of photons that were malloc-ed /realloc-ed
