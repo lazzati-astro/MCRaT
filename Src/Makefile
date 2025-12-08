@@ -6,9 +6,9 @@ CFLAGS      = -Wall -g  #-fsanitize=address
 # -fopenmp
 LIB         = -lz -lm -ldl -lgsl -lgslcblas -lm -lmpi -lhdf5
 
-DEPS = mcrat.h mclib.h mclib_riken.h mclib_pluto.h mc_cyclosynch.h mcrat_input.h geometry.h mcrat_io.h mcrat_scattering.h mclib_flash.h analytic_outflows.h optical_depth.h electron.h hot_x_section.h
-OBJ = mcrat.o mclib.o mclib_riken.o mclib_pluto.o mc_cyclosynch.o geometry.o mcrat_io.o mcrat_scattering.o mclib_flash.o analytic_outflows.o optical_depth.o electron.o hot_x_section.o
-OBJ_MERGE = merge.o mclib.o mclib_riken.o mclib_pluto.o mc_cyclosynch.o geometry.o mcrat_io.o mcrat_scattering.o mclib_flash.o analytic_outflows.o optical_depth.o electron.o hot_x_section.o
+DEPS = mcrat.h mclib.h mclib_riken.h mclib_pluto.h mc_cyclosynch.h mcrat_input.h geometry.h mcrat_io.h mcrat_scattering.h mclib_flash.h analytic_outflows.h optical_depth.h electron.h hot_x_section.h photons.h
+OBJ = mcrat.o mclib.o mclib_riken.o mclib_pluto.o mc_cyclosynch.o geometry.o mcrat_io.o mcrat_scattering.o mclib_flash.o analytic_outflows.o optical_depth.o electron.o hot_x_section.o photons.o
+OBJ_MERGE = merge.o mclib.o mclib_riken.o mclib_pluto.o mc_cyclosynch.o geometry.o mcrat_io.o mcrat_scattering.o mclib_flash.o analytic_outflows.o optical_depth.o electron.o hot_x_section.o photons.o
 
 INCLUDE   = -I$(HDF_INSTALL)/include -I/opt/local/include/ -I/usr/include/ -I/opt/local/include/openmpi-gcc13/
 
