@@ -1342,7 +1342,7 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
     return scatt_time;
 }
 
-double averagePhotonEnergy(struct photon *ph, int num_ph)
+double averagePhotonEnergy(struct photonList *photon_list)
 {
     //to calculate weighted photon energy in ergs
     int i=0;
@@ -1350,16 +1350,19 @@ double averagePhotonEnergy(struct photon *ph, int num_ph)
     int num_thread=omp_get_num_threads();
     #endif
     double e_sum=0, w_sum=0;
+    struct photon *ph=NULL;
     
     #pragma omp parallel for reduction(+:e_sum) reduction(+:w_sum)
-    for (i=0;i<num_ph;i++)
+    for (i=0;i<photon_list->list_capacity;i++)
     {
+        ph=getPhoton(photon_list, i);
+
         #if CYCLOSYNCHROTRON_SWITCH == ON
-        if (((ph+i)->weight != 0)) //dont want account for null or absorbed UNABSORBED_CS_PHOTON photons
+        if ((ph->weight != 0)) //dont want account for null or absorbed UNABSORBED_CS_PHOTON photons
         #endif
         {
-            e_sum+=(((ph+i)->p0)*((ph+i)->weight));
-            w_sum+=((ph+i)->weight);
+            e_sum+=((ph->p0)*(ph->weight));
+            w_sum+=(ph->weight);
         }
     }
     

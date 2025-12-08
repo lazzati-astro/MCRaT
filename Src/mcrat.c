@@ -768,7 +768,7 @@ int main(int argc, char **argv)
                 }
             #endif
             
-            fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,num_ph-num_null_ph);
+            fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: propagating and scattering %d photons\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI,photon_list.num_photons);
             fflush(fPtr);
             
             frame_scatt_cnt=0;
@@ -833,7 +833,7 @@ int main(int argc, char **argv)
                     {
                         fprintf(fPtr,"Scattering Number: %d\n", frame_scatt_cnt);
                         fprintf(fPtr,"The local temp is: %e K\n", *(hydrodata.temp + scattered_photon->nearest_block_index) );
-                        fprintf(fPtr,"Average photon energy is: %e ergs\n", averagePhotonEnergy(phPtr, num_ph)); //write function to average over the photons p0 can then do (1.6e-9) to get keV
+                        fprintf(fPtr,"Average photon energy is: %e ergs\n", averagePhotonEnergy(&photon_list)); //write function to average over the photons p0 can then do (1.6e-9) to get keV
                         fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
                         //fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
                         fflush(fPtr);
