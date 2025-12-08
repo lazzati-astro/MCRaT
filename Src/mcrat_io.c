@@ -112,7 +112,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[STR
     return original_num_procs;
 }
 
-void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclosynch_ph_emit, int num_null_ph, int scatt_cyclosynch_num_ph, int frame,int frame_inj, int frame_last, char dir[STR_BUFFER], int angle_rank, FILE *fPtr )
+void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclosynch_ph_emit, int scatt_cyclosynch_num_ph, int frame,int frame_inj, int frame_last, char dir[STR_BUFFER], int angle_rank, FILE *fPtr )
 {
     //function to save the photons' positions and 4 momentum
     
@@ -142,7 +142,7 @@ void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclos
     hsize_t      size[1];
     hsize_t      offset[1];
     
-    fprintf(fPtr, "num_ph %d num_ph_abs %d num_null_ph %d num_cyclosynch_ph_emit %d\nAllocated weight to be %d values large and other arrays to be %d\n",photon_list->num_photons,num_ph_abs,num_null_ph,num_cyclosynch_ph_emit, net_num_ph, net_num_ph);
+    fprintf(fPtr, "num_ph %d num_ph_abs %d num_null_ph %d num_cyclosynch_ph_emit %d\nAllocated weight to be %d values large and other arrays to be %d\n",photon_list->num_photons,num_ph_abs,photon_list->num_null_photons,num_cyclosynch_ph_emit, net_num_ph, net_num_ph);
     
     ph_type=malloc((net_num_ph)*sizeof(char));
     
