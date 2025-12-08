@@ -22,7 +22,7 @@ void updatePhotonPosition(struct photonList *photon_list, double t, FILE *fPtr);
 
 double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_dataframe *hydro_data, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt,  gsl_rng * rand, FILE *fPtr);
 
-double averagePhotonEnergy(struct photon *ph, int num_ph);
+double averagePhotonEnergy(struct photonList *photon_list);
 
 void phScattStats(struct photonList *photon_list, int *max, int *min, double *avg, double *r_avg, FILE *fPtr  );
 
