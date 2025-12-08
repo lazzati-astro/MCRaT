@@ -87,7 +87,7 @@ void setPhotonList(struct photonList *photon_list, struct photon *ph_array, int 
     {
         freePhotonList(photon_list);
     }
-    allocatePhotonListMemory(photon_list, num_photons)
+    allocatePhotonListMemory(photon_list, num_photons);
     
     memcpy(photon_list->photons, ph_array, num_photons*sizeof(struct photon));
     photon_list->list_capacity=num_photons;
@@ -186,7 +186,7 @@ void addToPhotonList(struct photonList *photon_list, struct photon *ph, size_t n
         {
             idx=(*(null_ph_indexes+i));
             // Copy photon into list
-            memcpy(&photon_list->photons[idx], ph[i], sizeof(struct photon));
+            memcpy(&photon_list->photons[idx], (ph+i), sizeof(struct photon));
             photon_list->num_photons++;
             photon_list->num_null_photons--;
         }

@@ -806,7 +806,7 @@ int main(int argc, char **argv)
                     remaining_time-=time_step; //update the remaining time subtracting off the time that has been accumulated through photon scatterings.
                     
                     //get the photon so we can easily access of its properties
-                    scattered_photon=getPhoton(&photon_list, ph_scatt_index)
+                    scattered_photon=getPhoton(&photon_list, ph_scatt_index);
 
                     
                     //see if the scattered phton was a seed photon, if so replenish the seed photon

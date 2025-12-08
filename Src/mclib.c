@@ -606,7 +606,7 @@ void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hy
     int i=0, ph_block_index=0, num_thread=1, thread_id=0;
     double mfp=0, default_mfp=1e12, tau=0;
     double rnd_tracker=0;
-    double *all_time_steps=malloc(num_ph*sizeof(double));
+    double *all_time_steps=malloc((photon_list->list_capacity)*sizeof(double));
     struct photon *ph=NULL;
 
     #if defined(_OPENMP)
