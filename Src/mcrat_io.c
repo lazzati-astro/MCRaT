@@ -14,10 +14,14 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[STR
     double time=0;
     char mc_chkpt_files[STR_BUFFER]="", restrt=""; //define new variable that wont write over the restrt variable in the main part of the code, when its put into the readCheckpoint function
     struct photon *phPtr=NULL; //pointer to array of photons
+    struct photonList photon_list; //pointer to array of photons
     //DIR * dirp;
     //struct dirent * entry;
     //struct stat st = {0};
     glob_t  files;
+
+    //this sets the pointers in the struct to NULL and sets the photon counters to 0
+    initalizePhotonList(&photon_list);
         
     //if (angle_rank==0)
     {
@@ -45,7 +49,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[STR
                 //printf("TEST: %s\n", mc_chkpt_files);
             }
         }
-        readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, &restrt, &time, rand_num, &original_num_procs);
+        readCheckpoint(dir, &photon_list, &frame2, &framestart, &scatt_framestart, &restrt, &time, rand_num, &original_num_procs);
     
         //original_num_procs= 70;
         
@@ -74,10 +78,9 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[STR
         //printf("TEST: %s\n", mc_chkpt_files);
         if ( access( mc_chkpt_files, F_OK ) != -1 )
         {
-            readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, &restrt, &time, count_procs[j], &i);
-            free(phPtr);
-            phPtr=NULL;
-            
+            readCheckpoint(dir, &photon_list, &frame2, &framestart, &scatt_framestart, &restrt, &time, count_procs[j], &i);
+            freePhotonList(&photon_list);
+
             if ((framestart<=frame2) && (scatt_framestart<=last_frame)) //add another condition here
             {
                 cont_procs[count]=j;
