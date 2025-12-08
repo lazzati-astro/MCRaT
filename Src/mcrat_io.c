@@ -1063,7 +1063,7 @@ int readCheckpoint(char dir[STR_BUFFER], struct photonList *photon_list, int *fr
             (ph)=malloc(sizeof(struct photon)*(ph_num)); //allocate memory to hold photon data
             
             
-            for (i=0;i<(*ph_num);i++)
+            for (i=0;i<ph_num;i++)
             {
                 fread(phHolder, sizeof(struct photon), 1, fPtr);
                 //printf("%e,%e,%e, %e,%e,%e, %e, %e\n",(ph)->p0, (ph)->p1, (ph)->p2, ph->p3, (ph)->r0, (ph)->r1, (ph)->r2, ph->num_scatt );
