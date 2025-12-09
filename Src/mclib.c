@@ -688,9 +688,10 @@ void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hy
     //printf("HERE\n");
     for (i=0;i<photon_list->list_capacity;i++)
     {
+        //ph=getPhoton(photon_list, i);
         //*(sorted_indexes+i)= i; //save  indexes to array to use in qsort, not needed since we created the photonList struct
         photon_list->sorted_indexes[i]=i; //save  indexes to array to use in qsort
-        *(all_time_steps+i)=ph->time_to_scatter; //save values to use in qsort
+        *(all_time_steps+i)=getPhoton(photon_list, i)->time_to_scatter; //save values to use in qsort
     }
 
     reverseSortIndexes(photon_list->sorted_indexes, photon_list->list_capacity, sizeof (int),  all_time_steps);
