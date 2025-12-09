@@ -44,6 +44,5 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosyn
 
 int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph_weight, int maximum_photons, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr);
 
-//double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_cyclosynch_num_ph, double *temp, double *dens, FILE *fPtr);
-double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_cyclosynch_num_ph, struct hydro_dataframe *hydro_data, FILE *fPtr);
+double phAbsCyclosynch(struct photonList *photon_list, int *num_abs_ph, int *scatt_cyclosynch_num_ph, struct hydro_dataframe *hydro_data, FILE *fPtr);
 

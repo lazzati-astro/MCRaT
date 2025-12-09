@@ -1177,7 +1177,7 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
     return ph_tot;
 }
 
-double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_cyclosynch_num_ph, struct hydro_dataframe *hydro_data, FILE *fPtr) //double *temp, double *dens, FILE *fPtr)
+double phAbsCyclosynch(struct photonList *photon_list, int *num_abs_ph, int *scatt_cyclosynch_num_ph, struct hydro_dataframe *hydro_data, FILE *fPtr)
 {
     int i=0, count=0, abs_ph_count=0, synch_ph_count=0, num_thread=1;
     int other_count=0;
@@ -1186,38 +1186,38 @@ double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, in
     #endif
 
     double el_dens=0, nu_c=0, abs_count=0, b_field=0;
-    //struct photon tmp_ph;//hold temporay photon to move its data
-    
+    struct photon *ph=NULL;
+
     fprintf(fPtr, "In phAbsCyclosynch func begin: abs_ph_count: %d synch_ph_count: %d scatt_cyclosynch_num_ph: %d num_threads: %d\n", abs_ph_count, synch_ph_count, *scatt_cyclosynch_num_ph, num_thread);
     
     *scatt_cyclosynch_num_ph=0;//set thsi equal to 0, to recount in this function and get prepared for the next frame
     
     #pragma omp parallel for num_threads(num_thread) firstprivate(b_field, el_dens, nu_c) reduction(+:abs_ph_count)
-    for (i=0;i<*num_ph;i++)
+    for (i=0;i<photon_list->list_capacity;i++)
     {
-        if (((*ph_orig)[i].weight != 0) && ((*ph_orig)[i].nearest_block_index != -1))
+        ph=getPhoton(photon_list, i);
+        
+        if ((ph->weight != 0) && (ph->nearest_block_index != -1))
         {
             // if the photon isnt a null photon already, see if it should be absorbed
             
-            b_field=getMagneticFieldMagnitude(hydro_data, (*ph_orig)[i].nearest_block_index);
+            b_field=getMagneticFieldMagnitude(hydro_data, ph->nearest_block_index);
             nu_c=calcCyclotronFreq(b_field);
 
-            //nu_c=calcCyclotronFreq(calcB(el_dens, (hydro_data->temp)[(*ph_orig)[i].nearest_block_index])); old way //*(temp+(*ph_orig)[i].nearest_block_index)));
-            //printf("photon %d has lab nu %e comv frequency %e and nu_c %e with FLASH grid number %d\n", i, (*ph_orig)[i].p0*C_LIGHT/PL_CONST, (*ph_orig)[i].comv_p0*C_LIGHT/PL_CONST, nu_c, (*ph_orig)[i].nearest_block_index);
-            if (((*ph_orig)[i].comv_p0*C_LIGHT/PL_CONST <= nu_c) || ((*ph_orig)[i].type == CS_POOL_PHOTON))
+            //printf("photon %d has lab nu %e comv frequency %e and nu_c %e with FLASH grid number %d\n", i, ph->p0*C_LIGHT/PL_CONST, ph->comv_p0*C_LIGHT/PL_CONST, nu_c, ph->nearest_block_index);
+            if ((ph->comv_p0*C_LIGHT/PL_CONST <= nu_c) || (ph->type == CS_POOL_PHOTON))
             {
                 //if the photon has a frequency less that nu_c, it should be absorbed and becomes a null photon
                 //preset values for the the newly created spots to hold the emitted phtoons in;
                 
                 //if this is a synchrotron photons or photons that have been scattered that were once synch photons in this frame
                 //fprintf(fPtr,"photon %d being absorbed\n", i);
-                if (((*ph_orig)[i].type != INJECTED_PHOTON) && ((*ph_orig)[i].type != UNABSORBED_CS_PHOTON) )
+                abs_ph_count++;
+
+                setNullPhoton(photon_list, i);
+                if ((ph->type != INJECTED_PHOTON) && (ph->type != UNABSORBED_CS_PHOTON) )
                 {
-                    (*ph_orig)[i].weight=0;
-                    (*ph_orig)[i].nearest_block_index=-1;
-                    abs_ph_count++;
-                    
-                    if ((*ph_orig)[i].type == CS_POOL_PHOTON)
+                    if (ph->type == CS_POOL_PHOTON)
                     {
                         synch_ph_count++;
                     }
@@ -1225,44 +1225,40 @@ double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, in
                 else
                 {
                     //have an injected photon or UNABSORBED_CS_PHOTON (previous COMPTONIZED_PHOTON photon) that has a nu that can be absorbed
-                    abs_count+=(*ph_orig)[i].weight;
-                    (*ph_orig)[i].p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been absorbed,
-                    (*ph_orig)[i].nearest_block_index=-1;
-                    //also set the weight equal to 0 since we no longer care about saving it
-                    (*ph_orig)[i].weight=0;
-                    abs_ph_count++;
-
+                    abs_count+=ph->weight;
+                    ph->p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been absorbed,
                 }
             }
+            /*
             else
             {
                 //if the phootn isnt going to be absorbed, see if its a COMPTONIZED_PHOTON photon thats survived and change it to an injected type
                 
                 //replace the potantial null photon with this photon's data
-                (*ph_orig)[count].p0=(*ph_orig)[i].p0;
-                (*ph_orig)[count].p1=(*ph_orig)[i].p1;
-                (*ph_orig)[count].p2=(*ph_orig)[i].p2;
-                (*ph_orig)[count].p3=(*ph_orig)[i].p3;
-                (*ph_orig)[count].comv_p0=(*ph_orig)[i].comv_p0;
-                (*ph_orig)[count].comv_p1=(*ph_orig)[i].comv_p1;
-                (*ph_orig)[count].comv_p2=(*ph_orig)[i].comv_p2;
-                (*ph_orig)[count].comv_p3=(*ph_orig)[i].comv_p3;
-                (*ph_orig)[count].r0= (*ph_orig)[i].r0;
-                (*ph_orig)[count].r1=(*ph_orig)[i].r1 ;
-                (*ph_orig)[count].r2=(*ph_orig)[i].r2;
-                (*ph_orig)[count].s0=(*ph_orig)[i].s0;
-                (*ph_orig)[count].s1=(*ph_orig)[i].s1;
-                (*ph_orig)[count].s2=(*ph_orig)[i].s2;
-                (*ph_orig)[count].s3=(*ph_orig)[i].s3;
-                (*ph_orig)[count].num_scatt=(*ph_orig)[i].num_scatt;
-                (*ph_orig)[count].weight=(*ph_orig)[i].weight;
-                (*ph_orig)[count].nearest_block_index=(*ph_orig)[i].nearest_block_index;
-                (*ph_orig)[count].type=(*ph_orig)[i].type;
+                (*ph_orig)[count].p0=ph->p0;
+                (*ph_orig)[count].p1=ph->p1;
+                (*ph_orig)[count].p2=ph->p2;
+                (*ph_orig)[count].p3=ph->p3;
+                (*ph_orig)[count].comv_p0=ph->comv_p0;
+                (*ph_orig)[count].comv_p1=ph->comv_p1;
+                (*ph_orig)[count].comv_p2=ph->comv_p2;
+                (*ph_orig)[count].comv_p3=ph->comv_p3;
+                (*ph_orig)[count].r0= ph->r0;
+                (*ph_orig)[count].r1=ph->r1 ;
+                (*ph_orig)[count].r2=ph->r2;
+                (*ph_orig)[count].s0=ph->s0;
+                (*ph_orig)[count].s1=ph->s1;
+                (*ph_orig)[count].s2=ph->s2;
+                (*ph_orig)[count].s3=ph->s3;
+                (*ph_orig)[count].num_scatt=ph->num_scatt;
+                (*ph_orig)[count].weight=ph->weight;
+                (*ph_orig)[count].nearest_block_index=ph->nearest_block_index;
+                (*ph_orig)[count].type=ph->type;
                 
                 //increment count
                 count+=1;
                 
-                if (((*ph_orig)[i].type == COMPTONIZED_PHOTON) || ((*ph_orig)[i].type == UNABSORBED_CS_PHOTON) )
+                if ((ph->type == COMPTONIZED_PHOTON) || (ph->type == UNABSORBED_CS_PHOTON) )
                 {
                     //if the photon is a COMPTONIZED_PHOTON phton (scattered synch photon from the current frame) or a UNABSORBED_CS_PHOTON photon (scattered synch photon) from an old frame
                     //count how many of these there are
@@ -1270,45 +1266,47 @@ double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, in
                 }
                 
             }
+             */
         }
+        /*
         else
         {
             //see if the photon was a previous INJECTED_PHOTON photon absorbed that we still have to account for in the array
-            if (((*ph_orig)[i].p0 < 0) )
+            if ((ph->p0 < 0) )
             {
                 //replace the potantial null photon with this photon's data
-                (*ph_orig)[count].p0=(*ph_orig)[i].p0;
-                (*ph_orig)[count].p1=(*ph_orig)[i].p1;
-                (*ph_orig)[count].p2=(*ph_orig)[i].p2;
-                (*ph_orig)[count].p3=(*ph_orig)[i].p3;
-                (*ph_orig)[count].comv_p0=(*ph_orig)[i].comv_p0;
-                (*ph_orig)[count].comv_p1=(*ph_orig)[i].comv_p1;
-                (*ph_orig)[count].comv_p2=(*ph_orig)[i].comv_p2;
-                (*ph_orig)[count].comv_p3=(*ph_orig)[i].comv_p3;
-                (*ph_orig)[count].r0= (*ph_orig)[i].r0;
-                (*ph_orig)[count].r1=(*ph_orig)[i].r1 ;
-                (*ph_orig)[count].r2=(*ph_orig)[i].r2;
-                (*ph_orig)[count].s0=(*ph_orig)[i].s0;
-                (*ph_orig)[count].s1=(*ph_orig)[i].s1;
-                (*ph_orig)[count].s2=(*ph_orig)[i].s2;
-                (*ph_orig)[count].s3=(*ph_orig)[i].s3;
-                (*ph_orig)[count].num_scatt=(*ph_orig)[i].num_scatt;
-                (*ph_orig)[count].weight=(*ph_orig)[i].weight;
-                (*ph_orig)[count].nearest_block_index=(*ph_orig)[i].nearest_block_index;
-                (*ph_orig)[count].type=(*ph_orig)[i].type;
+                (*ph_orig)[count].p0=ph->p0;
+                (*ph_orig)[count].p1=ph->p1;
+                (*ph_orig)[count].p2=ph->p2;
+                (*ph_orig)[count].p3=ph->p3;
+                (*ph_orig)[count].comv_p0=ph->comv_p0;
+                (*ph_orig)[count].comv_p1=ph->comv_p1;
+                (*ph_orig)[count].comv_p2=ph->comv_p2;
+                (*ph_orig)[count].comv_p3=ph->comv_p3;
+                (*ph_orig)[count].r0= ph->r0;
+                (*ph_orig)[count].r1=ph->r1 ;
+                (*ph_orig)[count].r2=ph->r2;
+                (*ph_orig)[count].s0=ph->s0;
+                (*ph_orig)[count].s1=ph->s1;
+                (*ph_orig)[count].s2=ph->s2;
+                (*ph_orig)[count].s3=ph->s3;
+                (*ph_orig)[count].num_scatt=ph->num_scatt;
+                (*ph_orig)[count].weight=ph->weight;
+                (*ph_orig)[count].nearest_block_index=ph->nearest_block_index;
+                (*ph_orig)[count].type=ph->type;
                 
                 //increment count
                 count+=1;
             }
         }
-                
-        //fprintf(fPtr, "photon %d has energy %e and weight %e with FLASH grid number %d\n", i, (*ph_orig)[i].p0*C_LIGHT/1.6e-9, (*ph_orig)[i].weight, (*ph_orig)[i].nearest_block_index);
+            */
+        //fprintf(fPtr, "photon %d has energy %e and weight %e with FLASH grid number %d\n", i, ph->p0*C_LIGHT/1.6e-9, ph->weight, ph->nearest_block_index);
     }
     //fprintf(fPtr, "In phAbsCyclosynch func: abs_ph_count: %d synch_ph_count: %d scatt_cyclosynch_num_ph: %d\n", abs_ph_count, synch_ph_count, *scatt_cyclosynch_num_ph);
     *num_abs_ph=abs_ph_count; //+synch_ph_count; dont need this
     
     //fprintf(fPtr, "In phAbsCyclosynch func: count before_loop= %d\n", count);
-
+    /*
     while (count<*num_ph)
     {
         //overwrite the last few photons to make sure that they are null photons
@@ -1319,6 +1317,7 @@ double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, in
         
         count+=1;
     }
+     */ //not necessary since all photons are set to NULL with the photonList struct
     //fprintf(fPtr, "In phAbsCyclosynch func: count after loop= %d\n", count);
 
     return abs_count;

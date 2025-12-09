@@ -893,7 +893,7 @@ int main(int argc, char **argv)
                 //make sure the photons that shou;d be absorbed should be absorbed if we have actually emitted any synchrotron photons
                 if (num_cyclosynch_ph_emit>0)
                 {
-                    n_comptonized-=phAbsCyclosynch(&phPtr, &num_ph, &frame_abs_cnt, &scatt_cyclosynch_num_ph, &hydrodata, fPtr);//(&phPtr, &num_ph, &frame_abs_cnt, &scatt_cyclosynch_num_ph, tempPtr, densPtr, fPtr);
+                    n_comptonized-=phAbsCyclosynch(&photon_list, &frame_abs_cnt, &scatt_cyclosynch_num_ph, &hydrodata, fPtr);
                 }
                 
             }
