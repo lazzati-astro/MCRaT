@@ -764,7 +764,7 @@ int main(int argc, char **argv)
                     
                     phScattStats(&photon_list, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
 
-                    num_cyclosynch_ph_emit=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 0, 0, fPtr);
+                    num_cyclosynch_ph_emit=photonEmitCyclosynch(&photon_list, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 0, 0, fPtr);
                 }
             #endif
             
@@ -818,7 +818,7 @@ int main(int argc, char **argv)
                         
                         //fprintf(fPtr, "num_null_ph %d\n", num_null_ph);
                         //printf("The previous scattered photon was a seed photon %c.\n", scattered_photon->type);
-                        num_cyclosynch_ph_emit+=photonEmitCyclosynch(&phPtr, &num_ph, &num_null_ph, &sorted_indexes, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 1, ph_scatt_index, fPtr);
+                        num_cyclosynch_ph_emit+=photonEmitCyclosynch(&photon_list, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 1, ph_scatt_index, fPtr);
                         //fprintf(fPtr, " num_photon: %d\n",num_ph  );
                         //fflush(fPtr);
                         

@@ -1066,7 +1066,7 @@ int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_n
 }
 
 
-int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr)
+int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph_weight, int maximum_photons, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr)
 {
     double rmin=0, rmax=0, max_photons=CYCLOSYNCHROTRON_REBIN_E_PERC*maximum_photons; //have 10% as default, can change later need to figure out how many photons across simulations I want emitted
     double ph_weight_adjusted=0, position_phi=0;
@@ -1233,7 +1233,7 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         ph_tot=1;
     }
     
-    //FIND OUT WHICH PHOTONS IN ARRAY ARE OLD/WERE ABSORBED AND IDENTIFY THIER INDEXES AND HOW MANY, dont subtract this from ph_tot @ the end, WILL NEED FOR PRINT PHOTONS
+    /*FIND OUT WHICH PHOTONS IN ARRAY ARE OLD/WERE ABSORBED AND IDENTIFY THIER INDEXES AND HOW MANY, dont subtract this from ph_tot @ the end, WILL NEED FOR PRINT PHOTONS
     #pragma omp parallel for num_threads(num_thread) reduction(+:null_ph_count)
     for (i=0;i<*num_ph;i++)
     {
@@ -1242,119 +1242,124 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
             null_ph_count+=1;
         }
     }
-    
+    */ //not needed since using the photonList struct
     
     //allocate memory for that many photons and also allocate memory to hold comoving 4 momentum of each photon and the velocity of the fluid
-    //ph_emit=malloc (ph_tot * sizeof (struct photon ));
+    ph_emit=malloc (ph_tot * sizeof (struct photon ));
     p_comv=malloc(4*sizeof(double));
     boost=malloc(4*sizeof(double));
     l_boost=malloc(4*sizeof(double));
     
-    if (null_ph_count < ph_tot)
-    {
-        //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
-        //need to realloc memory to hold the old photon info and the new emitted photon's info
-        //fprintf(fPtr, "Emit: Allocating %d space\n", ((*num_ph)+ph_tot-null_ph_count));
-        //fflush(fPtr);
-
-        tmp=realloc(*ph_orig, ((*num_ph)+ph_tot-null_ph_count)* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
-        if (tmp != NULL)
-        {
-            /* everything ok */
-            *ph_orig = tmp;
-
-        }
-        else
-        {
-            /* problems!!!! */
-            printf("Error with reserving space to hold old and new photons\n");
-            exit(0);
-        }
-        
-        //also expand memory of other arrays
-        /* this isnt needed since the time steps are contained in the photon struct
-        tmp_double=realloc(*all_time_steps, ((*num_ph)+ph_tot-null_ph_count)*sizeof(double));
-        if (tmp_double!=NULL)
-        {
-            *all_time_steps=tmp_double;
-        }
-        else
-        {
-            printf("Error with reallocating space to hold data about each photon's time step until an interaction occurs\n");
-        }
-        */
-        tmp_int=realloc(*sorted_indexes, ((*num_ph)+ph_tot-null_ph_count)*sizeof(int));
-        if (tmp_int!=NULL)
-        {
-            *sorted_indexes=tmp_int;
-        }
-        else
-        {
-            printf("Error with reallocating space to hold data about the order in which each photon would have an interaction\n");
-        }
-        
-        net_ph=(ph_tot-null_ph_count);
-        null_ph_count=ph_tot; // use this to set the photons recently allocated as null phtoons (this can help if we decide to directly double (or *1.5) number of photons each time we need to allocate more memory, then use factor*((*num_ph)+ph_tot)-(*num_ph)
-        null_ph_indexes=malloc((ph_tot+null_ph_count)*sizeof(int));
-        j=0;
-        for (i=((*num_ph)+net_ph)-1;i >=0 ;i--)
-        {
-            //fprintf(fPtr, "idx %d\n", i);
-            //fflush(fPtr);
-            if (((*ph_orig)[i].weight == 0)   || (i >= *num_ph))
-            {
-                //preset values for the the newly created spots to hold the emitted phtoons in
-                (*ph_orig)[i].weight=0;
-                (*ph_orig)[i].nearest_block_index=-1;
-                *(null_ph_indexes+j)=i; //save this information so we can use the same syntax for both cases in saving the emitted photon data
-                //fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
-                //fflush(fPtr);
-                j++;
-            }
-        }
-        count_null_indexes=ph_tot; //use this to count the number fo null photons we have actually created, (this can help if we decide to directly double (or *1.5) number of photons each time we need to allocate more memory, then use factor*((*num_ph)+ph_tot)-(*num_ph)
-        
-        //loop through the original set of photons to see if
-        
-        //fprintf(fPtr,"Val %d\n", (*(null_ph_indexes+count_null_indexes-1)));
-        *num_ph+=net_ph; //update number of photons
-        *num_null_ph=ph_tot-null_ph_count; //((*num_ph)+ph_tot)-(*num_ph)-ph_tot; //reserved space - emitted photons-original photons
-        //fprintf(fPtr,"New Num PH %d\nNew null hum_ph %d\n", *num_ph, *num_null_ph);
-        //fflush(fPtr);
-    }
-    else
-    {
-        //otherwise need to find the indexes of these null photons to save the newly emitted photons in them, start searching from the end of the array to efficiently find them
-        //dont need to update the number of photons here
-        null_ph_indexes=malloc(null_ph_count*sizeof(int));
-        j=0;
-        for (i=(*num_ph)-1;i>=0;i--)
-        {
-            if ((*ph_orig)[i].weight == 0)  //if photons are null COMPTONIZED_PHOTON photons and not absorbed UNABSORBED_CS_PHOTON photons
-            {
-                // if the weight is 0, this is a photons that has been absorbed and is now null
-                *(null_ph_indexes+j)=i;
-                j++;
-                //fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
-                //fflush(fPtr);
-                
-                if (j == null_ph_count)
-                {
-                    i=-1; //have found al the indexes and can exit the loop, dont want to do this so we can do the first part of the if statement
-                }
-            }
-            
-        }
-        
-        count_null_indexes=null_ph_count;
-        
-        *num_null_ph=null_ph_count-ph_tot;
-        
-    }
+    
+//    if (null_ph_count < ph_tot)
+//    {
+//        //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
+//        //need to realloc memory to hold the old photon info and the new emitted photon's info
+//        //fprintf(fPtr, "Emit: Allocating %d space\n", ((*num_ph)+ph_tot-null_ph_count));
+//        //fflush(fPtr);
+//        /*
+//        tmp=realloc(*ph_orig, ((*num_ph)+ph_tot-null_ph_count)* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
+//        if (tmp != NULL)
+//        {
+//            // everything ok
+//            *ph_orig = tmp;
+//
+//        }
+//        else
+//        {
+//            // problems!!!!
+//            printf("Error with reserving space to hold old and new photons\n");
+//            exit(0);
+//        }
+//        */
+//        //also expand memory of other arrays
+//        /* this isnt needed since the time steps are contained in the photon struct
+//        tmp_double=realloc(*all_time_steps, ((*num_ph)+ph_tot-null_ph_count)*sizeof(double));
+//        if (tmp_double!=NULL)
+//        {
+//            *all_time_steps=tmp_double;
+//        }
+//        else
+//        {
+//            printf("Error with reallocating space to hold data about each photon's time step until an interaction occurs\n");
+//        }
+//        */
+//        tmp_int=realloc(*sorted_indexes, ((*num_ph)+ph_tot-null_ph_count)*sizeof(int));
+//        if (tmp_int!=NULL)
+//        {
+//            *sorted_indexes=tmp_int;
+//        }
+//        else
+//        {
+//            printf("Error with reallocating space to hold data about the order in which each photon would have an interaction\n");
+//        }
+//        
+//        net_ph=(ph_tot-null_ph_count);
+//        null_ph_count=ph_tot; // use this to set the photons recently allocated as null phtoons (this can help if we decide to directly double (or *1.5) number of photons each time we need to allocate more memory, then use factor*((*num_ph)+ph_tot)-(*num_ph)
+//        null_ph_indexes=malloc((ph_tot+null_ph_count)*sizeof(int));
+//        j=0;
+//        for (i=((*num_ph)+net_ph)-1;i >=0 ;i--)
+//        {
+//            //fprintf(fPtr, "idx %d\n", i);
+//            //fflush(fPtr);
+//            if (((*ph_orig)[i].weight == 0)   || (i >= *num_ph))
+//            {
+//                //preset values for the the newly created spots to hold the emitted phtoons in
+//                (*ph_orig)[i].weight=0;
+//                (*ph_orig)[i].nearest_block_index=-1;
+//                *(null_ph_indexes+j)=i; //save this information so we can use the same syntax for both cases in saving the emitted photon data
+//                //fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
+//                //fflush(fPtr);
+//                j++;
+//            }
+//        }
+//        count_null_indexes=ph_tot; //use this to count the number fo null photons we have actually created, (this can help if we decide to directly double (or *1.5) number of photons each time we need to allocate more memory, then use factor*((*num_ph)+ph_tot)-(*num_ph)
+//        
+//        //loop through the original set of photons to see if
+//        
+//        //fprintf(fPtr,"Val %d\n", (*(null_ph_indexes+count_null_indexes-1)));
+//        *num_ph+=net_ph; //update number of photons
+//        *num_null_ph=ph_tot-null_ph_count; //((*num_ph)+ph_tot)-(*num_ph)-ph_tot; //reserved space - emitted photons-original photons
+//        //fprintf(fPtr,"New Num PH %d\nNew null hum_ph %d\n", *num_ph, *num_null_ph);
+//        //fflush(fPtr);
+//    }
+//    else
+//    {
+//        //otherwise need to find the indexes of these null photons to save the newly emitted photons in them, start searching from the end of the array to efficiently find them
+//        //dont need to update the number of photons here
+//        null_ph_indexes=malloc(null_ph_count*sizeof(int));
+//        j=0;
+//        for (i=(*num_ph)-1;i>=0;i--)
+//        {
+//            if ((*ph_orig)[i].weight == 0)  //if photons are null COMPTONIZED_PHOTON photons and not absorbed UNABSORBED_CS_PHOTON photons
+//            {
+//                // if the weight is 0, this is a photons that has been absorbed and is now null
+//                *(null_ph_indexes+j)=i;
+//                j++;
+//                //fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
+//                //fflush(fPtr);
+//                
+//                if (j == null_ph_count)
+//                {
+//                    i=-1; //have found al the indexes and can exit the loop, dont want to do this so we can do the first part of the if statement
+//                }
+//            }
+//            
+//        }
+//        
+//        count_null_indexes=null_ph_count;
+//        
+//        *num_null_ph=null_ph_count-ph_tot;
+//        
+//    }
+    //the above chunk of code is meant to allocate extra memory or idenify the location of null photons in the photon array. These are no longer needed since using the photonList struct automatically determines if the list needs to be grown and sets null photons to the appropriate values which can be over written below. Now we allocate an array of photons that will be added to the list at the end of this function
+    
+    //allocate memory for that many photons and also allocate memory to hold comoving 4 momentum of each photon and the velocity of the fluid
     
     if (inject_single_switch == 0)
     {
         //go through blocks and assign random energies/locations to proper number of photons
+        net_ph=ph_tot; //save this value to check later on if we have created all the photons that we expect to create
         ph_tot=0;
         for (i=0;i< hydro_data->num_elements;i++)
         {
@@ -1416,47 +1421,47 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
                     lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
                     //printf("Assigning values to struct\n");
                     
-                    idx=(*(null_ph_indexes+count_null_indexes-1));
+                    idx=ph_tot; //(*(null_ph_indexes+count_null_indexes-1));
                     //fprintf(fPtr, "Placing photon in index %d\n", idx);
-                    (*ph_orig)[idx].p0=(*(l_boost+0));
-                    (*ph_orig)[idx].p1=(*(l_boost+1));
-                    (*ph_orig)[idx].p2=(*(l_boost+2));
-                    (*ph_orig)[idx].p3=(*(l_boost+3));
-                    (*ph_orig)[idx].comv_p0=(*(p_comv+0));
-                    (*ph_orig)[idx].comv_p1=(*(p_comv+1));
-                    (*ph_orig)[idx].comv_p2=(*(p_comv+2));
-                    (*ph_orig)[idx].comv_p3=(*(p_comv+3));
+                    ph_emit[idx].p0=(*(l_boost+0));
+                    ph_emit[idx].p1=(*(l_boost+1));
+                    ph_emit[idx].p2=(*(l_boost+2));
+                    ph_emit[idx].p3=(*(l_boost+3));
+                    ph_emit[idx].comv_p0=(*(p_comv+0));
+                    ph_emit[idx].comv_p1=(*(p_comv+1));
+                    ph_emit[idx].comv_p2=(*(p_comv+2));
+                    ph_emit[idx].comv_p3=(*(p_comv+3));
                     
                     #if DIMENSIONS == THREE
                         hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
                     #else
                         hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
                     #endif
-                    (*ph_orig)[idx].r0= cartesian_position_rand_array[0]; //put photons @center of the box with random phi
-                    (*ph_orig)[idx].r1= cartesian_position_rand_array[1] ;
-                    (*ph_orig)[idx].r2= cartesian_position_rand_array[2]; //y coordinate in flash becomes z coordinate in MCRaT
+                    ph_emit[idx].r0= cartesian_position_rand_array[0]; //put photons @center of the box with random phi
+                    ph_emit[idx].r1= cartesian_position_rand_array[1] ;
+                    ph_emit[idx].r2= cartesian_position_rand_array[2]; //y coordinate in flash becomes z coordinate in MCRaT
                     
-                    //fprintf(fPtr,"%d %e %e %e\n", ph_tot, (*ph_orig)[idx].r0, (*ph_orig)[idx].r1, (*ph_orig)[idx].r2);
+                    //fprintf(fPtr,"%d %e %e %e\n", ph_tot, ph_emit[idx].r0, ph_emit[idx].r1, ph_emit[idx].r2);
                     //fflush(fPtr);
                     
-                    (*ph_orig)[idx].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
-                    (*ph_orig)[idx].s1=0;
-                    (*ph_orig)[idx].s2=0;
-                    (*ph_orig)[idx].s3=0;
-                    (*ph_orig)[idx].num_scatt=0;
-                    (*ph_orig)[idx].weight=ph_weight_adjusted;
-                    (*ph_orig)[idx].nearest_block_index=0; //these photons can be scattered
-                    (*ph_orig)[idx].type=CS_POOL_PHOTON;
-                    (*ph_orig)[idx].recalc_properties=1; //set to 1 so we are sure that we calculate tau values later on
+                    ph_emit[idx].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
+                    ph_emit[idx].s1=0;
+                    ph_emit[idx].s2=0;
+                    ph_emit[idx].s3=0;
+                    ph_emit[idx].num_scatt=0;
+                    ph_emit[idx].weight=ph_weight_adjusted;
+                    ph_emit[idx].nearest_block_index=0; //these photons can be scattered
+                    ph_emit[idx].type=CS_POOL_PHOTON;
+                    ph_emit[idx].recalc_properties=1; //set to 1 so we are sure that we calculate tau values later on
 
                     //printf("%d\n",ph_tot);
                     ph_tot++; //count how many photons have been emitted
-                    count_null_indexes--; //keep track fo the null photon indexes
+                    //count_null_indexes--; //keep track fo the null photon indexes
                     
-                    if ((count_null_indexes == 0) || (ph_tot == null_ph_count))
+                    if (net_ph==ph_tot)
                     {
-                        //if count_null_indexes is 0, then all the null photon spaces are filled with emitted photons
-                        //if ph_tot is equal to what it used to be
+                        //if we have created all the emitted photons
+                        //ph_tot is equal to what it used to be
                         i= hydro_data->num_elements;
                         //printf("MCRaT has completed emitting the cyclosynchrotron photons.\n");
                     }
@@ -1469,8 +1474,9 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
     {
         //need to replace the scattered synch photon with another.
         //place new photon near the old one and make sure that it has the same nu_c as the other unscattered synch photons
-        idx=(*(null_ph_indexes+count_null_indexes-1));
-        i=(*ph_orig)[scatt_ph_index].nearest_block_index;
+        idx=0; //(*(null_ph_indexes+count_null_indexes-1));
+        tmp=getPhoton(photon_list, scatt_ph_index);
+        i=tmp->nearest_block_index;
 
         b_field=getMagneticFieldMagnitude(hydro_data, i);
         nu_c=calcCyclotronFreq(b_field);
@@ -1510,33 +1516,33 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
         
         //fprintf(fPtr, "Placing photon in index %d\n", idx);
-        (*ph_orig)[idx].p0=(*(l_boost+0));
-        (*ph_orig)[idx].p1=(*(l_boost+1));
-        (*ph_orig)[idx].p2=(*(l_boost+2));
-        (*ph_orig)[idx].p3=(*(l_boost+3));
-        (*ph_orig)[idx].comv_p0=(*(p_comv+0));
-        (*ph_orig)[idx].comv_p1=(*(p_comv+1));
-        (*ph_orig)[idx].comv_p2=(*(p_comv+2));
-        (*ph_orig)[idx].comv_p3=(*(p_comv+3));
+        ph_emit[idx].p0=(*(l_boost+0));
+        ph_emit[idx].p1=(*(l_boost+1));
+        ph_emit[idx].p2=(*(l_boost+2));
+        ph_emit[idx].p3=(*(l_boost+3));
+        ph_emit[idx].comv_p0=(*(p_comv+0));
+        ph_emit[idx].comv_p1=(*(p_comv+1));
+        ph_emit[idx].comv_p2=(*(p_comv+2));
+        ph_emit[idx].comv_p3=(*(p_comv+3));
 
         #if DIMENSIONS == THREE
             hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
         #else
             hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
         #endif
-        (*ph_orig)[idx].r0= cartesian_position_rand_array[0]; //put photons @center of the box with random phi
-        (*ph_orig)[idx].r1= cartesian_position_rand_array[1] ;
-        (*ph_orig)[idx].r2= cartesian_position_rand_array[2]; //y coordinate in flash becomes z coordinate in MCRaT
+        ph_emit[idx].r0= cartesian_position_rand_array[0]; //put photons @center of the box with random phi
+        ph_emit[idx].r1= cartesian_position_rand_array[1] ;
+        ph_emit[idx].r2= cartesian_position_rand_array[2]; //y coordinate in flash becomes z coordinate in MCRaT
 
-        (*ph_orig)[idx].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
-        (*ph_orig)[idx].s1=0;
-        (*ph_orig)[idx].s2=0;
-        (*ph_orig)[idx].s3=0;
-        (*ph_orig)[idx].num_scatt=0;
-        (*ph_orig)[idx].weight=(*ph_orig)[scatt_ph_index].weight;
-        (*ph_orig)[idx].nearest_block_index=i; //these photons can be scattered
-        (*ph_orig)[idx].type=CS_POOL_PHOTON;
-        (*ph_orig)[idx].recalc_properties=1; //set to 1 so we are sure that we calculate tau values later on
+        ph_emit[idx].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
+        ph_emit[idx].s1=0;
+        ph_emit[idx].s2=0;
+        ph_emit[idx].s3=0;
+        ph_emit[idx].num_scatt=0;
+        ph_emit[idx].weight=tmp->weight;
+        ph_emit[idx].nearest_block_index=i; //these photons can be scattered
+        ph_emit[idx].type=CS_POOL_PHOTON;
+        ph_emit[idx].recalc_properties=1; //set to 1 so we are sure that we calculate tau values later on
 
         
         //change position of scattered synchrotron photon to be random in the hydro grid
@@ -1550,17 +1556,20 @@ int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph,
         #endif
 
         //assign random position
-        (*ph_orig)[scatt_ph_index].r0=cartesian_position_rand_array[0];
-        (*ph_orig)[scatt_ph_index].r1=cartesian_position_rand_array[1];
-        (*ph_orig)[scatt_ph_index].r2=cartesian_position_rand_array[2];
+        tmp->r0=cartesian_position_rand_array[0];
+        tmp->r1=cartesian_position_rand_array[1];
+        tmp->r2=cartesian_position_rand_array[2];
         
     }
     //printf("At End of function\n");
     //exit(0);
+    
+    //add the whole array to our photon list struct
+    addToPhotonList(photon_list, ph_emit, ph_tot);
 
     free(null_ph_indexes);
     free(ph_dens); free(p_comv); free(boost); free(l_boost);
-    //free(ph_emit);
+    free(ph_emit);
     
     gsl_integration_workspace_free (w);
     
