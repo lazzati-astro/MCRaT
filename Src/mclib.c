@@ -589,6 +589,13 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
         }
         
     }
+    
+    //free rand number generator
+    for (i=1;i<num_thread;i++)
+    {
+        gsl_rng_free(rng[i]);
+    }
+    free(rng);
 
 
     //print number of times we had to refind the index of the elemtn photons were located in
