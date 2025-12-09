@@ -145,7 +145,7 @@ void addToPhotonList(struct photonList *photon_list, struct photon *ph, size_t n
                 if (photon_list->photons[i].type == NULL_PHOTON)
                 {
                     idx=i;
-                    i=photon_list->num_photons;
+                    i=photon_list->list_capacity;
                 }
             }
         }
