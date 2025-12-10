@@ -1214,7 +1214,6 @@ double phAbsCyclosynch(struct photonList *photon_list, int *num_abs_ph, int *sca
                 //fprintf(fPtr,"photon %d being absorbed\n", i);
                 abs_ph_count++;
 
-                setNullPhoton(photon_list, i);
                 if ((ph->type != INJECTED_PHOTON) && (ph->type != UNABSORBED_CS_PHOTON) )
                 {
                     if (ph->type == CS_POOL_PHOTON)
@@ -1228,6 +1227,9 @@ double phAbsCyclosynch(struct photonList *photon_list, int *num_abs_ph, int *sca
                     abs_count+=ph->weight;
                     ph->p0=-1; //set its energy negative so we know for later analysis that it can't be used and its been absorbed,
                 }
+                
+                setNullPhoton(photon_list, i);
+
             }
             /*
             else
