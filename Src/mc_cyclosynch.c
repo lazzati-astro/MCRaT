@@ -1231,6 +1231,16 @@ double phAbsCyclosynch(struct photonList *photon_list, int *num_abs_ph, int *sca
                 setNullPhoton(photon_list, i);
 
             }
+            else
+            {
+                if ((ph->type == COMPTONIZED_PHOTON) || (ph->type == UNABSORBED_CS_PHOTON) )
+                {
+                    //if the photon is a COMPTONIZED_PHOTON phton (scattered synch photon from the current frame) or a UNABSORBED_CS_PHOTON photon (scattered synch photon) from an old frame
+                    //count how many of these there are
+                    *scatt_cyclosynch_num_ph+=1;
+                }
+
+            }
             /*
             else
             {
