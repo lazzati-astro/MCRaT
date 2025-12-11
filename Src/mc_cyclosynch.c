@@ -659,6 +659,9 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosyn
 
     
     gsl_histogram2d_free (h_energy_theta);
+    #if DIMENSIONS == THREE
+        gsl_histogram2d_free(h_energy_phi);
+    #endif
     free(rebin_ph);
     free(synch_ph);
     
