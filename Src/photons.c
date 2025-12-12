@@ -186,12 +186,16 @@ void addToPhotonList(struct photonList *photon_list, struct photon *ph, size_t n
         //now we have the null photon indexes, we can assign the photons to these indexes
         for (i=0;i<num_photons;i++)
         {
-            idx=(*(null_ph_indexes+i));
-            // Copy photon into list
-            memcpy(&photon_list->photons[idx], (ph+i), sizeof(struct photon));
-            incrementPhotonNum(photon_list);
-            //photon_list->num_photons++;
-            //photon_list->num_null_photons--;
+            //only do the assigning for non-null photons
+            if ((ph+i)->type != NULL_PHOTON)
+            {
+                idx=(*(null_ph_indexes+i));
+                // Copy photon into list
+                memcpy(&photon_list->photons[idx], (ph+i), sizeof(struct photon));
+                incrementPhotonNum(photon_list);
+                //photon_list->num_photons++;
+                //photon_list->num_null_photons--;
+            }
         }
         
         free(null_ph_indexes);
