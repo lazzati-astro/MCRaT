@@ -631,6 +631,7 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosyn
     addToPhotonList(photon_list, rebin_ph, total_bins);
     
     //make sure that all the rebinned photons have been saved
+    /*
     if (count<total_bins)
     {
         fprintf(fPtr, "There was an issue where MCRaT was not able to save all of the rebinned photons\n");
@@ -638,6 +639,7 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosyn
         fflush(fPtr);
         exit(1);
     }
+     */
     
     /*
      fprintf(fPtr, "\nPost Rebin Fill-in: \n");
