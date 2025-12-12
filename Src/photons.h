@@ -13,3 +13,9 @@ void addToPhotonList(struct photonList *photon_list, struct photon *ph, size_t n
 void setNullPhoton(struct photonList *photon_list, int index);
 
 struct photon* getPhoton(struct photonList *photon_list, int index);
+
+void incrementPhotonNum(struct photonList *photon_list);
+
+void incrementNullPhotonNum(struct photonList *photon_list);
+
+void verifyPhotonNum(struct photonList *photon_list);

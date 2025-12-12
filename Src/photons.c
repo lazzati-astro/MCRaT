@@ -152,8 +152,10 @@ void addToPhotonList(struct photonList *photon_list, struct photon *ph, size_t n
         
         // Copy photon into list
         memcpy(&photon_list->photons[idx], ph, sizeof(struct photon));
-        photon_list->num_photons++;
-        photon_list->num_null_photons--;
+        incrementPhotonNum(photon_list);
+
+        //photon_list->num_photons++;
+        //photon_list->num_null_photons--;
 
     }
     else
@@ -187,8 +189,9 @@ void addToPhotonList(struct photonList *photon_list, struct photon *ph, size_t n
             idx=(*(null_ph_indexes+i));
             // Copy photon into list
             memcpy(&photon_list->photons[idx], (ph+i), sizeof(struct photon));
-            photon_list->num_photons++;
-            photon_list->num_null_photons--;
+            incrementPhotonNum(photon_list);
+            //photon_list->num_photons++;
+            //photon_list->num_null_photons--;
         }
         
         free(null_ph_indexes);
@@ -206,8 +209,9 @@ void setNullPhoton(struct photonList *photon_list, int index)
     photon_list->photons[index].nearest_block_index = -1;
     photon_list->photons[index].recalc_properties = 0;
     
-    photon_list->num_null_photons++;
-    photon_list->num_photons--;
+    //photon_list->num_null_photons++;
+    //photon_list->num_photons--;
+    incrementNullPhotonNum(photon_list);
 
 }
 
@@ -217,3 +221,30 @@ struct photon* getPhoton(struct photonList *photon_list, int index)
     return &photon_list->photons[index];
 }
 
+void incrementPhotonNum(struct photonList *photon_list)
+{
+    (photon_list->num_photons)+=1;
+    (photon_list->num_null_photons)-=1;
+
+    verifyPhotonNum(photon_list);
+
+}
+
+void incrementNullPhotonNum(struct photonList *photon_list)
+{
+    (photon_list->num_photons)-=1;
+    (photon_list->num_null_photons)+=1;
+    
+    verifyPhotonNum(photon_list);
+    
+}
+
+void verifyPhotonNum(struct photonList *photon_list)
+{
+    if (photon_list->num_photons+photon_list->num_null_photons != photon_list->list_capacity)
+    {
+        printf("Error with incremenitng real or null photon in the photonList. conservation of photon error\n");
+        exit(1);
+
+    }
+}
