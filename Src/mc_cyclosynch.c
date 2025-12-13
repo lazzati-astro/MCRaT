@@ -246,7 +246,7 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosyn
     double *tmp_double=NULL;
     int *tmp_int=NULL;
     double count_weight=0;
-    double** avg_values_2d =NULL;
+    //double** avg_values_2d =NULL;
 
     fprintf(fPtr, "In the rebin func; num_threads %d scatt_cyclosynch_num_ph %d, num_ph %d\n", num_thread, (*scatt_cyclosynch_num_ph), photon_list->num_photons);
     fflush(fPtr);
@@ -368,7 +368,7 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosyn
     struct photon *rebin_ph=malloc(total_bins* sizeof (struct photon ));
     struct photon *synch_ph=malloc(synch_photon_count* sizeof (struct photon ));
     int synch_photon_idx[synch_photon_count];
-    
+    /*
     avg_values_2d = (double**)malloc(total_bins * sizeof(double*));
     for (i = 0; i < total_bins; i++)
     {
@@ -382,7 +382,8 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosyn
             avg_values_2d[i][count]=0;
         }
     }
-
+     */
+    double (*avg_values_2d)[num_avg] = calloc(total_bins, sizeof *avg_values_2d);
     
     gsl_histogram2d * h_energy_theta = gsl_histogram2d_alloc (num_bins, num_bins_theta); //x is for energy  and y is for spatial theta, goes from 0 to pi
     gsl_histogram2d_set_ranges_uniform (h_energy_theta, log10(p0_min), log10(p0_max*(1+1e-6)), temp_theta_min, temp_theta_max*(1+1e-6));
@@ -597,9 +598,10 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosyn
     }
     
     //free the dynamically allocated memory
+    /*
     for (i = 0; i < total_bins; i++)
         free(avg_values_2d[i]);
- 
+     */
     free(avg_values_2d);
     
 
