@@ -383,7 +383,7 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosyn
         }
     }
      */
-    double (*avg_values_2d)[num_avg] = calloc(total_bins, sizeof *avg_values_2d);
+    double *avg_values_2d)[num_avg] = calloc(total_bins, sizeof *avg_values_2d);
     
     gsl_histogram2d * h_energy_theta = gsl_histogram2d_alloc (num_bins, num_bins_theta); //x is for energy  and y is for spatial theta, goes from 0 to pi
     gsl_histogram2d_set_ranges_uniform (h_energy_theta, log10(p0_min), log10(p0_max*(1+1e-6)), temp_theta_min, temp_theta_max*(1+1e-6));

@@ -654,6 +654,7 @@ void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro
     }
     status = H5Fclose (file);
     free(dombeg1); free(dombeg2); free(dombeg3); free(dx); free(g_x2stretch); free(g_x3stretch); free(all_data);free(start_displacement); free(level_dims);
+    H5Tclose(box_dtype);
     
     for (i=0;i<num_vars;i++)
     {

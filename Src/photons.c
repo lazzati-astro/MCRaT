@@ -207,11 +207,42 @@ void addToPhotonList(struct photonList *photon_list, struct photon *ph, size_t n
 
 void setNullPhoton(struct photonList *photon_list, int index)
 {
+    int i=0;
+    
     //we set a photon in the photon list at index to be NULL
     photon_list->photons[index].type = NULL_PHOTON;
     photon_list->photons[index].weight = 0;
     photon_list->photons[index].nearest_block_index = -1;
     photon_list->photons[index].recalc_properties = 0;
+    
+    //valgrind wants us to initalize the other members of the struct
+    photon_list->photons[index].p0=0;
+    photon_list->photons[index].p1=0;
+    photon_list->photons[index].p2=0;
+    photon_list->photons[index].p3=0;
+    photon_list->photons[index].comv_p0=0;
+    photon_list->photons[index].comv_p1=0;
+    photon_list->photons[index].comv_p2=0;
+    photon_list->photons[index].comv_p3=0;
+    photon_list->photons[index].r0=0;
+    photon_list->photons[index].r1=0;
+    photon_list->photons[index].r2=0;
+    photon_list->photons[index].s0=0;
+    photon_list->photons[index].s1=0;
+    photon_list->photons[index].s2=0;
+    photon_list->photons[index].s3=0;
+    photon_list->photons[index].num_scatt=0;
+    photon_list->photons[index].total_optical_depth=0;
+    
+    #if NONTHERMAL_E_DIST != OFF
+    for (i=0;i<(1+N_GAMMA);i++)
+    {
+        photon_list->photons[index].optical_depths[i]=0; //the optical depths that are calculated for thermal + non-thermal electrons with the nonthermal electron subgroups
+        photon_list->photons[index].scattering_bias[i]=0;
+    }
+    #endif
+
+
     
     //photon_list->num_null_photons++;
     //photon_list->num_photons--;
