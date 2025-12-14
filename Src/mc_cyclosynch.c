@@ -370,6 +370,25 @@ static int allocate_histograms(gsl_histogram2d **h_energy_theta, gsl_histogram2d
     return 1;
 }
 
+/* Helper: Free all allocated histograms */
+static void free_histograms(gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_energy_phi, gsl_histogram2d *h_theta_phi)
+{
+    if (h_energy_theta)
+    {
+        gsl_histogram2d_free(h_energy_theta);
+    }
+    #if DIMENSIONS == THREE
+        if (h_energy_phi)
+        {
+            gsl_histogram2d_free(h_energy_phi);
+        }
+        if (h_theta_phi)
+        {
+            gsl_histogram2d_free(h_theta_phi);
+        }
+    #endif
+}
+
 
 int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
 {
