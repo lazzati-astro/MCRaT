@@ -32,7 +32,7 @@ struct BinStats
 {
     double weighted_r;
     double weighted_theta;
-    double weighted_phi_offset;
+    double weighted_phi_offset; // look at delta \phi between the 4 mometum and its location
     double weighted_stokes[4];
     double weighted_scatt_count;
     double total_weight;
@@ -100,7 +100,7 @@ static int allocate_histograms(gsl_histogram2d **h_energy_theta, gsl_histogram2d
 
 static void free_histograms(gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_energy_phi, gsl_histogram2d *h_theta_phi);
 
-static struct BinStats* allocate_bin_stats(int total_bins, int num_avg);
+static struct BinStats* allocate_bin_stats(int total_bins, FILE *fPtr);
 
 static void free_bin_stats(struct BinStats *stats, int total_bins);
 

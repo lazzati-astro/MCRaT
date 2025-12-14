@@ -389,6 +389,24 @@ static void free_histograms(gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_
     #endif
 }
 
+/* Helper: Allocate bin statistics array */
+static BinStats* allocate_bin_stats(int total_bins, FILE *fPtr)
+{
+    struct BinStats *stats = calloc(total_bins, sizeof(struct BinStats));
+    if (!stats)
+    {
+        fprintf(fPtr, "ERROR: Failed to allocate %d bin stats\n", total_bins);
+    }
+    return stats;
+}
+
+/* Helper: Free bin statistics array */
+static void free_bin_stats(struct BinStats *stats)
+{
+    free(stats);
+}
+
+
 
 int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
 {
