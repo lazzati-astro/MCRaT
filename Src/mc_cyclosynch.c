@@ -260,6 +260,35 @@ double calcCyclosynchRLimits(int frame_scatt, int frame_inj, double fps,  double
     return val;
 }
 
+/* Helper: Calculate photon spherical coordinates from Cartesian position */
+//TODO: refactor to mcratCoordinateToSphericalCoordinate
+static void calculate_photon_position(const struct photon *ph, double *r, double *theta, double *phi)
+{
+    double x = ph->r0;
+    double y = ph->r1;
+    double z = ph->r2;
+    
+    *r = sqrt(x*x + y*y + z*z);
+    
+    if (*r < DBL_MIN)
+    {
+        *theta = 0.0;
+        *phi = 0.0;
+    }
+    else
+    {
+        *theta = acos(z / *r);
+        #if DIMENSIONS == THREE
+                
+                double phi_rad = atan2(y, x);
+                *phi = fmod(phi_rad * RAD_TO_DEG + 360.0, 360.0);
+        #else
+                *phi=0;
+        #endif
+    }
+}
+
+
 int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
 {
     int i=0, j=0, k=0, count=0, count_x=0, count_y=0, count_z=0, count_c_ph=0, end_count=(*scatt_cyclosynch_num_ph), idx=0, num_thread=1;
