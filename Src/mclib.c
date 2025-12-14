@@ -5,6 +5,7 @@ const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27, FINE
 const double K_B=1.380658e-16, M_P=1.6726231e-24, THOM_X_SECT=6.65246e-25, M_EL=9.1093879e-28 , R_EL=2.817941499892705e-13;
 
 
+
 void photonInjection(struct photonList *photon_list, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr)
 {
     int i=0, block_cnt=0, *ph_dens=NULL, ph_tot=0, j=0,k=0;

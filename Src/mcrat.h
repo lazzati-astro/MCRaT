@@ -75,6 +75,11 @@ extern const double FINE_STRUCT;
 extern const double CHARGE_EL;
 extern const double R_EL;
 
+/* define constants for convience */
+#define ENERGY_TO_KEV (C_LIGHT / 1.6e-9)
+#define DEG_TO_RAD (M_PI / 180.0)
+#define RAD_TO_DEG (180.0 / M_PI)
+
 
 #define STR_BUFFER 2000
 

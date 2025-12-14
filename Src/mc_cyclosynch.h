@@ -46,3 +46,14 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
 
 double phAbsCyclosynch(struct photonList *photon_list, int *num_abs_ph, int *scatt_cyclosynch_num_ph, struct hydro_dataframe *hydro_data, FILE *fPtr);
 
+static void calculate_photon_position(const struct photon *ph, double *r, double *theta, double *phi);
+
+static int allocate_histograms(gsl_histogram2d **h_energy_theta, gsl_histogram2d **h_energy_phi, gsl_histogram2d **h_theta_phi, int num_bins, int num_bins_theta, int num_bins_phi, double log_p0_min, double log_p0_max, double theta_min, double theta_max, double phi_min, double phi_max);
+
+static void free_histograms(gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_energy_phi, gsl_histogram2d *h_theta_phi);
+
+static BinStats* allocate_bin_stats(int total_bins, int num_avg);
+
+static void free_bin_stats(BinStats *stats, int total_bins);
+
+static int calculate_bin_index(int count_x, int count_y, int count_z, int num_bins, int num_bins_theta, int num_bins_phi);
