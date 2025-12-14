@@ -286,7 +286,7 @@ static int collect_photon_statistics(const struct photonList *photon_list, struc
             #endif
         }
         
-        if (ph->type == PHOTON_TYPE_CS_POOL)
+        if (ph->type == CS_POOL_PHOTON)
         {
             info->synch_photon_count++;
         }
