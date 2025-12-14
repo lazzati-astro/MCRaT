@@ -298,6 +298,77 @@ static int collect_photon_statistics(const struct photonList *photon_list, struc
     return (info->valid_photon_count > 0) ? 1 : 0;
 }
 
+/* Helper: Calculate binning parameters based on photon ranges */
+static struct BinningParams calculate_binning_params(const struct PhotonRangeInfo *info, int max_photons)
+{
+    BinningParams params = {0};
+    params.num_bins = (int)(CYCLOSYNCHROTRON_REBIN_E_PERC * max_photons);
+    
+    //the size of the bin that we want to produce for spatial binning in theta
+    params.num_bins_theta = ceil((info->theta_max - info->theta_min) / (CYCLOSYNCHROTRON_REBIN_ANG * DEG_TO_RAD));
+    params.num_bins_phi = 1;
+    params.num_avg = 12;
+    
+    #if DIMENSIONS == THREE
+        //the size of the bin that we want to produce for spatial binning in phi, this one is in degrees
+        params.num_bins_phi = ceil((info->phi_max - info->phi_min) / CYCLOSYNCHROTRON_REBIN_ANG_PHI);
+        params.num_avg = 13;
+    #endif
+    
+    params.total_bins = params.num_bins_theta * params.num_bins;
+    #if DIMENSIONS == THREE
+        params.total_bins *= params.num_bins_phi;
+    #endif
+    
+    return params;
+}
+
+/* Helper: Allocate and initialize all GSL histograms */
+static int allocate_histograms(gsl_histogram2d **h_energy_theta, gsl_histogram2d **h_energy_phi, gsl_histogram2d **h_theta_phi, const struct BinningParams *params, const struct PhotonRangeInfo *info, FILE *fPtr)
+{
+    if (params->num_bins <= 0 || params->num_bins_theta <= 0 || params->num_bins_phi <= 0) {
+        fprintf(fPtr, "ERROR: Invalid histogram dimensions\n");
+        return 0;
+    }
+    
+    *h_energy_theta = gsl_histogram2d_alloc(params->num_bins, params->num_bins_theta);
+    if (!*h_energy_theta) {
+        fprintf(fPtr, "ERROR: Failed to allocate energy-theta histogram\n");
+        return 0;
+    }
+    
+    double e_eps = (info->log_p0_max - info->log_p0_min) * 1e-6;
+    double t_eps = (info->theta_max - info->theta_min) * 1e-6;
+    
+    gsl_histogram2d_set_ranges_uniform(*h_energy_theta, info->log_p0_min, info->log_p0_max + e_eps, info->theta_min, info->theta_max + t_eps);
+    
+    #if DIMENSIONS == THREE
+        *h_energy_phi = gsl_histogram2d_alloc(params->num_bins, params->num_bins_phi);
+        *h_theta_phi = gsl_histogram2d_alloc(params->num_bins_theta, params->num_bins_phi);
+        
+        if (!*h_energy_phi || !*h_theta_phi)
+        {
+            fprintf(fPtr, "ERROR: Failed to allocate 3D histograms\n");
+            gsl_histogram2d_free(*h_energy_theta);
+            if (*h_energy_phi) gsl_histogram2d_free(*h_energy_phi);
+            if (*h_theta_phi) gsl_histogram2d_free(*h_theta_phi);
+            *h_energy_theta = NULL;
+            *h_energy_phi = NULL;
+            *h_theta_phi = NULL;
+            return 0;
+        }
+        
+        double p_eps = (info->phi_max - info->phi_min) * 1e-6;
+        
+        gsl_histogram2d_set_ranges_uniform(*h_energy_phi, info->log_p0_min, info->log_p0_max + e_eps, info->phi_min, info->phi_max + p_eps);
+        gsl_histogram2d_set_ranges_uniform(*h_theta_phi, info->theta_min, info->theta_max + t_eps, info->phi_min, info->phi_max + p_eps);
+    #else
+        *h_energy_phi = NULL;
+        *h_theta_phi = NULL;
+    #endif
+    
+    return 1;
+}
 
 
 int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)

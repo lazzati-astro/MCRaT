@@ -93,7 +93,10 @@ static void calculate_photon_position(const struct photon *ph, double *r, double
 
 static int collect_photon_statistics(const struct photonList *photon_list, struct PhotonRangeInfo *info, FILE *fPtr);
 
-static int allocate_histograms(gsl_histogram2d **h_energy_theta, gsl_histogram2d **h_energy_phi, gsl_histogram2d **h_theta_phi, int num_bins, int num_bins_theta, int num_bins_phi, double log_p0_min, double log_p0_max, double theta_min, double theta_max, double phi_min, double phi_max);
+static struct BinningParams calculate_binning_params(const struct PhotonRangeInfo *info, int max_photons);
+
+
+static int allocate_histograms(gsl_histogram2d **h_energy_theta, gsl_histogram2d **h_energy_phi, gsl_histogram2d **h_theta_phi, const struct BinningParams *params, const struct PhotonRangeInfo *info, FILE *fPtr);
 
 static void free_histograms(gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_energy_phi, gsl_histogram2d *h_theta_phi);
 
