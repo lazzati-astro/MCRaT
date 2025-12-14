@@ -301,7 +301,7 @@ static int collect_photon_statistics(const struct photonList *photon_list, struc
 /* Helper: Calculate binning parameters based on photon ranges */
 static struct BinningParams calculate_binning_params(const struct PhotonRangeInfo *info, int max_photons)
 {
-    BinningParams params = {0};
+    struct BinningParams params = {0};
     params.num_bins = (int)(CYCLOSYNCHROTRON_REBIN_E_PERC * max_photons);
     
     //the size of the bin that we want to produce for spatial binning in theta
