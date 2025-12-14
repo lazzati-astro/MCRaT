@@ -250,7 +250,7 @@ static void calculate_photon_position(const struct photon *ph, double *r, double
 /* Helper: Collect photon statistics and determine ranges */
 static int collect_photon_statistics(const struct photonList *photon_list, struct PhotonRangeInfo *info, FILE *fPtr)
 {
-    *info = (PhotonRangeInfo){
+    *info = (struct PhotonRangeInfo){
         .p0_min = DBL_MAX,
         .p0_max = 0.0,
         .theta_min = DBL_MAX,
@@ -259,11 +259,12 @@ static int collect_photon_statistics(const struct photonList *photon_list, struc
         .phi_max = 0.0
     };
     
-    for (int i = 0; i < photon_list->list_capacity; i++) {
+    for (int i = 0; i < photon_list->list_capacity; i++)
+    {
         const struct photon *ph = getPhoton(photon_list, i);
                 
         
-        if (ph->type != NULL_PHOTON) && (ph->type != CS_POOL_PHOTON)
+        if ((ph->type != NULL_PHOTON) && (ph->type != CS_POOL_PHOTON))
         {
             
             if (ph->p0 > 0)
