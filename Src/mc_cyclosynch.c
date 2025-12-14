@@ -4,47 +4,6 @@ This file is for the different functions for emitting and absorbing synchrotron 
 
 #include "mcrat.h"
 
-/* Data structure to hold photon range information */
-struct PhotonRangeInfo
-{
-    double p0_min;
-    double p0_max;
-    double log_p0_min;
-    double log_p0_max;
-    double theta_min;
-    double theta_max;
-    double phi_min;
-    double phi_max;
-    int synch_photon_count;
-    int valid_photon_count;
-};
-
-/* Data structure for binning parameters */
-struct BinningParams
-{
-    int num_bins;
-    int num_bins_theta;
-    int num_bins_phi;
-    int num_avg;
-    int total_bins;
-};
-
-/* Structure to hold bin statistics */
-struct BinStats
-{
-    double weighted_r;
-    double weighted_theta;
-    double weighted_phi_offset;
-    double weighted_stokes[4];
-    double weighted_scatt_count;
-    double total_weight;
-    double weighted_phi_dir;
-    double weighted_theta_dir;
-    double weighted_energy;
-#if DIMENSIONS == THREE
-    double weighted_phi_pos;
-#endif
-};
 
 double calcCyclotronFreq(double magnetic_field)
 {
