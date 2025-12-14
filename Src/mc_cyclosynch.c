@@ -390,7 +390,7 @@ static void free_histograms(gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_
 }
 
 /* Helper: Allocate bin statistics array */
-static BinStats* allocate_bin_stats(int total_bins, FILE *fPtr)
+static struct BinStats* allocate_bin_stats(int total_bins, FILE *fPtr)
 {
     struct BinStats *stats = calloc(total_bins, sizeof(struct BinStats));
     if (!stats)

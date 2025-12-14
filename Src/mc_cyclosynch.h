@@ -102,6 +102,6 @@ static void free_histograms(gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_
 
 static struct BinStats* allocate_bin_stats(int total_bins, FILE *fPtr);
 
-static void free_bin_stats(struct BinStats *stats, int total_bins);
+static void free_bin_stats(struct BinStats *stats);
 
 static int calculate_bin_index(int count_x, int count_y, int count_z, int num_bins, int num_bins_theta, int num_bins_phi);
