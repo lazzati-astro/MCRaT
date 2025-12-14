@@ -105,3 +105,6 @@ static struct BinStats* allocate_bin_stats(int total_bins, FILE *fPtr);
 static void free_bin_stats(struct BinStats *stats);
 
 static int calculate_bin_index(int count_x, int count_y, int count_z, const struct BinningParams *params);
+
+static int accumulate_bin_statistics(const struct photonList *photon_list, struct BinStats *stats, gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_energy_phi, gsl_histogram2d *h_theta_phi, const struct BinningParams *params, FILE *fPtr);
+

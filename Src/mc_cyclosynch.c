@@ -422,6 +422,61 @@ static int calculate_bin_index(int x, int y, int z, const struct BinningParams *
     #endif
 }
 
+/* Helper: Accumulate weighted statistics for each bin */
+static int accumulate_bin_statistics(const struct photonList *photon_list, struct BinStats *stats, gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_energy_phi, gsl_histogram2d *h_theta_phi, const struct BinningParams *params, FILE *fPtr)
+{
+    for (int i = 0; i < photon_list->list_capacity; i++)
+    {
+        const struct photon *ph = getPhoton(photon_list, i);
+                
+        if ((ph->type != NULL_PHOTON) && (ph->type != CS_POOL_PHOTON))
+        {
+            double r, theta, phi = 0.0;
+            calculate_photon_position(ph, &r, &theta, &phi);
+            
+            size_t idx_x = 0, idx_y = 0, idx_z = 0;
+            gsl_histogram2d_find(h_energy_theta, log10(ph->p0), theta, &idx_x, &idx_y);
+            
+            #if DIMENSIONS == THREE
+                gsl_histogram2d_find(h_energy_phi, log10(ph->p0), phi, &idx_x, &idx_z);
+                gsl_histogram2d_find(h_theta_phi, theta, phi, &idx_y, &idx_z);
+            #endif
+            
+            int bin_idx = calculate_bin_index(idx_x, idx_y, idx_z, params);
+            if (bin_idx < 0 || bin_idx >= params->total_bins)
+            {
+                fprintf(fPtr, "WARNING: Photon %d maps to invalid bin index %d\n", i, bin_idx);
+                exit(1);
+            }
+            
+            struct BinStats *s = &stats[bin_idx];
+            s->weighted_r += r * ph->weight;
+            s->weighted_theta += theta * ph->weight;
+            s->weighted_phi_offset += (atan2(ph->p2, ph->p1) - atan2(ph->r1, ph->r0)) * RAD_TO_DEG * ph->weight;
+            
+            s->weighted_stokes[0] += ph->s0 * ph->weight;
+            s->weighted_stokes[1] += ph->s1 * ph->weight;
+            s->weighted_stokes[2] += ph->s2 * ph->weight;
+            s->weighted_stokes[3] += ph->s3 * ph->weight;
+            
+            s->weighted_scatt_count += ph->num_scatt * ph->weight;
+            s->total_weight += ph->weight;
+            
+            double phi_dir = fmod(atan2(ph->p2, ph->p1) * RAD_TO_DEG + 360.0, 360.0);
+            double theta_dir = acos(ph->p3 / ph->p0) * RAD_TO_DEG;
+            
+            s->weighted_phi_dir += phi_dir * ph->weight;
+            s->weighted_theta_dir += theta_dir * ph->weight;
+            s->weighted_energy += ph->p0 * ph->weight;
+            
+            #if DIMENSIONS == THREE
+                s->weighted_phi_pos += phi * ph->weight;
+            #endif
+        }
+    }
+    
+    return 1;
+}
 
 
 
