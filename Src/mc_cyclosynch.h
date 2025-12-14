@@ -95,8 +95,8 @@ static int allocate_histograms(gsl_histogram2d **h_energy_theta, gsl_histogram2d
 
 static void free_histograms(gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_energy_phi, gsl_histogram2d *h_theta_phi);
 
-static BinStats* allocate_bin_stats(int total_bins, int num_avg);
+static struct BinStats* allocate_bin_stats(int total_bins, int num_avg);
 
-static void free_bin_stats(BinStats *stats, int total_bins);
+static void free_bin_stats(struct BinStats *stats, int total_bins);
 
 static int calculate_bin_index(int count_x, int count_y, int count_z, int num_bins, int num_bins_theta, int num_bins_phi);
