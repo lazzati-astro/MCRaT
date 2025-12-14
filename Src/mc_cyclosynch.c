@@ -406,6 +406,23 @@ static void free_bin_stats(struct BinStats *stats)
     free(stats);
 }
 
+/* Helper: Calculate safe bin index with bounds checking */
+static int calculate_bin_index(int x, int y, int z, const struct BinningParams *params)
+{
+    if (x < 0 || x >= params->num_bins || y < 0 || y >= params->num_bins_theta)
+    {
+        return -1;
+    }
+    
+    #if DIMENSIONS == THREE
+        if (z < 0 || z >= params->num_bins_phi) return -1;
+        return z * params->num_bins * params->num_bins_theta + x * params->num_bins_theta + y;
+    #else
+        return x * params->num_bins_theta + y;
+    #endif
+}
+
+
 
 
 int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
