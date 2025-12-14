@@ -479,7 +479,7 @@ static int accumulate_bin_statistics(const struct photonList *photon_list, struc
 }
 
 /* Helper: Create rebinned photons from accumulated statistics */
-static int create_rebinned_photons(struct photonList *photon_list, const structBinStats *stats, const struct BinningParams *params, int synch_photon_count, FILE *fPtr)
+static int create_rebinned_photons(struct photonList *photon_list, const struct BinStats *stats, const struct BinningParams *params, int synch_photon_count, FILE *fPtr)
 {
     struct photon *rebin_ph = calloc(params->total_bins, sizeof(struct photon));
     if (!rebin_ph)
@@ -492,7 +492,7 @@ static int create_rebinned_photons(struct photonList *photon_list, const structB
     
     for (int i = 0; i < params->total_bins; i++)
     {
-        const BinStats *s = &stats[i];
+        const struct BinStats *s = &stats[i];
         struct photon *new_ph = &rebin_ph[i];
         
         if (s->total_weight <= 0)
