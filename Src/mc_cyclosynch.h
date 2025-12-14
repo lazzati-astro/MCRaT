@@ -91,6 +91,8 @@ double phAbsCyclosynch(struct photonList *photon_list, int *num_abs_ph, int *sca
 
 static void calculate_photon_position(const struct photon *ph, double *r, double *theta, double *phi);
 
+static int collect_photon_statistics(const struct photonList *photon_list, struct PhotonRangeInfo *info, FILE *fPtr);
+
 static int allocate_histograms(gsl_histogram2d **h_energy_theta, gsl_histogram2d **h_energy_phi, gsl_histogram2d **h_theta_phi, int num_bins, int num_bins_theta, int num_bins_phi, double log_p0_min, double log_p0_max, double theta_min, double theta_max, double phi_min, double phi_max);
 
 static void free_histograms(gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_energy_phi, gsl_histogram2d *h_theta_phi);

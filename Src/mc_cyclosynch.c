@@ -247,6 +247,57 @@ static void calculate_photon_position(const struct photon *ph, double *r, double
     }
 }
 
+/* Helper: Collect photon statistics and determine ranges */
+static int collect_photon_statistics(const struct photonList *photon_list, struct PhotonRangeInfo *info, FILE *fPtr)
+{
+    *info = (PhotonRangeInfo){
+        .p0_min = DBL_MAX,
+        .p0_max = 0.0,
+        .theta_min = DBL_MAX,
+        .theta_max = 0.0,
+        .phi_min = DBL_MAX,
+        .phi_max = 0.0
+    };
+    
+    for (int i = 0; i < photon_list->list_capacity; i++) {
+        const struct photon *ph = getPhoton(photon_list, i);
+                
+        
+        if (ph->type != NULL_PHOTON) && (ph->type != CS_POOL_PHOTON)
+        {
+            
+            if (ph->p0 > 0)
+            {
+                info->p0_min = fmin(info->p0_min, ph->p0);
+                info->p0_max = fmax(info->p0_max, ph->p0);
+                info->valid_photon_count++;
+            }
+            
+            double r, theta, phi = 0.0;
+            calculate_photon_position(ph, &r, &theta, &phi);
+            
+            info->theta_min = fmin(info->theta_min, theta);
+            info->theta_max = fmax(info->theta_max, theta);
+            
+            #if DIMENSIONS == THREE
+            info->phi_min = fmin(info->phi_min, phi);
+            info->phi_max = fmax(info->phi_max, phi);
+            #endif
+        }
+        
+        if (ph->type == PHOTON_TYPE_CS_POOL)
+        {
+            info->synch_photon_count++;
+        }
+    }
+    
+    info->log_p0_min = (info->p0_min > 0 && info->p0_max > 0) ? log10(info->p0_min) : 0.0;
+    info->log_p0_max = (info->p0_min > 0 && info->p0_max > 0) ? log10(info->p0_max) : 1.0;
+    
+    return (info->valid_photon_count > 0) ? 1 : 0;
+}
+
+
 
 int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
 {
