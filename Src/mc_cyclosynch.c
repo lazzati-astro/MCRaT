@@ -478,6 +478,112 @@ static int accumulate_bin_statistics(const struct photonList *photon_list, struc
     return 1;
 }
 
+/* Helper: Create rebinned photons from accumulated statistics */
+static int create_rebinned_photons(struct photonList *photon_list, const structBinStats *stats, const struct BinningParams *params, int synch_photon_count, FILE *fPtr)
+{
+    struct photon *rebin_ph = calloc(params->total_bins, sizeof(struct photon));
+    if (!rebin_ph)
+    {
+        fprintf(fPtr, "ERROR: Failed to allocate rebinned photon array\n");
+        return -1;
+    }
+    
+    int num_null_rebin_ph = 0;
+    
+    for (int i = 0; i < params->total_bins; i++)
+    {
+        const BinStats *s = &stats[i];
+        struct photon *new_ph = &rebin_ph[i];
+        
+        if (s->total_weight <= 0)
+        {
+            new_ph->type = NULL_PHOTON;
+            new_ph->weight = 0;
+            new_ph->nearest_block_index = -1;
+            new_ph->recalc_properties = 0;
+            num_null_rebin_ph++;
+        }
+        else
+        {
+            new_ph->type = COMPTONIZED_PHOTON;
+            new_ph->weight = s->total_weight;
+            
+            /* Calculate average values from weighted sums */
+            double avg_energy = s->weighted_energy / s->total_weight;
+            double avg_phi_dir = s->weighted_phi_dir / s->total_weight;
+            double avg_theta_dir = s->weighted_theta_dir / s->total_weight;
+            double avg_r = s->weighted_r / s->total_weight;
+            double avg_theta_pos = s->weighted_theta / s->total_weight;
+            
+            /* Set photon momentum components */
+            new_ph->p0 = avg_energy;
+            new_ph->p1 = avg_energy * sin(avg_theta_dir * DEG_TO_RAD) * cos(avg_phi_dir * DEG_TO_RAD);
+            new_ph->p2 = avg_energy * sin(avg_theta_dir * DEG_TO_RAD) * sin(avg_phi_dir * DEG_TO_RAD);
+            new_ph->p3 = avg_energy * cos(avg_theta_dir * DEG_TO_RAD);
+            
+            /* Initialize comoving frame momenta to zero */
+            new_ph->comv_p0 = 0;
+            new_ph->comv_p1 = 0;
+            new_ph->comv_p2 = 0;
+            new_ph->comv_p3 = 0;
+            
+            /* Calculate position phi based on dimensionality */
+            double pos_phi;
+            #if DIMENSIONS == THREE
+                double avg_phi_pos = s->weighted_phi_pos / s->total_weight;
+                pos_phi = avg_phi_pos * DEG_TO_RAD;
+            #else
+                double avg_phi_offset = s->weighted_phi_offset / s->total_weight;
+                pos_phi = (avg_phi_dir - avg_phi_offset) * DEG_TO_RAD;
+            #endif
+            
+            /* Set photon position components */
+            new_ph->r0 = avg_r * sin(avg_theta_pos) * cos(pos_phi);
+            new_ph->r1 = avg_r * sin(avg_theta_pos) * sin(pos_phi);
+            new_ph->r2 = avg_r * cos(avg_theta_pos);
+            
+            /* Set Stokes parameters */
+            new_ph->s0 = s->weighted_stokes[0] / s->total_weight;
+            new_ph->s1 = s->weighted_stokes[1] / s->total_weight;
+            new_ph->s2 = s->weighted_stokes[2] / s->total_weight;
+            new_ph->s3 = s->weighted_stokes[3] / s->total_weight;
+            
+            /* Set scattering count and other properties */
+            new_ph->num_scatt = (int)(s->weighted_scatt_count / s->total_weight + 0.5);
+            
+            //hopefully this is not actually the block that this photon's located in b/c we need to get the 4 mometum in the findNearestProperties function
+            new_ph->nearest_block_index = 0;
+            
+            //set to 1 so we are sure that we calculate tau values later on
+            new_ph->recalc_properties = 1;
+        }
+    }
+    
+    /* First, nullify existing Comptonized and Unabsorbed CS photons */
+    for (int i = 0; i < photon_list->list_capacity; i++)
+    {
+        struct photon *ph = getPhoton(photon_list, i);
+        if (ph && (ph->type == UNABSORBED_CS_PHOTON || ph->type == COMPTONIZED_PHOTON))
+        {
+            setNullPhoton(photon_list, i);
+        }
+    }
+    
+    /* Add rebinned photons to list */
+    addToPhotonList(photon_list, rebin_ph, params->total_bins);
+    
+    /* Verify all photons were added */
+    if (photon_list->num_photons < params->total_bins)
+    {
+        fprintf(fPtr, "ERROR: Only added %d of %d rebinned photons\n",
+                photon_list->num_photons, params->total_bins);
+        free(rebin_ph);
+        return -1;
+    }
+    
+    free(rebin_ph);
+    return num_null_rebin_ph;
+}
 
 
 int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)

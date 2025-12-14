@@ -108,3 +108,4 @@ static int calculate_bin_index(int count_x, int count_y, int count_z, const stru
 
 static int accumulate_bin_statistics(const struct photonList *photon_list, struct BinStats *stats, gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_energy_phi, gsl_histogram2d *h_theta_phi, const struct BinningParams *params, FILE *fPtr);
 
+static int create_rebinned_photons(struct photonList *photon_list, const struct BinStats *stats, const struct BinningParams *params, int synch_photon_count, FILE *fPtr);
