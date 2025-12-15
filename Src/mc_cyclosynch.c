@@ -609,20 +609,22 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosyn
     {
         params = calculate_binning_params(&range_info, max_photons);
         
+        fprintf(fPtr, "  Energy bins: %d, Theta bins: %d", params.num_bins, params.num_bins_theta);
+        #if DIMENSIONS == THREE
+            fprintf(fPtr, ", Phi bins: %d", params.num_bins_phi);
+        #endif
+        fprintf(fPtr, "\n  Photon ranges: energy [%e, %e] keV, theta [%e, %e] deg", range_info.p0_min * ENERGY_TO_KEV, range_info.p0_max * ENERGY_TO_KEV, range_info.theta_min * RAD_TO_DEG, range_info.theta_max * RAD_TO_DEG);
+        #if DIMENSIONS == THREE
+            fprintf(fPtr, ", phi [%e, %e] deg", range_info.phi_min, range_info.phi_max);
+        #endif
+        fprintf(fPtr, "\n");
+        fflush(fPtr);
+
+        
         if (params.total_bins > max_photons)
         {
             fprintf(fPtr, "ERROR: Rebinning would create %d photons (exceeds max_photons=%d)\n",
                     params.total_bins, max_photons);
-            fprintf(fPtr, "  Energy bins: %d, Theta bins: %d", params.num_bins, params.num_bins_theta);
-            #if DIMENSIONS == THREE
-                fprintf(fPtr, ", Phi bins: %d", params.num_bins_phi);
-            #endif
-            fprintf(fPtr, "\n  Photon ranges: energy [%e, %e] keV, theta [%e, %e] deg", range_info.p0_min * ENERGY_TO_KEV, range_info.p0_max * ENERGY_TO_KEV, range_info.theta_min * RAD_TO_DEG, range_info.theta_max * RAD_TO_DEG);
-            #if DIMENSIONS == THREE
-                fprintf(fPtr, ", phi [%e, %e] deg", range_info.phi_min, range_info.phi_max);
-            #endif
-            fprintf(fPtr, "\n");
-            fflush(fPtr);
             ret_val = -1;
         }
     }
