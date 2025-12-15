@@ -414,7 +414,84 @@ int checkInBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, str
 
 
 
+/* New: grid‑accelerated version; call this instead of the O(N) scan */
+int findContainingBlock_grid(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, struct hydro_dataframe *hydro_data, FILE *fPtr)
+{
+    SpatialGrid *g = hydro_data->grid;
+    if (!g)
+    {
+        /* Fallback to old linear version if grid not built */
+        return findContainingBlock(ph_hydro_r0, ph_hydro_r1, ph_hydro_r2, hydro_data, fPtr);
+    }
 
+    /* Map photon position to grid indices */
+    double x = ph_hydro_r0;
+    double y = ph_hydro_r1;
+    #if DIMENSIONS == 3
+        double z = ph_hydro_r2;
+    #else
+        double z = 0.0;
+    #endif
+
+    int ix = (int)((x - g->grid_min[0]) / g->cell_size[0]);
+    int iy = (int)((y - g->grid_min[1]) / g->cell_size[1]);
+    int iz = (int)((z - g->grid_min[2]) / g->cell_size[2]);
+
+    ix = clamp_int(ix, 0, g->dims[0] - 1);
+    iy = clamp_int(iy, 0, g->dims[1] - 1);
+    iz = clamp_int(iz, 0, g->dims[2] - 1);
+
+    /* Search this grid cell and a small neighborhood (±1) to account for boundaries */
+    int search_radius = 1;
+    int found_index = -1;
+    int is_in_block = 0;
+
+    for (int dz = -search_radius; dz <= search_radius && !is_in_block; dz++)
+    {
+        int zz = clamp_int(iz + dz, 0, g->dims[2] - 1);
+        for (int dy = -search_radius; dy <= search_radius && !is_in_block; dy++)
+        {
+            int yy = clamp_int(iy + dy, 0, g->dims[1] - 1);
+            for (int dx = -search_radius; dx <= search_radius && !is_in_block; dx++)
+            {
+                int xx = clamp_int(ix + dx, 0, g->dims[0] - 1);
+
+                int flat = grid_flat_index(g, xx, yy, zz);
+                int count  = g->grid_counts[flat];
+                int offset = g->grid_offsets[flat];
+
+                for (int k = 0; k < count; k++)
+                {
+                    int cell_idx = g->cell_indices[offset + k];
+                    is_in_block = checkInBlock(ph_hydro_r0, ph_hydro_r1, ph_hydro_r2,
+                                               hydro_data, cell_idx);
+                    if (is_in_block)
+                    {
+                        found_index = cell_idx;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    if (!is_in_block)
+    {
+        #if DIMENSIONS == 2 || DIMENSIONS == 2_POINT_FIVE
+            fprintf(fPtr,
+                "MCRaT (grid) couldn't find a block for photon at r0=%e r1=%e\n",
+                ph_hydro_r0, ph_hydro_r1);
+        #else
+            fprintf(fPtr,
+                "MCRaT (grid) couldn't find a block for photon at r0=%e r1=%e r2=%e\n",
+                ph_hydro_r0, ph_hydro_r1, ph_hydro_r2);
+        #endif
+        fflush(fPtr);
+        return -1;
+    }
+
+    return found_index;
+}
 
 
 void freeSpatialGrid(struct SpatialGrid *g)
