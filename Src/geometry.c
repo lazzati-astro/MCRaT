@@ -7,6 +7,11 @@
 
 #include "mcrat.h"
 
+static inline int clamp_int(int x, int min_v, int max_v);
+
+static inline int grid_flat_index(const struct SpatialGrid *g, int ix, int iy, int iz);
+
+
 void mcratCoordinateToHydroCoordinate(double *ph_hydro_coord, double mcrat_r0, double mcrat_r1, double mcrat_r2)
 {
     //function to convert MCRaT cartesian coordinate in 3D to the proper hydro coordinates
@@ -502,3 +507,18 @@ void freeSpatialGrid(struct SpatialGrid *g)
     free(g->grid_offsets);
     free(g);
 }
+
+/* Clamp integer x to [min_v, max_v] */
+static inline int clamp_int(int x, int min_v, int max_v)
+{
+    if (x < min_v) return min_v;
+    if (x > max_v) return max_v;
+    return x;
+}
+
+/* Compute 1D index into flattened 3D grid */
+static inline int grid_flat_index(const struct SpatialGrid *g, int ix, int iy, int iz)
+{
+    return (iz * g->dims[1] + iy) * g->dims[0] + ix;
+}
+
