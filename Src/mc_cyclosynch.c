@@ -264,7 +264,7 @@ static int collect_photon_statistics(const struct photonList *photon_list, struc
         const struct photon *ph = getPhoton(photon_list, i);
                 
         
-        if ((ph->type != NULL_PHOTON) && (ph->type != CS_POOL_PHOTON))
+        if ((ph->type != NULL_PHOTON) && (ph->type != CS_POOL_PHOTON) && (ph->type != INJECTED_PHOTON))
         {
             
             if (ph->p0 > 0)
@@ -429,7 +429,7 @@ static int accumulate_bin_statistics(const struct photonList *photon_list, struc
     {
         const struct photon *ph = getPhoton(photon_list, i);
                 
-        if ((ph->type != NULL_PHOTON) && (ph->type != CS_POOL_PHOTON))
+        if ((ph->type != NULL_PHOTON) && (ph->type != CS_POOL_PHOTON) && (ph->type != INJECTED_PHOTON))
         {
             double r, theta, phi = 0.0;
             calculate_photon_position(ph, &r, &theta, &phi);
