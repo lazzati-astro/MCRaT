@@ -50,21 +50,15 @@ int main(int argc, char **argv)
     //compile each time a macro is changed, have to supply the subfolder within the MC_PATH directory as a command line argument to the C program eg. MCRAT 1/
     
 	// Define variables
-	char hydro_prefix[STR_BUFFER]="";
-	char mc_file[STR_BUFFER]="" ;
     char spect;//type of spectrum
     char restrt;//restart or not
-    double fps, fps_modified, theta_jmin, theta_jmax,hydro_domain_y, hydro_domain_x ;//frames per second of sim, min opening angle of jet, max opening angle of jet in radians, max y value in hydro domain
-    double inj_radius_small, inj_radius_large,  ph_weight_suggest=1e50, ph_weight_small, ph_weight_large, *inj_radius_input=NULL, ph_weight_default=1e50;//radius at chich photons are injected into sim
-    int frm0,last_frm, frm2_small, frm2_large, j=0, min_photons, max_photons, frm0_small, frm0_large, *frm2_input=NULL, *frm0_input=NULL ;//frame starting from, last frame of sim, frame of last injection
-    int dim_switch=0;
+    double fps, theta_jmin, theta_jmax;//frames per second of sim, min opening angle of jet, max opening angle of jet in radians
+    double ph_weight_suggest=1e50, *inj_radius_input=NULL, ph_weight_default=1e50;//radius at chich photons are injected into sim
+    int frm0,last_frm, j=0, min_photons, max_photons, *frm2_input=NULL, *frm0_input=NULL ;//frame starting from, last frame of sim, frame of last injection
     int find_nearest_grid_switch=0;
-    int increment_inj=1, increment_scatt=1; //increments for injection loop and scattering loop, outer and inner loops respectively, the increment can change for RIKEN 3D hydro files
     
     double inj_radius;
     int frm2,save_chkpt_success=0;
-    char mc_filename[STR_BUFFER]="";
-    char mc_filename_2[STR_BUFFER]="";
     char mc_operation[STR_BUFFER]="";
     char mc_dir[STR_BUFFER]="" ;
     int file_count = 0;
@@ -73,24 +67,21 @@ int main(int argc, char **argv)
     struct stat st = {0};
     double theta_jmin_thread=0, theta_jmax_thread=0;
         
-    char hydro_file[STR_BUFFER]="";
     char log_file[STR_BUFFER]="";
     FILE *fPtr=NULL; //pointer to log file for each thread
     double *xPtr=NULL,  *yPtr=NULL,  *rPtr=NULL,  *thetaPtr=NULL,  *velxPtr=NULL,  *velyPtr=NULL,  *densPtr=NULL,  *presPtr=NULL,  *gammaPtr=NULL,  *dens_labPtr=NULL;
     double *szxPtr=NULL,*szyPtr=NULL, *tempPtr=NULL; //pointers to hold data from FLASH files
-    double *phiPtr=NULL, *velzPtr=NULL, *zPtr=NULL, *all_time_steps=NULL ;
-    int num_ph=0, scatt_cyclosynch_num_ph=0, num_null_ph=0, array_num=0, ph_scatt_index=0, num_photons_find_new_element=0, max_scatt=0, min_scatt=0,i=0; //number of photons produced in injection algorithm, number of array elleemnts from reading FLASH file, index of photon whch does scattering, generic counter
-    double dt_max=0, thescatt=0, accum_time=0; 
-    double  gamma_infinity=0, time_now=0, time_step=0, avg_scatt=0,avg_r=0; //gamma_infinity not used?
-    double ph_dens_labPtr=0, ph_vxPtr=0, ph_vyPtr=0, ph_tempPtr=0, ph_vzPtr=0;// *ph_cosanglePtr=NULL ;
-    double min_r=0, max_r=0, min_theta=0, max_theta=0, nu_c_scatt=0, n_comptonized=0, remaining_time=0;
+    int scatt_cyclosynch_num_ph=0, ph_scatt_index=0, num_photons_find_new_element=0, max_scatt=0, min_scatt=0,i=0; //number of photons produced in injection algorithm, number of array elleemnts from reading FLASH file, index of photon whch does scattering, generic counter
+    double dt_max=0;
+    double time_now=0, time_step=0, avg_scatt=0,avg_r=0;
+    double min_r=0, max_r=0, min_theta=0, max_theta=0, n_comptonized=0, remaining_time=0;
     int frame=0, scatt_frame=0, frame_scatt_cnt=0, frame_abs_cnt=0, scatt_framestart=0, framestart=0;
     struct photon *phPtr=NULL; //pointer to array of photons
     struct photon *scattered_photon=NULL; //pointer to the most recently scattered photon
     struct photonList photon_list; //pointer to array of photons
     struct hydro_dataframe hydrodata; //pointer to array of hydro data
     
-    int angle_count=0, num_cyclosynch_ph_emit=0;
+    int num_cyclosynch_ph_emit=0;
     int num_angles=0, old_num_angle_procs=0; //old_num_angle_procs is to hold the old number of procs in each angle when cont sims, if  restarting sims this gets set to angle_procs
     int *frame_array=NULL, *proc_frame_array=NULL, *element_num=NULL, *sorted_indexes=NULL,  proc_frame_size=0;
     double *thread_theta=NULL; //saves ranges of thetas for each thread to go through
@@ -98,7 +89,6 @@ int main(int argc, char **argv)
     double test_cyclosynch_inj_radius=0;
     
     int myid, numprocs, angle_procs, angle_id, procs_per_angle;
-    int temporary[3]={0}, tempo=0;
 
     
    
@@ -179,7 +169,7 @@ int main(int argc, char **argv)
      {
          MPI_Group sub_world_group;
          MPI_Comm sub_world_comm;
-         int incl_procs[procs_per_angle*num_angles], count, sub_world_id;
+         int incl_procs[procs_per_angle*num_angles], count;
          int total_num_to_restart=0;
          int color=1;
          int  *all_cont_process_idPtr=NULL, *each_num_to_restart_per_anglePtr=NULL, *tmp=NULL;
@@ -226,7 +216,7 @@ int main(int argc, char **argv)
             snprintf(mc_dir,sizeof(mc_dir),"%s%s%0.1lf-%0.1lf/",FILEPATH,MC_PATH, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI ); //have to add angle into this
         
             //call the function to count the num of processes for each angle range that need to be con't
-            int  count_cont_procs=0, total_cont_procs_angle=0, global_cont_procs=0;
+            int  count_cont_procs=0, total_cont_procs_angle=0;
             int *cont_proc_idsPtr=NULL, *total_cont_procs_angle_Ptr=NULL, *displPtr=NULL; //becomes the size of the number of old procceses 
             int *cont_proc_ids_anglePtr=NULL;
             
@@ -500,7 +490,7 @@ int main(int argc, char **argv)
             scatt_cyclosynch_num_ph=readCheckpoint(mc_dir, &photon_list, &frm2, &framestart, &scatt_framestart, &restrt, &time_now, angle_id, &angle_procs);
         
         /*
-        for (i=0;i<num_ph;i++)
+        for (i=0;i<photon_list.lsit_capacity;i++)
         {
             printf("%e,%e,%e, %e,%e,%e, %e, %e\n",(phPtr+i)->p0, (phPtr+i)->p1, (phPtr+i)->p2, (phPtr+i)->p3, (phPtr+i)->r0, (phPtr+i)->r1, (phPtr+i)->r2, (phPtr+i)->num_scatt );
         }
@@ -564,15 +554,11 @@ int main(int argc, char **argv)
     #if SIM_SWITCH == RIKEN && DIMENSIONS == THREE
     if (framestart>=3000)
     {
-        //increment_inj=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
-        //fps_modified=1; //therefore dt between files become 1 second
-        hydrodata.increment_inj_frame=10;
-        hydrodata.fps=1;
+        hydrodata.increment_inj_frame=10; //when the frame ==3000 for RIKEN 3D hydro files, increment file numbers by 10 instead of by 1
+        hydrodata.fps=1; //therefore dt between files become 1 second
     }
     #else
     {
-        //increment_inj=1;
-        //fps_modified=fps;
         hydrodata.increment_inj_frame=1;
         hydrodata.fps=fps; //this is already set in readMcPar function but may need to be modified
     }
@@ -661,9 +647,9 @@ int main(int argc, char **argv)
             
             photonInjection(&photon_list, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, theta_jmin_thread, theta_jmax_thread, &hydrodata,rng, fPtr );
             
-            //printf("This many Photons: %d\n",num_ph); //num_ph is one more photon than i actually have
+            //printf("This many Photons: %d\n",photon_list.num_photons);
             
-            //for (i=0;i<num_ph;i++)
+            //for (i=0;i<photon_list.list_capacity;i++)
             //    printf("%e,%e,%e \n",(phPtr+i)->r0, (phPtr+i)->r1, (phPtr+i)->r2 );
             
         }
@@ -677,7 +663,6 @@ int main(int argc, char **argv)
             scatt_framestart=frame; //have to make sure that once the inner loop is done and the outer loop is incremented by one the inner loop starts at that new value and not the one read by readCheckpoint()
         }
         
-        num_null_ph=0;
         hydrodata.increment_scatt_frame=1;
         for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame=scatt_frame+hydrodata.increment_scatt_frame)
         {
@@ -740,11 +725,7 @@ int main(int argc, char **argv)
             
             //emit synchrotron photons here
             num_cyclosynch_ph_emit=0;
-            
-            //by default want to allocat ememory for time_steps and sorted indexes to scatter
-            // all_time_steps=malloc(num_ph*sizeof(double)); this is now in the photon struct
-            //sorted_indexes=malloc(num_ph*sizeof(int)); this is no longer needed since creating the photonList struct
-            
+                        
             #if CYCLOSYNCHROTRON_SWITCH == ON
                 if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //remember to revert back to !=
                 //if ((scatt_frame == scatt_framestart) || (restrt==CONTINUE))//for testing
@@ -780,7 +761,6 @@ int main(int argc, char **argv)
             remaining_time=((scatt_frame+hydrodata.increment_scatt_frame)/hydrodata.fps)-time_now; //This keeps track of the amount of time that remains until a new frame has to be loaded, we initalize it to the time of the next frame and subtract the scattering times from it. If the time_now=time of the last hydro frame then this ==dt_max
             
             n_comptonized=0;
-            //while (time_now<((scatt_frame+hydrodata.increment_scatt_frame)/hydrodata.fps))
             while (remaining_time>0)
             {
                 //if simulation time is less than the simulation time of the next frame, keep scattering in this frame
@@ -800,7 +780,6 @@ int main(int argc, char **argv)
                 if (getPhoton(&photon_list, photon_list.sorted_indexes[0])->time_to_scatter < remaining_time)
                 {
                     //scatter the photon
-                    //fprintf(fPtr, "Passed Parameters: %e, %e, %e\n", (ph_vxPtr), (ph_vyPtr), (ph_tempPtr));
 
                     time_step=photonEvent( &photon_list, remaining_time, &hydrodata, &ph_scatt_index, &frame_scatt_cnt, &frame_abs_cnt, rng, fPtr );
                     time_now+=time_step;
@@ -818,10 +797,10 @@ int main(int argc, char **argv)
                         n_comptonized+=scattered_photon->weight;
                         scattered_photon->type = COMPTONIZED_PHOTON; //c for compton scattered synchrotron photon
                         
-                        //fprintf(fPtr, "num_null_ph %d\n", num_null_ph);
+                        //fprintf(fPtr, "photon_list.num_null_photons %d\n", photon_list.num_null_photons);
                         //printf("The previous scattered photon was a seed photon %c.\n", scattered_photon->type);
                         num_cyclosynch_ph_emit+=photonEmitCyclosynch(&photon_list, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 1, ph_scatt_index, fPtr);
-                        //fprintf(fPtr, " num_photon: %d\n",num_ph  );
+                        //fprintf(fPtr, " num_photon: %d\n",photon_list.num_photons  );
                         //fflush(fPtr);
                         
                         scatt_cyclosynch_num_ph++;//keep track of the number of synch photons that have scattered for later in checking of we need to rebin them
@@ -938,14 +917,6 @@ int main(int argc, char **argv)
                 exit(1);
             }
             
-            #if SIM_SWITCH == RIKEN && DIMENSIONS == THREE
-            {
-                {
-                    free(zPtr);free(phiPtr);free(velzPtr);
-                    zPtr=NULL; phiPtr=NULL; velzPtr=NULL;
-                }
-            }
-            #endif
         
             free(xPtr);free(yPtr);free(szxPtr);free(szyPtr);free(rPtr);free(thetaPtr);free(velxPtr);free(velyPtr);free(densPtr);free(presPtr);
             free(gammaPtr);free(dens_labPtr);free(tempPtr);
@@ -960,7 +931,6 @@ int main(int argc, char **argv)
         
         restrt=INITALIZE;//set this to make sure that the next iteration of propogating photons doesnt use the values from the last reading of the checkpoint file
         scatt_cyclosynch_num_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
-        num_null_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
         free(phPtr);
         phPtr=NULL;
         freePhotonList(&photon_list);
