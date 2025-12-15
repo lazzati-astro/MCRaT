@@ -60,7 +60,7 @@ double calcB(double el_dens, double temp)
             //printf(">> in INTERNAL_E, EPSILON_B is %e \n", EPSILON_B);
 
             return sqrt(EPSILON_B*8*M_PI*3*el_dens*K_B*temp/2);
-        #else B_FIELD_CALC == TOTAL_E
+        #else //B_FIELD_CALC == TOTAL_E
             //printf(">> in TOTAL_E, EPSILON_B is %e \n", EPSILON_B);
 
             //otherwise calculate B from the total energy
@@ -1177,23 +1177,20 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
 {
     double rmin=0, rmax=0, max_photons=CYCLOSYNCHROTRON_REBIN_E_PERC*maximum_photons; //have 10% as default, can change later need to figure out how many photons across simulations I want emitted
     double ph_weight_adjusted=0, position_phi=0;
-    double dimlesstheta=0, nu_c=0, el_dens=0, error=0, ph_dens_calc=0, max_jnu=0, b_field=0;
+    double dimlesstheta=0, nu_c=0, el_dens=0, error=0, ph_dens_calc=0, b_field=0;
     double r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
-    double el_p[4], ph_p_comv[4];
     double params[3];
-    double fr_dum=0.0, y_dum=0.0, yfr_dum=0.0, com_v_phi=0, com_v_theta=0, position_rand=0, position2_rand=0, position3_rand=0, cartesian_position_rand_array[3];
+    double fr_dum=0.0, com_v_phi=0, com_v_theta=0, position_rand=0, position2_rand=0, position3_rand=0, cartesian_position_rand_array[3];
     double *p_comv=NULL, *boost=NULL, *l_boost=NULL; //pointers to hold comov 4 monetum, the fluid vlocity, and the photon 4 momentum in the lab frame
     int status;
-    int block_cnt=0, i=0, j=0, k=0, null_ph_count=0, *ph_dens=NULL, ph_tot=0, net_ph=0, min_photons=1;
+    int block_cnt=0, i=0, j=0, k=0, *ph_dens=NULL, ph_tot=0, net_ph=0, min_photons=1;
     int *null_ph_indexes=NULL;
     #if defined(_OPENMP)
     int num_thread=omp_get_num_threads();
     #endif
-    int count_null_indexes=0, idx=0;
+    int idx=0;
     struct photon *ph_emit=NULL; //pointer to array of structs that will hold emitted photon info
     struct photon *tmp=NULL;
-    double *tmp_double=NULL;
-    int *tmp_int=NULL, n_pool=0;
     
     //fprintf(fPtr, "IN EMIT SYNCH FUNCTION; num_threads %d\n", num_thread);
     //fprintf(fPtr, "BEFORE Original number of photons: %d Null photons %d\n", (*num_ph), null_ph_count, ph_tot);
@@ -1340,16 +1337,7 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
         ph_tot=1;
     }
     
-    /*FIND OUT WHICH PHOTONS IN ARRAY ARE OLD/WERE ABSORBED AND IDENTIFY THIER INDEXES AND HOW MANY, dont subtract this from ph_tot @ the end, WILL NEED FOR PRINT PHOTONS
-    #pragma omp parallel for num_threads(num_thread) reduction(+:null_ph_count)
-    for (i=0;i<*num_ph;i++)
-    {
-        if (((*ph_orig)[i].weight == 0)) //if photons are null COMPTONIZED_PHOTON photons and not absorbed UNABSORBED_CS_PHOTON photons
-        {
-            null_ph_count+=1;
-        }
-    }
-    */ //not needed since using the photonList struct
+
     
     //allocate memory for that many photons and also allocate memory to hold comoving 4 momentum of each photon and the velocity of the fluid
     ph_emit=malloc (ph_tot * sizeof (struct photon ));
@@ -1358,108 +1346,6 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
     l_boost=malloc(4*sizeof(double));
     
     
-//    if (null_ph_count < ph_tot)
-//    {
-//        //if the totoal number of photons to be emitted is larger than the number of null phtons curently in the array, then have to grow the array
-//        //need to realloc memory to hold the old photon info and the new emitted photon's info
-//        //fprintf(fPtr, "Emit: Allocating %d space\n", ((*num_ph)+ph_tot-null_ph_count));
-//        //fflush(fPtr);
-//        /*
-//        tmp=realloc(*ph_orig, ((*num_ph)+ph_tot-null_ph_count)* sizeof (struct photon )); //may have to look into directly doubling (or *1.5) number of photons each time we need to allocate more memory, can do after looking at profiling for "just enough" memory method
-//        if (tmp != NULL)
-//        {
-//            // everything ok
-//            *ph_orig = tmp;
-//
-//        }
-//        else
-//        {
-//            // problems!!!!
-//            printf("Error with reserving space to hold old and new photons\n");
-//            exit(0);
-//        }
-//        */
-//        //also expand memory of other arrays
-//        /* this isnt needed since the time steps are contained in the photon struct
-//        tmp_double=realloc(*all_time_steps, ((*num_ph)+ph_tot-null_ph_count)*sizeof(double));
-//        if (tmp_double!=NULL)
-//        {
-//            *all_time_steps=tmp_double;
-//        }
-//        else
-//        {
-//            printf("Error with reallocating space to hold data about each photon's time step until an interaction occurs\n");
-//        }
-//        */
-//        tmp_int=realloc(*sorted_indexes, ((*num_ph)+ph_tot-null_ph_count)*sizeof(int));
-//        if (tmp_int!=NULL)
-//        {
-//            *sorted_indexes=tmp_int;
-//        }
-//        else
-//        {
-//            printf("Error with reallocating space to hold data about the order in which each photon would have an interaction\n");
-//        }
-//        
-//        net_ph=(ph_tot-null_ph_count);
-//        null_ph_count=ph_tot; // use this to set the photons recently allocated as null phtoons (this can help if we decide to directly double (or *1.5) number of photons each time we need to allocate more memory, then use factor*((*num_ph)+ph_tot)-(*num_ph)
-//        null_ph_indexes=malloc((ph_tot+null_ph_count)*sizeof(int));
-//        j=0;
-//        for (i=((*num_ph)+net_ph)-1;i >=0 ;i--)
-//        {
-//            //fprintf(fPtr, "idx %d\n", i);
-//            //fflush(fPtr);
-//            if (((*ph_orig)[i].weight == 0)   || (i >= *num_ph))
-//            {
-//                //preset values for the the newly created spots to hold the emitted phtoons in
-//                (*ph_orig)[i].weight=0;
-//                (*ph_orig)[i].nearest_block_index=-1;
-//                *(null_ph_indexes+j)=i; //save this information so we can use the same syntax for both cases in saving the emitted photon data
-//                //fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
-//                //fflush(fPtr);
-//                j++;
-//            }
-//        }
-//        count_null_indexes=ph_tot; //use this to count the number fo null photons we have actually created, (this can help if we decide to directly double (or *1.5) number of photons each time we need to allocate more memory, then use factor*((*num_ph)+ph_tot)-(*num_ph)
-//        
-//        //loop through the original set of photons to see if
-//        
-//        //fprintf(fPtr,"Val %d\n", (*(null_ph_indexes+count_null_indexes-1)));
-//        *num_ph+=net_ph; //update number of photons
-//        *num_null_ph=ph_tot-null_ph_count; //((*num_ph)+ph_tot)-(*num_ph)-ph_tot; //reserved space - emitted photons-original photons
-//        //fprintf(fPtr,"New Num PH %d\nNew null hum_ph %d\n", *num_ph, *num_null_ph);
-//        //fflush(fPtr);
-//    }
-//    else
-//    {
-//        //otherwise need to find the indexes of these null photons to save the newly emitted photons in them, start searching from the end of the array to efficiently find them
-//        //dont need to update the number of photons here
-//        null_ph_indexes=malloc(null_ph_count*sizeof(int));
-//        j=0;
-//        for (i=(*num_ph)-1;i>=0;i--)
-//        {
-//            if ((*ph_orig)[i].weight == 0)  //if photons are null COMPTONIZED_PHOTON photons and not absorbed UNABSORBED_CS_PHOTON photons
-//            {
-//                // if the weight is 0, this is a photons that has been absorbed and is now null
-//                *(null_ph_indexes+j)=i;
-//                j++;
-//                //fprintf(fPtr, "NULL PHOTON INDEX %d\n", i);
-//                //fflush(fPtr);
-//                
-//                if (j == null_ph_count)
-//                {
-//                    i=-1; //have found al the indexes and can exit the loop, dont want to do this so we can do the first part of the if statement
-//                }
-//            }
-//            
-//        }
-//        
-//        count_null_indexes=null_ph_count;
-//        
-//        *num_null_ph=null_ph_count-ph_tot;
-//        
-//    }
-    //the above chunk of code is meant to allocate extra memory or idenify the location of null photons in the photon array. These are no longer needed since using the photonList struct automatically determines if the list needs to be grown and sets null photons to the appropriate values which can be over written below. Now we allocate an array of photons that will be added to the list at the end of this function
     
     //allocate memory for that many photons and also allocate memory to hold comoving 4 momentum of each photon and the velocity of the fluid
     
@@ -1528,7 +1414,7 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
                     lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
                     //printf("Assigning values to struct\n");
                     
-                    idx=ph_tot; //(*(null_ph_indexes+count_null_indexes-1));
+                    idx=ph_tot;
                     //fprintf(fPtr, "Placing photon in index %d\n", idx);
                     ph_emit[idx].p0=(*(l_boost+0));
                     ph_emit[idx].p1=(*(l_boost+1));
@@ -1563,7 +1449,6 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
 
                     //printf("%d\n",ph_tot);
                     ph_tot++; //count how many photons have been emitted
-                    //count_null_indexes--; //keep track fo the null photon indexes
                     
                     if (net_ph==ph_tot)
                     {
@@ -1581,7 +1466,7 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
     {
         //need to replace the scattered synch photon with another.
         //place new photon near the old one and make sure that it has the same nu_c as the other unscattered synch photons
-        idx=0; //(*(null_ph_indexes+count_null_indexes-1));
+        idx=0;
         tmp=getPhoton(photon_list, scatt_ph_index);
         i=tmp->nearest_block_index;
 
@@ -1685,20 +1570,19 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
 
 double phAbsCyclosynch(struct photonList *photon_list, int *num_abs_ph, int *scatt_cyclosynch_num_ph, struct hydro_dataframe *hydro_data, FILE *fPtr)
 {
-    int i=0, count=0, abs_ph_count=0, synch_ph_count=0, num_thread=1;
-    int other_count=0;
+    int i=0, abs_ph_count=0, synch_ph_count=0, num_thread=1;
     #if defined(_OPENMP)
     num_thread=omp_get_num_threads();
     #endif
 
-    double el_dens=0, nu_c=0, abs_count=0, b_field=0;
+    double nu_c=0, abs_count=0, b_field=0;
     struct photon *ph=NULL;
 
     fprintf(fPtr, "In phAbsCyclosynch func begin: abs_ph_count: %d synch_ph_count: %d scatt_cyclosynch_num_ph: %d num_threads: %d\n", abs_ph_count, synch_ph_count, *scatt_cyclosynch_num_ph, num_thread);
     
     *scatt_cyclosynch_num_ph=0;//set thsi equal to 0, to recount in this function and get prepared for the next frame
     
-    #pragma omp parallel for num_threads(num_thread) firstprivate(b_field, el_dens, nu_c) reduction(+:abs_ph_count)
+    #pragma omp parallel for num_threads(num_thread) firstprivate(b_field, nu_c) reduction(+:abs_ph_count)
     for (i=0;i<photon_list->list_capacity;i++)
     {
         ph=getPhoton(photon_list, i);
@@ -1747,96 +1631,14 @@ double phAbsCyclosynch(struct photonList *photon_list, int *num_abs_ph, int *sca
                 }
 
             }
-            /*
-            else
-            {
-                //if the phootn isnt going to be absorbed, see if its a COMPTONIZED_PHOTON photon thats survived and change it to an injected type
-                
-                //replace the potantial null photon with this photon's data
-                (*ph_orig)[count].p0=ph->p0;
-                (*ph_orig)[count].p1=ph->p1;
-                (*ph_orig)[count].p2=ph->p2;
-                (*ph_orig)[count].p3=ph->p3;
-                (*ph_orig)[count].comv_p0=ph->comv_p0;
-                (*ph_orig)[count].comv_p1=ph->comv_p1;
-                (*ph_orig)[count].comv_p2=ph->comv_p2;
-                (*ph_orig)[count].comv_p3=ph->comv_p3;
-                (*ph_orig)[count].r0= ph->r0;
-                (*ph_orig)[count].r1=ph->r1 ;
-                (*ph_orig)[count].r2=ph->r2;
-                (*ph_orig)[count].s0=ph->s0;
-                (*ph_orig)[count].s1=ph->s1;
-                (*ph_orig)[count].s2=ph->s2;
-                (*ph_orig)[count].s3=ph->s3;
-                (*ph_orig)[count].num_scatt=ph->num_scatt;
-                (*ph_orig)[count].weight=ph->weight;
-                (*ph_orig)[count].nearest_block_index=ph->nearest_block_index;
-                (*ph_orig)[count].type=ph->type;
-                
-                //increment count
-                count+=1;
-                
-                if ((ph->type == COMPTONIZED_PHOTON) || (ph->type == UNABSORBED_CS_PHOTON) )
-                {
-                    //if the photon is a COMPTONIZED_PHOTON phton (scattered synch photon from the current frame) or a UNABSORBED_CS_PHOTON photon (scattered synch photon) from an old frame
-                    //count how many of these there are
-                    *scatt_cyclosynch_num_ph+=1;
-                }
-                
-            }
-             */
+
         }
-        /*
-        else
-        {
-            //see if the photon was a previous INJECTED_PHOTON photon absorbed that we still have to account for in the array
-            if ((ph->p0 < 0) )
-            {
-                //replace the potantial null photon with this photon's data
-                (*ph_orig)[count].p0=ph->p0;
-                (*ph_orig)[count].p1=ph->p1;
-                (*ph_orig)[count].p2=ph->p2;
-                (*ph_orig)[count].p3=ph->p3;
-                (*ph_orig)[count].comv_p0=ph->comv_p0;
-                (*ph_orig)[count].comv_p1=ph->comv_p1;
-                (*ph_orig)[count].comv_p2=ph->comv_p2;
-                (*ph_orig)[count].comv_p3=ph->comv_p3;
-                (*ph_orig)[count].r0= ph->r0;
-                (*ph_orig)[count].r1=ph->r1 ;
-                (*ph_orig)[count].r2=ph->r2;
-                (*ph_orig)[count].s0=ph->s0;
-                (*ph_orig)[count].s1=ph->s1;
-                (*ph_orig)[count].s2=ph->s2;
-                (*ph_orig)[count].s3=ph->s3;
-                (*ph_orig)[count].num_scatt=ph->num_scatt;
-                (*ph_orig)[count].weight=ph->weight;
-                (*ph_orig)[count].nearest_block_index=ph->nearest_block_index;
-                (*ph_orig)[count].type=ph->type;
-                
-                //increment count
-                count+=1;
-            }
-        }
-            */
+
         //fprintf(fPtr, "photon %d has energy %e and weight %e with FLASH grid number %d\n", i, ph->p0*C_LIGHT/1.6e-9, ph->weight, ph->nearest_block_index);
     }
     //fprintf(fPtr, "In phAbsCyclosynch func: abs_ph_count: %d synch_ph_count: %d scatt_cyclosynch_num_ph: %d\n", abs_ph_count, synch_ph_count, *scatt_cyclosynch_num_ph);
     *num_abs_ph=abs_ph_count; //+synch_ph_count; dont need this
     
-    //fprintf(fPtr, "In phAbsCyclosynch func: count before_loop= %d\n", count);
-    /*
-    while (count<*num_ph)
-    {
-        //overwrite the last few photons to make sure that they are null photons
-        (*ph_orig)[count].weight=0;
-        (*ph_orig)[count].nearest_block_index=-1;
-        //fprintf(fPtr, "photon %d has frequency %e and weight %e with FLASH grid number %d\n", count, (*ph_orig)[count].comv_p0*C_LIGHT/PL_CONST, (*ph_orig)[count].weight, (*ph_orig)[count].nearest_block_index);
-        //fflush(fPtr);
-        
-        count+=1;
-    }
-     */ //not necessary since all photons are set to NULL with the photonList struct
-    //fprintf(fPtr, "In phAbsCyclosynch func: count after loop= %d\n", count);
 
     return abs_count;
 }
