@@ -12,7 +12,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[STR
     int i=0, j=0, val=0, original_num_procs=-1, rand_num=0;
     int frame2=0, framestart=0, scatt_framestart=0;
     double time=0;
-    char mc_chkpt_files[STR_BUFFER]="", restrt=''; //define new variable that wont write over the restrt variable in the main part of the code, when its put into the readCheckpoint function
+    char mc_chkpt_files[STR_BUFFER]="", restrt='\0'; //define new variable that wont write over the restrt variable in the main part of the code, when its put into the readCheckpoint function
     struct photonList photon_list; //pointer to array of photons
     //DIR * dirp;
     //struct dirent * entry;
