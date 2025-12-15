@@ -409,7 +409,6 @@ void lorentzBoost(double *boost, double *p_ph, double *result, char object,  FIL
 double *zeroNorm(double *p_ph)
 {
     //ensures zero norm condition of photon 4 monetum is held
-    int i=0;
     double normalizing_factor=0;
     gsl_vector_view p=gsl_vector_view_array((p_ph+1), 3); //make last 3 elements of p_ph pointer into vector
     
@@ -612,7 +611,7 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
 void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr)
 {
     int i=0, ph_block_index=0, num_thread=1, thread_id=0;
-    double mfp=0, default_mfp=1e12, tau=0;
+    double mfp=0, default_mfp=1e12;
     double rnd_tracker=0;
     double *all_time_steps=malloc((photon_list->list_capacity)*sizeof(double));
     struct photon *ph=NULL;
@@ -1099,14 +1098,13 @@ void updatePhotonPosition(struct photonList *photon_list, double t, FILE *fPtr)
 
 
 
-double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_dataframe *hydro_data, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt,  gsl_rng * rand, FILE *fPtr)//(struct photon *ph, int num_ph, double dt_max, double *all_time_steps, int *sorted_indexes, double *all_flash_vx, double *all_flash_vy, double *all_flash_vz, double *all_fluid_temp, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt, gsl_rng * rand, FILE *fPtr)
+double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_dataframe *hydro_data, int *scattered_ph_index, int *frame_scatt_cnt, int *frame_abs_cnt,  gsl_rng * rand, FILE *fPtr)
 {
     //function to perform single photon scattering
     int  i=0, index=0, ph_index=0, event_did_occur=0; //variable event_did_occur is to keep track of wether a scattering or absorption actually occured or not,
     int scattering_subgroup=0; //this is meant for when we have nonthermal electrons to identify which subgroup of electrons we may scatter with
     double scatt_time=0, old_scatt_time=0; //keep track of new time to scatter vs old time to scatter to know how much to incrementally propagate the photons if necessary
-    double phi=0, theta=0; //phi and theta for the 4 momentum 
-    double ph_phi=0, flash_vx=0, flash_vy=0, flash_vz=0, fluid_temp=0;    
+    double ph_phi=0, fluid_temp=0;
     double *ph_p=malloc(4*sizeof(double)); //pointer to hold only photon 4 momentum @ start
     double *el_p_comov=malloc(4*sizeof(double));//pointer to hold the electron 4 momenta in comoving frame
     double *ph_p_comov=malloc(4*sizeof(double));//pointer to hold the comoving photon 4 momenta
