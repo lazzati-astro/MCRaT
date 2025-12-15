@@ -1074,6 +1074,7 @@ int main(int argc, char **argv)
     
     free(frame_array);
     free(proc_frame_array);
+    free(element_num);
     
     MPI_Finalize();
     
