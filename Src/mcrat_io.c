@@ -1981,6 +1981,8 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
         fprintf(fPtr,">> The average dimless temp is %e\n", hydro_data->average_dimless_theta);
         calculateNonthermalElectronDens(hydro_data, fPtr);
     #endif
+    
+    hydro_data->grid = buildSpatialGrid(hydro_data, fPtr);
 
 
 
