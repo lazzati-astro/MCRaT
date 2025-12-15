@@ -37,3 +37,6 @@ int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, doubl
 int findContainingBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, struct hydro_dataframe *hydro_data, FILE *fPtr);
 
 int checkInBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, struct hydro_dataframe *hydro_data, int block_index);
+
+
+void freeSpatialGrid(struct SpatialGrid *g);

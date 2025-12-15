@@ -1801,6 +1801,8 @@ void hydroDataFrameInitialize(struct hydro_dataframe *hydro_data)
 
 void freeHydroDataFrame(struct hydro_dataframe *hydro_data)
 {
+    freeSpatialGrid(hydro_data->grid);
+    
     //free pointers in hydro dataframe to NULL for debugging
     free(hydro_data->r0);
     free(hydro_data->r1);
@@ -1822,6 +1824,7 @@ void freeHydroDataFrame(struct hydro_dataframe *hydro_data)
     free(hydro_data->B1);
     free(hydro_data->B2);
     
+    hydro_data->grid = NULL;
     hydro_data->r0=NULL;
     hydro_data->r1=NULL;
     hydro_data->r2=NULL;
@@ -1846,6 +1849,7 @@ void freeHydroDataFrame(struct hydro_dataframe *hydro_data)
         free(hydro_data->nonthermal_dens);
         hydro_data->nonthermal_dens=NULL;
     #endif
+    
 
 }
 

@@ -412,3 +412,16 @@ int checkInBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, str
 }
 
 
+
+
+
+
+
+void freeSpatialGrid(struct SpatialGrid *g)
+{
+    if (!g) return;
+    free(g->cell_indices);
+    free(g->grid_counts);
+    free(g->grid_offsets);
+    free(g);
+}
