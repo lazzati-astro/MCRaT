@@ -525,7 +525,7 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
                 //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
             
                 //find the new index of the block that the photon is actually in
-                min_index=findContainingBlock(photon_hydro_coord[0], photon_hydro_coord[1], photon_hydro_coord[2], hydro_data, fPtr); //(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, fPtr);
+                min_index=findContainingBlock_grid(photon_hydro_coord[0], photon_hydro_coord[1], photon_hydro_coord[2], hydro_data, fPtr); //(array_num,  ph_x,  ph_y,  ph_z,  x,   y, z,  szx,  szy, ph_block_index, find_nearest_block_switch, fPtr);
 
                 ph->nearest_block_index=min_index; //save the index if min_index != -1
 
