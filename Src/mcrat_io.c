@@ -10,10 +10,9 @@
 int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[STR_BUFFER], int angle_rank,  int angle_procs, int last_frame)
 {
     int i=0, j=0, val=0, original_num_procs=-1, rand_num=0;
-    int frame2=0, framestart=0, scatt_framestart=0, ph_num=0;
+    int frame2=0, framestart=0, scatt_framestart=0;
     double time=0;
-    char mc_chkpt_files[STR_BUFFER]="", restrt=""; //define new variable that wont write over the restrt variable in the main part of the code, when its put into the readCheckpoint function
-    struct photon *phPtr=NULL; //pointer to array of photons
+    char mc_chkpt_files[STR_BUFFER]="", restrt=''; //define new variable that wont write over the restrt variable in the main part of the code, when its put into the readCheckpoint function
     struct photonList photon_list; //pointer to array of photons
     //DIR * dirp;
     //struct dirent * entry;
@@ -23,38 +22,35 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[STR
     //this sets the pointers in the struct to NULL and sets the photon counters to 0
     initalizePhotonList(&photon_list);
         
-    //if (angle_rank==0)
+    //find number of mc_checkpt files there are
+    //loop through them and find out which prior processes didnt finish and keep track of which ones didnt
+    snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s", dir,"mc_chkpt_*" );
+    val=glob(mc_chkpt_files, 0, NULL,&files );
+
+    //printf("TEST: %s\n", mc_chkpt_files);
+
+    //look @ a file by choosing rand int between 0 and files.gl_pathc and if the file exists open and read it to get the actual value for the old number of angle_procs
+    srand(angle_rank);
+    //printf("NUM_FILES: %d\n",files.gl_pathc);
+    
+    rand_num=rand() % files.gl_pathc;
+    snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s%d%s", dir,"mc_chkpt_",  rand_num,".dat" );
+    //printf("TEST: %s\n", mc_chkpt_files);
+
+    if ( access( mc_chkpt_files, F_OK ) == -1 )
     {
-        //find number of mc_checkpt files there are
-        //loop through them and find out which prior processes didnt finish and keep track of which ones didnt
-        snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s", dir,"mc_chkpt_*" );
-        val=glob(mc_chkpt_files, 0, NULL,&files );
-    
-        //printf("TEST: %s\n", mc_chkpt_files);
-    
-        //look @ a file by choosing rand int between 0 and files.gl_pathc and if the file exists open and read it to get the actual value for the old number of angle_procs
-        srand(angle_rank);
-        //printf("NUM_FILES: %d\n",files.gl_pathc);
-        
-        rand_num=rand() % files.gl_pathc;
-        snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s%d%s", dir,"mc_chkpt_",  rand_num,".dat" );
-        //printf("TEST: %s\n", mc_chkpt_files);
-    
-        if ( access( mc_chkpt_files, F_OK ) == -1 )
+        while(( access( mc_chkpt_files, F_OK ) == -1 ) )
         {
-            while(( access( mc_chkpt_files, F_OK ) == -1 ) )
-            {
-                rand_num=rand() % files.gl_pathc;
-                snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s%d%s", dir,"mc_chkpt_",  rand_num,".dat" );
-                //printf("TEST: %s\n", mc_chkpt_files);
-            }
+            rand_num=rand() % files.gl_pathc;
+            snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s%d%s", dir,"mc_chkpt_",  rand_num,".dat" );
+            //printf("TEST: %s\n", mc_chkpt_files);
         }
-        readCheckpoint(dir, &photon_list, &frame2, &framestart, &scatt_framestart, &restrt, &time, rand_num, &original_num_procs);
-    
-        //original_num_procs= 70;
-        
-        
     }
+    readCheckpoint(dir, &photon_list, &frame2, &framestart, &scatt_framestart, &restrt, &time, rand_num, &original_num_procs);
+
+    //original_num_procs= 70;
+        
+        
     
     int count_procs[original_num_procs], count=0;
     int cont_procs[original_num_procs];
@@ -133,8 +129,8 @@ void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclos
     char mc_file[STR_BUFFER]="", group[200]="", group_weight[200]="", *ph_type=NULL;
     double p0[net_num_ph], p1[net_num_ph], p2[net_num_ph], p3[net_num_ph] , r0[net_num_ph], r1[net_num_ph], r2[net_num_ph], num_scatt[net_num_ph], weight[net_num_ph], global_weight[net_num_ph];
     double s0[net_num_ph], s1[net_num_ph], s2[net_num_ph], s3[net_num_ph], comv_p0[net_num_ph], comv_p1[net_num_ph], comv_p2[net_num_ph], comv_p3[net_num_ph];
-    hid_t  file, file_init, dspace, dspace_weight, dspace_global_weight, fspace, mspace, prop, prop_weight, prop_global_weight, group_id;
-    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_2, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_ph_type;
+    hid_t  file, file_init, dspace, dspace_weight, fspace, mspace, prop, prop_weight, group_id;
+    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight_2, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_ph_type;
     herr_t status, status_group, status_weight, status_weight_2;
     hsize_t dims[1]={net_num_ph}, dims_weight[1]={net_num_ph}, dims_old[1]={0}; //1 is the number of dimansions for the dataset, called rank
     struct photon *ph=NULL; //pointer to a photon struct
@@ -1246,12 +1242,12 @@ void dirFileMerge(char dir[STR_BUFFER], int start_frame, int last_frame, int num
     double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *comv_p0=NULL, *comv_p1=NULL, *comv_p2=NULL, *comv_p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;
     int i=0, j=0, k=0, isNotCorrupted=0, num_types=9; //just save lab 4 momentum, position and num_scatt by default
     int increment=1;
-    char filename_k[STR_BUFFER]="", file_no_thread_num[STR_BUFFER]="", cmd[STR_BUFFER]="", mcdata_type[20]="";
+    char filename_k[STR_BUFFER]="", file_no_thread_num[STR_BUFFER]="", mcdata_type[20]="";
     char group[200]="", *ph_type=NULL;
     hid_t  file, file_new, group_id, dspace;
     hsize_t dims[1]={0};
     herr_t status, status_group;
-    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_frame, dset_ph_type;
+    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_ph_type;
    
     //printf("Merging files in %s\n", dir);
     //#pragma omp parallel for num_threads(num_thread) firstprivate( filename_k, file_no_thread_num, cmd,mcdata_type,num_files, increment ) private(i,j,k)
