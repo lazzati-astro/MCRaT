@@ -61,7 +61,6 @@ void mcratCoordinateToHydroCoordinate(double *ph_hydro_coord, double mcrat_r0, d
 void hydroCoordinateToSpherical(double *r, double *theta, double r0, double r1, double r2)
 {
     //this function converts hydro coordinates to spherical r and theta coordinates
-    int i=0;
     double sph_r=0, sph_theta=0;//sph_theta is measured from the assumed jet axis
     
     #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
@@ -390,7 +389,6 @@ int findContainingBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_
 int checkInBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, struct hydro_dataframe *hydro_data, int block_index)
 {
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
-    double x0=0, x1=0, x2=0, sz_x0=0, sz_x1=0, sz_x2=0; //coordinate and sizes of grid block, in cartesian its x,y,z in spherical its r,theta,phi
     int return_val=0;
 
     
@@ -399,26 +397,7 @@ int checkInBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, str
     #else
         is_in_block= (2*fabs( ph_hydro_r0 - (hydro_data->r0)[block_index]) - (hydro_data->r0_size)[block_index] <= 0) && (2*fabs(ph_hydro_r1 - (hydro_data->r1)[block_index] ) - (hydro_data->r1_size)[block_index]  <= 0) && (2*fabs(ph_hydro_r2 - (hydro_data->r2)[block_index] ) - (hydro_data->r2_size)[block_index]  <= 0);
     #endif
-        /*
-        else
-        {
-            if (riken_switch==1)
-            {
-                
-                x0=pow(pow((*(x+block_index)), 2.0) + pow((*(y+block_index)),2.0 ) + pow((*(z+block_index)) , 2.0),0.5);
-                x1=acos((*(z+block_index))/pow(pow((*(x+block_index)), 2.0) + pow((*(y+block_index)),2.0 ) + pow((*(z+block_index)) , 2.0),0.5));
-                x2=atan2((*(y+block_index)), (*(x+block_index)));
-                
-                sz_x0=(*(szy+block_index));
-                sz_x1=(*(szx+block_index));
-                sz_x2=(*(szx+block_index));
-                
-                is_in_block= (fabs(pow(pow( ph_x, 2.0) + pow(ph_y, 2.0)+pow(ph_z, 2.0),0.5) - x0) <= sz_x0/2.0) &&  (fabs(acos(ph_z/pow(pow(ph_x, 2.0) + pow(ph_y,2.0 ) + pow(ph_z , 2.0),0.5)) - x1 ) <= sz_x1/2.0)  && (fabs(atan2(ph_y, ph_x) - x2 ) <= sz_x2/2.0);
-                //not sure why the code was going to this line above here for spherical test
-                 
-             }
-        }
-        */
+
         
     if (is_in_block)
     {
