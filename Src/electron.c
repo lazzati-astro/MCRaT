@@ -176,9 +176,11 @@ void rotateElectron(double *el_p, double *ph_p, FILE *fPtr)
 
 double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr)
 {
-    double y_dum=0, f_x_dum=0, x_dum=0, beta_x_dum=0, theta=0;
+    double theta=0;
 
     /*this loop is inefficient
+    double y_dum=0, f_x_dum=0, x_dum=0, beta_x_dum=0,
+
     y_dum=1; //initalize loop to get a random theta
     f_x_dum=0;
     while (y_dum>f_x_dum)
