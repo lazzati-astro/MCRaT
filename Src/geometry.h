@@ -5,18 +5,6 @@
 //  Created by Tyler Parsotan on 7/23/21.
 //
 
-struct SpatialGrid
-{
-    int   *cell_indices;   /* size = num_elements, holds hydro cell indices */
-    int   *grid_counts;    /* size = total_grid_cells, how many hydro cells per grid cell */
-    int   *grid_offsets;   /* size = total_grid_cells, prefix sum offsets into cell_indices */
-    int    total_grid_cells;
-    double grid_min[3];
-    double grid_max[3];
-    double cell_size[3];   /* grid cell size in each dimension */
-    int    dims[3];        /* number of grid cells along each dimension */
-};
-
 
 void mcratCoordinateToHydroCoordinate(double *ph_hydro_coord, double mcrat_r0, double mcrat_r1, double mcrat_r2);
 

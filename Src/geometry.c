@@ -422,7 +422,7 @@ int checkInBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, str
 /* New: grid‑accelerated version; call this instead of the O(N) scan */
 int findContainingBlock_grid(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, struct hydro_dataframe *hydro_data, FILE *fPtr)
 {
-    SpatialGrid *g = hydro_data->grid;
+    struct SpatialGrid *g = hydro_data->grid;
     if (!g)
     {
         /* Fallback to old linear version if grid not built */
@@ -432,7 +432,7 @@ int findContainingBlock_grid(double ph_hydro_r0, double ph_hydro_r1, double ph_h
     /* Map photon position to grid indices */
     double x = ph_hydro_r0;
     double y = ph_hydro_r1;
-    #if DIMENSIONS == 3
+    #if DIMENSIONS == THREE
         double z = ph_hydro_r2;
     #else
         double z = 0.0;
@@ -482,7 +482,7 @@ int findContainingBlock_grid(double ph_hydro_r0, double ph_hydro_r1, double ph_h
 
     if (!is_in_block)
     {
-        #if DIMENSIONS == 2 || DIMENSIONS == 2_POINT_FIVE
+        #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
             fprintf(fPtr,
                 "MCRaT (grid) couldn't find a block for photon at r0=%e r1=%e\n",
                 ph_hydro_r0, ph_hydro_r1);
@@ -528,7 +528,7 @@ struct SpatialGrid *buildSpatialGrid(struct hydro_dataframe *hydro_data, FILE *f
     int n = hydro_data->num_elements;
     if (n <= 0) return NULL;
 
-    SpatialGrid *g = calloc(1, sizeof(struct SpatialGrid));
+    struct SpatialGrid *g = calloc(1, sizeof(struct SpatialGrid));
     if (!g)
     {
         fprintf(fPtr, "ERROR: Failed to allocate SpatialGrid\n");

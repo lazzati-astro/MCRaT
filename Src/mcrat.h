@@ -136,8 +136,6 @@ extern const double R_EL;
 //then include this file also in prep for the photon struct optical depth array being defined
 #include "hot_x_section.h"
 
-//include this so we can have the spatialgrid struct defined before the hydro_dataframe struct
-#include "geometry.h"
 
 
 
@@ -179,6 +177,18 @@ struct photonList
     int num_photons; //number of real, non-null photons in the array
     int num_null_photons; //number of null photons in the full array
     int list_capacity; //number of photons that were malloc-ed /realloc-ed
+};
+
+struct SpatialGrid
+{
+    int   *cell_indices;   /* size = num_elements, holds hydro cell indices */
+    int   *grid_counts;    /* size = total_grid_cells, how many hydro cells per grid cell */
+    int   *grid_offsets;   /* size = total_grid_cells, prefix sum offsets into cell_indices */
+    int    total_grid_cells;
+    double grid_min[3];
+    double grid_max[3];
+    double cell_size[3];   /* grid cell size in each dimension */
+    int    dims[3];        /* number of grid cells along each dimension */
 };
 
 struct hydro_dataframe
@@ -233,6 +243,8 @@ struct hydro_dataframe
 
 }; // structure to hold all information for a given hydro simulation
 
+//include this so we can have the spatialgrid struct defined before the hydro_dataframe struct
+#include "geometry.h"
 
 #include "mclib.h"
 #include "mclib_riken.h"
