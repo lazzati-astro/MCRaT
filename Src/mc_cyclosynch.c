@@ -4,6 +4,28 @@ This file is for the different functions for emitting and absorbing synchrotron 
 
 #include "mcrat.h"
 
+//define rebinning helper functions here as static
+static void calculate_photon_position(const struct photon *ph, double *r, double *theta, double *phi);
+
+static int collect_photon_statistics(const struct photonList *photon_list, struct PhotonRangeInfo *info, FILE *fPtr);
+
+static struct BinningParams calculate_binning_params(const struct PhotonRangeInfo *info, int max_photons);
+
+
+static int allocate_histograms(gsl_histogram2d **h_energy_theta, gsl_histogram2d **h_energy_phi, gsl_histogram2d **h_theta_phi, const struct BinningParams *params, const struct PhotonRangeInfo *info, FILE *fPtr);
+
+static void free_histograms(gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_energy_phi, gsl_histogram2d *h_theta_phi);
+
+static struct BinStats* allocate_bin_stats(int total_bins, FILE *fPtr);
+
+static void free_bin_stats(struct BinStats *stats);
+
+static int calculate_bin_index(int count_x, int count_y, int count_z, const struct BinningParams *params);
+
+static int accumulate_bin_statistics(const struct photonList *photon_list, struct BinStats *stats, gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_energy_phi, gsl_histogram2d *h_theta_phi, const struct BinningParams *params, FILE *fPtr);
+
+static int create_rebinned_photons(struct photonList *photon_list, const struct BinStats *stats, const struct BinningParams *params, int synch_photon_count, FILE *fPtr);
+
 
 double calcCyclotronFreq(double magnetic_field)
 {
