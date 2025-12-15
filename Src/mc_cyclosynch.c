@@ -585,8 +585,109 @@ static int create_rebinned_photons(struct photonList *photon_list, const struct 
     return num_null_rebin_ph;
 }
 
+int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int max_photons, double thread_theta_min, double thread_theta_max, gsl_rng *rand, FILE *fPtr)
+{
+    int ret_val = 0;
+    struct PhotonRangeInfo range_info = {0};
+    struct BinningParams params = {0};
+    struct BinStats *bin_stats = NULL;
+    gsl_histogram2d *h_energy_theta = NULL, *h_energy_phi = NULL, *h_theta_phi = NULL;
+    int null_count = 0;
 
-int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
+    fprintf(fPtr, "Starting photon rebinning process...\n");
+    fflush(fPtr);
+
+    /* Phase 1: Analyze photon distribution and determine ranges */
+    if (!collect_photon_statistics(photon_list, &range_info, fPtr))
+    {
+        fprintf(fPtr, "ERROR: No valid photons found for rebinning\n");
+        ret_val = -1;
+    }
+
+    /* Phase 2: Calculate binning parameters */
+    if (ret_val == 0)
+    {
+        params = calculate_binning_params(&range_info, max_photons);
+        
+        if (params.total_bins > max_photons)
+        {
+            fprintf(fPtr, "ERROR: Rebinning would create %d photons (exceeds max_photons=%d)\n",
+                    params.total_bins, max_photons);
+            fprintf(fPtr, "  Energy bins: %d, Theta bins: %d", params.num_bins, params.num_bins_theta);
+            #if DIMENSIONS == THREE
+                fprintf(fPtr, ", Phi bins: %d", params.num_bins_phi);
+            #endif
+            fprintf(fPtr, "\n  Photon ranges: energy [%e, %e] keV, theta [%e, %e] deg", range_info.p0_min * ENERGY_TO_KEV, range_info.p0_max * ENERGY_TO_KEV, range_info.theta_min * RAD_TO_DEG, range_info.theta_max * RAD_TO_DEG);
+            #if DIMENSIONS == THREE
+                fprintf(fPtr, ", phi [%e, %e] deg", range_info.phi_min, range_info.phi_max);
+            #endif
+            fprintf(fPtr, "\n");
+            fflush(fPtr);
+            ret_val = -1;
+        }
+    }
+
+    /* Phase 3: Allocate memory for histograms and statistics */
+    if (ret_val == 0)
+    {
+        bin_stats = allocate_bin_stats(params.total_bins, fPtr);
+        if (!bin_stats)
+        {
+            ret_val = -1;
+        }
+    }
+
+    if (ret_val == 0)
+    {
+        if (!allocate_histograms(&h_energy_theta, &h_energy_phi, &h_theta_phi, &params, &range_info, fPtr))
+        {
+            ret_val = -1;
+        }
+    }
+
+    /* Phase 4: Populate histograms and accumulate statistics */
+    if (ret_val == 0)
+    {
+        if(!accumulate_bin_statistics(photon_list, bin_stats, h_energy_theta, h_energy_phi, h_theta_phi, &params, fPtr))
+        {
+            ret_val = -1;
+        }
+    }
+
+    /* Phase 5: Create rebinned photons from statistics */
+    if (ret_val == 0)
+    {
+        null_count = create_rebinned_photons(photon_list, bin_stats, &params, range_info.synch_photon_count, fPtr);
+        if (null_count < 0)
+        {
+            ret_val = -1;
+        }
+    }
+
+    /* Update counters if all phases succeeded */
+    if (ret_val == 0)
+    {
+        *scatt_cyclosynch_num_ph = params.total_bins - null_count;
+        *num_cyclosynch_ph_emit = params.total_bins + range_info.synch_photon_count - null_count;
+        
+        fprintf(fPtr, "Rebinning complete: %d rebinned photons created (%d non-empty bins)\n", params.total_bins, params.total_bins - null_count);
+        fprintf(fPtr, "Total photons after rebinning: %d\n", *num_cyclosynch_ph_emit);
+        fflush(fPtr);
+    }
+
+    /* Phase 6: Clean up all allocated resources */
+    if (bin_stats)
+    {
+        free_bin_stats(bin_stats);
+    }
+    free_histograms(h_energy_theta, h_energy_phi, h_theta_phi);
+
+    return (ret_val == 0) ? null_count : ret_val;
+}
+
+
+
+int rebinCyclosynchCompPhotons_old(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
 {
     int i=0, j=0, k=0, count=0, count_x=0, count_y=0, count_z=0, count_c_ph=0, end_count=(*scatt_cyclosynch_num_ph), idx=0, num_thread=1;
     #if defined(_OPENMP)
