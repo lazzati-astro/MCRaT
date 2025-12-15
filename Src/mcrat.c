@@ -69,21 +69,18 @@ int main(int argc, char **argv)
         
     char log_file[STR_BUFFER]="";
     FILE *fPtr=NULL; //pointer to log file for each thread
-    double *xPtr=NULL,  *yPtr=NULL,  *rPtr=NULL,  *thetaPtr=NULL,  *velxPtr=NULL,  *velyPtr=NULL,  *densPtr=NULL,  *presPtr=NULL,  *gammaPtr=NULL,  *dens_labPtr=NULL;
-    double *szxPtr=NULL,*szyPtr=NULL, *tempPtr=NULL; //pointers to hold data from FLASH files
     int scatt_cyclosynch_num_ph=0, ph_scatt_index=0, num_photons_find_new_element=0, max_scatt=0, min_scatt=0,i=0; //number of photons produced in injection algorithm, number of array elleemnts from reading FLASH file, index of photon whch does scattering, generic counter
     double dt_max=0;
     double time_now=0, time_step=0, avg_scatt=0,avg_r=0;
     double min_r=0, max_r=0, min_theta=0, max_theta=0, n_comptonized=0, remaining_time=0;
     int frame=0, scatt_frame=0, frame_scatt_cnt=0, frame_abs_cnt=0, scatt_framestart=0, framestart=0;
-    struct photon *phPtr=NULL; //pointer to array of photons
     struct photon *scattered_photon=NULL; //pointer to the most recently scattered photon
     struct photonList photon_list; //pointer to array of photons
     struct hydro_dataframe hydrodata; //pointer to array of hydro data
     
     int num_cyclosynch_ph_emit=0;
     int num_angles=0, old_num_angle_procs=0; //old_num_angle_procs is to hold the old number of procs in each angle when cont sims, if  restarting sims this gets set to angle_procs
-    int *frame_array=NULL, *proc_frame_array=NULL, *element_num=NULL, *sorted_indexes=NULL,  proc_frame_size=0;
+    int *frame_array=NULL, *proc_frame_array=NULL, *element_num=NULL,  proc_frame_size=0;
     double *thread_theta=NULL; //saves ranges of thetas for each thread to go through
     double delta_theta=1, num_theta_bins=0;
     double test_cyclosynch_inj_radius=0;
@@ -916,28 +913,13 @@ int main(int argc, char **argv)
                 fflush(fPtr);
                 exit(1);
             }
-            
-        
-            free(xPtr);free(yPtr);free(szxPtr);free(szyPtr);free(rPtr);free(thetaPtr);free(velxPtr);free(velyPtr);free(densPtr);free(presPtr);
-            free(gammaPtr);free(dens_labPtr);free(tempPtr);
-            xPtr=NULL; yPtr=NULL;  rPtr=NULL;thetaPtr=NULL;velxPtr=NULL;velyPtr=NULL;densPtr=NULL;presPtr=NULL;gammaPtr=NULL;dens_labPtr=NULL;
-            szxPtr=NULL; szyPtr=NULL; tempPtr=NULL;
-            //free(all_time_steps); //malloc is called in for loop therefore free memory at th end of the loop
-            //all_time_steps=NULL;
-            free(sorted_indexes);
-            sorted_indexes=NULL;
+                    
             freeHydroDataFrame(&hydrodata);
         }
         
         restrt=INITALIZE;//set this to make sure that the next iteration of propogating photons doesnt use the values from the last reading of the checkpoint file
         scatt_cyclosynch_num_ph=0; //set this back equal to 0 for next batch of injected/emitted photons starting from nect injection frame
-        free(phPtr);
-        phPtr=NULL;
         freePhotonList(&photon_list);
-        //free(all_time_steps);
-        //all_time_steps=NULL;
-        free(sorted_indexes);
-        sorted_indexes=NULL;
     }
     save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, time_now, &photon_list, last_frm, angle_id, old_num_angle_procs); //this is for processes using the old code that didnt restart efficiently
 
