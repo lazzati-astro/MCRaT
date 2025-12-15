@@ -522,3 +522,155 @@ static inline int grid_flat_index(const struct SpatialGrid *g, int ix, int iy, i
     return (iz * g->dims[1] + iy) * g->dims[0] + ix;
 }
 
+/* Build spatial grid once per hydro frame; call before photon loop */
+struct SpatialGrid *buildSpatialGrid(struct hydro_dataframe *hydro_data, FILE *fPtr)
+{
+    int n = hydro_data->num_elements;
+    if (n <= 0) return NULL;
+
+    SpatialGrid *g = calloc(1, sizeof(struct SpatialGrid));
+    if (!g)
+    {
+        fprintf(fPtr, "ERROR: Failed to allocate SpatialGrid\n");
+        return NULL;
+    }
+
+    /* 1. Compute global bounding box of all hydro cells */
+    double min_c[3] = { DBL_MAX, DBL_MAX, DBL_MAX };
+    double max_c[3] = { -DBL_MAX, -DBL_MAX, -DBL_MAX };
+
+    for (int i = 0; i < n; i++)
+    {
+        double half0 = 0.5 * hydro_data->r0_size[i];
+        double half1 = 0.5 * hydro_data->r1_size[i];
+        #if DIMENSIONS == 3
+            double half2 = 0.5 * hydro_data->r2_size[i];
+        #else
+            double half2 = 0.0;
+        #endif
+
+        double cmin0 = hydro_data->r0[i] - half0;
+        double cmax0 = hydro_data->r0[i] + half0;
+        double cmin1 = hydro_data->r1[i] - half1;
+        double cmax1 = hydro_data->r1[i] + half1;
+        #if DIMENSIONS == 3
+            double cmin2 = hydro_data->r2[i] - half2;
+            double cmax2 = hydro_data->r2[i] + half2;
+        #else
+            double cmin2 = 0.0, cmax2 = 0.0;
+        #endif
+
+        if (cmin0 < min_c[0]) min_c[0] = cmin0;
+        if (cmax0 > max_c[0]) max_c[0] = cmax0;
+        if (cmin1 < min_c[1]) min_c[1] = cmin1;
+        if (cmax1 > max_c[1]) max_c[1] = cmax1;
+        #if DIMENSIONS == 3
+            if (cmin2 < min_c[2]) min_c[2] = cmin2;
+            if (cmax2 > max_c[2]) max_c[2] = cmax2;
+        #endif
+    }
+
+    for (int d = 0; d < 3; d++)
+    {
+        g->grid_min[d] = min_c[d];
+        g->grid_max[d] = max_c[d];
+    }
+
+    /* 2. Choose grid resolution: aim ~20 hydro cells per grid cell */
+    int target_cells_per_grid = 20;
+    int total_grid_cells_target = n / target_cells_per_grid;
+    if (total_grid_cells_target < 1) total_grid_cells_target = 1;
+
+    /* Simple cubic grid: same number of cells along each dimension */
+    int dim = (int)ceil(pow((double)total_grid_cells_target, 1.0 / 3.0));
+    if (dim < 1) dim = 1;
+
+    g->dims[0] = dim;
+    g->dims[1] = (DIMENSIONS >= 2) ? dim : 1;
+    g->dims[2] = (DIMENSIONS == 3) ? dim : 1;
+
+    for (int d = 0; d < 3; d++)
+    {
+        double span = g->grid_max[d] - g->grid_min[d];
+        if (span <= 0.0) span = 1.0; /* avoid zero size */
+        g->cell_size[d] = span / (double)g->dims[d];
+    }
+
+    g->total_grid_cells = g->dims[0] * g->dims[1] * g->dims[2];
+
+    g->grid_counts  = calloc(g->total_grid_cells, sizeof(int));
+    g->grid_offsets = malloc(g->total_grid_cells * sizeof(int));
+    g->cell_indices = malloc(n * sizeof(int));
+
+    if (!g->grid_counts || !g->grid_offsets || !g->cell_indices)
+    {
+        fprintf(fPtr, "ERROR: Failed to allocate spatial grid arrays\n");
+        free(g->grid_counts);
+        free(g->grid_offsets);
+        free(g->cell_indices);
+        free(g);
+        return NULL;
+    }
+
+    /* 3. Count how many hydro cells fall into each grid cell */
+    for (int i = 0; i < n; i++)
+    {
+        double x = hydro_data->r0[i];
+        double y = hydro_data->r1[i];
+        #if DIMENSIONS == 3
+            double z = hydro_data->r2[i];
+        #else
+            double z = 0.0;
+        #endif
+        int ix = (int)((x - g->grid_min[0]) / g->cell_size[0]);
+        int iy = (int)((y - g->grid_min[1]) / g->cell_size[1]);
+        int iz = (int)((z - g->grid_min[2]) / g->cell_size[2]);
+
+        ix = clamp_int(ix, 0, g->dims[0] - 1);
+        iy = clamp_int(iy, 0, g->dims[1] - 1);
+        iz = clamp_int(iz, 0, g->dims[2] - 1);
+
+        int flat = grid_flat_index(g, ix, iy, iz);
+        g->grid_counts[flat]++;
+    }
+
+    /* 4. Prefix sum to compute offsets */
+    int prefix = 0;
+    for (int c = 0; c < g->total_grid_cells; c++)
+    {
+        g->grid_offsets[c] = prefix;
+        prefix += g->grid_counts[c];
+        g->grid_counts[c] = 0; /* reuse as write cursor */
+    }
+
+    /* 5. Fill cell_indices array */
+    for (int i = 0; i < n; i++)
+    {
+        double x = hydro_data->r0[i];
+        double y = hydro_data->r1[i];
+        #if DIMENSIONS == 3
+            double z = hydro_data->r2[i];
+        #else
+            double z = 0.0;
+        #endif
+        int ix = (int)((x - g->grid_min[0]) / g->cell_size[0]);
+        int iy = (int)((y - g->grid_min[1]) / g->cell_size[1]);
+        int iz = (int)((z - g->grid_min[2]) / g->cell_size[2]);
+
+        ix = clamp_int(ix, 0, g->dims[0] - 1);
+        iy = clamp_int(iy, 0, g->dims[1] - 1);
+        iz = clamp_int(iz, 0, g->dims[2] - 1);
+
+        int flat = grid_flat_index(g, ix, iy, iz);
+        int offset = g->grid_offsets[flat] + g->grid_counts[flat];
+        g->cell_indices[offset] = i;
+        g->grid_counts[flat]++;
+    }
+
+    fprintf(fPtr,
+            "Spatial grid built: dims=(%d,%d,%d), total_cells=%d\n",
+            g->dims[0], g->dims[1], g->dims[2], g->total_grid_cells);
+    fflush(fPtr);
+
+    return g;
+}

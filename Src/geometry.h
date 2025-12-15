@@ -42,4 +42,4 @@ int findContainingBlock_grid(double ph_hydro_r0, double ph_hydro_r1, double ph_h
 
 void freeSpatialGrid(struct SpatialGrid *g);
 
-
+struct SpatialGrid *buildSpatialGrid(struct hydro_dataframe *hydro_data, FILE *fPtr);
