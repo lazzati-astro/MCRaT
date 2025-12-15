@@ -556,6 +556,8 @@ int main(int argc, char **argv)
                 system(mc_operation);
                 
             }
+            
+            free(dirp);
         }
     }
     
