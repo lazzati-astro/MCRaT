@@ -207,7 +207,7 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
 
 void readHotCrossSection(FILE *fPtr)
 {
-    int i, j, read_error, parsed;
+    int i, j, parsed;
     double comv_ph_e, theta, gamma_min, gamma_max, value;
     char xsection_file[STR_BUFFER]="", line[STR_BUFFER] ;
     FILE *fp;
