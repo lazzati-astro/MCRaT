@@ -136,6 +136,10 @@ extern const double R_EL;
 //then include this file also in prep for the photon struct optical depth array being defined
 #include "hot_x_section.h"
 
+//include this so we can have the spatialgrid struct defined before the hydro_dataframe struct
+#include "geometry.h"
+
+
 
 struct photon
 {
@@ -224,6 +228,8 @@ struct hydro_dataframe
         double average_dimless_theta; //the volume average dimensionless temperature for us to use in calculating scattering bias
         double *nonthermal_dens; //this is the number density of non-thermal electrons in each cell (usually defined based on B field)
     #endif
+    
+    struct SpatialGrid *grid;
 
 }; // structure to hold all information for a given hydro simulation
 
@@ -233,7 +239,6 @@ struct hydro_dataframe
 #include "mclib_pluto.h"
 #include "mclib_flash.h"
 #include "mc_cyclosynch.h"
-#include "geometry.h"
 #include "mcrat_scattering.h"
 #include "mcrat_io.h"
 #include "analytic_outflows.h"
