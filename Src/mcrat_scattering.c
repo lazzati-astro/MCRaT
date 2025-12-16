@@ -624,6 +624,17 @@ double kleinNishinaCrossSection(double energy_ratio)
 
 double scatteredPhotonWeight(double weight, double bias, double optical_depth)
 {
-    
-    return weight*(1-exp(optical_depth))/(1-exp(-bias*optical_depth));
+    #if NONTHERMAL_E_DIST != OFF
+        if (bias != 1)
+        {
+            return weight*(-gsl_expm1(-optical_depth))/(-gsl_expm1(-bias*optical_depth))
+            //return weight*(1-exp(-optical_depth))/(1-exp(-bias*optical_depth));
+        }
+        else
+        {
+            return weight;
+        }
+    #else
+        return weight;
+    #endif
 }
