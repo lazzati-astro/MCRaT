@@ -1982,7 +1982,7 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
         calculateNonthermalElectronDens(hydro_data, fPtr);
     #endif
     
-    hydro_data->grid = buildSpatialGrid(hydro_data, fPtr);
+    hydro_data->grid = NULL; //buildSpatialGrid(hydro_data, fPtr);
 
 
 
