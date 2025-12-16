@@ -522,7 +522,10 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
             }
             else
              */
-            if (find_nearest_block_switch != 0 && !is_in_block)
+            //if we have purposefully set the find_nearest_block_switch==1 to get the function to recompute the nearest block of the photons
+            // or if we have already identified that the photon is not in its currently identified block, we need to find the new hydro cell grid and
+            //recompute various quantities
+            if (find_nearest_block_switch == 1 || !is_in_block)
             {
                 //find the new index of the block closest to the photon
                 //min_index=findNearestBlock(array_num,  ph_x,  ph_y,  ph_z,  x,   y,  z); //stop doing this one b/c nearest grid could be one that the photon isnt actually in due to adaptive mesh
