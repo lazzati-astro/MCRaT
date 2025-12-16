@@ -10,47 +10,47 @@
 int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[STR_BUFFER], int angle_rank,  int angle_procs, int last_frame)
 {
     int i=0, j=0, val=0, original_num_procs=-1, rand_num=0;
-    int frame2=0, framestart=0, scatt_framestart=0, ph_num=0;
+    int frame2=0, framestart=0, scatt_framestart=0;
     double time=0;
-    char mc_chkpt_files[STR_BUFFER]="", restrt=""; //define new variable that wont write over the restrt variable in the main part of the code, when its put into the readCheckpoint function
-    struct photon *phPtr=NULL; //pointer to array of photons
+    char mc_chkpt_files[STR_BUFFER]="", restrt='\0'; //define new variable that wont write over the restrt variable in the main part of the code, when its put into the readCheckpoint function
+    struct photonList photon_list; //pointer to array of photons
     //DIR * dirp;
     //struct dirent * entry;
     //struct stat st = {0};
     glob_t  files;
+
+    //this sets the pointers in the struct to NULL and sets the photon counters to 0
+    initalizePhotonList(&photon_list);
         
-    //if (angle_rank==0)
+    //find number of mc_checkpt files there are
+    //loop through them and find out which prior processes didnt finish and keep track of which ones didnt
+    snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s", dir,"mc_chkpt_*" );
+    val=glob(mc_chkpt_files, 0, NULL,&files );
+
+    //printf("TEST: %s\n", mc_chkpt_files);
+
+    //look @ a file by choosing rand int between 0 and files.gl_pathc and if the file exists open and read it to get the actual value for the old number of angle_procs
+    srand(angle_rank);
+    //printf("NUM_FILES: %d\n",files.gl_pathc);
+    
+    rand_num=rand() % files.gl_pathc;
+    snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s%d%s", dir,"mc_chkpt_",  rand_num,".dat" );
+    //printf("TEST: %s\n", mc_chkpt_files);
+
+    if ( access( mc_chkpt_files, F_OK ) == -1 )
     {
-        //find number of mc_checkpt files there are
-        //loop through them and find out which prior processes didnt finish and keep track of which ones didnt
-        snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s", dir,"mc_chkpt_*" );
-        val=glob(mc_chkpt_files, 0, NULL,&files );
-    
-        //printf("TEST: %s\n", mc_chkpt_files);
-    
-        //look @ a file by choosing rand int between 0 and files.gl_pathc and if the file exists open and read it to get the actual value for the old number of angle_procs
-        srand(angle_rank);
-        //printf("NUM_FILES: %d\n",files.gl_pathc);
-        
-        rand_num=rand() % files.gl_pathc;
-        snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s%d%s", dir,"mc_chkpt_",  rand_num,".dat" );
-        //printf("TEST: %s\n", mc_chkpt_files);
-    
-        if ( access( mc_chkpt_files, F_OK ) == -1 )
+        while(( access( mc_chkpt_files, F_OK ) == -1 ) )
         {
-            while(( access( mc_chkpt_files, F_OK ) == -1 ) )
-            {
-                rand_num=rand() % files.gl_pathc;
-                snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s%d%s", dir,"mc_chkpt_",  rand_num,".dat" );
-                //printf("TEST: %s\n", mc_chkpt_files);
-            }
+            rand_num=rand() % files.gl_pathc;
+            snprintf(mc_chkpt_files, sizeof(mc_chkpt_files), "%s%s%d%s", dir,"mc_chkpt_",  rand_num,".dat" );
+            //printf("TEST: %s\n", mc_chkpt_files);
         }
-        readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, &restrt, &time, rand_num, &original_num_procs);
-    
-        //original_num_procs= 70;
-        
-        
     }
+    readCheckpoint(dir, &photon_list, &frame2, &framestart, &scatt_framestart, &restrt, &time, rand_num, &original_num_procs);
+
+    //original_num_procs= 70;
+        
+        
     
     int count_procs[original_num_procs], count=0;
     int cont_procs[original_num_procs];
@@ -74,10 +74,9 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[STR
         //printf("TEST: %s\n", mc_chkpt_files);
         if ( access( mc_chkpt_files, F_OK ) != -1 )
         {
-            readCheckpoint(dir, &phPtr, &frame2, &framestart, &scatt_framestart, &ph_num, &restrt, &time, count_procs[j], &i);
-            free(phPtr);
-            phPtr=NULL;
-            
+            readCheckpoint(dir, &photon_list, &frame2, &framestart, &scatt_framestart, &restrt, &time, count_procs[j], &i);
+            freePhotonList(&photon_list);
+
             if ((framestart<=frame2) && (scatt_framestart<=last_frame)) //add another condition here
             {
                 cont_procs[count]=j;
@@ -112,7 +111,7 @@ int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[STR
     return original_num_procs;
 }
 
-void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosynch_ph_emit, int num_null_ph, int scatt_cyclosynch_num_ph, int frame,int frame_inj, int frame_last, char dir[STR_BUFFER], int angle_rank, FILE *fPtr )
+void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclosynch_ph_emit, int scatt_cyclosynch_num_ph, int frame,int frame_inj, int frame_last, char dir[STR_BUFFER], int angle_rank, FILE *fPtr )
 {
     //function to save the photons' positions and 4 momentum
     
@@ -123,68 +122,72 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
      //if the frame does exist then read information from the prewritten data and then add new data to it as extended chunk
      
      
-    int i=0, count=0, rank=1, net_num_ph=num_ph-num_ph_abs-num_null_ph; //can have more photons absorbed than emitted, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : scatt_cyclosynch_num_ph
+    int i=0, count=0, rank=1, net_num_ph=photon_list->num_photons; //can have more photons absorbed than emitted, weight_net_num_ph=(frame==frame_inj) ? num_ph-num_ph_abs-num_null_ph : scatt_cyclosynch_num_ph
     #if defined(_OPENMP)
     int num_thread=omp_get_num_threads();
     #endif
     char mc_file[STR_BUFFER]="", group[200]="", group_weight[200]="", *ph_type=NULL;
     double p0[net_num_ph], p1[net_num_ph], p2[net_num_ph], p3[net_num_ph] , r0[net_num_ph], r1[net_num_ph], r2[net_num_ph], num_scatt[net_num_ph], weight[net_num_ph], global_weight[net_num_ph];
     double s0[net_num_ph], s1[net_num_ph], s2[net_num_ph], s3[net_num_ph], comv_p0[net_num_ph], comv_p1[net_num_ph], comv_p2[net_num_ph], comv_p3[net_num_ph];
-    hid_t  file, file_init, dspace, dspace_weight, dspace_global_weight, fspace, mspace, prop, prop_weight, prop_global_weight, group_id;
-    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_2, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_ph_type;
+    hid_t  file, file_init, dspace, dspace_weight, fspace, mspace, prop, prop_weight, group_id;
+    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight_2, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_ph_type;
     herr_t status, status_group, status_weight, status_weight_2;
     hsize_t dims[1]={net_num_ph}, dims_weight[1]={net_num_ph}, dims_old[1]={0}; //1 is the number of dimansions for the dataset, called rank
+    struct photon *ph=NULL; //pointer to a photon struct
+
 
     
     hsize_t maxdims[1]={H5S_UNLIMITED};
     hsize_t      size[1];
     hsize_t      offset[1];
     
-    fprintf(fPtr, "num_ph %d num_ph_abs %d num_null_ph %d num_cyclosynch_ph_emit %d\nAllocated weight to be %d values large and other arrays to be %d\n",num_ph,num_ph_abs,num_null_ph,num_cyclosynch_ph_emit, net_num_ph, net_num_ph);
+    fprintf(fPtr, "num_ph %d num_ph_abs %d num_null_ph %d num_cyclosynch_ph_emit %d\nAllocated weight to be %d values large and other arrays to be %d\n",photon_list->num_photons,num_ph_abs,photon_list->num_null_photons,num_cyclosynch_ph_emit, net_num_ph, net_num_ph);
     
     ph_type=malloc((net_num_ph)*sizeof(char));
     
     //save photon data into large arrays, NEED TO KNOW HOW MANY NULL PHOTONS WE HAVE AKA SAVED SPACE THAT AREN'T ACTUALLY PHOTONS TO PROPERLY SAVE SPACE FOR ARRAYS ABOVE
     count=0;//used to keep track of weight values since it may not be the same as num_ph
     //#pragma omp parallel for num_threads(num_thread) reduction(+:weight_net_num_ph)
-    for (i=0;i<num_ph;i++)
+    for (i=0;i<photon_list->list_capacity;i++)
     {
-        if ((ph+i)->weight != 0)
+        ph=getPhoton(photon_list, i);
+        
+        if (ph->weight != 0)
         {
-            p0[count]= ((ph+i)->p0);
-            p1[count]= ((ph+i)->p1);
-            p2[count]= ((ph+i)->p2);
-            p3[count]= ((ph+i)->p3);
-            r0[count]= ((ph+i)->r0);
-            r1[count]= ((ph+i)->r1);
-            r2[count]= ((ph+i)->r2);
+            p0[count]= (ph->p0);
+            p1[count]= (ph->p1);
+            p2[count]= (ph->p2);
+            p3[count]= (ph->p3);
+            r0[count]= (ph->r0);
+            r1[count]= (ph->r1);
+            r2[count]= (ph->r2);
             #if COMV_SWITCH == ON
             {
-                comv_p0[count]= ((ph+i)->comv_p0);
-                comv_p1[count]= ((ph+i)->comv_p1);
-                comv_p2[count]= ((ph+i)->comv_p2);
-                comv_p3[count]= ((ph+i)->comv_p3);
+                comv_p0[count]= (ph->comv_p0);
+                comv_p1[count]= (ph->comv_p1);
+                comv_p2[count]= (ph->comv_p2);
+                comv_p3[count]= (ph->comv_p3);
             }
             #endif
             #if STOKES_SWITCH == ON
             {
-                s0[count]= ((ph+i)->s0);
-                s1[count]= ((ph+i)->s1);
-                s2[count]= ((ph+i)->s2);
-                s3[count]= ((ph+i)->s3);
+                s0[count]= (ph->s0);
+                s1[count]= (ph->s1);
+                s2[count]= (ph->s2);
+                s3[count]= (ph->s3);
             }
             #endif
-            num_scatt[count]= ((ph+i)->num_scatt);
-            weight[count]= ((ph+i)->weight);
-             //fprintf(fPtr, "%d %c %e %e %e %e %e %e %e %e\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9);
+            num_scatt[count]= (ph->num_scatt);
+            weight[count]= (ph->weight);
+             //fprintf(fPtr, "%d %c %e %e %e %e %e %e %e %e\n", i, ph->type, ph->r0, ph->r1, ph->r2, ph->num_scatt, ph->weight, ph->p0, ph->comv_p0, ph->p0*C_LIGHT/1.6e-9);
             
             if ((frame==frame_last))
             {
-                global_weight[count]=((ph+i)->weight);
+                global_weight[count]=(ph->weight);
             }
             
-            *(ph_type+count)=(ph+i)->type;
-            //printf("%d %c %e %e %e %e %e %e %e %e %c\n", i, (ph+i)->type, (ph+i)->r0, (ph+i)->r1, (ph+i)->r2, (ph+i)->num_scatt, (ph+i)->weight, (ph+i)->p0, (ph+i)->comv_p0, (ph+i)->p0*C_LIGHT/1.6e-9, *(ph_type+count));
+            *(ph_type+count)=ph->type;
+            //printf("%d %c %e %e %e %e %e %e %e %e %c\n", i, ph->type, ph->r0, ph->r1, ph->r2, ph->num_scatt, ph->weight, ph->p0, ph->comv_p0, ph->p0*C_LIGHT/1.6e-9, *(ph_type+count));
             
             count++;
         }
@@ -832,7 +835,7 @@ void printPhotons(struct photon *ph, int num_ph, int num_ph_abs, int num_cyclosy
 
 }
 
-int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame, int ph_num,double time_now, struct photon *ph, int last_frame, int angle_rank,int angle_size )
+int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame, double time_now, struct photonList *photon_list, int last_frame, int angle_rank,int angle_size )
 {
     //function to save data necessary to restart simulation if it ends
     //need to save all photon data
@@ -840,7 +843,8 @@ int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame,
     char checkptfile[2000]="";
     char command[2000]="";
     char restart;
-    int i=0, success=0;
+    int i=0, success=0, ph_num=0;
+    struct photon *ph=NULL;
     
     
     snprintf(checkptfile,sizeof(checkptfile),"%s%s%d%s",dir,"mc_chkpt_", angle_rank,".dat" );
@@ -881,18 +885,21 @@ int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame,
             fwrite(&time_now, sizeof(double), 1, fPtr);
             //printf("Rank: %d wrote time_now\n",  angle_rank);
             fflush(stdout);
+            ph_num=photon_list->list_capacity;
             fwrite(&ph_num, sizeof(int), 1, fPtr);
             //printf("Rank: %d wrote ph_num\n",  angle_rank);
             fflush(stdout);
-            for(i=0;i<ph_num;i++)
+            for(i=0;i<photon_list->list_capacity;i++)
             {
+                ph=getPhoton(photon_list, i);
+
                 #if CYCLOSYNCHROTRON_SWITCH == ON
-                if (((ph+i)->type == COMPTONIZED_PHOTON) && ((ph+i)->weight != 0))
+                if ((ph->type == COMPTONIZED_PHOTON) && (ph->weight != 0))
                 {
-                    (ph+i)->type = UNABSORBED_CS_PHOTON; //set this to be an old synchrotron scattered photon
+                    ph->type = UNABSORBED_CS_PHOTON; //set this to be an old synchrotron scattered photon
                 }
                 #endif
-                fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
+                fwrite(ph, sizeof(struct photon ), 1, fPtr);
                 //fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
             }
             success=0;
@@ -933,19 +940,22 @@ int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame,
             fwrite(&time_now, sizeof(double), 1, fPtr);
             //printf("Rank: %d wrote time_now\n",  angle_rank);
             fflush(stdout);
+            ph_num=photon_list->list_capacity;
             fwrite(&ph_num, sizeof(int), 1, fPtr);
             //printf("Rank: %d wrote ph_num\n",  angle_rank);
             fflush(stdout);
-            for(i=0;i<ph_num;i++)
+            for(i=0;i<photon_list->list_capacity;i++)
             {
+                ph=getPhoton(photon_list, i);
+                
                 #if CYCLOSYNCHROTRON_SWITCH == ON
-                if (((ph+i)->type == COMPTONIZED_PHOTON) && ((ph+i)->weight != 0))
+                if ((ph->type == COMPTONIZED_PHOTON) && (ph->weight != 0))
                 {
-                    (ph+i)->type = UNABSORBED_CS_PHOTON; //set this to be an old synchrotron scattered photon
+                    ph->type = UNABSORBED_CS_PHOTON; //set this to be an old synchrotron scattered photon
                 }
                 #endif
                 //fwrite((ph), sizeof(struct photon )*ph_num, ph_num, fPtr);
-                fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
+                fwrite(ph, sizeof(struct photon ), 1, fPtr);
             }
             //printf("Rank: %d wrote photons\n",  angle_rank);
             success=0;
@@ -975,15 +985,16 @@ int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame,
             fwrite(&restart, sizeof(char), 1, fPtr);
             fwrite(&frame, sizeof(int), 1, fPtr);
             fwrite(&frame2, sizeof(int), 1, fPtr);
-            for(i=0;i<ph_num;i++)
+            for(i=0;i<photon_list->list_capacity;i++)
             {
+                ph=getPhoton(photon_list, i);
                 #if CYCLOSYNCHROTRON_SWITCH == ON
-                if (((ph+i)->type == COMPTONIZED_PHOTON) && ((ph+i)->weight != 0))
+                if ((ph->type == COMPTONIZED_PHOTON) && (ph->weight != 0))
                 {
-                    (ph+i)->type = UNABSORBED_CS_PHOTON; //set this to be an old synchrotron scattered photon
+                    ph->type = UNABSORBED_CS_PHOTON; //set this to be an old synchrotron scattered photon
                 }
                 #endif
-                fwrite((ph+i), sizeof(struct photon ), 1, fPtr);
+                fwrite(ph, sizeof(struct photon ), 1, fPtr);
             }
 
             success=0;
@@ -997,16 +1008,16 @@ int saveCheckpoint(char dir[STR_BUFFER], int frame, int frame2, int scatt_frame,
     return success;
 }
 
-int readCheckpoint(char dir[STR_BUFFER], struct photon **ph, int *frame2, int *framestart, int *scatt_framestart, int *ph_num, char *restart, double *time, int angle_rank, int *angle_size )
+int readCheckpoint(char dir[STR_BUFFER], struct photonList *photon_list, int *frame2, int *framestart, int *scatt_framestart, char *restart, double *time, int angle_rank, int *angle_size )
 {
     //function to read in data from checkpoint file
     FILE *fPtr=NULL;
     char checkptfile[STR_BUFFER]="";
-    int i=0;
+    int i=0, ph_num=0;
     int scatt_cyclosynch_num_ph=0;//count the number of scattered synchrotron photons from the previosu frame that were saved
     //int frame, scatt_frame, ph_num, i=0;
     struct photon *phHolder=NULL; //pointer to struct to hold data read in from checkpoint file
-    
+    struct photon *ph=NULL; //array of photons that are read in
     
     snprintf(checkptfile,sizeof(checkptfile),"%s%s%d%s",dir,"mc_chkpt_", angle_rank,".dat" );
         
@@ -1044,48 +1055,52 @@ int readCheckpoint(char dir[STR_BUFFER], struct photon **ph, int *frame2, int *f
             //printf("%d\n", *scatt_framestart);
             fread(time, sizeof(double), 1, fPtr);
             //printf("%e\n", *time);
-            fread(ph_num, sizeof(int), 1, fPtr);
+            fread(&ph_num, sizeof(int), 1, fPtr);
             //printf("%d\n", *ph_num);
             
             phHolder=malloc(sizeof(struct photon));
-            (*ph)=malloc(sizeof(struct photon)*(*ph_num)); //allocate memory to hold photon data
+            (ph)=malloc(sizeof(struct photon)*(ph_num)); //allocate memory to hold photon data
             
             
-            for (i=0;i<(*ph_num);i++)
+            for (i=0;i<ph_num;i++)
             {
                 fread(phHolder, sizeof(struct photon), 1, fPtr);
                 //printf("%e,%e,%e, %e,%e,%e, %e, %e\n",(ph)->p0, (ph)->p1, (ph)->p2, ph->p3, (ph)->r0, (ph)->r1, (ph)->r2, ph->num_scatt );
                 
-                (*ph)[i].p0=phHolder->p0;
-                (*ph)[i].p1=phHolder->p1;
-                (*ph)[i].p2=phHolder->p2;
-                (*ph)[i].p3=phHolder->p3;
-                (*ph)[i].comv_p0=phHolder->comv_p0;
-                (*ph)[i].comv_p1=phHolder->comv_p1;
-                (*ph)[i].comv_p2=phHolder->comv_p2;
-                (*ph)[i].comv_p3=phHolder->comv_p3;
-                (*ph)[i].r0= phHolder->r0;
-                (*ph)[i].r1=phHolder->r1 ;
-                (*ph)[i].r2=phHolder->r2;
-                (*ph)[i].s0=phHolder->s0;
-                (*ph)[i].s1=phHolder->s1;
-                (*ph)[i].s2=phHolder->s2;
-                (*ph)[i].s3=phHolder->s3;
-                (*ph)[i].num_scatt=phHolder->num_scatt;
-                (*ph)[i].weight=phHolder->weight;
-                (*ph)[i].nearest_block_index= phHolder->nearest_block_index;
-                (*ph)[i].type= phHolder->type;
+                ph[i].p0=phHolder->p0;
+                ph[i].p1=phHolder->p1;
+                ph[i].p2=phHolder->p2;
+                ph[i].p3=phHolder->p3;
+                ph[i].comv_p0=phHolder->comv_p0;
+                ph[i].comv_p1=phHolder->comv_p1;
+                ph[i].comv_p2=phHolder->comv_p2;
+                ph[i].comv_p3=phHolder->comv_p3;
+                ph[i].r0= phHolder->r0;
+                ph[i].r1=phHolder->r1 ;
+                ph[i].r2=phHolder->r2;
+                ph[i].s0=phHolder->s0;
+                ph[i].s1=phHolder->s1;
+                ph[i].s2=phHolder->s2;
+                ph[i].s3=phHolder->s3;
+                ph[i].num_scatt=phHolder->num_scatt;
+                ph[i].weight=phHolder->weight;
+                ph[i].nearest_block_index= phHolder->nearest_block_index;
+                ph[i].type= phHolder->type;
                 
                 #if CYCLOSYNCHROTRON_SWITCH == ON
-                    if (((*ph)[i].weight != 0) && (((*ph)[i].type == COMPTONIZED_PHOTON) || ((*ph)[i].type == UNABSORBED_CS_PHOTON)) && ((*ph)[i].p0 > 0))
+                    if ((ph[i].weight != 0) && ((ph[i].type == COMPTONIZED_PHOTON) || (ph[i].type == UNABSORBED_CS_PHOTON)) && (ph[i].p0 > 0))
                     {
                         scatt_cyclosynch_num_ph++;
                     }
-                //printf("%d %c %e %e %e %e %e %e %e\n", i, (*ph)[i].type, (*ph)[i].r0, (*ph)[i].r1, (*ph)[i].r2, (*ph)[i].num_scatt, (*ph)[i].weight, (*ph)[i].p0*C_LIGHT/1.6e-9, (*ph)[i].comv_p0);
+                //printf("%d %c %e %e %e %e %e %e %e\n", i, ph[i].type, ph[i].r0, ph[i].r1, ph[i].r2, ph[i].num_scatt, ph[i].weight, ph[i].p0*C_LIGHT/1.6e-9, ph[i].comv_p0);
                 #endif
             }
             
+            //szve the whole array to our photon list struct
+            setPhotonList(photon_list, ph, ph_num);
+            
             free(phHolder);
+            free(ph);
             //printf("In readcheckpoint count=%d\n", count);
         }
         else
@@ -1227,12 +1242,12 @@ void dirFileMerge(char dir[STR_BUFFER], int start_frame, int last_frame, int num
     double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *comv_p0=NULL, *comv_p1=NULL, *comv_p2=NULL, *comv_p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;
     int i=0, j=0, k=0, isNotCorrupted=0, num_types=9; //just save lab 4 momentum, position and num_scatt by default
     int increment=1;
-    char filename_k[STR_BUFFER]="", file_no_thread_num[STR_BUFFER]="", cmd[STR_BUFFER]="", mcdata_type[20]="";
+    char filename_k[STR_BUFFER]="", file_no_thread_num[STR_BUFFER]="", mcdata_type[20]="";
     char group[200]="", *ph_type=NULL;
     hid_t  file, file_new, group_id, dspace;
     hsize_t dims[1]={0};
     herr_t status, status_group;
-    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_weight_frame, dset_ph_type;
+    hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight, dset_ph_type;
    
     //printf("Merging files in %s\n", dir);
     //#pragma omp parallel for num_threads(num_thread) firstprivate( filename_k, file_no_thread_num, cmd,mcdata_type,num_files, increment ) private(i,j,k)
@@ -1786,6 +1801,8 @@ void hydroDataFrameInitialize(struct hydro_dataframe *hydro_data)
 
 void freeHydroDataFrame(struct hydro_dataframe *hydro_data)
 {
+    freeSpatialGrid(hydro_data->grid);
+    
     //free pointers in hydro dataframe to NULL for debugging
     free(hydro_data->r0);
     free(hydro_data->r1);
@@ -1807,6 +1824,7 @@ void freeHydroDataFrame(struct hydro_dataframe *hydro_data)
     free(hydro_data->B1);
     free(hydro_data->B2);
     
+    hydro_data->grid = NULL;
     hydro_data->r0=NULL;
     hydro_data->r1=NULL;
     hydro_data->r2=NULL;
@@ -1831,6 +1849,7 @@ void freeHydroDataFrame(struct hydro_dataframe *hydro_data)
         free(hydro_data->nonthermal_dens);
         hydro_data->nonthermal_dens=NULL;
     #endif
+    
 
 }
 
@@ -1962,6 +1981,8 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
         fprintf(fPtr,">> The average dimless temp is %e\n", hydro_data->average_dimless_theta);
         calculateNonthermalElectronDens(hydro_data, fPtr);
     #endif
+    
+    hydro_data->grid = NULL; //buildSpatialGrid(hydro_data, fPtr);
 
 
 

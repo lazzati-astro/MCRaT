@@ -54,6 +54,7 @@
 #define CS_POOL_PHOTON 'p'
 #define UNABSORBED_CS_PHOTON 'c'
 #define REBINNED_PHOTON 'r'
+#define NULL_PHOTON 'N'
 
 //define nonthermal functions for electron distribution
 #define POWERLAW 1
@@ -73,6 +74,11 @@ extern const double M_EL;
 extern const double FINE_STRUCT;
 extern const double CHARGE_EL;
 extern const double R_EL;
+
+/* define constants for convience */
+#define ENERGY_TO_KEV (C_LIGHT / 1.6e-9)
+#define DEG_TO_RAD (M_PI / 180.0)
+#define RAD_TO_DEG (180.0 / M_PI)
 
 
 #define STR_BUFFER 2000
@@ -131,6 +137,8 @@ extern const double R_EL;
 #include "hot_x_section.h"
 
 
+
+
 struct photon
 {
     char type; //was the photon injected as blackbody or wien, 'i', or was it emitted as cyclo-synchrotron or was it a cyclo-synchrotron photon that was compton scattered
@@ -161,6 +169,27 @@ struct photon
     //save the total calculated optical depth, if we only have thermal electrons this optical depth is that calcualted value otherwise it includes thermal-non-thermal electrons and the biases
     double total_optical_depth;
 } ; //structure to hold photon information
+
+struct photonList
+{
+    struct photon *photons; //array of list_capacity length
+    int *sorted_indexes; //array of list_capacity length
+    int num_photons; //number of real, non-null photons in the array
+    int num_null_photons; //number of null photons in the full array
+    int list_capacity; //number of photons that were malloc-ed /realloc-ed
+};
+
+struct SpatialGrid
+{
+    int   *cell_indices;   /* size = num_elements, holds hydro cell indices */
+    int   *grid_counts;    /* size = total_grid_cells, how many hydro cells per grid cell */
+    int   *grid_offsets;   /* size = total_grid_cells, prefix sum offsets into cell_indices */
+    int    total_grid_cells;
+    double grid_min[3];
+    double grid_max[3];
+    double cell_size[3];   /* grid cell size in each dimension */
+    int    dims[3];        /* number of grid cells along each dimension */
+};
 
 struct hydro_dataframe
 {
@@ -209,21 +238,25 @@ struct hydro_dataframe
         double average_dimless_theta; //the volume average dimensionless temperature for us to use in calculating scattering bias
         double *nonthermal_dens; //this is the number density of non-thermal electrons in each cell (usually defined based on B field)
     #endif
+    
+    struct SpatialGrid *grid;
 
 }; // structure to hold all information for a given hydro simulation
 
+//include this so we can have the spatialgrid struct defined before the hydro_dataframe struct
+#include "geometry.h"
 
 #include "mclib.h"
 #include "mclib_riken.h"
 #include "mclib_pluto.h"
 #include "mclib_flash.h"
 #include "mc_cyclosynch.h"
-#include "geometry.h"
 #include "mcrat_scattering.h"
 #include "mcrat_io.h"
 #include "analytic_outflows.h"
 #include "optical_depth.h"
 #include "electron.h"
+#include "photons.h"
 
 
 //if the user doesnt specify NONTHERMAL_E_DIST set it to be off

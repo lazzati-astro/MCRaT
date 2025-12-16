@@ -2,6 +2,49 @@
 This header file is for the different functions for emitting and absorbing synchrotron photons
 */
 
+/* Data structure to hold photon range information */
+struct PhotonRangeInfo
+{
+    double p0_min;
+    double p0_max;
+    double log_p0_min;
+    double log_p0_max;
+    double theta_min;
+    double theta_max;
+    double phi_min;
+    double phi_max;
+    int synch_photon_count;
+    int valid_photon_count;
+};
+
+/* Data structure for binning parameters */
+struct BinningParams
+{
+    int num_bins;
+    int num_bins_theta;
+    int num_bins_phi;
+    int num_avg;
+    int total_bins;
+};
+
+/* Structure to hold bin statistics */
+struct BinStats
+{
+    double weighted_r;
+    double weighted_theta;
+    double weighted_phi_offset; // look at delta \phi between the 4 mometum and its location
+    double weighted_stokes[4];
+    double weighted_scatt_count;
+    double total_weight;
+    double weighted_phi_dir;
+    double weighted_theta_dir;
+    double weighted_energy;
+#if DIMENSIONS == THREE
+    double weighted_phi_pos;
+#endif
+};
+
+
 double calcCyclotronFreq(double magnetic_field);
 
 double calcEB(double magnetic_field);
@@ -40,10 +83,11 @@ double synCrossSection(double el_dens, double T, double nu_ph, double p_el);
 
 double calcCyclosynchRLimits(int frame_scatt, int frame_inj, double fps,  double r_inj, char *min_or_max);
 
-int rebinCyclosynchCompPhotons(struct photon **ph_orig, int *num_ph,  int *num_null_ph, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int **sorted_indexes, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr);
+int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int max_photons, double thread_theta_min, double thread_theta_max, gsl_rng *rand, FILE *fPtr);
 
-int photonEmitCyclosynch(struct photon **ph_orig, int *num_ph, int *num_null_ph, int **sorted_indexes, double r_inj, double ph_weight, int maximum_photons, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr);
+int rebinCyclosynchCompPhotons_old(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr);
 
-//double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_cyclosynch_num_ph, double *temp, double *dens, FILE *fPtr);
-double phAbsCyclosynch(struct photon **ph_orig, int *num_ph, int *num_abs_ph, int *scatt_cyclosynch_num_ph, struct hydro_dataframe *hydro_data, FILE *fPtr);
+int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph_weight, int maximum_photons, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng *rand, int inject_single_switch, int scatt_ph_index, FILE *fPtr);
+
+double phAbsCyclosynch(struct photonList *photon_list, int *num_abs_ph, int *scatt_cyclosynch_num_ph, struct hydro_dataframe *hydro_data, FILE *fPtr);
 

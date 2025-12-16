@@ -16,7 +16,7 @@ void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro
     hsize_t dims[1]={0}, dimsp1[1]={0}; //hold number of processes in each level
     size_t  sdim=0;
     int i=0, j=0, k=0, l=0, m=0, n=0, r_count=0, num_dims=0, num_levels=0, num_vars=4, logr=0;
-    int nbx=0, nby=0, nbz=0, total_size=0, total_box_size=0, offset=0, elem_factor=0, idx1=0, idx2=0, idx3=0;
+    int nbx=0, nby=0, nbz=0, total_size=0, offset=0, elem_factor=0, idx1=0, idx2=0, idx3=0;
     #if DIMENSIONS == THREE
         box2d prob_domain[1]={0,0,0,0,0,0};
     #else
@@ -517,7 +517,6 @@ void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro
         #endif
         
         //go through the boxes to create the buffer arrays
-        total_box_size=0;
         for (j=0; j<dims[0]; j++)
         {
             //printf("i %d %d %d %d %d \n", j, box_data[j].lo_i, box_data[j].lo_j, box_data[j].hi_i, box_data[j].hi_j);
@@ -611,36 +610,6 @@ void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro
                     }
                 }
             }
-            /*
-              // this was for testing, the actual nested loop is above
-              if (i==2 && j==dims[0]-1)
-              {
-                  
-                  r_count=0;
-                  for (k=0;k<1;k++)
-                  {
-                      //loop over the radii
-                      for (l=0; l<nby; l++)
-                      {
-                          //loop over the angles
-                          for (m=0 ;m<nbx ;m++)
-                          {
-                              printf("count: %d idx: %d all_data val: %0.8e r: %e theta %e\n", (*(box_offset+j))+r_count, (*(box_offset+j))+k*nbx*nby + l*nby +m, *(all_data+offset+(*(box_offset+j))+ k*nbx*nby + l*nbx +m  ), *(radii+box_data[j].lo_i+m), *(angles+box_data[j].lo_j+l));
-                              r_count++;
-                          }
-                          printf("\n");
-                      }
-                      printf("\n");
-                  }
-                  
-                  for (k=0;k<64;k++)
-                  {
-                      printf("r: %e, theta %e dens data: %e\n",*(x1_buffer+ (offset+(*(box_offset+j)))/num_vars+k), *(x2_buffer+ (offset+(*(box_offset+j)))/num_vars +k), *(dens_buffer+ (offset+(*(box_offset+j)))/num_vars +k) );
-                  }
-                  printf("\n");
-                   
-              }
-        */
             
              
         }
@@ -654,6 +623,7 @@ void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro
     }
     status = H5Fclose (file);
     free(dombeg1); free(dombeg2); free(dombeg3); free(dx); free(g_x2stretch); free(g_x3stretch); free(all_data);free(start_displacement); free(level_dims);
+    H5Tclose(box_dtype);
     
     for (i=0;i<num_vars;i++)
     {
@@ -713,39 +683,6 @@ void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro
 
     
     //allocate memory to hold processed data
-    /*
-   (hydro_data->pres)=malloc (r_count * sizeof (double ));
-   (hydro_data->v0)=malloc (r_count * sizeof (double ));
-   (hydro_data->v1)=malloc (r_count * sizeof (double ));
-   (hydro_data->dens)=malloc (r_count * sizeof (double ));
-   (hydro_data->r0)=malloc (r_count * sizeof (double ));
-   (hydro_data->r1)=malloc (r_count * sizeof (double ));
-   (hydro_data->r)=malloc (r_count * sizeof (double ));
-   (hydro_data->theta)=malloc (r_count * sizeof (double ));
-   (hydro_data->gamma)=malloc (r_count * sizeof (double ));
-   (hydro_data->dens_lab)=malloc (r_count * sizeof (double ));
-   (hydro_data->r0_size)=malloc (r_count * sizeof (double ));
-   (hydro_data->r1_size)=malloc (r_count * sizeof (double ));
-   (hydro_data->temp)=malloc (r_count * sizeof (double ));
-  
-    #if B_FIELD_CALC == SIMULATION
-       (hydro_data->B0)= malloc (r_count * sizeof (double));
-       (hydro_data->B1)= malloc (r_count * sizeof (double));
-    #endif
-
-
-    #if DIMENSIONS == THREE
-       (hydro_data->r2)=malloc(r_count*sizeof (double));
-       (hydro_data->r2_size)=malloc(r_count*sizeof (double));
-    #endif
-                                               
-    #if DIMENSIONS == THREE || DIMENSIONS == TWO_POINT_FIVE
-       (hydro_data->v2)=malloc (r_count * sizeof (double));
-        #if B_FIELD_CALC==SIMULATION
-           (hydro_data->B2)= malloc (r_count * sizeof (double));
-        #endif
-    #endif
-    */
     allocateHydroDataFrameMemory(hydro_data, r_count);
 
     
@@ -1121,7 +1058,7 @@ void readDblOutFile(char dblfile[STR_BUFFER], int *num_var, char ***var_strings,
 void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, double r_inj, int ph_inj_switch, double min_r, double max_r, double min_theta, double max_theta, FILE *fPtr)
 {
     char out_file[STR_BUFFER]="";
-    int num_vars=0, grid_size=0, count=0, nx=0, ny=0, nz=0, i=0, j=0, k=0, l=0, idx=0, r_count=0, elem_factor=0;
+    int num_vars=0, grid_size=0, count=0, nx=0, ny=0, nz=0, i=0, j=0, k=0, l=0, r_count=0, elem_factor=0;
     #if DIMENSIONS == TWO
         int array_size[2]= { 0 };
     #else

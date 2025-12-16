@@ -7,6 +7,11 @@
 
 #include "mcrat.h"
 
+static inline int clamp_int(int x, int min_v, int max_v);
+
+static inline int grid_flat_index(const struct SpatialGrid *g, int ix, int iy, int iz);
+
+
 void mcratCoordinateToHydroCoordinate(double *ph_hydro_coord, double mcrat_r0, double mcrat_r1, double mcrat_r2)
 {
     //function to convert MCRaT cartesian coordinate in 3D to the proper hydro coordinates
@@ -61,7 +66,6 @@ void mcratCoordinateToHydroCoordinate(double *ph_hydro_coord, double mcrat_r0, d
 void hydroCoordinateToSpherical(double *r, double *theta, double r0, double r1, double r2)
 {
     //this function converts hydro coordinates to spherical r and theta coordinates
-    int i=0;
     double sph_r=0, sph_theta=0;//sph_theta is measured from the assumed jet axis
     
     #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
@@ -390,7 +394,6 @@ int findContainingBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_
 int checkInBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, struct hydro_dataframe *hydro_data, int block_index)
 {
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
-    double x0=0, x1=0, x2=0, sz_x0=0, sz_x1=0, sz_x2=0; //coordinate and sizes of grid block, in cartesian its x,y,z in spherical its r,theta,phi
     int return_val=0;
 
     
@@ -399,26 +402,7 @@ int checkInBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, str
     #else
         is_in_block= (2*fabs( ph_hydro_r0 - (hydro_data->r0)[block_index]) - (hydro_data->r0_size)[block_index] <= 0) && (2*fabs(ph_hydro_r1 - (hydro_data->r1)[block_index] ) - (hydro_data->r1_size)[block_index]  <= 0) && (2*fabs(ph_hydro_r2 - (hydro_data->r2)[block_index] ) - (hydro_data->r2_size)[block_index]  <= 0);
     #endif
-        /*
-        else
-        {
-            if (riken_switch==1)
-            {
-                
-                x0=pow(pow((*(x+block_index)), 2.0) + pow((*(y+block_index)),2.0 ) + pow((*(z+block_index)) , 2.0),0.5);
-                x1=acos((*(z+block_index))/pow(pow((*(x+block_index)), 2.0) + pow((*(y+block_index)),2.0 ) + pow((*(z+block_index)) , 2.0),0.5));
-                x2=atan2((*(y+block_index)), (*(x+block_index)));
-                
-                sz_x0=(*(szy+block_index));
-                sz_x1=(*(szx+block_index));
-                sz_x2=(*(szx+block_index));
-                
-                is_in_block= (fabs(pow(pow( ph_x, 2.0) + pow(ph_y, 2.0)+pow(ph_z, 2.0),0.5) - x0) <= sz_x0/2.0) &&  (fabs(acos(ph_z/pow(pow(ph_x, 2.0) + pow(ph_y,2.0 ) + pow(ph_z , 2.0),0.5)) - x1 ) <= sz_x1/2.0)  && (fabs(atan2(ph_y, ph_x) - x2 ) <= sz_x2/2.0);
-                //not sure why the code was going to this line above here for spherical test
-                 
-             }
-        }
-        */
+
         
     if (is_in_block)
     {
@@ -430,4 +414,263 @@ int checkInBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, str
     }
     
     return return_val;
+}
+
+
+
+
+/* New: grid‑accelerated version; call this instead of the O(N) scan */
+int findContainingBlock_grid(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, struct hydro_dataframe *hydro_data, FILE *fPtr)
+{
+    struct SpatialGrid *g = hydro_data->grid;
+    if (!g)
+    {
+        /* Fallback to old linear version if grid not built */
+        return findContainingBlock(ph_hydro_r0, ph_hydro_r1, ph_hydro_r2, hydro_data, fPtr);
+    }
+
+    /* Map photon position to grid indices */
+    double x = ph_hydro_r0;
+    double y = ph_hydro_r1;
+    #if DIMENSIONS == THREE
+        double z = ph_hydro_r2;
+    #else
+        double z = 0.0;
+    #endif
+
+    int ix = (int)((x - g->grid_min[0]) / g->cell_size[0]);
+    int iy = (int)((y - g->grid_min[1]) / g->cell_size[1]);
+    int iz = (int)((z - g->grid_min[2]) / g->cell_size[2]);
+
+    ix = clamp_int(ix, 0, g->dims[0] - 1);
+    iy = clamp_int(iy, 0, g->dims[1] - 1);
+    iz = clamp_int(iz, 0, g->dims[2] - 1);
+
+    /* Search this grid cell and a small neighborhood (±1) to account for boundaries */
+    int search_radius = 1;
+    int found_index = -1;
+    int is_in_block = 0;
+
+    for (int dz = -search_radius; dz <= search_radius && !is_in_block; dz++)
+    {
+        int zz = clamp_int(iz + dz, 0, g->dims[2] - 1);
+        for (int dy = -search_radius; dy <= search_radius && !is_in_block; dy++)
+        {
+            int yy = clamp_int(iy + dy, 0, g->dims[1] - 1);
+            for (int dx = -search_radius; dx <= search_radius && !is_in_block; dx++)
+            {
+                int xx = clamp_int(ix + dx, 0, g->dims[0] - 1);
+
+                int flat = grid_flat_index(g, xx, yy, zz);
+                int count  = g->grid_counts[flat];
+                int offset = g->grid_offsets[flat];
+
+                for (int k = 0; k < count; k++)
+                {
+                    int cell_idx = g->cell_indices[offset + k];
+                    is_in_block = checkInBlock(ph_hydro_r0, ph_hydro_r1, ph_hydro_r2,
+                                               hydro_data, cell_idx);
+                    if (is_in_block)
+                    {
+                        found_index = cell_idx;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    if (!is_in_block)
+    {
+        #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
+            fprintf(fPtr,
+                "MCRaT (grid) couldn't find a block for photon at r0=%e r1=%e\n",
+                ph_hydro_r0, ph_hydro_r1);
+        #else
+            fprintf(fPtr,
+                "MCRaT (grid) couldn't find a block for photon at r0=%e r1=%e r2=%e\n",
+                ph_hydro_r0, ph_hydro_r1, ph_hydro_r2);
+        #endif
+        fflush(fPtr);
+        return -1;
+    }
+
+    return found_index;
+}
+
+
+void freeSpatialGrid(struct SpatialGrid *g)
+{
+    if (!g) return;
+    free(g->cell_indices);
+    free(g->grid_counts);
+    free(g->grid_offsets);
+    free(g);
+}
+
+/* Clamp integer x to [min_v, max_v] */
+static inline int clamp_int(int x, int min_v, int max_v)
+{
+    if (x < min_v) return min_v;
+    if (x > max_v) return max_v;
+    return x;
+}
+
+/* Compute 1D index into flattened 3D grid */
+static inline int grid_flat_index(const struct SpatialGrid *g, int ix, int iy, int iz)
+{
+    return (iz * g->dims[1] + iy) * g->dims[0] + ix;
+}
+
+/* Build spatial grid once per hydro frame; call before photon loop */
+struct SpatialGrid *buildSpatialGrid(struct hydro_dataframe *hydro_data, FILE *fPtr)
+{
+    int n = hydro_data->num_elements;
+    if (n <= 0) return NULL;
+
+    struct SpatialGrid *g = calloc(1, sizeof(struct SpatialGrid));
+    if (!g)
+    {
+        fprintf(fPtr, "ERROR: Failed to allocate SpatialGrid\n");
+        return NULL;
+    }
+
+    /* 1. Compute global bounding box of all hydro cells */
+    double min_c[3] = { DBL_MAX, DBL_MAX, DBL_MAX };
+    double max_c[3] = { -DBL_MAX, -DBL_MAX, -DBL_MAX };
+
+    for (int i = 0; i < n; i++)
+    {
+        double half0 = 0.5 * hydro_data->r0_size[i];
+        double half1 = 0.5 * hydro_data->r1_size[i];
+        #if DIMENSIONS == 3
+            double half2 = 0.5 * hydro_data->r2_size[i];
+        #else
+            double half2 = 0.0;
+        #endif
+
+        double cmin0 = hydro_data->r0[i] - half0;
+        double cmax0 = hydro_data->r0[i] + half0;
+        double cmin1 = hydro_data->r1[i] - half1;
+        double cmax1 = hydro_data->r1[i] + half1;
+        #if DIMENSIONS == 3
+            double cmin2 = hydro_data->r2[i] - half2;
+            double cmax2 = hydro_data->r2[i] + half2;
+        #else
+            double cmin2 = 0.0, cmax2 = 0.0;
+        #endif
+
+        if (cmin0 < min_c[0]) min_c[0] = cmin0;
+        if (cmax0 > max_c[0]) max_c[0] = cmax0;
+        if (cmin1 < min_c[1]) min_c[1] = cmin1;
+        if (cmax1 > max_c[1]) max_c[1] = cmax1;
+        #if DIMENSIONS == 3
+            if (cmin2 < min_c[2]) min_c[2] = cmin2;
+            if (cmax2 > max_c[2]) max_c[2] = cmax2;
+        #endif
+    }
+
+    for (int d = 0; d < 3; d++)
+    {
+        g->grid_min[d] = min_c[d];
+        g->grid_max[d] = max_c[d];
+    }
+
+    /* 2. Choose grid resolution: aim ~20 hydro cells per grid cell */
+    int target_cells_per_grid = 20;
+    int total_grid_cells_target = n / target_cells_per_grid;
+    if (total_grid_cells_target < 1) total_grid_cells_target = 1;
+
+    /* Simple cubic grid: same number of cells along each dimension */
+    int dim = (int)ceil(pow((double)total_grid_cells_target, 1.0 / 3.0));
+    if (dim < 1) dim = 1;
+
+    g->dims[0] = dim;
+    g->dims[1] = (DIMENSIONS >= 2) ? dim : 1;
+    g->dims[2] = (DIMENSIONS == 3) ? dim : 1;
+
+    for (int d = 0; d < 3; d++)
+    {
+        double span = g->grid_max[d] - g->grid_min[d];
+        if (span <= 0.0) span = 1.0; /* avoid zero size */
+        g->cell_size[d] = span / (double)g->dims[d];
+    }
+
+    g->total_grid_cells = g->dims[0] * g->dims[1] * g->dims[2];
+
+    g->grid_counts  = calloc(g->total_grid_cells, sizeof(int));
+    g->grid_offsets = malloc(g->total_grid_cells * sizeof(int));
+    g->cell_indices = malloc(n * sizeof(int));
+
+    if (!g->grid_counts || !g->grid_offsets || !g->cell_indices)
+    {
+        fprintf(fPtr, "ERROR: Failed to allocate spatial grid arrays\n");
+        free(g->grid_counts);
+        free(g->grid_offsets);
+        free(g->cell_indices);
+        free(g);
+        return NULL;
+    }
+
+    /* 3. Count how many hydro cells fall into each grid cell */
+    for (int i = 0; i < n; i++)
+    {
+        double x = hydro_data->r0[i];
+        double y = hydro_data->r1[i];
+        #if DIMENSIONS == 3
+            double z = hydro_data->r2[i];
+        #else
+            double z = 0.0;
+        #endif
+        int ix = (int)((x - g->grid_min[0]) / g->cell_size[0]);
+        int iy = (int)((y - g->grid_min[1]) / g->cell_size[1]);
+        int iz = (int)((z - g->grid_min[2]) / g->cell_size[2]);
+
+        ix = clamp_int(ix, 0, g->dims[0] - 1);
+        iy = clamp_int(iy, 0, g->dims[1] - 1);
+        iz = clamp_int(iz, 0, g->dims[2] - 1);
+
+        int flat = grid_flat_index(g, ix, iy, iz);
+        g->grid_counts[flat]++;
+    }
+
+    /* 4. Prefix sum to compute offsets */
+    int prefix = 0;
+    for (int c = 0; c < g->total_grid_cells; c++)
+    {
+        g->grid_offsets[c] = prefix;
+        prefix += g->grid_counts[c];
+        g->grid_counts[c] = 0; /* reuse as write cursor */
+    }
+
+    /* 5. Fill cell_indices array */
+    for (int i = 0; i < n; i++)
+    {
+        double x = hydro_data->r0[i];
+        double y = hydro_data->r1[i];
+        #if DIMENSIONS == 3
+            double z = hydro_data->r2[i];
+        #else
+            double z = 0.0;
+        #endif
+        int ix = (int)((x - g->grid_min[0]) / g->cell_size[0]);
+        int iy = (int)((y - g->grid_min[1]) / g->cell_size[1]);
+        int iz = (int)((z - g->grid_min[2]) / g->cell_size[2]);
+
+        ix = clamp_int(ix, 0, g->dims[0] - 1);
+        iy = clamp_int(iy, 0, g->dims[1] - 1);
+        iz = clamp_int(iz, 0, g->dims[2] - 1);
+
+        int flat = grid_flat_index(g, ix, iy, iz);
+        int offset = g->grid_offsets[flat] + g->grid_counts[flat];
+        g->cell_indices[offset] = i;
+        g->grid_counts[flat]++;
+    }
+
+    fprintf(fPtr,
+            "Spatial grid built: dims=(%d,%d,%d), total_cells=%d\n",
+            g->dims[0], g->dims[1], g->dims[2], g->total_grid_cells);
+    fflush(fPtr);
+
+    return g;
 }

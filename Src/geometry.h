@@ -5,6 +5,7 @@
 //  Created by Tyler Parsotan on 7/23/21.
 //
 
+
 void mcratCoordinateToHydroCoordinate(double *ph_hydro_coord, double mcrat_r0, double mcrat_r1, double mcrat_r2);
 
 void hydroCoordinateToSpherical(double *r, double *theta, double r0, double r1, double r2);
@@ -24,3 +25,9 @@ int findNearestBlock(int array_num, double ph_x, double ph_y, double ph_z, doubl
 int findContainingBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, struct hydro_dataframe *hydro_data, FILE *fPtr);
 
 int checkInBlock(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, struct hydro_dataframe *hydro_data, int block_index);
+
+int findContainingBlock_grid(double ph_hydro_r0, double ph_hydro_r1, double ph_hydro_r2, struct hydro_dataframe *hydro_data, FILE *fPtr);
+
+void freeSpatialGrid(struct SpatialGrid *g);
+
+struct SpatialGrid *buildSpatialGrid(struct hydro_dataframe *hydro_data, FILE *fPtr);

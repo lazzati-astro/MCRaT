@@ -151,7 +151,7 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
 int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand, FILE *fPtr)
 {
     //This routine performs a scattering between a photon and a moving electron.
-    int i=0, scattering_occured=0;
+    int scattering_occured=0;
     double dotprod_1; //to test orthogonality
     double *z_axis_electron_rest_frame=malloc(3*sizeof(double)); //basis vector of the z axis in the elctron rest frame
     double *el_v=malloc(3*sizeof(double));
@@ -159,7 +159,6 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     double *ph_p_prime=malloc(4*sizeof(double));//use this to keep track of how the ph 4 momentum changes with each rotation
     double *el_p_prime=malloc(4*sizeof(double));
     double phi0=0, phi1=0, phi=0, theta=0;
-    double y_dum, f_x_dum, x_dum;
     double x_tilde[3]={0,0,0}, y_tilde[3]={0,0,0}, x_tilde_new[3]={0,0,0}, y_tilde_new[3]={0,0,0};//initalize arrays to hold stokes coordinate system
     gsl_matrix *rot0= gsl_matrix_calloc (3, 3); //create matricies thats 3x3 to do rotations
     gsl_matrix *rot1= gsl_matrix_calloc (3, 3);
@@ -172,7 +171,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     gsl_vector *ph_p_orig=gsl_vector_alloc (4) ;//vector to hold the original incoming photon velocity vector in the electron rest frame
     gsl_vector_view ph_p ;//create vector to hold comoving photon and electron 4 momentum
     gsl_vector_view el_p ;
-    gsl_vector_view stokes, test, test_x, test_y;
+    gsl_vector_view stokes, test;
     
 
     /*
@@ -511,7 +510,7 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
 {
     //sample theta using:  https://doi.org/10.13182/NSE11-57
     double phi_dum=0, cos_theta_dum=0, f_phi_dum=0, f_cos_theta_dum=0, f_theta_dum=0, phi_y_dum=0, cos_theta_y_dum=0, KN_x_section_over_thomson_x_section=0, rand_num=0;
-    double mu=0, phi_norm=0, phi_max=0, norm=0;
+    double mu=0, phi_max=0, norm=0;
     int will_scatter=0;
     double energy_ratio=  p0/(M_EL*C_LIGHT ); //h*nu / mc^2 , units of p0 is erg/c
     
