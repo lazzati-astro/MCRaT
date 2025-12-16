@@ -1365,7 +1365,8 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
                 *frame_scatt_cnt+=1; //incrememnt total number of scatterings
 
                 //we need to make sure that the tau for this photon gets recalculated since we have a new comoving
-                //4 momentum
+                //4 momentum and the photon may no longer be in the same cell (we update the photon position before doing the scattering)
+                //this also means that the photon may be in a completely new cell by the time it scatter though this is unlikely in high density regions
                 (ph->recalc_properties)=1;
             
             }
