@@ -1299,6 +1299,10 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
             {
                 //fprintf(fPtr,"Within the if!\n");
                 //fflush(fPtr);
+                #if NONTHERMAL_E_DIST != OFF
+                    double scattered_photon_weight=scatteredPhotonWeight(ph->weight, ph->scattering_bias[scattering_subgroup], ph-> optical_depths[scattering_subgroup])
+                
+                #endif
             
                 //if the scattering occured have to uodate the phtoon 4 momentum. if photon didnt scatter nothing changes
                 //fourth we bring the photon back to the lab frame
