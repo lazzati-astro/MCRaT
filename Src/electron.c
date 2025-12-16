@@ -18,7 +18,9 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
         double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
         double gamma_min, gamma_max;
 
-        random_num=0.6; //for testing
+        random_num=0.0; //for testing
+        fprintf(fPtr, "testing with random_num %g\n",random_num);
+
 
         if (cumulative_tau/(ph->total_optical_depth) >= random_num)
         {

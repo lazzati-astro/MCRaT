@@ -1300,17 +1300,22 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
                 //fprintf(fPtr,"Within the if!\n");
                 //fflush(fPtr);
                 #if NONTHERMAL_E_DIST != OFF
-                    double scattered_photon_weight = scatteredPhotonWeight(ph->weight, ph->scattering_bias[scattering_subgroup], ph-> optical_depths[scattering_subgroup])
-                    double unscattered_photon_weight = ph->weight - scattered_photon_weight
-                    
-                    //first we set the weight of the scattered photon to be the unscattered weight and then copy it into a new element of the photon_list. This works since none of the fields of the photon struct have been updated based on teh actual scattering yet. That occurs below.
-                    ph->weight = unscattered_photon_weight;
-                    
-                    //add the original to our photon list struct, which does a memcpy into a NULL photon's index
-                    addToPhotonList(photon_list, ph, 1);
-                    
-                    //now set the scattered photon weight field  to the correct value
-                    ph->weight = scattered_photon_weight;
+                    // if the scattering bias is 1, we already know that the weight of the nonscattered photon is 0 so can
+                    // ignore all of these steps
+                    if (ph->scattering_bias[scattering_subgroup] != 1)
+                    {
+                        double scattered_photon_weight = scatteredPhotonWeight(ph->weight, ph->scattering_bias[scattering_subgroup], ph-> optical_depths[scattering_subgroup]);
+                        double unscattered_photon_weight = ph->weight - scattered_photon_weight;
+                        
+                        //first we set the weight of the scattered photon to be the unscattered weight and then copy it into a new element of the photon_list. This works since none of the fields of the photon struct have been updated based on teh actual scattering yet. That occurs below.
+                        ph->weight = unscattered_photon_weight;
+                        
+                        //add the original to our photon list struct, which does a memcpy into a NULL photon's index
+                        addToPhotonList(photon_list, ph, 1);
+                        
+                        //now set the scattered photon weight field  to the correct value
+                        ph->weight = scattered_photon_weight;
+                    }
                 
                 #endif
             
