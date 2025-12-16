@@ -101,7 +101,7 @@ void singleNonThermalElectron(double *el_p, double *ph_p, double gamma_min, doub
     double gamma=0, beta=0, phi=0, theta=0;
 
     //genertae a nonthermal electron within the subgroup that we had identified
-    while (gamma<gamma_min && gamma>gamma_max)
+    while (gamma<gamma_min || gamma>gamma_max)
     {
         gamma=sampleNonThermalElectron(rand, fPtr);
     }

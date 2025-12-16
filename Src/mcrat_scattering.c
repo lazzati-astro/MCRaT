@@ -121,12 +121,12 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
     //rotate the stokes vector now to put it in the coordinate system fo the boosted photon and the boost evctor
     mullerMatrixRotation(phi, s, fPtr);
     
-    /*
+    
     if ( isnan(*(s+0)) || isnan(*(s+1)) || isnan(*(s+2)) || isnan(*(s+3)) )
     {
         printf("A stokes value is nan\n\n");
     }
-     */
+     
     
     //find the new coordinates of the rotated stokes vector with the boosted photon and the boost vector
     findXY(v_ph_boosted, v, &x, &y);
