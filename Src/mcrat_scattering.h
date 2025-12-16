@@ -20,3 +20,5 @@ int comptonScatter(double *theta, double *phi, gsl_rng * rand, FILE *fPtr);
 int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double u, gsl_rng * rand, FILE *fPtr);
 
 double kleinNishinaCrossSection(double energy_ratio);
+
+double scatteredPhotonWeight(double weight, double bias, double optical_depth);

@@ -621,3 +621,9 @@ double kleinNishinaCrossSection(double energy_ratio)
 
     return result;
 }
+
+double scatteredPhotonWeight(double weight, double bias, double optical_depth)
+{
+    
+    return weight*(1-exp(optical_depth))/(1-exp(-bias*optical_depth));
+}
