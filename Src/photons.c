@@ -92,19 +92,17 @@ void setPhotonList(struct photonList *photon_list, struct photon *ph_array, int 
     memcpy(photon_list->photons, ph_array, num_photons*sizeof(struct photon));
     photon_list->list_capacity=num_photons;
     photon_list->num_photons=num_photons;
+    photon_list->num_null_photons=0;
     
     //get the actual number of null photons in the array we dont want to assume that there are 0.
     for (i = 0; i < num_photons; i++)
     {
         if (photon_list->photons[i].type == NULL_PHOTON)
         {
-            null_photon_count++;
+            incrementNullPhotonNum(photon_list);
         }
     }
 
-    
-    photon_list->num_null_photons=null_photon_count;
-    
 }
 
 void addToPhotonList(struct photonList *photon_list, struct photon *ph, size_t num_photons)
