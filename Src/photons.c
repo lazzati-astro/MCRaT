@@ -278,7 +278,7 @@ void verifyPhotonNum(struct photonList *photon_list)
 {
     if (photon_list->num_photons+photon_list->num_null_photons != photon_list->list_capacity)
     {
-        printf("Error with incremenitng real or null photon in the photonList. conservation of photon error\n");
+        printf("Error with incrementing real (%d) or null (%d) photons in the photonList of capacity (%d). Conservation of photon error\n", photon_list->num_photons, photon_list->num_null_photons, photon_list->list_capacity);
         exit(1);
 
     }
