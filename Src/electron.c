@@ -198,7 +198,7 @@ double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr)
     //the calculation can produce nan values when
     while (isnan(theta))
     {
-        random_num=gsl_rng_uniform(rand)
+        random_num=gsl_rng_uniform(rand);
         theta = acos((1-sqrt(1+beta*beta+2*beta-4*beta*random_num))/beta);
         fprintf(fPtr, "Sampling the Electron theta produced a nan value. beta is %e, the generated random value is %e\nTrying again.\n\n", beta, random_num);
     }
