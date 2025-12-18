@@ -215,8 +215,8 @@ double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr)
         f_x_dum=0;
         while ((isnan(f_x_dum) !=0) || (y_dum>f_x_dum) )
         {
-
-            x_dum=gsl_rng_uniform_pos(rand)*(1+100*factor);
+            //if we use gsl_rng_ranlxs0 in mcrat.c then this generates from 0-2^31 so we add 1 for it to start at 1 for potential gammas that we sample
+            x_dum=gsl_rng_get(rand)+1.0;//gsl_rng_uniform_pos(rand)*(1+100*factor);
             beta_x_dum=sqrt(1-(1/(x_dum*x_dum)));
             y_dum=gsl_rng_uniform(rand)/2.0;
 
