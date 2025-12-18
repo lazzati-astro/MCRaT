@@ -130,7 +130,7 @@ void rotateElectron(double *el_p, double *ph_p, FILE *fPtr)
     double ph_theta=0, ph_phi=0;
     gsl_matrix *rot= gsl_matrix_calloc (3, 3); //create matrix thats 3x3 to do rotation
     gsl_vector_view el_p_prime ; //create vector to hold rotated electron 4 momentum
-    gsl_vector *result=gsl_vector_alloc (3);
+    gsl_vector *result=gsl_vector_calloc (3);
 
 
     el_p_prime=gsl_vector_view_array((el_p+1), 3);
