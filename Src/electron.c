@@ -178,7 +178,7 @@ void rotateElectron(double *el_p, double *ph_p, FILE *fPtr)
 
 double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr)
 {
-    double theta=0;
+    double theta=0, random_num=0;
 
     /*this loop is inefficient
     double y_dum=0, f_x_dum=0, x_dum=0, beta_x_dum=0,
@@ -195,7 +195,13 @@ double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr)
     */
 
     //can change to this: equation 56 of the RAIKOU paper: DOI: 10.3847/1538-4357/acc94a
-    theta = acos((1-sqrt(1+beta*beta+2*beta-4*beta*gsl_rng_uniform(rand)))/beta);
+    //the calculation can produce nan values when
+    while (isnan(theta))
+    {
+        random_num=gsl_rng_uniform(rand)
+        theta = acos((1-sqrt(1+beta*beta+2*beta-4*beta*random_num))/beta);
+        fprintf(fPtr, "Sampling the Electron theta produced a nan value. beta is %e, the generated random value is %e\nTrying again.\n\n", beta, random_num);
+    }
 
 
     return theta;
