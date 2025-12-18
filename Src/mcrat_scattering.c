@@ -11,7 +11,7 @@ void mullerMatrixRotation(double theta, double *s, FILE *fPtr)
 {
     //makes a CCW rotation od the stokes parameters when the photon velocity vector is pointed towards the observer, follows Lundman
     gsl_matrix *M= gsl_matrix_calloc (4, 4); //create matrix thats 4x4 to do rotation as defined in McMaster 1961 (has it to rotate CW in that paper)
-    gsl_vector *result= gsl_vector_alloc(4);
+    gsl_vector *result= gsl_vector_calloc(4);
     gsl_vector_view stokes;
     
     stokes=gsl_vector_view_array(s, 4);
