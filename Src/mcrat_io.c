@@ -1976,7 +1976,7 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
         customOutflowPrep(hydro_data, fPtr);
     #endif
 
-    #if NONTHERMAL_E_DIST != OFF
+    #if NONTHERMAL_E_DIST != OFF && SIMULATION_TYPE != CUSTOM_OUTFLOW
         calculateElectronDistSubgroupDens(hydro_data->electron_dens_subgroup, fPtr);
         fprintf(fPtr, "electorn dist subgroups: %e %e %e \n", (hydro_data->electron_dens_subgroup)[0], (hydro_data->electron_dens_subgroup)[1], (hydro_data->electron_dens_subgroup)[2]);
         calculateAverageDimlessTheta(hydro_data, fPtr);
