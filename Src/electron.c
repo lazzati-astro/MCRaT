@@ -220,7 +220,7 @@ double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr)
             y_dum=gsl_rng_uniform(rand)/2.0;
 
             f_x_dum=x_dum*x_dum*(beta_x_dum/gsl_sf_bessel_Kn (2, 1.0/factor))*exp(-1*x_dum/factor); //
-            fprintf(fPtr,"Choosing a Gamma: xdum: %e, f_x_dum: %e, y_dum: %e, new f_x_dum %e\n", x_dum, f_x_dum, y_dum, singleMaxwellJuttner(x_dum, factor));
+            //fprintf(fPtr,"Choosing a Gamma: xdum: %e, f_x_dum: %e, y_dum: %e, new f_x_dum %e\n", x_dum, f_x_dum, y_dum, singleMaxwellJuttner(x_dum, factor));
         }
         gamma=x_dum;
 
