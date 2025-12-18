@@ -485,7 +485,14 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
             mullerMatrixRotation(phi, s, fPtr);
             
             //find the theta between the incoming and scattered photons, by doing dot product and taking arccos of it
-            theta=acos((gsl_vector_get(ph_p_orig,1)*gsl_vector_get(result0,0)+gsl_vector_get(ph_p_orig,2)*gsl_vector_get(result0,1)+gsl_vector_get(ph_p_orig,3)*gsl_vector_get(result0,2) )/(gsl_vector_get(ph_p_orig,0)*(*(ph_p_prime+0)))  );
+            double dot_prod_result=(gsl_vector_get(ph_p_orig,1)*gsl_vector_get(result0,0)+gsl_vector_get(ph_p_orig,2)*gsl_vector_get(result0,1)+gsl_vector_get(ph_p_orig,3)*gsl_vector_get(result0,2) )/(gsl_vector_get(ph_p_orig,0)*(*(ph_p_prime+0))) ;
+            if ((dot_prod_result<-1) || (dot_prod_result>1))
+            {
+                //printf("The old dot poduct was %e, the new one is %e\n",dot_prod_result, round(dot_prod_result));
+                dot_prod_result=round(dot_prod_result);//do this rounding so numerical error that causes value to be <-1 or >1 gets rounded and becomes a real value if its close enough to these limits
+            }
+
+            theta=acos(dot_prod_result);
             
             //do the scattering of the stokes parameters
             gsl_matrix_set(scatt, 0,0,1.0+pow(cos(theta), 2.0)+((1-cos(theta))*(gsl_vector_get(ph_p_orig,0) - gsl_vector_get(result,0))/(M_EL*C_LIGHT ) ) ); //following lundman's matrix
