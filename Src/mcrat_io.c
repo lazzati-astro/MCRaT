@@ -1796,6 +1796,7 @@ void hydroDataFrameInitialize(struct hydro_dataframe *hydro_data)
     #if NONTHERMAL_E_DIST != OFF
         hydro_data->nonthermal_dens=NULL;
     #endif
+    hydro_data->grid = NULL;
 
 }
 
