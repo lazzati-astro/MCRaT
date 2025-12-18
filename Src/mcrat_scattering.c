@@ -163,12 +163,12 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     gsl_matrix *rot0= gsl_matrix_calloc (3, 3); //create matricies thats 3x3 to do rotations
     gsl_matrix *rot1= gsl_matrix_calloc (3, 3);
     gsl_matrix *scatt= gsl_matrix_calloc (4, 4); //fano's matrix for scattering stokes parameters
-    gsl_vector *scatt_result=gsl_vector_alloc (4);
-    gsl_vector *result0=gsl_vector_alloc (3); //vectors to hold results of rotations
-    gsl_vector *result1=gsl_vector_alloc (3);
-    gsl_vector *result=gsl_vector_alloc (4);
-    gsl_vector *whole_ph_p=gsl_vector_alloc (4);
-    gsl_vector *ph_p_orig=gsl_vector_alloc (4) ;//vector to hold the original incoming photon velocity vector in the electron rest frame
+    gsl_vector *scatt_result=gsl_vector_calloc (4);
+    gsl_vector *result0=gsl_vector_calloc (3); //vectors to hold results of rotations
+    gsl_vector *result1=gsl_vector_calloc (3);
+    gsl_vector *result=gsl_vector_calloc (4);
+    gsl_vector *whole_ph_p=gsl_vector_calloc (4);
+    gsl_vector *ph_p_orig=gsl_vector_calloc (4) ;//vector to hold the original incoming photon velocity vector in the electron rest frame
     gsl_vector_view ph_p ;//create vector to hold comoving photon and electron 4 momentum
     gsl_vector_view el_p ;
     gsl_vector_view stokes, test;
