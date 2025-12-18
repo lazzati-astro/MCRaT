@@ -179,7 +179,7 @@ void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclos
             #endif
             num_scatt[count]= (ph->num_scatt);
             weight[count]= (ph->weight);
-             //fprintf(fPtr, "%d %c %e %e %e %e %e %e %e %e\n", i, ph->type, ph->r0, ph->r1, ph->r2, ph->num_scatt, ph->weight, ph->p0, ph->comv_p0, ph->p0*C_LIGHT/1.6e-9);
+             //fprintf(fPtr, "%d %c %e %e %e %e %e %e %e %e\n", i, ph->type, ph->r0, ph->r1, ph->r2, ph->num_scatt, ph->weight, ph->p0, ph->comv_p0, ph->p0*ENERGY_TO_KEV);
             
             if ((frame==frame_last))
             {
@@ -187,7 +187,7 @@ void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclos
             }
             
             *(ph_type+count)=ph->type;
-            //printf("%d %c %e %e %e %e %e %e %e %e %c\n", i, ph->type, ph->r0, ph->r1, ph->r2, ph->num_scatt, ph->weight, ph->p0, ph->comv_p0, ph->p0*C_LIGHT/1.6e-9, *(ph_type+count));
+            //printf("%d %c %e %e %e %e %e %e %e %e %c\n", i, ph->type, ph->r0, ph->r1, ph->r2, ph->num_scatt, ph->weight, ph->p0, ph->comv_p0, ph->p0*ENERGY_TO_KEV, *(ph_type+count));
             
             count++;
         }
@@ -1092,7 +1092,7 @@ int readCheckpoint(char dir[STR_BUFFER], struct photonList *photon_list, int *fr
                     {
                         scatt_cyclosynch_num_ph++;
                     }
-                //printf("%d %c %e %e %e %e %e %e %e\n", i, ph[i].type, ph[i].r0, ph[i].r1, ph[i].r2, ph[i].num_scatt, ph[i].weight, ph[i].p0*C_LIGHT/1.6e-9, ph[i].comv_p0);
+                //printf("%d %c %e %e %e %e %e %e %e\n", i, ph[i].type, ph[i].r0, ph[i].r1, ph[i].r2, ph[i].num_scatt, ph[i].weight, ph[i].p0*ENERGY_TO_KEV, ph[i].comv_p0);
                 #endif
             }
             

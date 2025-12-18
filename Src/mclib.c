@@ -1331,7 +1331,7 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
                 #endif
             
 
-                if (((*(ph_p+0))*C_LIGHT/1.6e-9) > 1e4)
+                if (((*(ph_p+0))*ENERGY_TO_KEV) > 1e4)
                 {
                     //energy greater than 1e4 keV
                     fprintf(fPtr,"Extremely High Photon Energy!!!!!!!!\n");
