@@ -48,6 +48,16 @@ void findXY(double *v_ph, double *vector, double *x, double *y)
     *(y+1)= -1*((*(v_ph+0))*(*(vector+2))-(*(v_ph+2))*(*(vector+0)));
     *(y+2)= ((*(v_ph+0))*(*(vector+1))-(*(v_ph+1))*(*(vector+0))); // vector X v_ph
     
+    if ( (*(y+0)==0) && (*(y+1)==0)|| (*(y+2))==0)
+    {
+        printf("The calculated y stokes plane coordinate value is 0\n\n");
+        printf("This is most likely due to the boosted photon velocity vector being parallel to the velocity vector that was used for the lorentz boost. \n\n");
+        fprintf(fPtr, "The calculated y stokes plane coordinate value is 0\n\n");
+        fprintf(fPtr, "This is most likely due to the boosted photon velocity vector being parallel to the velocity vector that was used for the lorentz boost. \n\n");
+        fflush(fPtr);
+    }
+
+    
     norm=1.0/sqrt( (*(y+0))*(*(y+0)) + (*(y+1))*(*(y+1)) + (*(y+2))*(*(y+2)));
     *(y+0) *= norm;
     *(y+1) *= norm;
@@ -130,6 +140,18 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
     
     //find the new coordinates of the rotated stokes vector with the boosted photon and the boost vector
     findXY(v_ph_boosted, v, &x, &y);
+    
+    if ( isnan(*(y+0)) || isnan(*(y+1)) || isnan(*(y+2)))
+    {
+        printf("A plane coordinate value is nan\n\n");
+        printf("This is most likely due to the boosted photon velocity vector being parallel to the velocity vector that was used for the lorentz boost. \n\n");
+        fprintf(fPtr, "A plane coordinate value is nan\n\n");
+        fprintf(fPtr, "This is most likely due to the boosted photon velocity vector being parallel to the velocity vector that was used for the lorentz boost. \n\n");
+        fflush(fPtr);
+        memcpy(y, y_new, 3*sizeof(double));
+        memcpy(x, x_new, 3*sizeof(double));
+    }
+
     
     //find stokes coordinate sys in orig frame with respect to z axis
     findXY(v_ph_boosted, &z_hat, &x_new, &y_new);
