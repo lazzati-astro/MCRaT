@@ -1986,6 +1986,7 @@ int getHydroData(struct hydro_dataframe *hydro_data, int frame, double inj_radiu
     #endif
     
     //TODO: can choose to fill this in if we have a cartesian grid
+    //based on profiling the function actually spends most time in the calcMeanFreePath so this capability may not be worth the time.
     hydro_data->grid = NULL; //buildSpatialGrid(hydro_data, fPtr);
 
 
