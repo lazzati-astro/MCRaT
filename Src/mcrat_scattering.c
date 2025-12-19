@@ -172,7 +172,7 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
     
 }
 
-void stokesScatter(double *s, double *orig_s,  gsl_vector *ph_p_orig, gsl_vector *result0, double ph_p_prime, double scattered_ph_e, FILE *fPtr)
+void stokesScatter(double *s,  gsl_vector *ph_p_orig, double *ph_p_scattered, FILE *fPtr)
 {
     double dot_prod_result=0, theta=0, phi=0;
     double *z_axis_electron_rest_frame=malloc(3*sizeof(double)); //basis vector of the z axis in the elctron rest frame
@@ -182,7 +182,7 @@ void stokesScatter(double *s, double *orig_s,  gsl_vector *ph_p_orig, gsl_vector
     gsl_vector_view stokes;
 
 
-    stokes=gsl_vector_view_array(orig_s, 4);
+    stokes=gsl_vector_view_array(s, 4);
 
     
     //fill in z-axis basis vector
@@ -197,7 +197,7 @@ void stokesScatter(double *s, double *orig_s,  gsl_vector *ph_p_orig, gsl_vector
     mullerMatrixRotation(phi, s, fPtr);
     
     //find the theta between the incoming and scattered photons, by doing dot product and taking arccos of it
-    dot_prod_result=(gsl_vector_get(ph_p_orig,1)*gsl_vector_get(result0,0)+gsl_vector_get(ph_p_orig,2)*gsl_vector_get(result0,1)+gsl_vector_get(ph_p_orig,3)*gsl_vector_get(result0,2) )/(gsl_vector_get(ph_p_orig,0)*(ph_p_prime)) ;
+    dot_prod_result=(gsl_vector_get(ph_p_orig,1)*gsl_vector_get(result0,0)+gsl_vector_get(ph_p_orig,2)*gsl_vector_get(result0,1)+gsl_vector_get(ph_p_orig,3)*gsl_vector_get(result0,2) )/(gsl_vector_get(ph_p_orig,0)*(scattered_ph_e)) ;
     
     if ((dot_prod_result<-1) || (dot_prod_result>1))
     {
@@ -497,13 +497,20 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
          printf("Rotation Matrix 2: %e,%e, %e\n", gsl_matrix_get(rot0, 2,0), gsl_matrix_get(rot0, 2,1), gsl_matrix_get(rot0, 2,2));
          */
         
+        //now update the array with the new scattered photon 4 monetum
+        *(ph_p_prime+1)=gsl_vector_get(result0,0);
+        *(ph_p_prime+2)=gsl_vector_get(result0,1);
+        *(ph_p_prime+3)=gsl_vector_get(result0,2);
+
+        
         //do the scattering of the stokes vector
         //rotate it by phi and then scatter it and rotate back and then renormalize it such that i=1
         //if (STOKES_SWITCH != 0)
         #if STOKES_SWITCH == ON
         {
-            double *test_s=calloc(4,sizeof(double));
-            stokesScatter(test_s, s, ph_p_orig, result0, (*(ph_p_prime+0)), gsl_vector_get(result,0), fPtr);
+            double *s_test=calloc(4,sizeof(double));
+            memcpy(s_test, s, 4*sizeof(double));
+            stokesScatter(s_test, ph_p_orig, ph_p_prime, fPtr);
             
             //orient the stokes coordinate system such that its perpendicular to the scattering plane
             findXY(gsl_vector_ptr(ph_p_orig, 1),z_axis_electron_rest_frame, x_tilde, y_tilde);
@@ -561,12 +568,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
             mullerMatrixRotation(phi, s, fPtr);
         }
         #endif
-        
-        //now update the array with the new scattered photon 4 monetum
-        *(ph_p_prime+1)=gsl_vector_get(result0,0);
-        *(ph_p_prime+2)=gsl_vector_get(result0,1);
-        *(ph_p_prime+3)=gsl_vector_get(result0,2);
-        
+                
         //gsl_blas_ddot(&y_tilde_rot.vector, &ph_p.vector, &dotprod_1);
         //fprintf(fPtr, "Angle between the  y_tilde_rot and the photon velocity vector is: %e\n", acos(dotprod_1/ gsl_blas_dnrm2(&ph_p.vector))*180/M_PI);
         
