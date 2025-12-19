@@ -106,6 +106,7 @@ double findPhi(double *x_old, double *y_old, double *x_new, double *y_new)
         if ((dot_prod_result<-1) || (dot_prod_result>1))
         {
             printf("Error calculating the dot product between 2 stokes coordinates. The dot product is %e outside of the valid range of -1 to +1", dot_prod_result);
+            exit(1);
         }
             
             
