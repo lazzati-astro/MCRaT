@@ -507,64 +507,8 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
         //if (STOKES_SWITCH != 0)
         #if STOKES_SWITCH == ON
         {
-            double *s_test=calloc(4,sizeof(double));
-            memcpy(s_test, s, 4*sizeof(double));
             stokesScatter(s_test, ph_p_orig, ph_p_prime, fPtr);
             
-            //orient the stokes coordinate system such that its perpendicular to the scattering plane
-            findXY(gsl_vector_ptr(ph_p_orig, 1),z_axis_electron_rest_frame, x_tilde, y_tilde);
-            findXY(gsl_vector_ptr(result0,0),gsl_vector_ptr(ph_p_orig, 1), x_tilde_new, y_tilde_new);
-            phi=findPhi(x_tilde, y_tilde, x_tilde_new, y_tilde_new);
-            mullerMatrixRotation(phi, s, fPtr);
-            
-            //find the theta between the incoming and scattered photons, by doing dot product and taking arccos of it
-            double dot_prod_result=(gsl_vector_get(ph_p_orig,1)*gsl_vector_get(result0,0)+gsl_vector_get(ph_p_orig,2)*gsl_vector_get(result0,1)+gsl_vector_get(ph_p_orig,3)*gsl_vector_get(result0,2) )/(gsl_vector_get(ph_p_orig,0)*(*(ph_p_prime+0))) ;
-            if ((dot_prod_result<-1) || (dot_prod_result>1))
-            {
-                //printf("The old dot poduct was %e, the new one is %e\n",dot_prod_result, round(dot_prod_result));
-                dot_prod_result=round(dot_prod_result);//do this rounding so numerical error that causes value to be <-1 or >1 gets rounded and becomes a real value if its close enough to these limits
-            }
-
-            theta=acos(dot_prod_result);
-            
-            //do the scattering of the stokes parameters
-            gsl_matrix_set(scatt, 0,0,1.0+pow(cos(theta), 2.0)+((1-cos(theta))*(gsl_vector_get(ph_p_orig,0) - gsl_vector_get(result,0))/(M_EL*C_LIGHT ) ) ); //following lundman's matrix
-            gsl_matrix_set(scatt, 0,1, sin(theta)*sin(theta));
-            gsl_matrix_set(scatt, 1,0, sin(theta)*sin(theta));
-            gsl_matrix_set(scatt, 1,1,1.0+cos(theta)*cos(theta));
-            gsl_matrix_set(scatt, 2,2, 2.0*cos(theta));
-            gsl_matrix_set(scatt, 3,3, 2.0*cos(theta)+ ((cos(theta))*(1-cos(theta))*(gsl_vector_get(ph_p_orig,0) - gsl_vector_get(result,0))/(M_EL*C_LIGHT )) );
-            //gsl_matrix_scale(scatt, (gsl_vector_get(result,0)/(*(ph_p_prime+0)))*((gsl_vector_get(result,0)/(*(ph_p_prime+0))))*0.5*3*THOM_X_SECT/(8*M_PI) ); //scale the matrix by 0.5*r_0^2 (\epsilon/\epsilon_0)^2 DONT NEED THIS BECAUSE WE NORMALIZE STOKES VECTOR SO THIS CANCELS ITSELF OUT
-            gsl_blas_dgemv(CblasNoTrans, 1, scatt, &stokes.vector, 0, scatt_result);
-            /*
-             fprintf(fPtr,"before s: %e, %e, %e,%e\n", gsl_vector_get(&stokes.vector,0), gsl_vector_get(&stokes.vector,1), gsl_vector_get(&stokes.vector,2), gsl_vector_get(&stokes.vector,3));
-             fprintf(fPtr,"Scatt Matrix 0: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 0,0), gsl_matrix_get(scatt, 0,1), gsl_matrix_get(scatt, 0,2), gsl_matrix_get(scatt, 0,3));
-             fprintf(fPtr,"Scatt Matrix 1: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 1,0), gsl_matrix_get(scatt, 1,1), gsl_matrix_get(scatt, 1,2), gsl_matrix_get(scatt, 1,3));
-             fprintf(fPtr,"Scatt Matrix 2: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 2,0), gsl_matrix_get(scatt, 2,1), gsl_matrix_get(scatt, 2,2), gsl_matrix_get(scatt, 2,3));
-             fprintf(fPtr,"Scatt Matrix 3: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 3,0), gsl_matrix_get(scatt, 3,1), gsl_matrix_get(scatt, 3,2), gsl_matrix_get(scatt, 3,3));
-             fprintf(fPtr,"s: %e, %e, %e,%e\n", gsl_vector_get(scatt_result,0), gsl_vector_get(scatt_result,1), gsl_vector_get(scatt_result,2), gsl_vector_get(scatt_result,3));
-             */
-            
-            
-            //normalize and rotate back
-            *(s+0)=gsl_vector_get(scatt_result,0)/gsl_vector_get(scatt_result,0); //should be 1.0
-            *(s+1)=gsl_vector_get(scatt_result,1)/gsl_vector_get(scatt_result,0);
-            *(s+2)=gsl_vector_get(scatt_result,2)/gsl_vector_get(scatt_result,0);
-            *(s+3)=gsl_vector_get(scatt_result,3)/gsl_vector_get(scatt_result,0);
-            //fprintf(fPtr,"s after norm: %e, %e, %e,%e\n", gsl_vector_get(&stokes.vector,0), gsl_vector_get(&stokes.vector,1), gsl_vector_get(&stokes.vector,2), gsl_vector_get(&stokes.vector,3));
-            
-            
-            //need to find current stokes coordinate system defined in the plane of k-k_0
-            findXY(gsl_vector_ptr(result0,0),gsl_vector_ptr(ph_p_orig, 1), x_tilde, y_tilde);
-            
-            //then find the new coordinate system between scattered photon 4 onetum and the z axis
-            findXY(gsl_vector_ptr(result0,0),z_axis_electron_rest_frame, x_tilde_new, y_tilde_new);
-            
-            //find phi to transform between the two coodinate systems
-            phi=findPhi(x_tilde, y_tilde, x_tilde_new, y_tilde_new);
-            
-            //do the rotation
-            mullerMatrixRotation(phi, s, fPtr);
         }
         #endif
                 
