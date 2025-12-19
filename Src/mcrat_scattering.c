@@ -102,6 +102,13 @@ double findPhi(double *x_old, double *y_old, double *x_new, double *y_new)
     {
         //printf("The old dot poduct was %e, the new one is %e\n",dot_prod_result, round(dot_prod_result));
         dot_prod_result=round(dot_prod_result);//do this rounding so numerical error that causes value to be <-1 or >1 gets rounded and becomes a real value if its close enough to these limits
+        //also want to check that we still get something that is between -1 and 1, ie the dot_prod_result isnt -2 for some crazy reason
+        if ((dot_prod_result<-1) || (dot_prod_result>1))
+        {
+            printf("Error calculating the dot product between 2 stokes coordinates. The dot product is %e outside of the valid range of -1 to +1", dot_prod_result);
+        }
+            
+            
     }
     
     return -1*factor*acos(dot_prod_result);
@@ -114,11 +121,8 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
     double x[3]={0,0,0}, y[3]={0,0,0}, x_new[3]={0,0,0}, y_new[3]={0,0,0};//initalize arrays to hold stokes coordinate system
     double phi=0;
     
-    //if (i==0)
-    {
     //find stokes coordinate sys in orig frame with respect to z axis
     findXY(v_ph, &z_hat, &x, &y);
-    }
     
     //find stokes coordinate sys in orig frame with respect to boost vector
     findXY(v_ph, v, &x_new, &y_new);
