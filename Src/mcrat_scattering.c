@@ -171,10 +171,10 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
      */
     
 }
-/*
+
 void stokesScatter(double *s, double *orig_s,  gsl_vector *ph_p_orig, gsl_vector *result0, double ph_p_prime, double scattered_ph_e, FILE *fPtr)
 {
-    double dot_prod_result=0;
+    double dot_prod_result=0, theta=0;
     double *z_axis_electron_rest_frame=malloc(3*sizeof(double)); //basis vector of the z axis in the elctron rest frame
     double x_tilde[3]={0,0,0}, y_tilde[3]={0,0,0}, x_tilde_new[3]={0,0,0}, y_tilde_new[3]={0,0,0};//initalize arrays to hold stokes coordinate system
     gsl_matrix *scatt= gsl_matrix_calloc (4, 4); //fano's matrix for scattering stokes parameters
@@ -217,12 +217,12 @@ void stokesScatter(double *s, double *orig_s,  gsl_vector *ph_p_orig, gsl_vector
     //gsl_matrix_scale(scatt, (gsl_vector_get(result,0)/(*(ph_p_prime+0)))*((gsl_vector_get(result,0)/(*(ph_p_prime+0))))*0.5*3*THOM_X_SECT/(8*M_PI) ); //scale the matrix by 0.5*r_0^2 (\epsilon/\epsilon_0)^2 DONT NEED THIS BECAUSE WE NORMALIZE STOKES VECTOR SO THIS CANCELS ITSELF OUT
     gsl_blas_dgemv(CblasNoTrans, 1, scatt, &stokes.vector, 0, scatt_result);
     
-     fprintf(fPtr,"before s: %e, %e, %e,%e\n", gsl_vector_get(&stokes.vector,0), gsl_vector_get(&stokes.vector,1), gsl_vector_get(&stokes.vector,2), gsl_vector_get(&stokes.vector,3));
-     fprintf(fPtr,"Scatt Matrix 0: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 0,0), gsl_matrix_get(scatt, 0,1), gsl_matrix_get(scatt, 0,2), gsl_matrix_get(scatt, 0,3));
-     fprintf(fPtr,"Scatt Matrix 1: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 1,0), gsl_matrix_get(scatt, 1,1), gsl_matrix_get(scatt, 1,2), gsl_matrix_get(scatt, 1,3));
-     fprintf(fPtr,"Scatt Matrix 2: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 2,0), gsl_matrix_get(scatt, 2,1), gsl_matrix_get(scatt, 2,2), gsl_matrix_get(scatt, 2,3));
-     fprintf(fPtr,"Scatt Matrix 3: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 3,0), gsl_matrix_get(scatt, 3,1), gsl_matrix_get(scatt, 3,2), gsl_matrix_get(scatt, 3,3));
-     fprintf(fPtr,"s: %e, %e, %e,%e\n", gsl_vector_get(scatt_result,0), gsl_vector_get(scatt_result,1), gsl_vector_get(scatt_result,2), gsl_vector_get(scatt_result,3));
+//     fprintf(fPtr,"before s: %e, %e, %e,%e\n", gsl_vector_get(&stokes.vector,0), gsl_vector_get(&stokes.vector,1), gsl_vector_get(&stokes.vector,2), gsl_vector_get(&stokes.vector,3));
+//     fprintf(fPtr,"Scatt Matrix 0: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 0,0), gsl_matrix_get(scatt, 0,1), gsl_matrix_get(scatt, 0,2), gsl_matrix_get(scatt, 0,3));
+//     fprintf(fPtr,"Scatt Matrix 1: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 1,0), gsl_matrix_get(scatt, 1,1), gsl_matrix_get(scatt, 1,2), gsl_matrix_get(scatt, 1,3));
+//     fprintf(fPtr,"Scatt Matrix 2: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 2,0), gsl_matrix_get(scatt, 2,1), gsl_matrix_get(scatt, 2,2), gsl_matrix_get(scatt, 2,3));
+//     fprintf(fPtr,"Scatt Matrix 3: %e,%e, %e, %e\n", gsl_matrix_get(scatt, 3,0), gsl_matrix_get(scatt, 3,1), gsl_matrix_get(scatt, 3,2), gsl_matrix_get(scatt, 3,3));
+//     fprintf(fPtr,"s: %e, %e, %e,%e\n", gsl_vector_get(scatt_result,0), gsl_vector_get(scatt_result,1), gsl_vector_get(scatt_result,2), gsl_vector_get(scatt_result,3));
      
     
     
@@ -250,7 +250,7 @@ void stokesScatter(double *s, double *orig_s,  gsl_vector *ph_p_orig, gsl_vector
     gsl_matrix_free(scatt);
     gsl_vector_free(scatt_result);
 }
-*/
+
 
 int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand, FILE *fPtr)
 {

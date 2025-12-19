@@ -13,6 +13,8 @@ double findPhi(double *x_old, double *y_old, double *x_new, double *y_new);
 
 void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FILE *fPtr);
 
+void stokesScatter(double *s, double *orig_s,  gsl_vector *ph_p_orig, gsl_vector *result0, double ph_p_prime, double scattered_ph_e, FILE *fPtr);
+
 int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand, FILE *fPtr);
 
 int comptonScatter(double *theta, double *phi, gsl_rng * rand, FILE *fPtr);
