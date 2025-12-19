@@ -174,7 +174,7 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
 
 void stokesScatter(double *s, double *orig_s,  gsl_vector *ph_p_orig, gsl_vector *result0, double ph_p_prime, double scattered_ph_e, FILE *fPtr)
 {
-    double dot_prod_result=0, theta=0;
+    double dot_prod_result=0, theta=0, phi=0;
     double *z_axis_electron_rest_frame=malloc(3*sizeof(double)); //basis vector of the z axis in the elctron rest frame
     double x_tilde[3]={0,0,0}, y_tilde[3]={0,0,0}, x_tilde_new[3]={0,0,0}, y_tilde_new[3]={0,0,0};//initalize arrays to hold stokes coordinate system
     gsl_matrix *scatt= gsl_matrix_calloc (4, 4); //fano's matrix for scattering stokes parameters
@@ -208,7 +208,7 @@ void stokesScatter(double *s, double *orig_s,  gsl_vector *ph_p_orig, gsl_vector
 
     
     //do the scattering of the stokes parameters
-    gsl_matrix_set(scatt, 0,0,1.0+pow(cos(theta), 2.0)+((1-cos(theta))*(gsl_vector_get(ph_p_orig,0) - gsl_vector_get(result,0))/(M_EL*C_LIGHT ) ) ); //following lundman's matrix
+    gsl_matrix_set(scatt, 0,0,1.0+pow(cos(theta), 2.0)+((1-cos(theta))*(gsl_vector_get(ph_p_orig,0) - scattered_ph_e)/(M_EL*C_LIGHT ) ) ); //following lundman's matrix
     gsl_matrix_set(scatt, 0,1, sin(theta)*sin(theta));
     gsl_matrix_set(scatt, 1,0, sin(theta)*sin(theta));
     gsl_matrix_set(scatt, 1,1,1.0+cos(theta)*cos(theta));
