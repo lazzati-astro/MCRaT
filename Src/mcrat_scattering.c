@@ -503,7 +503,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
         //if (STOKES_SWITCH != 0)
         #if STOKES_SWITCH == ON
         {
-            stokesScatter(s_test, ph_p_orig, ph_p_prime, fPtr);
+            stokesScatter(s, ph_p_orig, ph_p_prime, fPtr);
             
         }
         #endif
