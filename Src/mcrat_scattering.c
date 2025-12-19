@@ -502,8 +502,8 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
         //if (STOKES_SWITCH != 0)
         #if STOKES_SWITCH == ON
         {
-            double *test_s=calloc(4*sizeof(double));
-            stokesScatter(test_s, s, ph_p_orig, result0, (*(ph_p_prime+0)), gsl_vector_get(result,0));
+            double *test_s=calloc(4,sizeof(double));
+            stokesScatter(test_s, s, ph_p_orig, result0, (*(ph_p_prime+0)), gsl_vector_get(result,0), fPtr);
             
             //orient the stokes coordinate system such that its perpendicular to the scattering plane
             findXY(gsl_vector_ptr(ph_p_orig, 1),z_axis_electron_rest_frame, x_tilde, y_tilde);
