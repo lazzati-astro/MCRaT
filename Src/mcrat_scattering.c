@@ -192,12 +192,12 @@ void stokesScatter(double *s,  gsl_vector *ph_p_orig, double *ph_p_scattered, FI
 
     //orient the stokes coordinate system such that its perpendicular to the scattering plane
     findXY(gsl_vector_ptr(ph_p_orig, 1),z_axis_electron_rest_frame, x_tilde, y_tilde);
-    findXY((ph_p_prime+1),gsl_vector_ptr(ph_p_orig, 1), x_tilde_new, y_tilde_new);
+    findXY((ph_p_scattered+1),gsl_vector_ptr(ph_p_orig, 1), x_tilde_new, y_tilde_new);
     phi=findPhi(x_tilde, y_tilde, x_tilde_new, y_tilde_new);
     mullerMatrixRotation(phi, s, fPtr);
     
     //find the theta between the incoming and scattered photons, by doing dot product and taking arccos of it
-    dot_prod_result=(gsl_vector_get(ph_p_orig,1)*(*(ph_p_prime+1))+gsl_vector_get(ph_p_orig,2)*(*(ph_p_prime+2))+gsl_vector_get(ph_p_orig,3)*(*(ph_p_prime+3)))/(gsl_vector_get(ph_p_orig,0)*(*(ph_p_prime+0))) ;
+    dot_prod_result=(gsl_vector_get(ph_p_orig,1)*(*(ph_p_scattered+1))+gsl_vector_get(ph_p_orig,2)*(*(ph_p_scattered+2))+gsl_vector_get(ph_p_orig,3)*(*(ph_p_scattered+3)))/(gsl_vector_get(ph_p_orig,0)*(*(ph_p_scattered+0))) ;
     
     if ((dot_prod_result<-1) || (dot_prod_result>1))
     {
@@ -208,13 +208,13 @@ void stokesScatter(double *s,  gsl_vector *ph_p_orig, double *ph_p_scattered, FI
 
     
     //do the scattering of the stokes parameters
-    gsl_matrix_set(scatt, 0,0,1.0+pow(cos(theta), 2.0)+((1-cos(theta))*(gsl_vector_get(ph_p_orig,0) - (*(ph_p_prime+0)))/(M_EL*C_LIGHT ) ) ); //following lundman's matrix
+    gsl_matrix_set(scatt, 0,0,1.0+pow(cos(theta), 2.0)+((1-cos(theta))*(gsl_vector_get(ph_p_orig,0) - (*(ph_p_scattered+0)))/(M_EL*C_LIGHT ) ) ); //following lundman's matrix
     gsl_matrix_set(scatt, 0,1, sin(theta)*sin(theta));
     gsl_matrix_set(scatt, 1,0, sin(theta)*sin(theta));
     gsl_matrix_set(scatt, 1,1,1.0+cos(theta)*cos(theta));
     gsl_matrix_set(scatt, 2,2, 2.0*cos(theta));
-    gsl_matrix_set(scatt, 3,3, 2.0*cos(theta)+ ((cos(theta))*(1-cos(theta))*(gsl_vector_get(ph_p_orig,0) - (*(ph_p_prime+0)))/(M_EL*C_LIGHT )) );
-    //gsl_matrix_scale(scatt, (gsl_vector_get(result,0)/(*(ph_p_prime+0)))*((gsl_vector_get(result,0)/(*(ph_p_prime+0))))*0.5*3*THOM_X_SECT/(8*M_PI) ); //scale the matrix by 0.5*r_0^2 (\epsilon/\epsilon_0)^2 DONT NEED THIS BECAUSE WE NORMALIZE STOKES VECTOR SO THIS CANCELS ITSELF OUT
+    gsl_matrix_set(scatt, 3,3, 2.0*cos(theta)+ ((cos(theta))*(1-cos(theta))*(gsl_vector_get(ph_p_orig,0) - (*(ph_p_scattered+0)))/(M_EL*C_LIGHT )) );
+    //gsl_matrix_scale(scatt, (gsl_vector_get(result,0)/(*(ph_p_scattered+0)))*((gsl_vector_get(result,0)/(*(ph_p_scattered+0))))*0.5*3*THOM_X_SECT/(8*M_PI) ); //scale the matrix by 0.5*r_0^2 (\epsilon/\epsilon_0)^2 DONT NEED THIS BECAUSE WE NORMALIZE STOKES VECTOR SO THIS CANCELS ITSELF OUT
     gsl_blas_dgemv(CblasNoTrans, 1, scatt, &stokes.vector, 0, scatt_result);
     
 //     fprintf(fPtr,"before s: %e, %e, %e,%e\n", gsl_vector_get(&stokes.vector,0), gsl_vector_get(&stokes.vector,1), gsl_vector_get(&stokes.vector,2), gsl_vector_get(&stokes.vector,3));
@@ -234,10 +234,10 @@ void stokesScatter(double *s,  gsl_vector *ph_p_orig, double *ph_p_scattered, FI
     
     
     //need to find current stokes coordinate system defined in the plane of k-k_0
-    findXY((ph_p_prime+1),gsl_vector_ptr(ph_p_orig, 1), x_tilde, y_tilde);
+    findXY((ph_p_scattered+1),gsl_vector_ptr(ph_p_orig, 1), x_tilde, y_tilde);
     
     //then find the new coordinate system between scattered photon 4 onetum and the z axis
-    findXY( (ph_p_prime+1),z_axis_electron_rest_frame, x_tilde_new, y_tilde_new);
+    findXY( (ph_p_scattered+1),z_axis_electron_rest_frame, x_tilde_new, y_tilde_new);
     
     //find phi to transform between the two coodinate systems
     phi=findPhi(x_tilde, y_tilde, x_tilde_new, y_tilde_new);
