@@ -48,7 +48,7 @@ void findXY(double *v_ph, double *vector, double *x, double *y)
     *(y+1)= -1*((*(v_ph+0))*(*(vector+2))-(*(v_ph+2))*(*(vector+0)));
     *(y+2)= ((*(v_ph+0))*(*(vector+1))-(*(v_ph+1))*(*(vector+0))); // vector X v_ph
     
-    if ( (*(y+0)==0) && (*(y+1)==0)|| (*(y+2))==0)
+    if ( (*(y+0)==0) && (*(y+1)==0) && (*(y+2))==0)
     {
         printf("The calculated y stokes plane coordinate value is 0\n\n");
         printf("This is most likely due to the boosted photon velocity vector being parallel to the velocity vector that was used for the lorentz boost. \n\n");
