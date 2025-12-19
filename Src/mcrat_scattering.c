@@ -265,8 +265,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     double x_tilde[3]={0,0,0}, y_tilde[3]={0,0,0}, x_tilde_new[3]={0,0,0}, y_tilde_new[3]={0,0,0};//initalize arrays to hold stokes coordinate system
     gsl_matrix *rot0= gsl_matrix_calloc (3, 3); //create matricies thats 3x3 to do rotations
     gsl_matrix *rot1= gsl_matrix_calloc (3, 3);
-    gsl_matrix *scatt= gsl_matrix_calloc (4, 4); //fano's matrix for scattering stokes parameters
-    gsl_vector *scatt_result=gsl_vector_calloc (4);
+    
     gsl_vector *result0=gsl_vector_calloc (3); //vectors to hold results of rotations
     gsl_vector *result1=gsl_vector_calloc (3);
     gsl_vector *result=gsl_vector_calloc (4);
@@ -274,7 +273,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     gsl_vector *ph_p_orig=gsl_vector_calloc (4) ;//vector to hold the original incoming photon velocity vector in the electron rest frame
     gsl_vector_view ph_p ;//create vector to hold comoving photon and electron 4 momentum
     gsl_vector_view el_p ;
-    gsl_vector_view stokes, test;
+    gsl_vector_view test;
     
 
     /*
@@ -322,12 +321,9 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     //printf("New ph_p in electron rest frame: %e, %e, %e,%e\n", *(ph_p_prime+0), *(ph_p_prime+1), *(ph_p_prime+2), *(ph_p_prime+3));
     
     //rotate 'stokes plane'
-    //if (STOKES_SWITCH != 0)
     #if STOKES_SWITCH == ON
     {
         stokesRotation(el_v, (ph_comov+1), (ph_p_prime+1), s, fPtr);
-        stokes=gsl_vector_view_array(s, 4);
-
     }
     #endif
     
@@ -536,8 +532,8 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
         //exit(0);
     }
     
-    gsl_matrix_free(rot0); gsl_matrix_free(rot1);gsl_matrix_free(scatt);gsl_vector_free(result0);gsl_vector_free(result1);gsl_vector_free(result);
-    gsl_vector_free(scatt_result);gsl_vector_free(ph_p_orig);
+    gsl_matrix_free(rot0); gsl_matrix_free(rot1);gsl_vector_free(result0);gsl_vector_free(result1);gsl_vector_free(result);
+    gsl_vector_free(ph_p_orig);
     gsl_vector_free(whole_ph_p);free(ph_p_prime);free(el_p_prime);free(el_v); free(negative_el_v); free(z_axis_electron_rest_frame);
     
     return scattering_occured;
