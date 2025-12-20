@@ -35,19 +35,28 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
         hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[ph_block_index], (hydro_data->v1)[ph_block_index], 0, (hydro_data->r0)[ph_block_index], (hydro_data->r1)[ph_block_index], ph_phi);
     #endif
 
-    fl_v_x = fluid_beta[0];
-    fl_v_y = fluid_beta[1];
-    fl_v_z = fluid_beta[2];
-
-    fl_v_norm = sqrt(fl_v_x*fl_v_x+fl_v_y*fl_v_y+fl_v_z*fl_v_z);
-    ph_v_norm = sqrt((ph->p1)*(ph->p1)+(ph->p2)*(ph->p2)+(ph->p3)*(ph->p3));
-
-    //(*(n_cosangle+i))=((fl_v_x* (ph->p1))+(fl_v_y* (ph->p2))+(fl_v_z* (ph->p3)))/(fl_v_norm*ph_v_norm ); //find cosine of the angle between the photon and the fluid velocities via a dot product
-    n_cosangle = ((fl_v_x* (ph->p1))+(fl_v_y* (ph->p2))+(fl_v_z* (ph->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
-
     beta = sqrt(1.0-1.0/((hydro_data->gamma)[ph_block_index]*(hydro_data->gamma)[ph_block_index]));
 
-    fluid_factor=(1.0-beta*n_cosangle);
+    if (beta != 0)
+    {
+        fl_v_x = fluid_beta[0];
+        fl_v_y = fluid_beta[1];
+        fl_v_z = fluid_beta[2];
+
+        fl_v_norm = sqrt(fl_v_x*fl_v_x+fl_v_y*fl_v_y+fl_v_z*fl_v_z);
+        ph_v_norm = sqrt((ph->p1)*(ph->p1)+(ph->p2)*(ph->p2)+(ph->p3)*(ph->p3));
+
+        //find cosine of the angle between the photon and the fluid velocities via a dot product
+        n_cosangle = ((fl_v_x* (ph->p1))+(fl_v_y* (ph->p2))+(fl_v_z* (ph->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
+
+        fluid_factor=(1.0-beta*n_cosangle);
+    }
+    else
+    {
+        //if beta =0 which is the less likely scenario (for jets) then n_cosangle and fluid_factor is nan b/c dividing by 0. 
+        //we already konw that in this case, the optical depth modification due to the fluid motion is removed, so just set this to 1.
+        fluid_factor=1;
+    }
 
     //save values
     thermal_n_dens_lab = (hydro_data->dens_lab)[ph_block_index]/M_P;
