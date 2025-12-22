@@ -189,12 +189,6 @@ void stokesScatter(double *s,  gsl_vector *ph_p_orig, double *ph_p_scattered, FI
     *(z_axis_electron_rest_frame+0)=0;
     *(z_axis_electron_rest_frame+1)=0;
     *(z_axis_electron_rest_frame+2)=1;
-
-    //orient the stokes coordinate system such that its perpendicular to the scattering plane
-    findXY(gsl_vector_ptr(ph_p_orig, 1),z_axis_electron_rest_frame, x_tilde, y_tilde);
-    findXY((ph_p_scattered+1),gsl_vector_ptr(ph_p_orig, 1), x_tilde_new, y_tilde_new);
-    phi=findPhi(x_tilde, y_tilde, x_tilde_new, y_tilde_new);
-    mullerMatrixRotation(phi, s, fPtr);
     
     //find the theta between the incoming and scattered photons, by doing dot product and taking arccos of it
     dot_prod_result=(gsl_vector_get(ph_p_orig,1)*(*(ph_p_scattered+1))+gsl_vector_get(ph_p_orig,2)*(*(ph_p_scattered+2))+gsl_vector_get(ph_p_orig,3)*(*(ph_p_scattered+3)))/(gsl_vector_get(ph_p_orig,0)*(*(ph_p_scattered+0))) ;
@@ -205,6 +199,17 @@ void stokesScatter(double *s,  gsl_vector *ph_p_orig, double *ph_p_scattered, FI
         dot_prod_result=round(dot_prod_result);//do this rounding so numerical error that causes value to be <-1 or >1 gets rounded and becomes a real value if its close enough to these limits
     }
     theta=acos(dot_prod_result);
+
+    //if we have a photon that is scattered at a theta of 0 or 180 degrees, the stokes plane doesnt have to be rotated. If we try to do that we get nans
+    if ((dot_prod_result!=-1) || (dot_prod_result!=1))
+    {
+        //orient the stokes coordinate system such that its perpendicular to the scattering plane
+        findXY(gsl_vector_ptr(ph_p_orig, 1),z_axis_electron_rest_frame, x_tilde, y_tilde);
+        findXY((ph_p_scattered+1),gsl_vector_ptr(ph_p_orig, 1), x_tilde_new, y_tilde_new);
+        phi=findPhi(x_tilde, y_tilde, x_tilde_new, y_tilde_new);
+        mullerMatrixRotation(phi, s, fPtr);
+    }
+    
 
     
     //do the scattering of the stokes parameters
@@ -232,18 +237,22 @@ void stokesScatter(double *s,  gsl_vector *ph_p_orig, double *ph_p_scattered, FI
     *(s+3)=gsl_vector_get(scatt_result,3)/gsl_vector_get(scatt_result,0);
     //fprintf(fPtr,"s after norm: %e, %e, %e,%e\n", gsl_vector_get(&stokes.vector,0), gsl_vector_get(&stokes.vector,1), gsl_vector_get(&stokes.vector,2), gsl_vector_get(&stokes.vector,3));
     
-    
-    //need to find current stokes coordinate system defined in the plane of k-k_0
-    findXY((ph_p_scattered+1),gsl_vector_ptr(ph_p_orig, 1), x_tilde, y_tilde);
-    
-    //then find the new coordinate system between scattered photon 4 onetum and the z axis
-    findXY( (ph_p_scattered+1),z_axis_electron_rest_frame, x_tilde_new, y_tilde_new);
-    
-    //find phi to transform between the two coodinate systems
-    phi=findPhi(x_tilde, y_tilde, x_tilde_new, y_tilde_new);
-    
-    //do the rotation
-    mullerMatrixRotation(phi, s, fPtr);
+    //no need to undo the rotation if we never did it due to the scattering being at an angle of 0 or 180 degrees with respect to the
+    // incoming photon
+    if ((dot_prod_result!=-1) || (dot_prod_result!=1))
+    {
+        //need to find current stokes coordinate system defined in the plane of k-k_0
+        findXY((ph_p_scattered+1),gsl_vector_ptr(ph_p_orig, 1), x_tilde, y_tilde);
+        
+        //then find the new coordinate system between scattered photon 4 onetum and the z axis
+        findXY( (ph_p_scattered+1),z_axis_electron_rest_frame, x_tilde_new, y_tilde_new);
+        
+        //find phi to transform between the two coodinate systems
+        phi=findPhi(x_tilde, y_tilde, x_tilde_new, y_tilde_new);
+        
+        //do the rotation
+        mullerMatrixRotation(phi, s, fPtr);
+    }
     
     free(z_axis_electron_rest_frame);
     gsl_matrix_free(scatt);
