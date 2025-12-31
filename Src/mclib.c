@@ -1137,6 +1137,7 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
     double *negative_fluid_beta=malloc(3*sizeof(double));//pointer to hold negative fluid velocity vector
     double *s=malloc(4*sizeof(double)); //vector to hold the stokes parameters for a given photon
     struct photon *ph=NULL; //pointer to a photon struct
+    bool do_rotation=false; //boolean to help us determine if the stokes parameter needs to be rotated going from lab to fluid frame. We dont need to do this if the fluid is stationary, and if we do then we get a bunch of nans so avoid by setting to false
     
     i=0;
     old_scatt_time=0;
@@ -1241,11 +1242,13 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
         
             //then rotate the stokes plane by some angle such that we are in the stokes coordinat eystsem after the lorentz boost
             #if STOKES_SWITCH == ON
-            {
-
-                stokesRotation(fluid_beta, (ph_p+1), (ph_p_comov+1), s, fPtr);
-                
-            }
+                //check to see if the fluid is not stationary and we need to do this frame rotation at all, otherwise we get nans
+                do_rotation=(!((*(fluid_beta+0) == 0) && (*(fluid_beta+1) == 0) && (*(fluid_beta+2) == 0)));
+            
+                if (do_rotation)
+                {
+                    stokesRotation(fluid_beta, (ph_p+1), (ph_p_comov+1), s, fPtr);
+                }
             #endif
             
             //exit(0);
@@ -1314,15 +1317,18 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
 
                 
                 #if STOKES_SWITCH == ON
-                {
-                    stokesRotation(negative_fluid_beta, (ph_p_comov+1), (ph_p+1), s, fPtr); //rotate to boost back to lab frame
+                
+                    if (do_rotation)
+                    {
+                        stokesRotation(negative_fluid_beta, (ph_p_comov+1), (ph_p+1), s, fPtr); //rotate to boost back to lab frame
+                    }
                     
                     //save stokes parameters
                     (ph->s0)= *(s+0); //I ==1
                     (ph->s1)= *(s+1);
                     (ph->s2)= *(s+2);
                     (ph->s3)= *(s+3);
-                }
+                
                 #endif
             
 
