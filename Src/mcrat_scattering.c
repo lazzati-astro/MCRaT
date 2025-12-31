@@ -180,6 +180,7 @@ void stokesScatter(double *s,  gsl_vector *ph_p_orig, double *ph_p_scattered, FI
     gsl_matrix *scatt= gsl_matrix_calloc (4, 4); //fano's matrix for scattering stokes parameters
     gsl_vector *scatt_result=gsl_vector_calloc (4);
     gsl_vector_view stokes;
+    bool do_rotation=false;
 
 
     stokes=gsl_vector_view_array(s, 4);
@@ -200,8 +201,10 @@ void stokesScatter(double *s,  gsl_vector *ph_p_orig, double *ph_p_scattered, FI
     }
     theta=acos(dot_prod_result);
 
-    //if we have a photon that is scattered at a theta of 0 or 180 degrees, the stokes plane doesnt have to be rotated. If we try to do that we get nans
-    if ((dot_prod_result!=-1) && (dot_prod_result!=1))
+    //if we have a photon that is scattered at a theta of 0 or 180 degrees, the stokes plane doesnt have to be rotated. If we try to do that we get nans. compare dot product against machine precision to prevent getting nans
+    do_rotation=((gsl_fcmp(dot_prod_result, 1, GSL_DBL_EPSILON) != 0) && (gsl_fcmp(dot_prod_result, -1, GSL_DBL_EPSILON) != 0));
+    
+    if (do_rotation)
     {
         //orient the stokes coordinate system such that its perpendicular to the scattering plane
         findXY(gsl_vector_ptr(ph_p_orig, 1),z_axis_electron_rest_frame, x_tilde, y_tilde);
@@ -239,7 +242,7 @@ void stokesScatter(double *s,  gsl_vector *ph_p_orig, double *ph_p_scattered, FI
     
     //no need to undo the rotation if we never did it due to the scattering being at an angle of 0 or 180 degrees with respect to the
     // incoming photon
-    if ((dot_prod_result!=-1) && (dot_prod_result!=1))
+    if (do_rotation)
     {
         //need to find current stokes coordinate system defined in the plane of k-k_0
         findXY((ph_p_scattered+1),gsl_vector_ptr(ph_p_orig, 1), x_tilde, y_tilde);
