@@ -709,7 +709,7 @@ double calculateNormBrokenPowerLawEnergyDens(double p1, double p2, double gamma_
             b_field = getMagneticFieldMagnitude(hydro_data, i);
 
             //this is the number density
-            (hydro_data->nonthermal_dens)[i] =  (b_field * b_field)/(8.0*M_PI* energy_dens_per_particle);
+            (hydro_data->nonthermal_dens)[i] = NONTHERMAL_CONVERSION_FACTOR * (b_field * b_field)/(8.0*M_PI* energy_dens_per_particle);
 
             fprintf(fPtr, "in cell %d B: %e, energy_dens_per_particle %e, the particle number density is: %e, the nonthermal number density is: %e\n", i,b_field, energy_dens_per_particle, (hydro_data->dens)[i]/M_P, (hydro_data->nonthermal_dens)[i]);
         }

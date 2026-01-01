@@ -275,6 +275,11 @@ struct hydro_dataframe
         #define TAU_CALCULATION TABLE
     #endif
 
+    //set the default value of the amount of magnetic field energy that goes into accelerating the nonthermal electrons into their specified distribution. set this to be 10%
+    #ifndef
+        #define NONTHERMAL_CONVERSION_FACTOR 0.1
+    #endif
+
     //The user can specify NONTHERMAL_E_DIST and set TAU_CALCULATION = DIRECT, this is not permitted so throw an error
     #if TAU_CALCULATION == DIRECT
         #error NONTHERMAL_E_DIST cannot be set while TAU_CALCULATION = DIRECT.
