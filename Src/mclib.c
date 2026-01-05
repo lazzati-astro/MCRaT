@@ -183,6 +183,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                 //have to get random frequency for the photon comoving frequency
                 if (spect=='w')
                 {
+                    /* old way which also seemed to  be wrong in many ways
                     y_dum=1; //initalize loop
                     yfr_dum=0;
                     while (y_dum>yfr_dum)
@@ -194,6 +195,11 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                     
                         yfr_dum=(1.0/(1.29e31))*pow((fr_dum/((hydro_data->temp)[i])),3.0)/(exp((PL_CONST*fr_dum)/(K_B*((hydro_data->temp)[i]) ))-1); //curve is normalized to maximum
                     }
+                     */
+                    //now sample from a gamma distribution with a=4 and b=1 (x^3*e^-x) and then convert x=h \nu / k_B*T to frequency \nu
+                    fr_dum = gsl_ran_gamma(rand, 4.0, 1.0);
+                    fr_dum*=K_B*((hydro_data->temp)[i])/PL_CONST;
+                    
                 }
                 else if (spect=='b')
                 {
