@@ -1285,7 +1285,7 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
                     status=gsl_integration_qags(&F, 10, nu_c, 0, 1e-2, 10000, w, &ph_dens_calc, &error); //find number of low energy seed photons in the tail of the BB distribution
                     //printf ("error: %s\n", gsl_strerror (status));
                     
-                    ph_dens_calc*=hydroElementVolume(hydro_data, i)/(ph_weight_adjusted);
+                    ph_dens_calc*=hydroElementVolume(hydro_data, i)/(ph_weight_adjusted)/hydro_data->fps;
                     
                     (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
                     
