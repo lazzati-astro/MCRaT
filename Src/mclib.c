@@ -230,18 +230,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                 else
                 {
                     //this is for custom spectrum sampling
-                    y_dum=1; //initalize loop
-                    yfr_dum=0;
-                    while (y_dum>yfr_dum)
-                    {
-                        fr_dum=gsl_rng_uniform_pos(rand)*6.3e11*((hydro_data->temp)[i]); //in Hz
-                        //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
-                        y_dum=gsl_rng_uniform_pos(rand);
-                        //printf("%lf ",fr_dum);
-                    
-                        yfr_dum=custom_spectrum(fr_dum);
-                    }
-
+                    fr_dum = custom_photon_sampler(hydro_data, i, rand, fPtr);
                     
                 }
                 //printf("%lf, %lf,%lf,%e \n",(hydro_data->temp)[i],fr_dum, y_dum, yfr_dum);
