@@ -196,7 +196,8 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                         yfr_dum=(1.0/(1.29e31))*pow((fr_dum/((hydro_data->temp)[i])),3.0)/(exp((PL_CONST*fr_dum)/(K_B*((hydro_data->temp)[i]) ))-1); //curve is normalized to maximum
                     }
                      */
-                    //now sample from a gamma distribution with a=4 and b=1 (x^3*e^-x) and then convert x=h \nu / k_B*T to frequency \nu
+                    //now sample from a gamma distribution with a=2 and b=1 (x^2*e^-x) and then convert x=h \nu / k_B*T to frequency \nu
+                    //this is due to the fact that we are sampling from the wien photon density spectrum which is the wien spectrum divided by h \nu.
                     //verified with simulations in python to verify this sampled function and transform does actually return a wien function for sufficiently large sample size (of 100000)
                     fr_dum = gsl_ran_gamma(rand, 3.0, 1.0);
                     fr_dum*=K_B*((hydro_data->temp)[i])/PL_CONST;
