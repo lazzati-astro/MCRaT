@@ -125,6 +125,9 @@ extern const double R_EL;
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_sf_gamma.h>
 
+#include <gsl/gsl_const_cgsm.h>
+#include <gsl/gsl_const_num.h>
+
 //include all other header files in mcrat
 #include "mcrat_input.h"
 
