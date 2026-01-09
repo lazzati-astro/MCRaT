@@ -204,28 +204,19 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                 }
                 else if (spect=='b')
                 {
-                        /* old way
-                        fr_max=(5.88e10)*((hydro_data->temp)[i]);//(C_LIGHT*(*(temps+i)))/(0.29); //max frequency of bb
-                        bb_norm=(PL_CONST*fr_max * pow((fr_max/C_LIGHT),2.0))/(exp(PL_CONST*fr_max/(K_B*((hydro_data->temp)[i])))-1); //find value of bb at fr_max
-                        yfr_dum=((1.0/bb_norm)*PL_CONST*fr_dum * pow((fr_dum/C_LIGHT),2.0))/(exp(PL_CONST*fr_dum/(K_B*((hydro_data->temp)[i])))-1); //curve is normalized to vaue of bb @ max frequency
-                        */
+                    fr_max=(3.31e10)*((hydro_data->temp)[i]);//max frequency of bb photon density spectrum
+                    bb_norm=( pow((fr_max),2.0))/gsl_expm1(PL_CONST*fr_max/(K_B*((hydro_data->temp)[i]))); //(exp(PL_CONST*fr_max/(K_B*bb_temp))-1); //find value of bb at fr_max
+                    y_dum=1; //initalize loop
+                    yfr_dum=0;
+                    while (y_dum>yfr_dum)
+                    {
+                        fr_dum=gsl_rng_uniform_pos(rand)*6.3e11*((hydro_data->temp)[i]); //in Hz
+                        //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
+                        y_dum=gsl_rng_uniform_pos(rand);
                         
-                        test=0;
-                        test_rand1=gsl_rng_uniform_pos(rand);
-                        test_rand2=gsl_rng_uniform_pos(rand);
-                        test_rand3=gsl_rng_uniform_pos(rand);
-                        test_rand4=gsl_rng_uniform_pos(rand);
-                        test_rand5=gsl_rng_uniform_pos(rand);
-                        test_cnt=0;
-                        while (test<M_PI*M_PI*M_PI*M_PI*test_rand1/90.0)
-                        {
-                            test_cnt+=1;
-                            test+=1/(test_cnt*test_cnt*test_cnt*test_cnt);
-                        }
-                        fr_dum=-log(test_rand2*test_rand3*test_rand4*test_rand5)/test_cnt;
-                        fr_dum*=K_B*((hydro_data->temp)[i])/PL_CONST;
-                        y_dum=0; yfr_dum=1;
-                        
+                        yfr_dum=((1.0/bb_norm)* pow((fr_dum),2.0))/gsl_expm1(PL_CONST*fr_dum/(K_B*((hydro_data->temp)[i]))); //(exp(PL_CONST*fr_dum/(K_B*bb_temp))-1); //curve is normalized to vaue of bb @ max frequency
+                    }
+
                 }
                 else
                 {
