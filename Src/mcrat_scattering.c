@@ -158,7 +158,7 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
     //find stokes coordinate sys in orig frame with respect to z axis
     findXY(v_ph_boosted, &z_hat, &x_new, &y_new);
     
-    if ( isnan(*(y+0)) || isnan(*(y+1)) || isnan(*(y+2)))
+    if ( isnan(*(y_new+0)) || isnan(*(y_new+1)) || isnan(*(y_new+2)))
     {
         printf("A plane coordinate value is nan\n\n");
         printf("This is most likely due to the boosted photon velocity vector being parallel to the z unit vector. \n\n");
@@ -166,12 +166,13 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
         fprintf(fPtr, "This is most likely due to the boosted photon velocity vector being parallel to the z unit vector. \n\n");
         fflush(fPtr);
         //can just set x and y to be the proper unit vectors
-        x[0]=1;
-        x[1]=0;
-        x[2]=0;
-        y[0]=0;
-        y[1]=1;
-        y[2]=0;
+        x_new[0]=1;
+        x_new[1]=0;
+        x_new[2]=0;
+        
+        y_new[0]=0;
+        y_new[1]=1;
+        y_new[2]=0;
     }
 
     
