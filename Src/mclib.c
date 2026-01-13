@@ -235,7 +235,26 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                     position_phi=0;//dont need this in 3D
                 #endif
                com_v_phi=gsl_rng_uniform(rand)*2*M_PI;
-               com_v_theta=acos((gsl_rng_uniform(rand)*2)-1);
+               //this seemed to produce lab frame spectra with significantly differnet temperatures/shapes than what was expected for wien/blackbody spectra
+               //com_v_theta=acos((gsl_rng_uniform(rand)*2)-1);
+                
+               //trying to overwrite com_v_theta based on sampling of lab anisotropic angle distribution of photons
+               gsl_vector_view b=gsl_vector_view_array(boost, 3);
+               double beta=gsl_blas_dnrm2(&b.vector);
+               y_dum=1; //initalize loop
+               yfr_dum=0;
+               while (y_dum>yfr_dum)
+               {
+                   com_v_theta=2*gsl_rng_uniform_pos(rand)-1; //cos(angle) is from -1 to 1
+                   //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
+                   y_dum=gsl_rng_uniform_pos(rand);
+                    
+                   yfr_dum=0.5*(1+beta*com_v_theta); //propability density of angle of photon with respect to fluid motion (doppler boosting factor)
+               }
+               com_v_theta=acos(com_v_theta);
+               //trying to overwrite com_v_theta based on sampling of lab anisotropic angle distribution of photons
+
+                
                //printf("%lf, %lf, %lf\n", position_phi, com_v_phi, com_v_theta);
                
                //populate 4 momentum comoving array
