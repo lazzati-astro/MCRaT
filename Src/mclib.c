@@ -239,6 +239,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                //com_v_theta=acos((gsl_rng_uniform(rand)*2)-1);
                 
                //trying to overwrite com_v_theta based on sampling of lab anisotropic angle distribution of photons
+                //see eg Section 3.2.1 @ doi.org/10.1088/0004-637X/807/1/31 & Section 3.5 @ doi.org/10.3847/1538-4357/ac75cb
                gsl_vector_view b=gsl_vector_view_array(boost, 3);
                double beta=gsl_blas_dnrm2(&b.vector);
                y_dum=1; //initalize loop
