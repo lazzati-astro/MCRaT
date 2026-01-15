@@ -64,7 +64,20 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
     //TODO: extend this to the non-thermal electron dist
     #if NONTHERMAL_E_DIST == OFF
         getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index], &norm_cross_section,  rand, fPtr);
-        (ph->total_optical_depth) = (thermal_n_dens_lab)*(THOM_X_SECT*norm_cross_section)*fluid_factor;
+        #if SCATTERING_BIAS_SWITCH == OFF
+            (ph->total_optical_depth) = (thermal_n_dens_lab)*(THOM_X_SECT*norm_cross_section)*fluid_factor;
+        #else
+            (ph->optical_depths)[0] = (thermal_n_dens_lab)*(THOM_X_SECT*norm_cross_section)*fluid_factor;
+            //fprintf(fPtr, "thermal tau: %e\n", (ph->optical_depths)[0] );
+
+            //set to 1 for now, this is most likely the best value for us
+            thermal_bias= calculateThermalScatteringBias(SCATTERING_BIAS_SCALING, hydro_data->average_dimless_theta, (hydro_data->temp)[ph_block_index], (ph->optical_depths)[0]);
+            (ph->scattering_bias)[0]=thermal_bias;
+    
+            ph->total_optical_depth=(ph->scattering_bias)[0]*(ph->optical_depths)[0];
+
+        #endif
+    
         tau = (ph->total_optical_depth);
     #else
         getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index], norm_cross_section,  rand, fPtr);
@@ -184,7 +197,7 @@ double calculateThermalScatteringBias(double alpha_parameter, double average_dim
 {
     double result=0, cell_dimless_theta=calcDimlessTheta(cell_temp);
     result=fmax(1.0, alpha_parameter*cell_dimless_theta*cell_dimless_theta/(average_dimless_theta*average_dimless_theta*tau));
-    return 1.0; //result; //set to 1 for testing/may be the best value for us
+    return result; //set to 1 for testing/may be the best value for us
 }
 
 double calculateNonthermalScatteringBias(double initial_scatt_bias, double initial_tau, double nonthermal_tau)

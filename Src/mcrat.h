@@ -146,6 +146,13 @@ extern const double R_EL;
     #endif
 #endif
 
+//if we want scattering bias, the user can set a scaling parameter (alpha_0 in the RAIKOU paper). if they havnt set anything, set this to be 1 by default
+#if SCATTERING_BIAS_SWITCH == ON
+    #ifndef SCATTERING_BIAS_SCALING
+        #define SCATTERING_BIAS_SCALING 1
+    #endif
+#endif
+
 //then include this file also in prep for the photon struct optical depth array being defined
 #include "hot_x_section.h"
 
