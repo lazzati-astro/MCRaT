@@ -137,6 +137,15 @@ extern const double R_EL;
     #define NONTHERMAL_E_DIST OFF
 #endif
 
+//if NONTHERMAL_E_DIST is on want to make sure that scattering bias is also set to be on. If not, then we check whether the user has specified scattering bias to be applied or not
+#if NONTHERMAL_E_DIST != OFF
+    #define SCATTERING_BIAS_SWITCH  ON
+#else
+    #ifndef SCATTERING_BIAS_SWITCH
+        #define SCATTERING_BIAS_SWITCH OFF
+    #endif
+#endif
+
 //then include this file also in prep for the photon struct optical depth array being defined
 #include "hot_x_section.h"
 
@@ -166,7 +175,7 @@ struct photon
     double weight; //each photon should have equal weight, sp this shouldnt matter, weight in mc.par file but across injections can have varying weights
     int nearest_block_index; //index that  allows for extraction of information of the hydro grid block that the photon si located within
     double time_to_scatter; //the sampled mean free path of the photon divided by C_LIGHT
-    #if NONTHERMAL_E_DIST != OFF
+    #if SCATTERING_BIAS_SWITCH != OFF
         double optical_depths[1+N_GAMMA]; //the optical depths that are calculated for thermal + non-thermal electrons with the nonthermal electron subgroups
         double scattering_bias[1+N_GAMMA];
     #endif
