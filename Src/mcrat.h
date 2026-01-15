@@ -297,7 +297,7 @@ struct hydro_dataframe
     #endif
 
     //set the default value of the amount of magnetic field energy that goes into accelerating the nonthermal electrons into their specified distribution. set this to be 10%
-    #ifndef
+    #ifndef NONTHERMAL_CONVERSION_FACTOR
         #define NONTHERMAL_CONVERSION_FACTOR 0.1
     #endif
 
