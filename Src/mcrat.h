@@ -248,8 +248,10 @@ struct hydro_dataframe
     int increment_scatt_frame; //same as above expect for frames that photons are acattered in
     #if NONTHERMAL_E_DIST != OFF
         double electron_dens_subgroup[N_GAMMA]; //the density of nonthermal electrons in each subgroup (needs to be multiplied by the number density of nonthermal electrons to get the actual number density)
-        double average_dimless_theta; //the volume average dimensionless temperature for us to use in calculating scattering bias
         double *nonthermal_dens; //this is the number density of non-thermal electrons in each cell (usually defined based on B field)
+    #endif
+    #if SCATTERING_BIAS_SWITCH != OFF
+        double average_dimless_theta; //the volume average dimensionless temperature for us to use in calculating scattering bias
     #endif
     
     struct SpatialGrid *grid;
