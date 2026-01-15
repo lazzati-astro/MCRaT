@@ -24,6 +24,9 @@
     #else
         #error Unnknown nonthermal electron distribution.
     #endif
+#else
+    //set this to be 0, incase the user wants to use biasing but is not considering non-thermal electrons
+    #define N_GAMMA 0
 
 #endif
 
