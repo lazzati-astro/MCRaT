@@ -1287,7 +1287,7 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
             {
                 //fprintf(fPtr,"Within the if!\n");
                 //fflush(fPtr);
-                #if NONTHERMAL_E_DIST != OFF
+                #if SCATTERING_BIAS_SWITCH == ON
                     // if the scattering bias is 1, we already know that the weight of the nonscattered photon is 0 so can
                     // ignore all of these steps
                     if (ph->scattering_bias[scattering_subgroup] != 1)
@@ -1587,7 +1587,7 @@ void logspace(double start, double stop, int num, double *array)
     }
 }
 
-#if NONTHERMAL_E_DIST != OFF
+#if SCATTERING_BIAS_SWITCH == ON
     void calculateAverageDimlessTheta(struct hydro_dataframe *hydro_data, FILE *fPtr)
     {
         int i;
