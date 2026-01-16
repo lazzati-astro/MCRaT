@@ -1303,7 +1303,7 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
                         //try to get aroudn this by copying the contents of ph pointer to a new photon struct and then pass that in
                         struct photon temp_ph;
                         memcpy(&temp_ph, ph, sizeof(struct photon));
-                        addToPhotonList(photon_list, ph, 1);
+                        addToPhotonList(photon_list, &temp_ph, 1);
                         
                         //now get the address of the scattered photon again incase the photon list was expanded and the original address is no longer valid
                         ph=getPhoton(photon_list, ph_index);
