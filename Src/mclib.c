@@ -1299,7 +1299,14 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
                         ph->weight = unscattered_photon_weight;
                         
                         //add the original to our photon list struct, which does a memcpy into a NULL photon's index
+                        //if the photon list has to be expanded, the ph pointer may no longer be valid.
+                        //try to get aroudn this by copying the contents of ph pointer to a new photon struct and then pass that in
+                        struct photon temp_ph;
+                        memcopy(&temp_ph, ph);
                         addToPhotonList(photon_list, ph, 1);
+                        
+                        //now get the address of the scattered photon again incase the photon list was expanded and the original address is no longer valid
+                        ph=getPhoton(photon_list, ph_index);
                         
                         //now set the scattered photon weight field  to the correct value
                         ph->weight = scattered_photon_weight;
