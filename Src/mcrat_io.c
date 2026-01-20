@@ -127,8 +127,10 @@ void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclos
     int num_thread=omp_get_num_threads();
     #endif
     char mc_file[STR_BUFFER]="", group[200]="", group_weight[200]="", *ph_type=NULL;
-    double p0[net_num_ph], p1[net_num_ph], p2[net_num_ph], p3[net_num_ph] , r0[net_num_ph], r1[net_num_ph], r2[net_num_ph], num_scatt[net_num_ph], weight[net_num_ph], global_weight[net_num_ph];
-    double s0[net_num_ph], s1[net_num_ph], s2[net_num_ph], s3[net_num_ph], comv_p0[net_num_ph], comv_p1[net_num_ph], comv_p2[net_num_ph], comv_p3[net_num_ph];
+    double *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *comv_p0=NULL, *comv_p1=NULL, *comv_p2=NULL, *comv_p3=NULL; //these are optional
+    double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL , *r0=NULL, *r1=NULL, *r2=NULL, *num_scatt=NULL, *weight=NULL, *global_weight=NULL;
+//    double p0[net_num_ph], p1[net_num_ph], p2[net_num_ph], p3[net_num_ph] , r0[net_num_ph], r1[net_num_ph], r2[net_num_ph], num_scatt[net_num_ph], weight[net_num_ph], global_weight[net_num_ph];
+//    double s0[net_num_ph], s1[net_num_ph], s2[net_num_ph], s3[net_num_ph], comv_p0[net_num_ph], comv_p1[net_num_ph], comv_p2[net_num_ph], comv_p3[net_num_ph];
     hid_t  file, file_init, dspace, dspace_weight, fspace, mspace, prop, prop_weight, group_id;
     hid_t dset_p0, dset_p1, dset_p2, dset_p3, dset_r0, dset_r1, dset_r2, dset_s0, dset_s1, dset_s2, dset_s3, dset_num_scatt, dset_weight_2, dset_comv_p0, dset_comv_p1, dset_comv_p2, dset_comv_p3, dset_ph_type;
     herr_t status, status_group, status_weight, status_weight_2;
@@ -143,7 +145,30 @@ void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclos
     
     fprintf(fPtr, "num_ph %d num_ph_abs %d num_null_ph %d num_cyclosynch_ph_emit %d\nAllocated weight to be %d values large and other arrays to be %d\n",photon_list->num_photons,num_ph_abs,photon_list->num_null_photons,num_cyclosynch_ph_emit, net_num_ph, net_num_ph);
     
-    ph_type=malloc((net_num_ph)*sizeof(char));
+    // Allocate arrays dynamically
+    ph_type = malloc((net_num_ph)*sizeof(char));
+    p0 = malloc(net_num_ph * sizeof(double));
+    p1 = malloc(net_num_ph * sizeof(double));
+    p2 = malloc(net_num_ph * sizeof(double));
+    p3 = malloc(net_num_ph * sizeof(double));
+    r0 = malloc(net_num_ph * sizeof(double));
+    r1 = malloc(net_num_ph * sizeof(double));
+    r2 = malloc(net_num_ph * sizeof(double));
+    num_scatt = malloc(net_num_ph * sizeof(double));
+    weight = malloc(net_num_ph * sizeof(double));
+    global_weight = malloc(net_num_ph * sizeof(double));
+    #if STOKES_SWITCH == ON
+        s0 = malloc(net_num_ph * sizeof(double));
+        s1 = malloc(net_num_ph * sizeof(double));
+        s2 = malloc(net_num_ph * sizeof(double));
+        s3 = malloc(net_num_ph * sizeof(double));
+    #endif
+    #if COMV_SWITCH == ON
+        comv_p0 = malloc(net_num_ph * sizeof(double));
+        comv_p1 = malloc(net_num_ph * sizeof(double));
+        comv_p2 = malloc(net_num_ph * sizeof(double));
+        comv_p3 = malloc(net_num_ph * sizeof(double));
+    #endif
     
     //save photon data into large arrays, NEED TO KNOW HOW MANY NULL PHOTONS WE HAVE AKA SAVED SPACE THAT AREN'T ACTUALLY PHOTONS TO PROPERLY SAVE SPACE FOR ARRAYS ABOVE
     count=0;//used to keep track of weight values since it may not be the same as num_ph
@@ -800,8 +825,26 @@ void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclos
     
     
     /* Close resources */
-    
     free(ph_type);
+    free(p0);
+    free(p1);
+    free(p2);
+    free(p3);
+    free(r0);
+    free(r1);
+    free(r2);
+    free(num_scatt);
+    free(weight);
+    free(global_weight);
+    free(s0);
+    free(s1);
+    free(s2);
+    free(s3);
+    free(comv_p0);
+    free(comv_p1);
+    free(comv_p2);
+    free(comv_p3);
+    
     //status = H5Sclose (dspace);
     status = H5Dclose (dset_p0); status = H5Dclose (dset_p1); status = H5Dclose (dset_p2); status = H5Dclose (dset_p3);
     //if (COMV_SWITCH!=0)
