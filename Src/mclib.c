@@ -475,7 +475,13 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
     struct photon *ph=NULL;
 
     #if defined(_OPENMP)
-    num_thread=omp_get_num_threads(); //default is one above if theres no openmp usage
+        #pragma omp parallel
+        {
+            #pragma omp single
+            {
+                num_thread = omp_get_num_threads();
+            }
+        }
     #endif
 
     //initialize gsl random number generator fo each thread
@@ -656,7 +662,13 @@ void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hy
     struct photon *ph=NULL;
 
     #if defined(_OPENMP)
-        num_thread=omp_get_num_threads(); //default is one above if theres no openmp usage
+        #pragma omp parallel
+        {
+            #pragma omp single
+            {
+                num_thread = omp_get_num_threads();
+            }
+        }
     #endif
 
     //initialize gsl random number generator fo each thread
@@ -1085,7 +1097,14 @@ void updatePhotonPosition(struct photonList *photon_list, double t, FILE *fPtr)
  
     int i=0;
     #if defined(_OPENMP)
-    int num_thread=omp_get_num_threads();
+    int num_thread=1;
+        #pragma omp parallel
+        {
+            #pragma omp single
+            {
+                num_thread = omp_get_num_threads();
+            }
+        }
     #endif
     double old_position=0, new_position=0, divide_p0=0;
     struct photon *ph=NULL; //pointer to a photon struct
@@ -1420,9 +1439,6 @@ double averagePhotonEnergy(struct photonList *photon_list)
 {
     //to calculate weighted photon energy in ergs
     int i=0;
-    #if defined(_OPENMP)
-    int num_thread=omp_get_num_threads();
-    #endif
     double e_sum=0, w_sum=0;
     struct photon *ph=NULL;
     
@@ -1445,9 +1461,15 @@ double averagePhotonEnergy(struct photonList *photon_list)
 
 void phScattStats(struct photonList *photon_list, int *max, int *min, double *avg, double *r_avg, FILE *fPtr  )
 {
-    int temp_max=0, temp_min=INT_MAX,  i=0, count=0, count_synch=0, count_comp=0, count_i=0;
+    int temp_max=0, temp_min=INT_MAX,  i=0, count=0, count_synch=0, count_comp=0, count_i=0, num_thread=1;
     #if defined(_OPENMP)
-    int num_thread=omp_get_num_threads();
+        #pragma omp parallel
+        {
+            #pragma omp single
+            {
+                num_thread = omp_get_num_threads();
+            }
+        }
     #endif
     double sum=0, avg_r_sum=0, avg_r_sum_synch=0, avg_r_sum_comp=0, avg_r_sum_inject=0;
     struct photon *ph=NULL;
@@ -1526,9 +1548,15 @@ void phScattStats(struct photonList *photon_list, int *max, int *min, double *av
 void phMinMax(struct photonList *photon_list, double *min, double *max, double *min_theta, double *max_theta, FILE *fPtr)
 {
     double temp_r_max=0, temp_r_min=DBL_MAX, temp_theta_max=0, temp_theta_min=DBL_MAX;
-    int i=0;
+    int i=0, num_thread=1;
     #if defined(_OPENMP)
-    int num_thread=omp_get_num_threads();
+        #pragma omp parallel
+        {
+            #pragma omp single
+            {
+                num_thread = omp_get_num_threads();
+            }
+        }
     #endif
     double ph_r=0, ph_theta=0;
     struct photon *ph=NULL;
