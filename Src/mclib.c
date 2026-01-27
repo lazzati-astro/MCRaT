@@ -1191,6 +1191,7 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
             
             //WHAT IF THE PHOTON MOVES TO A NEW BLOCK BETWEEN WHEN WE CALC MFP AND MOVE IT TO DO THE SCATTERING????
             //it mostly happens at low optical depth, near the photosphere so we would have a large mfp anyways so we probably wouldn't be in this function in that case
+            //TODO: if we have biasing then we can force scattering in low optical depth regions, so need to make sure we properly capture the properties where the scattering occurs
             index=ph->nearest_block_index; //the sorted_indexes gives index of photon with smallest time to potentially scatter then extract the index of the block closest to that photon
     
             fluid_temp=(hydro_data->temp)[index];

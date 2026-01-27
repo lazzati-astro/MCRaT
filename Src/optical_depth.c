@@ -72,7 +72,8 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
             //fprintf(fPtr, "thermal tau: %e\n", (ph->optical_depths)[0] );
 
             //set to 1 for now, this is most likely the best value for us
-            thermal_bias= calculateThermalScatteringBias(SCATTERING_BIAS_SCALING, hydro_data->average_dimless_theta, (hydro_data->temp)[ph_block_index], (ph->optical_depths)[0]);
+            //we calculate the max optical depth as the optical depth until the next simulation frame is loaded (so multiply by c*dt)
+            thermal_bias= calculateThermalScatteringBias(SCATTERING_BIAS_SCALING, hydro_data->average_dimless_theta, (hydro_data->temp)[ph_block_index], (ph->optical_depths)[0]*C_LIGHT/hydro_data->fps);
             (ph->scattering_bias)[0]=thermal_bias;
     
             ph->total_optical_depth=(ph->scattering_bias)[0]*(ph->optical_depths)[0];
@@ -194,10 +195,10 @@ double getThermalCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *
     }
 #endif
 
-double calculateThermalScatteringBias(double alpha_parameter, double average_dimless_theta, double cell_temp, double tau)
+double calculateThermalScatteringBias(double alpha_parameter, double average_dimless_theta, double cell_temp, double tau_max)
 {
     double result=0, cell_dimless_theta=calcDimlessTheta(cell_temp);
-    result=fmax(1.0, alpha_parameter*cell_dimless_theta*cell_dimless_theta/(average_dimless_theta*average_dimless_theta*tau));
+    result=fmax(1.0, alpha_parameter*cell_dimless_theta*cell_dimless_theta/(average_dimless_theta*average_dimless_theta*tau_max));
     return result; //set to 1 for testing/may be the best value for us
 }
 
