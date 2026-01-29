@@ -15,7 +15,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
     float num_dens_coeff;
     double r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
     double position_rand=0, position2_rand=0, position3_rand=0, cartesian_position_rand_array[3];
-    struct photon *ph=NULL;
+    struct photon *ph=NULL, initialized_photon;
     
     //define the number density coeficient, integrate the number density spectrum from 0 to infinity to get this value
     //used to calculate the number density of photons as num_dens_coeff*T_comv^3
@@ -222,7 +222,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                 else
                 {
                     //this is for custom spectrum sampling
-                    fr_dum = custom_photon_sampler(hydro_data, i, rand, fPtr);
+                    initialized_photon = custom_photon_sampler(hydro_data, i, rand, fPtr);
                     
                 }
                 //printf("%lf, %lf,%lf,%e \n",(hydro_data->temp)[i],fr_dum, y_dum, yfr_dum);

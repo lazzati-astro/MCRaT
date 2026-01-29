@@ -25,7 +25,7 @@ double custom_spectrum(double frequency)
     return val;
 }
 
-double custom_photon_sampler(struct hydro_dataframe *hydro_data, int hydro_index, gsl_rng * rand, FILE *fPtr)
+struct photon custom_photon_sampler(struct hydro_dataframe *hydro_data, int hydro_index, gsl_rng * rand, FILE *fPtr)
 {
     struct photon custom_photon;
     
@@ -47,6 +47,6 @@ double custom_photon_sampler(struct hydro_dataframe *hydro_data, int hydro_index
     fr_dum=-log(test_rand2*test_rand3*test_rand4*test_rand5)/test_cnt;
     fr_dum*=K_B*bb_temp/PL_CONST;
 
-    return fr_dum;
+    return custom_photon;
     
 }

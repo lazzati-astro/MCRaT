@@ -7,4 +7,4 @@
 
 double custom_spectrum(double frequency);
 
-double custom_photon_sampler(struct hydro_dataframe *hydro_data, int hydro_index, gsl_rng * rand, FILE *fPtr);
+struct photon custom_photon_sampler(struct hydro_dataframe *hydro_data, int hydro_index, gsl_rng * rand, FILE *fPtr);
