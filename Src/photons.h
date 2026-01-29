@@ -24,6 +24,8 @@ struct photon createPhoton();
 
 void initializePhoton(struct photon *ph);
 
-double samplePhotonPhi();
+double samplePhotonPhi(gsl_rng * rand, FILE *fPtr);
 
-double samplePhotonTheta(double *velocity);
+double samplePhotonTheta(double *velocity, gsl_rng * rand, FILE *fPtr);
+
+void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct hydro_dataframe *hydro_data, int hydro_index, gsl_rng * rand, FILE *fPtr);

@@ -333,12 +333,12 @@ void initializePhoton(struct photon *ph)
     ph->total_optical_depth = NAN;
 }
 
-double samplePhotonPhi()
+double samplePhotonPhi(gsl_rng * rand, FILE *fPtr)
 {
     return gsl_rng_uniform(rand)*2*M_PI;
 }
 
-double samplePhotonTheta(double *velocity)
+double samplePhotonTheta(double *velocity, gsl_rng * rand, FILE *fPtr)
 {
     //trying to overwrite com_v_theta based on sampling of lab anisotropic angle distribution of photons
     //see eg Section 3.2.1 @ doi.org/10.1088/0004-637X/807/1/31 & Section 3.5 @ doi.org/10.3847/1538-4357/ac75cb
@@ -360,4 +360,11 @@ double samplePhotonTheta(double *velocity)
     
     return com_v_theta;
 
+}
+
+void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct hydro_dataframe *hydro_data, int hydro_index, gsl_rng * rand, FILE *fPtr)
+{
+    //here we go through each member of the photon struct and see if the user has filled it in with non-NAN value. If so, assign it to the original photon which will be saved to the photonList that is used in MCRaT
+    //curently we dont let the photon weight, the position, num_scatt, nearest_block_index, recalc_properties, photon_type, and optical depth related stuff be changed by the user
+    
 }

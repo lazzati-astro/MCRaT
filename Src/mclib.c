@@ -234,7 +234,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                 #else
                     position_phi=0;//dont need this in 3D
                 #endif
-                com_v_phi=samplePhotonPhi(); //gsl_rng_uniform(rand)*2*M_PI;
+                com_v_phi=samplePhotonPhi(rand, fPtr); //gsl_rng_uniform(rand)*2*M_PI;
                //this seemed to produce lab frame spectra with significantly differnet temperatures/shapes than what was expected for wien/blackbody spectra. this is only valid when beta=0, which is limiting case of our anisotropic sampling below
                //com_v_theta=acos((gsl_rng_uniform(rand)*2)-1);
                 
@@ -254,7 +254,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                     
                    yfr_dum=0.5*(1+beta*com_v_theta); //propability density of angle of photon with respect to fluid motion (doppler boosting factor)
                }
-                com_v_theta=samplePhotonTheta(boost); //acos(com_v_theta);
+                com_v_theta=samplePhotonTheta(boost, rand, fPtr); //acos(com_v_theta);
                //trying to overwrite com_v_theta based on sampling of lab anisotropic angle distribution of photons
 
                 
@@ -320,6 +320,12 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                 ph[ph_tot].type=INJECTED_PHOTON; //i for injected
                 ph[ph_tot].recalc_properties=1; //set to 1 so we are sure that we calculate tau values later on
                 //printf("%d\n",ph_tot);
+                
+                if (spect!='w') && (spect!='b')
+                {
+                    saveUserDefinePhoton(ph[ph_tot], initialized_photon, hydro_data, i, rand, fPtr);
+                }
+                
                 ph_tot++;
             }
             k++;
