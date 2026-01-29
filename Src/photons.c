@@ -335,7 +335,7 @@ void initializePhoton(struct photon *ph)
 
 double samplePhotonPhi()
 {
-    return gsl_rng_uniform(rand)*2*M_PI
+    return gsl_rng_uniform(rand)*2*M_PI;
 }
 
 double samplePhotonTheta(double *velocity)
