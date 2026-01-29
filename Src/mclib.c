@@ -234,10 +234,11 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                 #else
                     position_phi=0;//dont need this in 3D
                 #endif
-               com_v_phi=gsl_rng_uniform(rand)*2*M_PI;
+                com_v_phi=samplePhotonPhi(); //gsl_rng_uniform(rand)*2*M_PI;
                //this seemed to produce lab frame spectra with significantly differnet temperatures/shapes than what was expected for wien/blackbody spectra. this is only valid when beta=0, which is limiting case of our anisotropic sampling below
                //com_v_theta=acos((gsl_rng_uniform(rand)*2)-1);
                 
+                //TODO:what is boost at the start of this loop? it seems undefined
                //trying to overwrite com_v_theta based on sampling of lab anisotropic angle distribution of photons
                //see eg Section 3.2.1 @ doi.org/10.1088/0004-637X/807/1/31 & Section 3.5 @ doi.org/10.3847/1538-4357/ac75cb
                // and section 6.2 here: Nordin Nobuoka, J. 2025, SPIRO: a code that couples Monte Carlo photons to relativistic hydrodynamics - Applications to hot astrophysical plasmas, https://urn.kb.se/resolve?urn=urn:nbn:se:kth:diva-368279
@@ -253,7 +254,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                     
                    yfr_dum=0.5*(1+beta*com_v_theta); //propability density of angle of photon with respect to fluid motion (doppler boosting factor)
                }
-               com_v_theta=acos(com_v_theta);
+                com_v_theta=samplePhotonTheta(boost); //acos(com_v_theta);
                //trying to overwrite com_v_theta based on sampling of lab anisotropic angle distribution of photons
 
                 

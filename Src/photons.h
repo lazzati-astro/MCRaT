@@ -23,3 +23,7 @@ void verifyPhotonNum(struct photonList *photon_list);
 struct photon createPhoton();
 
 void initializePhoton(struct photon *ph);
+
+double samplePhotonPhi();
+
+double samplePhotonTheta(double *velocity);

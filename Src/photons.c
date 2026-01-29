@@ -332,3 +332,32 @@ void initializePhoton(struct photon *ph)
 
     ph->total_optical_depth = NAN;
 }
+
+double samplePhotonPhi()
+{
+    return gsl_rng_uniform(rand)*2*M_PI
+}
+
+double samplePhotonTheta(double *velocity)
+{
+    //trying to overwrite com_v_theta based on sampling of lab anisotropic angle distribution of photons
+    //see eg Section 3.2.1 @ doi.org/10.1088/0004-637X/807/1/31 & Section 3.5 @ doi.org/10.3847/1538-4357/ac75cb
+    // and section 6.2 here: Nordin Nobuoka, J. 2025, SPIRO: a code that couples Monte Carlo photons to relativistic hydrodynamics - Applications to hot astrophysical plasmas, https://urn.kb.se/resolve?urn=urn:nbn:se:kth:diva-368279
+    double com_v_theta;
+    gsl_vector_view b=gsl_vector_view_array(velocity, 3);
+    double beta=gsl_blas_dnrm2(&b.vector);
+    double y_dum=1; //initalize loop
+    double yfr_dum=0;
+    while (y_dum>yfr_dum)
+    {
+        com_v_theta=2*gsl_rng_uniform_pos(rand)-1; //cos(angle) is from -1 to 1
+        //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
+        y_dum=gsl_rng_uniform_pos(rand);
+         
+        yfr_dum=0.5*(1+beta*com_v_theta); //propability density of angle of photon with respect to fluid motion (doppler boosting factor)
+    }
+    com_v_theta=acos(com_v_theta);
+    
+    return com_v_theta;
+
+}
