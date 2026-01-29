@@ -286,7 +286,7 @@ struct photon createPhoton()
 {
     //this function is something that the user can call in creating their custom photon injection algorithm. The photons are explicitly not set to be a null-type photon (see setNullPhoton above) since that is actually used in the code algorithm, instead we set all the fields to be NAN as is applicable so we can easily test the fields that the user has over written and load then into the photon that will be saved into the photonList struct that gets used throughout the code.
     struct photon ph;
-    initalizePhoton(&ph);
+    initializePhoton(&ph);
     return ph;
 }
 
