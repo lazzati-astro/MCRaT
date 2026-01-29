@@ -19,3 +19,7 @@ void incrementPhotonNum(struct photonList *photon_list);
 void incrementNullPhotonNum(struct photonList *photon_list);
 
 void verifyPhotonNum(struct photonList *photon_list);
+
+struct photon createPhoton();
+
+void initializePhoton(struct photon *ph);

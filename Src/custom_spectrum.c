@@ -27,7 +27,7 @@ double custom_spectrum(double frequency)
 
 struct photon custom_photon_sampler(struct hydro_dataframe *hydro_data, int hydro_index, gsl_rng * rand, FILE *fPtr)
 {
-    struct photon custom_photon;
+    struct photon custom_photon=createPhoton();
     
     double bb_temp=1e-8 *(GSL_CONST_CGSM_MASS_ELECTRON*GSL_CONST_CGSM_SPEED_OF_LIGHT*GSL_CONST_CGSM_SPEED_OF_LIGHT)/GSL_CONST_CGSM_BOLTZMANN;
     double test=0;

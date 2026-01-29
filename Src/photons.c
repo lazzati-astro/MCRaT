@@ -281,3 +281,54 @@ void verifyPhotonNum(struct photonList *photon_list)
 
     }
 }
+
+struct photon createPhoton()
+{
+    //this function is something that the user can call in creating their custom photon injection algorithm. The photons are explicitly not set to be a null-type photon (see setNullPhoton above) since that is actually used in the code algorithm, instead we set all the fields to be NAN as is applicable so we can easily test the fields that the user has over written and load then into the photon that will be saved into the photonList struct that gets used throughout the code.
+    struct photon ph;
+    initalizePhoton(&ph);
+    return ph;
+}
+
+
+void initializePhoton(struct photon *ph)
+{
+    if (ph == NULL) return;
+
+    ph->type = '\0';
+
+    ph->p0 = NAN;
+    ph->p1 = NAN;
+    ph->p2 = NAN;
+    ph->p3 = NAN;
+
+    ph->comv_p0 = NAN;
+    ph->comv_p1 = NAN;
+    ph->comv_p2 = NAN;
+    ph->comv_p3 = NAN;
+
+    ph->r0 = NAN;
+    ph->r1 = NAN;
+    ph->r2 = NAN;
+
+    ph->s0 = NAN;
+    ph->s1 = NAN;
+    ph->s2 = NAN;
+    ph->s3 = NAN;
+
+    ph->num_scatt = NAN;
+    ph->recalc_properties = -1;
+    ph->weight = NAN;
+    ph->nearest_block_index = -1;
+    ph->time_to_scatter = NAN;
+
+    #if SCATTERING_BIAS_SWITCH != OFF
+        for (int i = 0; i < 1 + N_GAMMA; ++i)
+        {
+            ph->optical_depths[i] = NAN;
+            ph->scattering_bias[i] = NAN;
+        }
+    #endif
+
+    ph->total_optical_depth = NAN;
+}
