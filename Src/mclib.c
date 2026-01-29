@@ -321,11 +321,11 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                 ph[ph_tot].recalc_properties=1; //set to 1 so we are sure that we calculate tau values later on
                 //printf("%d\n",ph_tot);
                 
-                if (spect!='w') && (spect!='b')
+                if ((spect!='w') && (spect!='b'))
                 {
-                    saveUserDefinePhoton(ph[ph_tot], initialized_photon, hydro_data, i, rand, fPtr);
+                    saveUserDefinePhoton((ph+ph_tot), &initialized_photon, hydro_data, i, rand, fPtr);
                 }
-                
+
                 ph_tot++;
             }
             k++;
