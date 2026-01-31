@@ -4,6 +4,11 @@
 //
 //  Created by Tyler Parsotan on 7/14/22.
 //
+//  This capability is currently untested
+//  MCRAT calls the custom_photon_sampler function which allows a user to overwrite the photons that have been initalized in the simulation.
+//  Currently, the code allows the user to only modify the photons comoving or lab 4 momentum, or the stokes parameters. If the user wants to modify the energy of the injected photon (while maintaining the presampled angular directions) they can just set the p0 or comv_p0 values of the 4 momentum.
+//  If either the lab or the fluid photon 4 momentum is specified the code will properly calculate the other frame's 4 momentum doing the appropriate lorentz transform.
+//  The code expects certain normalizations/units for the 4 momentum (which can be found in the MCRaT PDF documentation). As for the stokes, the code expects s0 to be 1 and s1=q=Q/I, etc. It also checks that s0^2 >= s1^2 + s2^2 + s3^2
 
 #include "mcrat.h"
 #include <gsl/gsl_sf_exp.h>
@@ -30,22 +35,24 @@ struct photon custom_photon_sampler(struct hydro_dataframe *hydro_data, int hydr
     struct photon custom_photon=createPhoton();
     
     double bb_temp=1e-8 *(GSL_CONST_CGSM_MASS_ELECTRON*GSL_CONST_CGSM_SPEED_OF_LIGHT*GSL_CONST_CGSM_SPEED_OF_LIGHT)/GSL_CONST_CGSM_BOLTZMANN;
-    double test=0;
-    double test_rand1=gsl_rng_uniform_pos(rand);
-    double test_rand2=gsl_rng_uniform_pos(rand);
-    double test_rand3=gsl_rng_uniform_pos(rand);
-    double test_rand4=gsl_rng_uniform_pos(rand);
-    double test_rand5=gsl_rng_uniform_pos(rand);
-    double test_cnt=0;
     double fr_dum;
     
-    while (test<M_PI*M_PI*M_PI*M_PI*test_rand1/90.0)
+    double fr_max=(3.31e10)*bb_temp;//max frequency of bb photon density spectrum
+    double bb_norm=( pow((fr_max),2.0))/gsl_expm1(PL_CONST*fr_max/(K_B*bb_temp));  //find value of bb at fr_max
+    double y_dum=1; //initalize loop
+    double yfr_dum=0;
+    while (y_dum>yfr_dum)
     {
-        test_cnt+=1;
-        test+=1/(test_cnt*test_cnt*test_cnt*test_cnt);
+        fr_dum=gsl_rng_uniform_pos(rand)*6.3e11*bb_temp; //in Hz
+        //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
+        y_dum=gsl_rng_uniform_pos(rand);
+        
+        yfr_dum=((1.0/bb_norm)* pow((fr_dum),2.0))/gsl_expm1(PL_CONST*fr_dum/(K_B*bb_temp)); //(exp(PL_CONST*fr_dum/(K_B*bb_temp))-1); //curve is normalized to vaue of bb @ max frequency
     }
-    fr_dum=-log(test_rand2*test_rand3*test_rand4*test_rand5)/test_cnt;
-    fr_dum*=K_B*bb_temp/PL_CONST;
+    
+    //just set the energy since the code will recalculate the 4 mometum, assuming anisotropic photon angle distribution. The code will also recalculate the lab frame photon 4 momentum by doing the proper lorentz boost
+    custom_photon.comv_p0=fr_dum*GSL_CONST_CGSM_PLANCKS_CONSTANT_H/GSL_CONST_CGSM_SPEED_OF_LIGHT;
+    
 
     return custom_photon;
     
