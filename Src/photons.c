@@ -464,7 +464,7 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
 
     
     //here we allow the user to just set an energy in the comoving frame and we overwrite the orig 4 momentum with that energy if the other 3 elements of the ph_user comoving 4 momentum are nans
-    if ((!isnan(ph_user->comv_p0) && isnan(ph_user->comv_p1) && isnan(ph_user->comv_p2) && isnan(ph_user->comv_p3))
+    if (!isnan(ph_user->comv_p0) && isnan(ph_user->comv_p1) && isnan(ph_user->comv_p2) && isnan(ph_user->comv_p3))
     {
         orig_energy = ph_orig->comv_p0;
         ph_orig->comv_p0 = ph_user->comv_p0;
@@ -475,7 +475,7 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
     }
         
     //see if the user completely overwrites the comoving 4 momentum
-    if ((!isnan(ph_user->comv_p0) && !isnan(ph_user->comv_p1) && !isnan(ph_user->comv_p2) && !isnan(ph_user->comv_p3))
+    if (!isnan(ph_user->comv_p0) && !isnan(ph_user->comv_p1) && !isnan(ph_user->comv_p2) && !isnan(ph_user->comv_p3))
     {
         ph_orig->comv_p0 = ph_user->comv_p0;
         ph_orig->comv_p1 = ph_user->comv_p1;
@@ -487,7 +487,7 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
 
         
     //here we allow the user to just set an energy in the lab frame and we overwrite the orig 4 momentum with that energy if the other 3 elements of the ph_user lab 4 momentum are nans
-    if ((!isnan(ph_user->p0) && isnan(ph_user->p1) && isnan(ph_user->p2) && isnan(ph_user->p3))
+    if (!isnan(ph_user->p0) && isnan(ph_user->p1) && isnan(ph_user->p2) && isnan(ph_user->p3))
     {
         orig_energy = ph_orig->p0;
         ph_orig->p0 = ph_user->p0;
@@ -499,7 +499,7 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
     }
         
     //see if the user completely overwrites the lab 4 momentum
-    if ((!isnan(ph_user->p0) && !isnan(ph_user->p1) && !isnan(ph_user->p2) && !isnan(ph_user->p3))
+    if (!isnan(ph_user->p0) && !isnan(ph_user->p1) && !isnan(ph_user->p2) && !isnan(ph_user->p3))
     {
         ph_orig->p0 = ph_user->p0;
         ph_orig->p1 = ph_user->p1;
@@ -510,7 +510,7 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
     }
         
     //see if the user wants to overwrite the stokes, remember this is stokes in the lab frame
-    if ((!isnan(ph_user->s0) && !isnan(ph_user->s1) && !isnan(ph_user->s2) && !isnan(ph_user->s3))
+    if (!isnan(ph_user->s0) && !isnan(ph_user->s1) && !isnan(ph_user->s2) && !isnan(ph_user->s3))
     {
         //check if the s0 ==1 and that the other 3 added in quadrature up to one
         if ((gsl_fcmp(ph_user->s0, 1.0, GSL_DBL_EPSILON) == 0) && (ph_user->s0*ph_user->s0 >= ph_user->s1*ph_user->s1 + ph_user->s2*ph_user->s2 + ph_user->s3*ph_user->s3))
