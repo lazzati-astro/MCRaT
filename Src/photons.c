@@ -367,4 +367,227 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
     //here we go through each member of the photon struct and see if the user has filled it in with non-NAN value. If so, assign it to the original photon which will be saved to the photonList that is used in MCRaT
     //curently we dont let the photon weight, the position, num_scatt, nearest_block_index, recalc_properties, photon_type, and optical depth related stuff be changed by the user
     
+    double orig_energy = 0;
+    double p = malloc(4*sizeof(double));
+    double boost = malloc(3*sizeof(double));
+    double l_boost = malloc(4*sizeof(double));
+    bool recalc_lab_momentum = false, recalc_fluid_momentum = false;
+    
+    //right now we dont allow the user to redefine the number of scatterings, the weights, the position, the nearest_block_index, the recalc_properties, or any optical depth properties. If they do try to do that print out an error and exit
+    if (ph_user->type != '\0')
+    {
+        fprintf(fPtr, "The user cannot redefine the injected photon type.\n");
+        fflush(fPtr);
+        exit(1);
+    }
+    
+    if (!isnan(ph_user->weight))
+    {
+        fprintf(fPtr, "The user cannot redefine the injected photon weight.\n");
+        fflush(fPtr);
+        exit(1);
+    }
+    
+    if (!isnan(ph_user->num_scatt))
+    {
+        fprintf(fPtr, "The user cannot redefine the injected photon number of scatterings.\n");
+        fflush(fPtr);
+        exit(1);
+    }
+
+    if (ph_user->nearest_block_index != -1)
+    {
+        fprintf(fPtr, "The user cannot redefine the injected photon's injected block index field.\n");
+        fflush(fPtr);
+        exit(1);
+
+    }
+
+
+    if (ph_user->recalc_properties != -1)
+    {
+        fprintf(fPtr, "The user cannot redefine the injected photon's recalc properties switch.\n");
+        fflush(fPtr);
+        exit(1);
+
+    }
+    
+    if (!isnan(ph_user->total_optical_depth))
+    {
+        fprintf(fPtr, "The user cannot redefine the injected photon's total optical depth field.\n");
+        fflush(fPtr);
+        exit(1);
+
+    }
+
+    if (!isnan(ph_user->time_to_scatter))
+    {
+        fprintf(fPtr, "The user cannot redefine the injected photon's time to scatter.\n");
+        fflush(fPtr);
+        exit(1);
+
+    }
+    
+    if ((!isnan(ph_user->r0) || isnan(ph_user->r1) || isnan(ph_user->r2))
+    {
+        fprintf(fPtr, "The user cannot redefine the injected photon's position.\n");
+        fflush(fPtr);
+        exit(1);
+
+    }
+        
+    #if SCATTERING_BIAS_SWITCH != OFF
+        for (int i = 0; i < 1 + N_GAMMA; ++i)
+        {
+            if (!isnan(ph_user->optical_depths[i]))
+            {
+                fprintf(fPtr, "The user cannot redefine the injected photon's optical depth array.\n");
+                fflush(fPtr);
+                exit(1);
+
+            }
+            if (!isnan(ph_user->scattering_bias[i]))
+            {
+                fprintf(fPtr, "The user cannot redefine the injected photon's scattering bias switch.\n");
+                fflush(fPtr);
+                exit(1);
+
+            }
+
+        }
+    #endif
+
+
+
+
+    
+    //here we allow the user to just set an energy in the comoving frame and we overwrite the orig 4 momentum with that energy if the other 3 elements of the ph_user comoving 4 momentum are nans
+    if ((!isnan(ph_user->comv_p0) && isnan(ph_user->comv_p1) && isnan(ph_user->comv_p2) && isnan(ph_user->comv_p3))
+    {
+        orig_energy = ph_orig->comv_p0;
+        ph_orig->comv_p0 = ph_user->comv_p0;
+        ph_orig->comv_p1 *= (ph_user->comv_p0/orig_energy);
+        ph_orig->comv_p2 *= (ph_user->comv_p0/orig_energy);
+        ph_orig->comv_p3 *= (ph_user->comv_p0/orig_energy);
+        recalc_lab_momentum=true;
+    }
+        
+    //see if the user completely overwrites the comoving 4 momentum
+    if ((!isnan(ph_user->comv_p0) && !isnan(ph_user->comv_p1) && !isnan(ph_user->comv_p2) && !isnan(ph_user->comv_p3))
+    {
+        ph_orig->comv_p0 = ph_user->comv_p0;
+        ph_orig->comv_p1 = ph_user->comv_p1;
+        ph_orig->comv_p2 = ph_user->comv_p2;
+        ph_orig->comv_p3 = ph_user->comv_p3;
+        recalc_lab_momentum=true;
+
+    }
+
+        
+    //here we allow the user to just set an energy in the lab frame and we overwrite the orig 4 momentum with that energy if the other 3 elements of the ph_user lab 4 momentum are nans
+    if ((!isnan(ph_user->p0) && isnan(ph_user->p1) && isnan(ph_user->p2) && isnan(ph_user->p3))
+    {
+        orig_energy = ph_orig->p0;
+        ph_orig->p0 = ph_user->p0;
+        ph_orig->p1 *= (ph_user->p0/orig_energy);
+        ph_orig->p2 *= (ph_user->p0/orig_energy);
+        ph_orig->p3 *= (ph_user->p0/orig_energy);
+        recalc_fluid_momentum=true;
+
+    }
+        
+    //see if the user completely overwrites the lab 4 momentum
+    if ((!isnan(ph_user->p0) && !isnan(ph_user->p1) && !isnan(ph_user->p2) && !isnan(ph_user->p3))
+    {
+        ph_orig->p0 = ph_user->p0;
+        ph_orig->p1 = ph_user->p1;
+        ph_orig->p2 = ph_user->p2;
+        ph_orig->p3 = ph_user->p3;
+        recalc_fluid_momentum=true;
+
+    }
+        
+    //see if the user wants to overwrite the stokes, remember this is stokes in the lab frame
+    if ((!isnan(ph_user->s0) && !isnan(ph_user->s1) && !isnan(ph_user->s2) && !isnan(ph_user->s3))
+    {
+        //check if the s0 ==1 and that the other 3 added in quadrature up to one
+        if ((gsl_fcmp(ph_user->s0, 1.0, GSL_DBL_EPSILON) == 0) && (ph_user->s0*ph_user->s0 >= ph_user->s1*ph_user->s1 + ph_user->s2*ph_user->s2 + ph_user->s3*ph_user->s3))
+        {
+            ph_orig->s0 = ph_user->s0;
+            ph_orig->s1 = ph_user->s1;
+            ph_orig->s2 = ph_user->s2;
+            ph_orig->s3 = ph_user->s3;
+        }
+        else
+        {
+            fprintf(fPtr, "The user defined stokes parameters are not the expected input for MCRaT. S0 should be 1 and S1^2+S2^2+S3^2>=S1^2. user input: S0: %lf, S1: %lf, S2: %lf, S3: %lf\n", ph_user->s0, ph_user->s1, ph_user->s2, ph_user->s3);
+            fflush(fPtr);
+        }
+
+    }
+
+    
+    if (recalc_lab_momentum)
+    {
+        //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
+        #if DIMENSIONS == THREE
+            hydroVectorToCartesian(boost, (hydro_data->v0)[hydro_index], (hydro_data->v1)[hydro_index], (hydro_data->v2)[hydro_index], (hydro_data->r0)[hydro_index], (hydro_data->r1)[hydro_index], (hydro_data->r2)[hydro_index]);
+        #elif DIMENSIONS == TWO_POINT_FIVE
+            hydroVectorToCartesian(boost, (hydro_data->v0)[hydro_index], (hydro_data->v1)[hydro_index], (hydro_data->v2)[hydro_index], (hydro_data->r0)[hydro_index], (hydro_data->r1)[hydro_index], position_phi);
+        #else
+            //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
+            hydroVectorToCartesian(boost, (hydro_data->v0)[hydro_index], (hydro_data->v1)[hydro_index], 0, (hydro_data->r0)[hydro_index], (hydro_data->r1)[hydro_index], position_phi);
+        #endif
+        (*(boost+0))*=-1;
+        (*(boost+1))*=-1;
+        (*(boost+2))*=-1;
+        
+        *(p+0)=ph_orig->comv_p0;
+        *(p+1)=ph_orig->comv_p1;
+        *(p+2)=ph_orig->comv_p2;
+        *(p+3)=ph_orig->comv_p3;
+            
+        //boost to lab frame
+        lorentzBoost(boost, p, l_boost, 'p', fPtr);
+
+        ph_orig->p0=(*(l_boost+0));
+        ph_orig->p1=(*(l_boost+1));
+        ph_orig->p2=(*(l_boost+2));
+        ph_orig->p3=(*(l_boost+3));
+
+    }
+
+    if (recalc_fluid_momentum)
+    {
+        //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
+        #if DIMENSIONS == THREE
+            hydroVectorToCartesian(boost, (hydro_data->v0)[hydro_index], (hydro_data->v1)[hydro_index], (hydro_data->v2)[hydro_index], (hydro_data->r0)[hydro_index], (hydro_data->r1)[hydro_index], (hydro_data->r2)[hydro_index]);
+        #elif DIMENSIONS == TWO_POINT_FIVE
+            hydroVectorToCartesian(boost, (hydro_data->v0)[hydro_index], (hydro_data->v1)[hydro_index], (hydro_data->v2)[hydro_index], (hydro_data->r0)[hydro_index], (hydro_data->r1)[hydro_index], position_phi);
+        #else
+            //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
+            hydroVectorToCartesian(boost, (hydro_data->v0)[hydro_index], (hydro_data->v1)[hydro_index], 0, (hydro_data->r0)[hydro_index], (hydro_data->r1)[hydro_index], position_phi);
+        #endif
+        
+        *(p+0)=ph_orig->comv_p0;
+        *(p+1)=ph_orig->comv_p1;
+        *(p+2)=ph_orig->comv_p2;
+        *(p+3)=ph_orig->comv_p3;
+
+        
+        //boost to fluid frame
+        lorentzBoost(boost, p, l_boost, 'p', fPtr);
+
+        ph_orig->comv_p0=(*(l_boost+0));
+        ph_orig->comv_p1=(*(l_boost+1));
+        ph_orig->comv_p2=(*(l_boost+2));
+        ph_orig->comv_p3=(*(l_boost+3));
+
+        
+    }
+        
+    free(p);free(boost);free(l_boost);
+
+    
+    
 }
