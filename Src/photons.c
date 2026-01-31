@@ -367,7 +367,7 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
     //here we go through each member of the photon struct and see if the user has filled it in with non-NAN value. If so, assign it to the original photon which will be saved to the photonList that is used in MCRaT
     //curently we dont let the photon weight, the position, num_scatt, nearest_block_index, recalc_properties, photon_type, and optical depth related stuff be changed by the user
     
-    double orig_energy = 0;
+    double orig_energy = 0, position_phi=NAN;
     double *p = NULL;
     double *boost = NULL;
     double *l_boost = NULL;
@@ -527,7 +527,9 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
         }
 
     }
-
+    
+    //since we arent modifying the position of the photons based on the user generated photon, we still use the original photon position to get it's phi
+    position_phi=fmod(atan2(ph_orig->r1, ph_orig->r0) * 180.0/M_PI + 360.0, 360.0) *M_PI/180;
     
     if (recalc_lab_momentum)
     {
