@@ -368,9 +368,9 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
     //curently we dont let the photon weight, the position, num_scatt, nearest_block_index, recalc_properties, photon_type, and optical depth related stuff be changed by the user
     
     double orig_energy = 0;
-    double p = malloc(4*sizeof(double));
-    double boost = malloc(3*sizeof(double));
-    double l_boost = malloc(4*sizeof(double));
+    double *p = NULL;
+    double *boost = NULL;
+    double *l_boost = NULL;
     bool recalc_lab_momentum = false, recalc_fluid_momentum = false;
     
     //right now we dont allow the user to redefine the number of scatterings, the weights, the position, the nearest_block_index, the recalc_properties, or any optical depth properties. If they do try to do that print out an error and exit
@@ -428,7 +428,7 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
 
     }
     
-    if ((!isnan(ph_user->r0) || isnan(ph_user->r1) || isnan(ph_user->r2))
+    if (!isnan(ph_user->r0) || isnan(ph_user->r1) || isnan(ph_user->r2))
     {
         fprintf(fPtr, "The user cannot redefine the injected photon's position.\n");
         fflush(fPtr);
@@ -458,7 +458,9 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
     #endif
 
 
-
+    p = malloc(4*sizeof(double));
+    boost = malloc(3*sizeof(double));
+    l_boost = malloc(4*sizeof(double));
 
     
     //here we allow the user to just set an energy in the comoving frame and we overwrite the orig 4 momentum with that energy if the other 3 elements of the ph_user comoving 4 momentum are nans
