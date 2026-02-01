@@ -428,7 +428,7 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
 
     }
     
-    if (!isnan(ph_user->r0) || isnan(ph_user->r1) || isnan(ph_user->r2))
+    if (!isnan(ph_user->r0) || !isnan(ph_user->r1) || !isnan(ph_user->r2))
     {
         fprintf(fPtr, "The user cannot redefine the injected photon's position.\n");
         fflush(fPtr);
