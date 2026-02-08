@@ -756,7 +756,7 @@ void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hy
             if ((ph->recalc_properties)==1)
             {
                 //if we need to recalc the optical depth (due to a scattering or something) else then do so
-                calculateOpticalDepth(ph, hydro_data, rng[thread_id], fPtr);
+                calculateOpticalDepth(ph, hydro_data, global_thread_rng[thread_id], fPtr);
                 (ph->recalc_properties)=0;
             }
 
