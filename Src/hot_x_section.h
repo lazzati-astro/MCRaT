@@ -30,6 +30,9 @@
 
 #endif
 
+void initThreadLocalAccelerators(int num_threads);
+
+void freeThreadLocalAccelerators(void);
 
 void initalizeHotCrossSection(int rank, gsl_rng *rand, FILE *fPtr);
 
@@ -59,7 +62,7 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
 void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *subgroup_interpolated_results, gsl_rng *rand, FILE *fPtr);
 #endif
 
-void cleanupInterpolationData();
+void cleanupInterpolationData(void);
 
 void broadcastInterpolationData(int rank);
 

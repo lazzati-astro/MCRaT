@@ -711,24 +711,25 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
         //check that things worked out ok
         if (status != GSL_SUCCESS)
         {
-            fprintf(stderr, "interpolateSubgroupNonThermalHotCrossSection: GSL error - %s\n",
+            fprintf(stderr, "interpolateThermalHotCrossSection: GSL error - %s\n",
                     gsl_strerror(status));
             fprintf(stderr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
                     log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
-            fprintf(stderr, "  gamma subgroup index = %d, gamma_center = %g\n",
-                    i, global_interp_nonthermal_data.ya[i]);
-            
+            fprintf(stderr, "  log_theta = %g (valid range: [%g, %g])\n",
+                    log_theta, LOG_T_MIN, LOG_T_MAX);
+
             // Log to file as well if available
             if (fPtr != NULL)
             {
-                fprintf(fPtr, "interpolateSubgroupNonThermalHotCrossSection: GSL error - %s\n",
+                fprintf(fPtr, "interpolateThermalHotCrossSection: GSL error - %s\n",
                         gsl_strerror(status));
                 fprintf(fPtr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
                         log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
-                fprintf(fPtr, "  gamma subgroup index = %d, gamma_center = %g\n",
-                        i, global_interp_nonthermal_data.ya[i]);
+                fprintf(fPtr, "  log_theta = %g (valid range: [%g, %g])\n",
+                        log_theta, LOG_T_MIN, LOG_T_MAX);
                 fflush(fPtr);
             }
+
             exit(1);
         }
 
@@ -862,7 +863,7 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
     }
 #endif
 
-void cleanupInterpolationData()
+void cleanupInterpolationData(void)
 {
     gsl_spline2d_free(global_interp_thermal_data.spline);
     gsl_interp_accel_free(global_interp_thermal_data.xacc);
