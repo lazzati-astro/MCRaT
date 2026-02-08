@@ -4,6 +4,49 @@
 const double A_RAD=7.56e-15, C_LIGHT=2.99792458e10, PL_CONST=6.6260755e-27, FINE_STRUCT=7.29735308e-3, CHARGE_EL= 4.8032068e-10;
 const double K_B=1.380658e-16, M_P=1.6726231e-24, THOM_X_SECT=6.65246e-25, M_EL=9.1093879e-28 , R_EL=2.817941499892705e-13;
 
+/* Global thread-local RNG pool (declare in header or at file scope) */
+static gsl_rng **global_thread_rng = NULL;
+static int global_num_threads = 0;
+
+void initGlobalThreadRNG(gsl_rng *master_rng, int num_threads)
+{
+    if (global_thread_rng)
+    {
+        /* Already initialized, free old ones */
+        for (int i = 1; i < global_num_threads; i++)
+        {
+            gsl_rng_free(global_thread_rng[i]);
+        }
+        free(global_thread_rng);
+    }
+    
+    global_num_threads = num_threads;
+    global_thread_rng = malloc(num_threads * sizeof(gsl_rng *));
+    global_thread_rng[0] = master_rng;
+    
+    const gsl_rng_type *rng_t = gsl_rng_ranlxs0;
+    for (int i = 1; i < num_threads; i++)
+    {
+        global_thread_rng[i] = gsl_rng_alloc(rng_t);
+        gsl_rng_set(global_thread_rng[i], gsl_rng_get(master_rng));
+    }
+}
+
+void freeGlobalThreadRNG(void)
+{
+    if (global_thread_rng)
+    {
+        for (int i = 1; i < global_num_threads; i++)
+        {
+            gsl_rng_free(global_thread_rng[i]);
+        }
+        free(global_thread_rng);
+        global_thread_rng = NULL;
+        global_num_threads = 0;
+    }
+}
+
+
 
 
 void photonInjection(struct photonList *photon_list, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr)
@@ -482,19 +525,13 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
     struct photon *ph=NULL;
 
     #if defined(_OPENMP)
-        #pragma omp parallel
-        {
-            #pragma omp single
-            {
-                num_thread = omp_get_num_threads();
-            }
-        }
+        num_thread = omp_get_max_threads();
     #endif
-
+    
     //initialize gsl random number generator fo each thread
+    /*
     const gsl_rng_type *rng_t;
     gsl_rng **rng;
-    gsl_rng_env_setup();
     rng_t = gsl_rng_ranlxs0;
 
     rng = (gsl_rng **) malloc((num_thread ) * sizeof(gsl_rng *));
@@ -506,6 +543,7 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
         rng[i] = gsl_rng_alloc (rng_t);
         gsl_rng_set(rng[i],gsl_rng_get(rand));
     }
+     */
 
     //go through each photon and find the blocks around it and then get the distances to all of those blocks and choose the one thats the shortest distance away
     //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
@@ -613,7 +651,7 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
                     #endif
 
                     //need to also recalculate the optical depth
-                    calculateOpticalDepth(ph, hydro_data, rng[thread_id], fPtr);
+                    calculateOpticalDepth(ph, hydro_data, global_thread_rng[thread_id], fPtr);
                     if ((ph->recalc_properties)==1)
                     {
                         //if we already needed to recalc the optical depth (due to a scattering or something) else
@@ -643,12 +681,13 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
     }
     
     //free rand number generator
+    /*
     for (i=1;i<num_thread;i++)
     {
         gsl_rng_free(rng[i]);
     }
     free(rng);
-
+     */
 
     //print number of times we had to refind the index of the elemtn photons were located in
     if (find_nearest_block_switch!=0)
@@ -669,19 +708,13 @@ void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hy
     struct photon *ph=NULL;
 
     #if defined(_OPENMP)
-        #pragma omp parallel
-        {
-            #pragma omp single
-            {
-                num_thread = omp_get_num_threads();
-            }
-        }
+        num_thread = omp_get_max_threads();
     #endif
 
     //initialize gsl random number generator fo each thread
+    /*
     const gsl_rng_type *rng_t;
     gsl_rng **rng;
-    gsl_rng_env_setup();
     rng_t = gsl_rng_ranlxs0;
 
     rng = (gsl_rng **) malloc((num_thread ) * sizeof(gsl_rng *));
@@ -693,6 +726,7 @@ void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hy
         rng[i] = gsl_rng_alloc (rng_t);
         gsl_rng_set(rng[i],gsl_rng_get(rand));
     }
+     */
 
     #pragma omp parallel for num_threads(num_thread) firstprivate(ph_block_index, mfp, rnd_tracker, ph) private(i, thread_id) shared(default_mfp)
     for (i=0;i<photon_list->list_capacity; i++)
@@ -726,7 +760,7 @@ void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hy
                 (ph->recalc_properties)=0;
             }
 
-            rnd_tracker=gsl_rng_uniform_pos(rng[thread_id]);
+            rnd_tracker=gsl_rng_uniform_pos(global_thread_rng[thread_id]);
             //printf("Rnd_tracker: %e Thread number %d \n",rnd_tracker, omp_get_thread_num() );
 
             //mfp=(-1)*log(rnd_tracker)*(M_P/((n_dens_tmp))/(THOM_X_SECT)); ///(1.0-beta*((n_cosangle)))) ; // the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths IN COMOV FRAME for reference
@@ -748,11 +782,13 @@ void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hy
     }
     //exit(0);
     //free rand number generator
+    /*
     for (i=1;i<num_thread;i++)
     {
         gsl_rng_free(rng[i]);
     }
     free(rng);
+     */
 
     reverseSortIndexes(photon_list->sorted_indexes, photon_list->list_capacity, sizeof (int),  all_time_steps);
 
@@ -1103,19 +1139,13 @@ void updatePhotonPosition(struct photonList *photon_list, double t, FILE *fPtr)
     //move photons by speed of light
  
     int i=0;
-    #if defined(_OPENMP)
-    int num_thread=1;
-        #pragma omp parallel
-        {
-            #pragma omp single
-            {
-                num_thread = omp_get_num_threads();
-            }
-        }
-    #endif
     double old_position=0, new_position=0, divide_p0=0;
     struct photon *ph=NULL; //pointer to a photon struct
-    
+    #if defined(_OPENMP)
+        int num_thread=1;
+        num_thread = omp_get_max_threads();
+    #endif
+
     
     #pragma omp parallel for num_threads(num_thread) firstprivate(old_position, new_position, divide_p0, ph)
     for (i=0;i<photon_list->list_capacity;i++)
@@ -1470,21 +1500,15 @@ double averagePhotonEnergy(struct photonList *photon_list)
 void phScattStats(struct photonList *photon_list, int *max, int *min, double *avg, double *r_avg, FILE *fPtr  )
 {
     int temp_max=0, temp_min=INT_MAX,  i=0, count=0, count_synch=0, count_comp=0, count_i=0, num_thread=1;
-    #if defined(_OPENMP)
-        #pragma omp parallel
-        {
-            #pragma omp single
-            {
-                num_thread = omp_get_num_threads();
-            }
-        }
-    #endif
     double sum=0, avg_r_sum=0, avg_r_sum_synch=0, avg_r_sum_comp=0, avg_r_sum_inject=0;
     struct photon *ph=NULL;
-
+    
+    #if defined(_OPENMP)
+        num_thread = omp_get_max_threads();
+    #endif
     
     //printf("Num threads: %d", num_thread);
-#pragma omp parallel for num_threads(num_thread) firstprivate(ph) reduction(min:temp_min) reduction(max:temp_max) reduction(+:sum) reduction(+:avg_r_sum) reduction(+:count)
+    #pragma omp parallel for num_threads(num_thread) firstprivate(ph) reduction(min:temp_min) reduction(max:temp_max) reduction(+:sum) reduction(+:avg_r_sum) reduction(+:count)
     for (i=0;i<photon_list->list_capacity;i++)
     {
         ph=getPhoton(photon_list, i);
@@ -1557,19 +1581,15 @@ void phMinMax(struct photonList *photon_list, double *min, double *max, double *
 {
     double temp_r_max=0, temp_r_min=DBL_MAX, temp_theta_max=0, temp_theta_min=DBL_MAX;
     int i=0, num_thread=1;
-    #if defined(_OPENMP)
-        #pragma omp parallel
-        {
-            #pragma omp single
-            {
-                num_thread = omp_get_num_threads();
-            }
-        }
-    #endif
     double ph_r=0, ph_theta=0;
     struct photon *ph=NULL;
     
-#pragma omp parallel for num_threads(num_thread) firstprivate(ph_r, ph_theta, ph) reduction(min:temp_r_min) reduction(max:temp_r_max) reduction(min:temp_theta_min) reduction(max:temp_theta_max)
+    #if defined(_OPENMP)
+        num_thread = omp_get_max_threads();
+    #endif
+
+    
+    #pragma omp parallel for num_threads(num_thread) firstprivate(ph_r, ph_theta, ph) reduction(min:temp_r_min) reduction(max:temp_r_max) reduction(min:temp_theta_min) reduction(max:temp_theta_max)
     for (i=0; i<photon_list->list_capacity; i++)
     {
         ph=getPhoton(photon_list, i);

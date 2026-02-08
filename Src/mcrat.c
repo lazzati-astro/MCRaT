@@ -602,7 +602,14 @@ int main(int argc, char **argv)
     fprintf(fPtr, "TAU_CALCULATION is set to DIRECT\n");
     fflush(fPtr);
     #endif
-
+    
+    /* Initialize thread-local resources */
+    int num_threads = 1;
+    #if defined(_OPENMP)
+        num_threads = omp_get_max_threads();
+    #endif
+      
+    initGlobalThreadRNG(rng, num_threads);
     
     //for a checkpoint implementation, start from the last saved "frame" value and go to the saved "frm2" value
 
@@ -939,6 +946,8 @@ int main(int argc, char **argv)
     #if TAU_CALCULATION == TABLE
         cleanupInterpolationData();
     #endif
+    
+    freeGlobalThreadRNG();
                 
     MPI_Barrier(angle_comm);
         
