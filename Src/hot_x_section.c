@@ -33,6 +33,81 @@ struct InterpolationData global_interp_thermal_data;
     struct InterpolationData global_interp_nonthermal_data;
 #endif
 
+/* Thread-local accelerator structure for OpenMP thread safety */
+typedef struct {
+    gsl_interp_accel *xacc_thermal;
+    gsl_interp_accel *yacc_thermal;
+    #if NONTHERMAL_E_DIST != OFF
+        gsl_interp_accel *xacc_nonthermal;
+        gsl_interp_accel *yacc_nonthermal;
+    #endif
+} ThreadLocalAccel;
+
+static ThreadLocalAccel *thread_accels = NULL;
+static int num_threads_allocated = 0;
+
+/* Initialize thread-local accelerators - call once after loading interpolation data */
+void initThreadLocalAccelerators(int num_threads)
+{
+    int i;
+    
+    /* Free existing accelerators if any */
+    if (thread_accels)
+    {
+        for (i = 0; i < num_threads_allocated; i++)
+        {
+            if (thread_accels[i].xacc_thermal) gsl_interp_accel_free(thread_accels[i].xacc_thermal);
+            if (thread_accels[i].yacc_thermal) gsl_interp_accel_free(thread_accels[i].yacc_thermal);
+            #if NONTHERMAL_E_DIST != OFF
+                if (thread_accels[i].xacc_nonthermal) gsl_interp_accel_free(thread_accels[i].xacc_nonthermal);
+                if (thread_accels[i].yacc_nonthermal) gsl_interp_accel_free(thread_accels[i].yacc_nonthermal);
+            #endif
+        }
+        free(thread_accels);
+    }
+
+    num_threads_allocated = num_threads;
+    thread_accels = calloc(num_threads, sizeof(ThreadLocalAccel));
+    
+    if (!thread_accels)
+    {
+        fprintf(stderr, "ERROR: Failed to allocate thread-local accelerators\n");
+        exit(1);
+    }
+    
+    for (i = 0; i < num_threads; i++)
+    {
+        thread_accels[i].xacc_thermal = gsl_interp_accel_alloc();
+        thread_accels[i].yacc_thermal = gsl_interp_accel_alloc();
+        #if NONTHERMAL_E_DIST != OFF
+            thread_accels[i].xacc_nonthermal = gsl_interp_accel_alloc();
+            thread_accels[i].yacc_nonthermal = gsl_interp_accel_alloc();
+        #endif
+    }
+}
+
+/* Free thread-local accelerators - call during cleanup */
+void freeThreadLocalAccelerators(void)
+{
+    int i;
+    
+    if (thread_accels)
+    {
+        for (i = 0; i < num_threads_allocated; i++)
+        {
+            gsl_interp_accel_free(thread_accels[i].xacc_thermal);
+            gsl_interp_accel_free(thread_accels[i].yacc_thermal);
+            #if NONTHERMAL_E_DIST != OFF
+                gsl_interp_accel_free(thread_accels[i].xacc_nonthermal);
+                gsl_interp_accel_free(thread_accels[i].yacc_nonthermal);
+            #endif
+        }
+        free(thread_accels);
+        thread_accels = NULL;
+        num_threads_allocated = 0;
+    }
+}
+
 void initalizeHotCrossSection(int rank, gsl_rng *rand, FILE *fPtr)
 {
     int files_exist = 0;
@@ -539,42 +614,46 @@ void initalizeHotCrossSectionInterp()
         gsl_spline2d_init(global_interp_nonthermal_data.spline, global_interp_nonthermal_data.xa, global_interp_nonthermal_data.ya, global_interp_nonthermal_data.za, global_interp_nonthermal_data.nx, global_interp_nonthermal_data.ny);
     #endif
 
+    #if defined(_OPENMP)
+        #pragma omp parallel
+        {
+            #pragma omp single
+            {
+                num_threads_allocated = omp_get_num_threads();
+            }
+        }
+        initThreadLocalAccelerators(num_threads_allocated);
+    #endif
 }
+
 
 //interpolation checked with python interpolation of the same hot coss section table
 double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta, gsl_rng *rand, FILE *fPtr)
 {
     double result = NAN;
     int status;
+    int thread_id = 0;
+    
+    //this can be called within a parallel region by eg calcMeanFreePath or findContainingHydroCell so it shoudl return the
+    #if defined(_OPENMP)
+        thread_id = omp_get_thread_num();
+    #endif
 
-    gsl_error_handler_t *error_handler;
-
-    //turn off error handler to do our custom error handling
-    error_handler=gsl_set_error_handler_off();
-
-    // Access global_interp_data fields
-    status = gsl_spline2d_eval_e(global_interp_thermal_data.spline,
-                                      log_ph_comv_e, log_theta,
-                                      global_interp_thermal_data.xacc,
-                                      global_interp_thermal_data.yacc,
-                                      &result);
-    //fprintf(fPtr, "Thermal: %g %g %g\n", log_ph_comv_e, log_theta, result);
-
-    if (status != GSL_SUCCESS)
+    /* Manual bounds checking - no GSL error handler needed */
+    if (log_ph_comv_e < LOG_PH_E_MIN || log_ph_comv_e > LOG_PH_E_MAX ||
+            log_theta < LOG_T_MIN || log_theta > LOG_T_MAX)
     {
-        fprintf(stderr, "interpolateThermalHotCrossSection: GSL error - %s\n",
-                gsl_strerror(status));
+        fprintf(stderr, "interpolateThermalHotCrossSection: Out of bounds:\n");
         fprintf(stderr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
                 log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
         fprintf(stderr, "  log_theta = %g (valid range: [%g, %g])\n",
                 log_theta, LOG_T_MIN, LOG_T_MAX);
         fprintf(stderr, "  Calculating cross section directly...\n");
-
+        
         // Log to file as well if available
         if (fPtr != NULL)
         {
-            fprintf(fPtr, "interpolateThermalHotCrossSection: GSL error - %s\n",
-                    gsl_strerror(status));
+            fprintf(fPtr, "interpolateThermalHotCrossSection: Out of bounds:\n");
             fprintf(fPtr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
                     log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
             fprintf(fPtr, "  log_theta = %g (valid range: [%g, %g])\n",
@@ -582,14 +661,14 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
             fprintf(fPtr, "  Calculating cross section directly...\n");
             fflush(fPtr);
         }
-
+        
         // Convert from log10 space back to linear space for calculation
         double ph_comv = pow(10.0, log_ph_comv_e);
         double theta = pow(10.0, log_theta);
-
+        
         // Calculate directly and return in log10 space to match table format
         result = log10(calculateTotalThermalCrossSection(ph_comv, theta, rand, fPtr));
-
+        
         fprintf(stderr, "  Direct calculation result: %g\n", result);
         if (fPtr != NULL)
         {
@@ -597,9 +676,63 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
             fflush(fPtr);
         }
     }
+    else
+    {
+        //if openmp is defined do this checking otherwise we know we can just use the global_interp_thermal_data struct by default
+        #if defined(_OPENMP)
+            /* In bounds - use fast interpolation with thread-local accelerators with OpenMP*/
+            if (thread_accels && thread_id < num_threads_allocated)
+            {
+                status = gsl_spline2d_eval_e(global_interp_thermal_data.spline,
+                                                      log_ph_comv_e, log_theta,
+                                                      thread_accels[thread_id].xacc_thermal,
+                                                      thread_accels[thread_id].yacc_thermal, &result);
+            }
+            else
+            {
+                // Access global_interp_data fields
+                status = gsl_spline2d_eval_e(global_interp_thermal_data.spline,
+                                             log_ph_comv_e, log_theta,
+                                             global_interp_thermal_data.xacc,
+                                             global_interp_thermal_data.yacc,
+                                             &result);
+                //fprintf(fPtr, "Thermal: %g %g %g\n", log_ph_comv_e, log_theta, result);
+            }
+        #else
+            status = gsl_spline2d_eval_e(global_interp_thermal_data.spline,
+                                         log_ph_comv_e, log_theta,
+                                         global_interp_thermal_data.xacc,
+                                         global_interp_thermal_data.yacc,
+                                         &result);
+            //fprintf(fPtr, "Thermal: %g %g %g\n", log_ph_comv_e, log_theta, result);
 
-    //reset default behavior
-    error_handler = gsl_set_error_handler (NULL);
+        #endif
+        
+        //check that things worked out ok
+        if (status != GSL_SUCCESS)
+        {
+            fprintf(stderr, "interpolateSubgroupNonThermalHotCrossSection: GSL error - %s\n",
+                    gsl_strerror(status));
+            fprintf(stderr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
+                    log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
+            fprintf(stderr, "  gamma subgroup index = %d, gamma_center = %g\n",
+                    i, global_interp_nonthermal_data.ya[i]);
+            
+            // Log to file as well if available
+            if (fPtr != NULL)
+            {
+                fprintf(fPtr, "interpolateSubgroupNonThermalHotCrossSection: GSL error - %s\n",
+                        gsl_strerror(status));
+                fprintf(fPtr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
+                        log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
+                fprintf(fPtr, "  gamma subgroup index = %d, gamma_center = %g\n",
+                        i, global_interp_nonthermal_data.ya[i]);
+                fflush(fPtr);
+            }
+            exit(1);
+        }
+
+    }
 
     return result;
 }
@@ -608,64 +741,55 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
     void interpolateSubgroupNonThermalHotCrossSection(double log_ph_comv_e, double *subgroup_interpolated_results, gsl_rng *rand, FILE *fPtr)
     {
         // iterate over the subgroups to get the nonthermal cross sections and save them to the pointer array
-        int i=0;
+        int i=0, thread_id = 0;
         double result;
         int status;
         double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
+        /* Manual bounds checking for photon energy */
+        bool out_of_bounds = (log_ph_comv_e < LOG_PH_E_MIN || log_ph_comv_e > LOG_PH_E_MAX);
 
-        gsl_error_handler_t *error_handler;
+        #if defined(_OPENMP)
+            thread_id = omp_get_thread_num();
+        #endif
 
-        //turn off error handler to do our custom error handling
-        error_handler=gsl_set_error_handler_off();
-
-
-        //todo: make sure that the subgroup_interpolated_results pointer has N_GAMMA space allocated
+        if (status != GSL_SUCCESS)
+        {
+            fprintf(stderr, "interpolateSubgroupNonThermalHotCrossSection: Out of bounds:\n");
+            fprintf(stderr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
+                    log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
+             fprintf(stderr, "  Calculating cross section directly...\n");
+            
+            // Log to file as well if available
+            if (fPtr != NULL)
+            {
+                fprintf(fPtr, "interpolateSubgroupNonThermalHotCrossSection: Out of bounds:\n");
+                fprintf(fPtr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
+                        log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
+                fprintf(fPtr, "  gamma subgroup index = %d, gamma_center = %g\n",
+                        i, global_interp_nonthermal_data.ya[i]);
+                fprintf(fPtr, "  Calculating cross section directly...\n");
+                fflush(fPtr);
+            }
+        }
+        
 
         for (i = 0; i < global_interp_nonthermal_data.ny; i++)
         {
-            status = gsl_spline2d_eval_e(global_interp_nonthermal_data.spline,
-                                          log_ph_comv_e,
-                                          global_interp_nonthermal_data.ya[i],
-                                          global_interp_nonthermal_data.xacc,
-                                          global_interp_nonthermal_data.yacc,
-                                          &result);
-
-            if (status != GSL_SUCCESS)
+            if (out_of_bounds)
             {
-                fprintf(stderr, "interpolateSubgroupNonThermalHotCrossSection: GSL error - %s\n",
-                        gsl_strerror(status));
-                fprintf(stderr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
-                        log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
-                fprintf(stderr, "  gamma subgroup index = %d, gamma_center = %g\n",
-                        i, global_interp_nonthermal_data.ya[i]);
-                fprintf(stderr, "  Calculating cross section directly...\n");
-
-                // Log to file as well if available
-                if (fPtr != NULL)
-                {
-                    fprintf(fPtr, "interpolateSubgroupNonThermalHotCrossSection: GSL error - %s\n",
-                            gsl_strerror(status));
-                    fprintf(fPtr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
-                            log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
-                    fprintf(fPtr, "  gamma subgroup index = %d, gamma_center = %g\n",
-                            i, global_interp_nonthermal_data.ya[i]);
-                    fprintf(fPtr, "  Calculating cross section directly...\n");
-                    fflush(fPtr);
-                }
-
                 // Convert from log10 space back to linear space for calculation
                 double ph_comv = pow(10.0, log_ph_comv_e);
-
+                
                 // Calculate gamma_min and gamma_max for this subgroup
                 // The ya[i] values are centers, so we need to reconstruct the bin edges
                 double gamma_min_log = log10(GAMMA_MIN) + i * dgamma;
                 double gamma_max_log = gamma_min_log + dgamma;
                 double gamma_min = pow(10.0, gamma_min_log);
                 double gamma_max = pow(10.0, gamma_max_log);
-
+                
                 // Calculate directly and return in log10 space to match table format
                 result = log10(calculateTotalNonThermalCrossSection(ph_comv, gamma_min, gamma_max, rand, fPtr));
-
+                
                 fprintf(stderr, "  Direct calculation result for subgroup %d: %g\n", i, result);
                 if (fPtr != NULL)
                 {
@@ -674,12 +798,65 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
                 }
 
             }
+            else
+            {
+                //if openmp is defined do this checking otherwise we know we can just use the global_interp_thermal_data struct by default
+                #if defined(_OPENMP)
+                    /* Use interpolation with thread-local accelerators */
+                    if (thread_accels && thread_id < num_threads_allocated)
+                    {
+                        status = gsl_spline2d_eval_e(global_interp_nonthermal_data.spline,
+                                                  log_ph_comv_e,
+                                                  global_interp_nonthermal_data.ya[i],
+                                                  thread_accels[thread_id].xacc_nonthermal,
+                                                  thread_accels[thread_id].yacc_nonthermal,
+                                                  &result);
+                    }
+                    else
+                    {
+                        status = gsl_spline2d_eval_e(global_interp_nonthermal_data.spline,
+                                                     log_ph_comv_e,
+                                                     global_interp_nonthermal_data.ya[i],
+                                                     global_interp_nonthermal_data.xacc,
+                                                     global_interp_nonthermal_data.yacc,
+                                                     &result);
+                    }
+                #else
+                    status = gsl_spline2d_eval_e(global_interp_nonthermal_data.spline,
+                                             log_ph_comv_e,
+                                             global_interp_nonthermal_data.ya[i],
+                                             global_interp_nonthermal_data.xacc,
+                                             global_interp_nonthermal_data.yacc,
+                                             &result);
+                #endif
+                
+                if (status != GSL_SUCCESS)
+                {
+                    fprintf(stderr, "interpolateSubgroupNonThermalHotCrossSection: GSL error - %s\n",
+                            gsl_strerror(status));
+                    fprintf(stderr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
+                            log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
+                    fprintf(stderr, "  gamma subgroup index = %d, gamma_center = %g\n",
+                            i, global_interp_nonthermal_data.ya[i]);
+                    
+                    // Log to file as well if available
+                    if (fPtr != NULL)
+                    {
+                        fprintf(fPtr, "interpolateSubgroupNonThermalHotCrossSection: GSL error - %s\n",
+                                gsl_strerror(status));
+                        fprintf(fPtr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
+                                log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
+                        fprintf(fPtr, "  gamma subgroup index = %d, gamma_center = %g\n",
+                                i, global_interp_nonthermal_data.ya[i]);
+                        fflush(fPtr);
+                    }
+                    exit(1);
+                    
+                }
+            }
 
             subgroup_interpolated_results[i] = result;
         }
-
-        //reset default behavior
-        error_handler = gsl_set_error_handler (NULL);
 
 
     }
@@ -705,6 +882,10 @@ void cleanupInterpolationData()
         free(global_interp_nonthermal_data.ya);
         free(global_interp_nonthermal_data.za);
     #endif
+    
+    /* Free thread-local accelerators */
+    freeThreadLocalAccelerators();
+
 }
 
 void broadcastInterpolationData(int rank)
