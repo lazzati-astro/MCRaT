@@ -1,4 +1,7 @@
- 
+void initGlobalThreadRNG(gsl_rng *master_rng, int num_threads);
+
+void freeGlobalThreadRNG(void);
+
 void photonInjection(struct photonList *photon_list, double r_inj, double ph_weight, int min_photons, int max_photons, char spect, double theta_min, double theta_max, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr);
 
 void lorentzBoost(double *boost, double *p_ph, double *result, char object,  FILE *fPtr);
