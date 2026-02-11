@@ -177,7 +177,7 @@ double getThermalCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *
 }
 
 #if NONTHERMAL_E_DIST != OFF
-    double getNonThermalCrossSection(double photon_comv_e, double *subgroup_interpolated_results, gsl_rng *rand, FILE *fPtr)
+    void getNonThermalCrossSection(double photon_comv_e, double *subgroup_interpolated_results, gsl_rng *rand, FILE *fPtr)
     {
         int i=0;
         double normalized_photon_comv_e=photon_comv_e/(M_EL*C_LIGHT ); //h*nu / mc^2 , units of p0 is erg/c

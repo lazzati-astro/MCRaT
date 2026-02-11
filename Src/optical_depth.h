@@ -10,7 +10,7 @@ void getCrossSection(double photon_comv_e, double fluid_temp, double *cross_sect
 double getThermalCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *rand, FILE *fPtr);
 
 #if NONTHERMAL_E_DIST != OFF
-    double getNonThermalCrossSection(double photon_comv_e, double *subgroup_interpolated_results, gsl_rng *rand, FILE *fPtr);
+    void getNonThermalCrossSection(double photon_comv_e, double *subgroup_interpolated_results, gsl_rng *rand, FILE *fPtr);
 #endif
 
 double calculateThermalScatteringBias(double alpha_parameter, double average_dimless_theta, double cell_dimless_theta, double tau_max);
