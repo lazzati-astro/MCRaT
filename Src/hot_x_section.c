@@ -752,26 +752,6 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
         #if defined(_OPENMP)
             thread_id = omp_get_thread_num();
         #endif
-
-        if (status != GSL_SUCCESS)
-        {
-            fprintf(stderr, "interpolateSubgroupNonThermalHotCrossSection: Out of bounds:\n");
-            fprintf(stderr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
-                    log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
-             fprintf(stderr, "  Calculating cross section directly...\n");
-            
-            // Log to file as well if available
-            if (fPtr != NULL)
-            {
-                fprintf(fPtr, "interpolateSubgroupNonThermalHotCrossSection: Out of bounds:\n");
-                fprintf(fPtr, "  log_ph_comv_e = %g (valid range: [%g, %g])\n",
-                        log_ph_comv_e, LOG_PH_E_MIN, LOG_PH_E_MAX);
-                fprintf(fPtr, "  gamma subgroup index = %d, gamma_center = %g\n",
-                        i, global_interp_nonthermal_data.ya[i]);
-                fprintf(fPtr, "  Calculating cross section directly...\n");
-                fflush(fPtr);
-            }
-        }
         
 
         for (i = 0; i < global_interp_nonthermal_data.ny; i++)
