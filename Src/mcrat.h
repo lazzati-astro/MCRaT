@@ -139,7 +139,9 @@ extern const double R_EL;
 
 //if NONTHERMAL_E_DIST is on want to make sure that scattering bias is also set to be on. If not, then we check whether the user has specified scattering bias to be applied or not
 #if NONTHERMAL_E_DIST != OFF
-    #define SCATTERING_BIAS_SWITCH  ON
+    #if SCATTERING_BIAS_SWITCH == OFF
+        #error SCATTERING_BIAS_SWITCH must be set to ON when NONTHERMAL_E_DIST==ON.
+    #endif
 #else
     #ifndef SCATTERING_BIAS_SWITCH
         #define SCATTERING_BIAS_SWITCH OFF

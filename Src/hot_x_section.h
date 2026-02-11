@@ -13,8 +13,11 @@
 #define HOT_THERMAL_X_SECTION_FILE	"thermal_hot_x_section.dat"
 
 #if NONTHERMAL_E_DIST != OFF
-    //define the number of lorentz factor intervals that we will calculate the nonthermal hot cross sections for
-    #define N_GAMMA 3
+    #ifndef N_GAMMA
+        //define the number of lorentz factor intervals that we will calculate the nonthermal hot cross sections for
+        // if the user hasnt already defined it
+        #define N_GAMMA 3
+    #endif
 
     //define the nonthermal modified cross section table filename
     #if NONTHERMAL_E_DIST == POWERLAW
