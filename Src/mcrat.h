@@ -413,6 +413,8 @@ struct hydro_dataframe
         #ifndef EPSILON_B
             //dont assume anything here
             #warning EPSILON_B needs to be defined with this B_FIELD_CALC setting. Specify EPSILON_B in mcrat_input.h file using EPSILON_B. This can be ignored if the user is using the custom outflow capability
+            #define EPSILON_B 0
+
         #endif
     #endif
 
