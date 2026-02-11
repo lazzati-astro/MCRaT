@@ -549,7 +549,7 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
     //can optimize here, exchange the for loops and change condition to compare to each of the photons is the radius of the block is .95 (or 1.05) times the min (max) photon radius
     //or just parallelize this part here
     
-    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index,  ph_phi, min_index, ph_p_comv, ph_p, fluid_beta, ph) private(i, thread_id) reduction(+:num_photons_find_new_element)
+    #pragma omp parallel for num_threads(num_thread) firstprivate( is_in_block, ph_block_index,  ph_phi, min_index, ph_p_comv, ph_p, fluid_beta, photon_hydro_coord, ph) private(i, thread_id) reduction(+:num_photons_find_new_element)
     for (i=0;i<photon_list->list_capacity; i++)
     {
         ph=getPhoton(photon_list, i);
