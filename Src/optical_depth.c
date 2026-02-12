@@ -96,7 +96,7 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
             //calculate the thermal tau
             (ph->optical_depths)[0] = (thermal_n_dens_lab)*(THOM_X_SECT*(*(norm_cross_section+0)))*fluid_factor;
             norm_optical_depth = (ph->optical_depths)[0];
-            fprintf(fPtr, "thermal tau: %e\n", (ph->optical_depths)[0] );
+            //fprintf(fPtr, "thermal tau: %e\n", (ph->optical_depths)[0] );
 
             //set to 1 for now, this is most likely the best value for us
             thermal_bias= calculateThermalScatteringBias(SCATTERING_BIAS_SCALING, hydro_data->average_dimless_theta, (hydro_data->temp)[ph_block_index], (ph->optical_depths)[0]*C_LIGHT/hydro_data->fps);
@@ -127,8 +127,8 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
             
             //we dont include the c*dt factor for calculating the scattering biases since the saved optical depths exclude this factor (and we calculate the ratio of optical depths in the function), while the thermal bias that is calculated explicitly includes the optical depth unil the next time step and the subseqeunt biases will consider the scattering until the next time step since its based on the previously calculated thermal bias
             (ph->scattering_bias)[i+1]=calculateNonthermalScatteringBias(thermal_bias, norm_optical_depth,(ph->optical_depths)[i+1]) ;
-            fprintf(fPtr, "nonthermal_n_dens_lab_i: %e, subgroup_dens: %e, norm_cross_section: %e ith tau: %e, ith bias: %e\n", nonthermal_n_dens_lab_i, (hydro_data->electron_dens_subgroup)[i], *(norm_cross_section+(i+1)), (ph->optical_depths)[i+1], (ph->scattering_bias)[i+1] );
-            fflush(fPtr);
+            //fprintf(fPtr, "nonthermal_n_dens_lab_i: %e, subgroup_dens: %e, norm_cross_section: %e ith tau: %e, ith bias: %e\n", nonthermal_n_dens_lab_i, (hydro_data->electron_dens_subgroup)[i], *(norm_cross_section+(i+1)), (ph->optical_depths)[i+1], (ph->scattering_bias)[i+1] );
+            //fflush(fPtr);
         }
 
         tau=0;
@@ -138,8 +138,8 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
         }
         (ph->total_optical_depth) = tau;
 
-        fprintf(fPtr, "total tau: %e\n", (ph->total_optical_depth) );
-        fflush(fPtr);
+        //fprintf(fPtr, "total tau: %e\n", (ph->total_optical_depth) );
+        //fflush(fPtr);
 
     #endif
 
