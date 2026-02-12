@@ -1840,6 +1840,12 @@ void hydroDataFrameInitialize(struct hydro_dataframe *hydro_data)
         hydro_data->nonthermal_dens=NULL;
     #endif
     hydro_data->grid = NULL;
+    
+    //set defaults for the frame related values
+    hydro_data->scatt_frame_number = 0;
+    hydro_data->inj_frame_number = 0;
+    
+    
 
 }
 
