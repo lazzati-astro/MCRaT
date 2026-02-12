@@ -124,6 +124,8 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
         {
             nonthermal_n_dens_lab_i=nonthermal_n_dens_lab*(hydro_data->electron_dens_subgroup)[i];
             (ph->optical_depths)[i+1] = (nonthermal_n_dens_lab_i)*(THOM_X_SECT*(*(norm_cross_section+(i+1))))*fluid_factor;
+            
+            //we dont include the c*dt factor for calculating the scattering biases since the saved optical depths exclude this factor (and we calculate the ratio of optical depths in the function), while the thermal bias that is calculated explicitly includes the optical depth unil the next time step and the subseqeunt biases will consider the scattering until the next time step since its based on the previously calculated thermal bias
             (ph->scattering_bias)[i+1]=calculateNonthermalScatteringBias(thermal_bias, norm_optical_depth,(ph->optical_depths)[i+1]) ;
             fprintf(fPtr, "nonthermal_n_dens_lab_i: %e, subgroup_dens: %e, norm_cross_section: %e ith tau: %e, ith bias: %e\n", nonthermal_n_dens_lab_i, (hydro_data->electron_dens_subgroup)[i], *(norm_cross_section+(i+1)), (ph->optical_depths)[i+1], (ph->scattering_bias)[i+1] );
             fflush(fPtr);
