@@ -111,6 +111,7 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
             norm_optical_depth = (ph->optical_depths)[1];
 
             thermal_bias=calculateThermalScatteringBias(1, 1, 1, (ph->optical_depths)[1]*C_LIGHT/hydro_data->fps);
+            (ph->scattering_bias)[1] = thermal_bias;
             
             //make sure we set the thermal values to be 0
             (ph->optical_depths)[0] = 0;
