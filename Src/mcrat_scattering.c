@@ -130,7 +130,7 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
         printf("A plane coordinate value is nan\n\n");
         printf("This is most likely due to the photon velocity vector being parallel to the z unit vector. \n\n");
         fprintf(fPtr, "A plane coordinate value is nan\n\n");
-        fprintf(fPtr, "This is most likely due to the boosted photon velocity vector being parallel to the z unit vector. \n\n");
+        fprintf(fPtr, "This is most likely due to the photon velocity vector being parallel to the z unit vector. \n\n");
         fflush(fPtr);
         //can just set x and y to be the proper unit vectors
         x[0]=1;
@@ -145,6 +145,47 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
     
     //find stokes coordinate sys in orig frame with respect to boost vector
     findXY(v_ph, v, &x_new, &y_new);
+    if ( isnan(*(y_new+0)) || isnan(*(y_new+1)) || isnan(*(y_new+2)))
+    {
+        printf("A plane coordinate value is nan\n\n");
+        printf("This is most likely due to the photon velocity vector being parallel to the boost unit vector. \n\n");
+        fprintf(fPtr, "A plane coordinate value is nan\n\n");
+        fprintf(fPtr, "This is most likely due to the boosted photon velocity vector being parallel to the boost unit vector. \n\n");
+        fflush(fPtr);
+        //can just set x and y to be any perpendicular unit vector, we use a helper unit vector that is in the direction of the smallest element of the v_ph vector
+        double helper_vector[3]={0,0,0};
+        
+        if ((fabs(*(v_ph+2)) < fabs(*(v_ph+0))) && (fabs(*(v_ph+2)) < fabs(*(v_ph+1))))
+        {
+            //use the z axis
+            helper_vector[2]=1;
+            
+        }
+        else if ((fabs(*(v_ph+1)) < fabs(*(v_ph+0))) && (fabs(*(v_ph+1)) < fabs(*(v_ph+2))))
+        {
+            //use the y axis
+            helper_vector[1]=1;
+        }
+        else
+        {
+            //use the x axis
+            helper_vector[0]=1;
+        }
+        
+        findXY(v_ph, helper_vector, &x_new, &y_new);
+        
+        if ( isnan(*(y_new+0)) || isnan(*(y_new+1)) || isnan(*(y_new+2)))
+        {
+            printf("A plane coordinate value is still nan after using the helper vector\n\n");
+            printf("exiting now\n\n");
+            fprintf(fPtr, "A plane coordinate value is still nan after using the helper vector\n\n");
+            fprintf(fPtr, "exiting now \n\n");
+            fflush(fPtr);
+            exit(1);
+        }
+        
+    }
+
     
     phi=findPhi(x, y, x_new, y_new);//now find rotation between the two coordinate systems
     
