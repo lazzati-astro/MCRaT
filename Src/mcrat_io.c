@@ -1936,6 +1936,7 @@ void allocateHydroDataFrameMemory(struct hydro_dataframe *hydro_data, int n_elem
         #endif
     #endif
 
+    hydro_data->num_elements=n_elements;
 
 }
 

@@ -1312,38 +1312,8 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
         fflush(fPtr);
     
         //allocate memory to hold processed data
-       (hydro_data->pres)=malloc (r_count * sizeof (double ));
-       (hydro_data->v0)=malloc (r_count * sizeof (double ));
-       (hydro_data->v1)=malloc (r_count * sizeof (double ));
-       (hydro_data->dens)=malloc (r_count * sizeof (double ));
-       (hydro_data->r0)=malloc (r_count * sizeof (double ));
-       (hydro_data->r1)=malloc (r_count * sizeof (double ));
-       (hydro_data->r)=malloc (r_count * sizeof (double ));
-       (hydro_data->theta)=malloc (r_count * sizeof (double ));
-       (hydro_data->gamma)=malloc (r_count * sizeof (double ));
-       (hydro_data->dens_lab)=malloc (r_count * sizeof (double ));
-       (hydro_data->r0_size)=malloc (r_count * sizeof (double ));
-       (hydro_data->r1_size)=malloc (r_count * sizeof (double ));
-       (hydro_data->temp)=malloc (r_count * sizeof (double ));
+        allocateHydroDataFrameMemory(hydro_data, r_count);
     
-        #if B_FIELD_CALC == SIMULATION
-           (hydro_data->B0)= malloc (r_count * sizeof (double));
-           (hydro_data->B1)= malloc (r_count * sizeof (double));
-        #endif
-
-
-        #if DIMENSIONS == THREE
-           (hydro_data->r2)=malloc(r_count*sizeof (double));
-           (hydro_data->r2_size)=malloc(r_count*sizeof (double));
-        #endif
-                                                   
-        #if DIMENSIONS == THREE || DIMENSIONS == TWO_POINT_FIVE
-           (hydro_data->v2)=malloc (r_count * sizeof (double));
-            #if B_FIELD_CALC==SIMULATION
-               (hydro_data->B2)= malloc (r_count * sizeof (double));
-            #endif
-        #endif
-
 
         
         fprintf(fPtr, ">> MCRaT is saving the necessary data to memory.\n");
