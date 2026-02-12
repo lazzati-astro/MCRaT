@@ -32,3 +32,7 @@ void phScattStats(struct photonList *photon_list, int *max, int *min, double *av
 void phMinMax(struct photonList *photon_list, double *min, double *max, double *min_theta, double *max_theta, FILE *fPtr);
 
 void logspace(double start, double stop, int num, double *array);
+
+#if SCATTERING_BIAS_SWITCH == ON
+void calculateAverageDimlessTheta(struct hydro_dataframe *hydro_data, FILE *fPtr);
+#endif
