@@ -655,7 +655,7 @@ int main(int argc, char **argv)
             {
                 printPhotons(&photon_list, frame_abs_cnt, num_cyclosynch_ph_emit, scatt_cyclosynch_num_ph, scatt_frame , 0, last_frm, mc_dir, angle_id, fPtr);
                 
-                dirFileMerge(mc_dir, 0, 1, old_num_angle_procs, angle_id, fPtr);
+                dirFileMerge(mc_dir, 0, 1, 1, angle_id, fPtr);
             }
             
             //printf("This many Photons: %d\n",photon_list.num_photons);
