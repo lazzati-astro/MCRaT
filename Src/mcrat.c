@@ -642,7 +642,13 @@ int main(int argc, char **argv)
         if (restrt==INITALIZE)
         {
             //can read FLASH 2D (no B field) and plutochombo and pluto dbl files in 2/2.5/3D with B field
-            getHydroData(&hydrodata, frame, inj_radius, 1, min_r, max_r, min_theta, max_theta, fPtr);
+            //getHydroData(&hydrodata, frame, inj_radius, 1, min_r, max_r, min_theta, max_theta, fPtr);
+            //try to read in less of a hydro frame for photon injection to minimize memory usage
+            min_r = r_inj - C_LIGHT/hydro_data->fps;
+            max_r = r_inj + C_LIGHT/hydro_data->fps;
+            min_theta=theta_jmin_thread - 2*M_PI/180;
+            max_theta=theta_jmax_thread + 2*M_PI/180;
+            getHydroData(&hydrodata, frame, inj_radius, 0, min_r, max_r, min_theta, max_theta, fPtr);
                 
             //determine where to place photons and how many should go in a given place
             //for a checkpoint implmentation, dont need to inject photons, need to load photons' last saved data
