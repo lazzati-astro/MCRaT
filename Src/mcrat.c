@@ -644,8 +644,8 @@ int main(int argc, char **argv)
             //can read FLASH 2D (no B field) and plutochombo and pluto dbl files in 2/2.5/3D with B field
             //getHydroData(&hydrodata, frame, inj_radius, 1, min_r, max_r, min_theta, max_theta, fPtr);
             //try to read in less of a hydro frame for photon injection to minimize memory usage
-            min_r = inj_radius - C_LIGHT/hydrodata->fps;
-            max_r = inj_radius + C_LIGHT/hydrodata->fps;
+            min_r = inj_radius - C_LIGHT/hydrodata.fps;
+            max_r = inj_radius + C_LIGHT/hydrodata.fps;
             min_theta=theta_jmin_thread - 2*M_PI/180;
             max_theta=theta_jmax_thread + 2*M_PI/180;
             getHydroData(&hydrodata, frame, inj_radius, 0, min_r, max_r, min_theta, max_theta, fPtr);
