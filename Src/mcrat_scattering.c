@@ -657,10 +657,17 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
     double mu=0, phi_max=0, norm=0;
     int will_scatter=0;
     double energy_ratio=  p0/(M_EL*C_LIGHT ); //h*nu / mc^2 , units of p0 is erg/c
-    
-    //determine the KN cross section over the thomson cross section
-    KN_x_section_over_thomson_x_section= kleinNishinaCrossSection(energy_ratio);
-    rand_num=gsl_rng_uniform(rand);
+        
+    #if TAU_CALCULATION == DIRECT
+        //determine the KN cross section over the thomson cross section
+        KN_x_section_over_thomson_x_section= kleinNishinaCrossSection(energy_ratio);
+        rand_num=gsl_rng_uniform(rand);
+    #else
+        //If we have already properly used the KN cross section to determine the optical depth to scatter, through the calculation of the hot cross section
+        // we know that this photon will scatter and dont need to consider the KN cross section again
+        KN_x_section_over_thomson_x_section=1;
+    #endif
+
         
     if (rand_num<= KN_x_section_over_thomson_x_section)
     {
