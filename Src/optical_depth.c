@@ -110,7 +110,10 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
             (ph->optical_depths)[1] = (nonthermal_n_dens_lab_i)*(THOM_X_SECT*(*(norm_cross_section+(1))))*fluid_factor;
             norm_optical_depth = (ph->optical_depths)[1];
 
-            thermal_bias=calculateThermalScatteringBias(1, 1, 1, (ph->optical_depths)[1]*C_LIGHT/hydro_data->fps);
+            // the first temp that gets passed in is assumed to be the dimless temp already while the second temp that is passed in, will be passed to calcDimlessTheta within the function. We want these to cancel out in the calulation of the bias parameter.
+            thermal_bias=calculateThermalScatteringBias(1.0, calcDimlessTheta(1.0), 1.0, (ph->optical_depths)[1]*C_LIGHT/hydro_data->fps);
+            //fprintf(fPtr, "nonthermal scatterig bias: %e\n", thermal_bias);
+
             (ph->scattering_bias)[1] = thermal_bias;
             
             //make sure we set the thermal values to be 0
