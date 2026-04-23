@@ -62,7 +62,7 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
             calculateGammaSubgroup(result-1, &gamma_min, &gamma_max);
             fprintf(fPtr, "chosen gamma range of %d: %e %e\n",result, gamma_min, gamma_max);
 
-            singleNonThermalElectron(el_p, ph_p, pow(10, gamma_min), pow(10,gamma_max), rand, fPtr);
+            singleNonThermalElectron(el_p, ph_p, gamma_min, gamma_max, rand, fPtr);
         }
 
     #endif
