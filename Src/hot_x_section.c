@@ -214,7 +214,7 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
     memset(&xsection_file[0], 0, sizeof(xsection_file));
 
     #if NONTHERMAL_E_DIST != OFF
-        double dgamma=(log10(GAMMA_MAX)-log10(GAMMA_MIN))/N_GAMMA;
+        //double dgamma=(log10(GAMMA_MAX)-log10(GAMMA_MIN))/N_GAMMA;
 
         for (i = 0; i <= N_PH_E; i++)
         {
@@ -223,8 +223,10 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
                 for (k = 0; k < N_GAMMA; k++)
                 {
                     comv_ph_e = pow(10., LOG_PH_E_MIN + i * dph_e);
-                    gamma_min = pow(10., log10(GAMMA_MIN) + k * dgamma);
-                    gamma_max = pow(10., log10(gamma_min) + dgamma);
+                    //gamma_min = pow(10., log10(GAMMA_MIN) + k * dgamma);
+                    //gamma_max = pow(10., log10(gamma_min) + dgamma);
+                    calculateGammaSubgroup(k, &gamma_min, &gamma_max); //returns gamma interval values as actual values
+
                     nonthermal_table[i][k] = log10(calculateTotalNonThermalCrossSection(comv_ph_e, gamma_min, gamma_max,  rand, fPtr));
                     if (isnan(nonthermal_table[i][k]))
                     {
@@ -266,8 +268,11 @@ void createHotCrossSection(gsl_rng *rand, FILE *fPtr)
                 for (k = 0; k < N_GAMMA; k++)
                 {
                     comv_ph_e =  LOG_PH_E_MIN + i * dph_e;
-                    gamma_min = log10(GAMMA_MIN) + k * dgamma;
-                    gamma_max = gamma_min + dgamma;
+                    //gamma_min = log10(GAMMA_MIN) + k * dgamma;
+                    //gamma_max = gamma_min + dgamma;
+                    calculateGammaSubgroup(k, &gamma_min, &gamma_max); //returns gamma interval values as actual values
+                    gamma_min = log10(gamma_min);
+                    gamma_max = log10(gamma_max);
                     fprintf(fp, "%d\t%d\t%g\t%g\t%g\t%15.10g\n", i, k, comv_ph_e, gamma_min, gamma_max, nonthermal_table[i][k]);
                 }
             }
@@ -577,16 +582,17 @@ void initalizeHotCrossSectionInterp()
     gsl_spline2d_init(global_interp_thermal_data.spline, global_interp_thermal_data.xa, global_interp_thermal_data.ya, global_interp_thermal_data.za, global_interp_thermal_data.nx, global_interp_thermal_data.ny);
 
     #if NONTHERMAL_E_DIST != OFF
-        dgamma=(log10(GAMMA_MAX)-log10(GAMMA_MIN))/N_GAMMA;
+        //double dgamma=(log10(GAMMA_MAX)-log10(GAMMA_MIN))/N_GAMMA;
         double gamma_min=0, gamma_max=0;
         double *gamma_grid = malloc(N_GAMMA * sizeof(double));
         double *nonthermal_data_grid = malloc(N_GAMMA * (N_PH_E + 1) * sizeof(double));
 
         for (i = 0; i < N_GAMMA; i++)
         {
-            gamma_min = log10(GAMMA_MIN) + i * dgamma;
-            gamma_max = gamma_min + dgamma;
-            gamma_grid[i] = 0.5*(gamma_min+gamma_max);
+            //gamma_min = log10(GAMMA_MIN) + i * dgamma;
+            //gamma_max = gamma_min + dgamma;
+            calculateGammaSubgroup(i, &gamma_min, &gamma_max); //returns gamma interval values as actual values
+            gamma_grid[i] = 0.5*(log10(gamma_min)+log10(gamma_max));
             //printf("gamma_grid[%d] = %g\n", i, gamma_grid[i]);
         }
 
@@ -745,7 +751,7 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
         int i=0, thread_id = 0;
         double result;
         int status;
-        double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
+        //double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
         /* Manual bounds checking for photon energy */
         bool out_of_bounds = (log_ph_comv_e < LOG_PH_E_MIN || log_ph_comv_e > LOG_PH_E_MAX);
 
@@ -763,10 +769,13 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
                 
                 // Calculate gamma_min and gamma_max for this subgroup
                 // The ya[i] values are centers, so we need to reconstruct the bin edges
-                double gamma_min_log = log10(GAMMA_MIN) + i * dgamma;
-                double gamma_max_log = gamma_min_log + dgamma;
-                double gamma_min = pow(10.0, gamma_min_log);
-                double gamma_max = pow(10.0, gamma_max_log);
+                //double gamma_min_log = log10(GAMMA_MIN) + i * dgamma;
+                //double gamma_max_log = gamma_min_log + dgamma;
+                double gamma_min = 0; //pow(10.0, gamma_min_log);
+                double gamma_max = 0; //pow(10.0, gamma_max_log);
+                calculateGammaSubgroup(i, &gamma_min, &gamma_max); //returns gamma interval values as actual values
+
+                
                 
                 // Calculate directly and return in log10 space to match table format
                 result = log10(calculateTotalNonThermalCrossSection(ph_comv, gamma_min, gamma_max, rand, fPtr));
@@ -932,7 +941,7 @@ void broadcastInterpolationData(int rank)
 
         if (rank != 0)
         {
-            double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
+            //double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
             double gamma_min, gamma_max;
 
             // Allocate arrays
@@ -949,9 +958,11 @@ void broadcastInterpolationData(int rank)
             // Reconstruct gamma grid
             for (i = 0; i < N_GAMMA; i++)
             {
-                gamma_min = log10(GAMMA_MIN) + i * dgamma;
-                gamma_max = gamma_min + dgamma;
-                gamma_grid[i] = 0.5 * (gamma_min + gamma_max);
+                //gamma_min = log10(GAMMA_MIN) + i * dgamma;
+                //gamma_max = gamma_min + dgamma;
+                calculateGammaSubgroup(i, &gamma_min, &gamma_max); //returns gamma interval values as actual values
+
+                gamma_grid[i] = 0.5 * (log10(gamma_min) + log10(gamma_max));
             }
 
             // Copy nonthermal table data
@@ -1146,7 +1157,7 @@ int validateThermalFile(const char *filename, FILE *fPtr)
 
         // Calculate expected grid values
         double dph_e = (LOG_PH_E_MAX - LOG_PH_E_MIN) / N_PH_E;
-        double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
+        //double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
         double expected_comv_ph, expected_gamma_min, expected_gamma_max;
         double tolerance = 1e-9; // Tolerance for floating point comparison of the tabulated values
         double tolerance_grid=1e-3;    //tolerance for checking the grid values that were used to create the table
@@ -1328,8 +1339,13 @@ int validateThermalFile(const char *filename, FILE *fPtr)
 
             // Calculate expected grid values
             expected_comv_ph = LOG_PH_E_MIN + i * dph_e;
-            expected_gamma_min = log10(GAMMA_MIN) + j * dgamma;
-            expected_gamma_max = expected_gamma_min + dgamma;
+            //expected_gamma_min = log10(GAMMA_MIN) + j * dgamma;
+            //expected_gamma_max = expected_gamma_min + dgamma;
+            calculateGammaSubgroup(j, &expected_gamma_min, &expected_gamma_max); //returns gamma interval values as actual values
+            expected_gamma_min = log10(expected_gamma_min);
+            expected_gamma_max = log10(expected_gamma_max);
+
+
 
             // Validate comv_ph_e grid
             if (fabs(comv_ph_e - expected_comv_ph) > tolerance_grid)
