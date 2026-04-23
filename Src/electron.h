@@ -42,6 +42,8 @@ double calculateNormBrokenPowerLawEnergyDens(double p1, double p2, double gamma_
 
 
 #if NONTHERMAL_E_DIST != OFF
+    void calculateGammaSubgroup(int i, double *gamma_interval_min, double *gamma_interval_max);
+
     void calculateElectronDistSubgroupDens(double *subgroup_dens, FILE *fPtr);
 
     void calculateNonthermalElectronDens(struct hydro_dataframe *hydro_data, FILE *fPtr);
