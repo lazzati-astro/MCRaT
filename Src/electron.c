@@ -15,7 +15,7 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
         int i=0;
         double cumulative_tau=(ph->scattering_bias)[i]*(ph->optical_depths)[i], random_num=gsl_rng_uniform_pos(rand);
         double subgroup_tau_1=0, subgroup_tau_2=0;
-        double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
+        //double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
         double gamma_min, gamma_max;
 
         random_num=0.0; //for testing
@@ -57,9 +57,10 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
             //result-1 because we start iterating at i=1 instead of 0. This gives result as the index in the
             //photon struct and we need to subtract -1 to get the index for calcualting the gammamin/max interval of the subgroup from the
             //hot cross section calculations
-            gamma_min = log10(GAMMA_MIN) + (result-1) * dgamma;
-            gamma_max = gamma_min + dgamma;
-            fprintf(fPtr, "chosen gamma range of %d: %e %e\n",result, pow(10, gamma_min), pow(10,gamma_max));
+            //gamma_min = log10(GAMMA_MIN) + (result-1) * dgamma;
+            //gamma_max = gamma_min + dgamma;
+            calculateGammaSubgroup(result-1, &gamma_min, &gamma_max)
+            fprintf(fPtr, "chosen gamma range of %d: %e %e\n",result, gamma_min, gamma_max);
 
             singleNonThermalElectron(el_p, ph_p, pow(10, gamma_min), pow(10,gamma_max), rand, fPtr);
         }
@@ -676,15 +677,16 @@ double calculateNormBrokenPowerLawEnergyDens(double p1, double p2, double gamma_
         gsl_integration_workspace * w = gsl_integration_workspace_alloc (1000);
         int i;
         double result, error;
-        double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
+        //double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
         double gamma_min, gamma_max;
         gsl_function F;
         F.function = &nonThermalElectronDistIntegrand;
 
         for (i=0;i<N_GAMMA; i++)
         {
-            gamma_min = pow(10.0, log10(GAMMA_MIN) + i * dgamma);
-            gamma_max = pow(10.0, log10(GAMMA_MIN) + (i+1) * dgamma);
+            //gamma_min = pow(10.0, log10(GAMMA_MIN) + i * dgamma);
+            //gamma_max = pow(10.0, log10(GAMMA_MIN) + (i+1) * dgamma);
+            calculateGammaSubgroup(i, &gamma_min, &gamma_max)
 
             gsl_integration_qags (&F, gamma_min, gamma_max, 0, 1e-7, 1000, w, &result, &error);
             fprintf(fPtr, "gamma_min: %e gamma_max: %e, result: %e\n", gamma_min, gamma_max, result);
