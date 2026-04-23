@@ -59,7 +59,7 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
             //hot cross section calculations
             //gamma_min = log10(GAMMA_MIN) + (result-1) * dgamma;
             //gamma_max = gamma_min + dgamma;
-            calculateGammaSubgroup(result-1, &gamma_min, &gamma_max)
+            calculateGammaSubgroup(result-1, &gamma_min, &gamma_max);
             fprintf(fPtr, "chosen gamma range of %d: %e %e\n",result, gamma_min, gamma_max);
 
             singleNonThermalElectron(el_p, ph_p, pow(10, gamma_min), pow(10,gamma_max), rand, fPtr);
@@ -686,7 +686,7 @@ double calculateNormBrokenPowerLawEnergyDens(double p1, double p2, double gamma_
         {
             //gamma_min = pow(10.0, log10(GAMMA_MIN) + i * dgamma);
             //gamma_max = pow(10.0, log10(GAMMA_MIN) + (i+1) * dgamma);
-            calculateGammaSubgroup(i, &gamma_min, &gamma_max)
+            calculateGammaSubgroup(i, &gamma_min, &gamma_max);
 
             gsl_integration_qags (&F, gamma_min, gamma_max, 0, 1e-7, 1000, w, &result, &error);
             fprintf(fPtr, "gamma_min: %e gamma_max: %e, result: %e\n", gamma_min, gamma_max, result);
