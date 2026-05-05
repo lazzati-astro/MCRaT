@@ -667,11 +667,11 @@ double calculateNormBrokenPowerLawEnergyDens(double p1, double p2, double gamma_
 #if NONTHERMAL_E_DIST != OFF
     void calculateGammaSubgroup(int i, double *gamma_interval_min, double *gamma_interval_max)
     {
-        double dgamma = (GAMMA_MAX - GAMMA_MIN) / N_GAMMA;
+        double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
         
-        *gamma_interval_min = GAMMA_MIN+i*dgamma;
-        *gamma_interval_max = GAMMA_MIN+(i+1)*dgamma;
-        
+        *gamma_interval_min = pow(10.0, log10(GAMMA_MIN)+i*dgamma);
+        *gamma_interval_max = pow(10.0, log10(GAMMA_MIN)+(i+1)*dgamma);
+
     }
 
     void calculateElectronDistSubgroupDens(double *subgroup_dens, FILE *fPtr)
