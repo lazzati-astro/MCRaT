@@ -102,10 +102,12 @@ void singleNonThermalElectron(double *el_p, double *ph_p, double gamma_min, doub
     double gamma=0, beta=0, phi=0, theta=0;
 
     //genertae a nonthermal electron within the subgroup that we had identified
-    while (gamma<gamma_min || gamma>gamma_max)
-    {
-        gamma=sampleNonThermalElectron(rand, fPtr);
-    }
+    //while (gamma<gamma_min || gamma>gamma_max)
+    //{
+    //    gamma=sampleNonThermalElectron(rand, fPtr);
+    //}
+    //prior way was inefficient
+    gamma=samplePowerLaw(POWERLAW_INDEX, gamma_min, gamma_max, rand, fPtr);
 
     //fprintf(fPtr,"Chosen Gamma: %e\n",gamma);
 
