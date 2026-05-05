@@ -1349,7 +1349,6 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
                     // ignore all of these steps
                     if (ph->scattering_bias[scattering_subgroup] != 1)
                     {
-                        double scattered_photon_weight = scatteredPhotonWeight(ph->weight, ph->scattering_bias[scattering_subgroup], ph-> optical_depths[scattering_subgroup]);
                         double scattered_photon_weight = scatteredPhotonWeight(ph->weight, ph-> optical_depths[scattering_subgroup]*(scatt_time-old_scatt_time)*C_LIGHT, ph->total_optical_depth * (scatt_time-old_scatt_time) * C_LIGHT);
                         double unscattered_photon_weight = ph->weight - scattered_photon_weight;
                         
