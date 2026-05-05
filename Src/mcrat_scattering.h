@@ -23,4 +23,4 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
 
 double kleinNishinaCrossSection(double energy_ratio);
 
-double scatteredPhotonWeight(double weight, double bias, double optical_depth);
+scatteredPhotonWeight(double weight, double true_optical_depth, double biased_optical_depth);

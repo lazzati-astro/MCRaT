@@ -773,18 +773,10 @@ double kleinNishinaCrossSection(double energy_ratio)
     return result;
 }
 
-double scatteredPhotonWeight(double weight, double bias, double optical_depth)
+double scatteredPhotonWeight(double weight, double true_optical_depth, double biased_optical_depth)
 {
     #if SCATTERING_BIAS_SWITCH == ON
-        if (bias != 1)
-        {
-            return weight*(-gsl_expm1(-optical_depth))/(-gsl_expm1(-bias*optical_depth));
-            //return weight*(1-exp(-optical_depth))/(1-exp(-bias*optical_depth));
-        }
-        else
-        {
-            return weight;
-        }
+        return weight*(-gsl_expm1(-true_optical_depth))/(-gsl_expm1(-biased_optical_depth));
     #else
         return weight;
     #endif
