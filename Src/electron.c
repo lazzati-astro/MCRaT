@@ -614,7 +614,7 @@ double calculateNormPowerLawEnergyDens(double p, double gamma_min, double gamma_
     result*=powerLawNorm(p, gamma_min, gamma_max);
 
     //now multiply by electron rest mass
-    result*=(M_EL*C_LIGHT*C_LIGHT);
+    //result*=(M_EL*C_LIGHT*C_LIGHT); this is now done outside of function
     return  result;
 
 }
@@ -660,7 +660,7 @@ double calculateNormBrokenPowerLawEnergyDens(double p1, double p2, double gamma_
     result*=brokenPowerLawNorm(p1, p2, gamma_min, gamma_max, gamma_break);
 
     //now multiply by electron rest mass
-    result*=(M_EL*C_LIGHT*C_LIGHT);
+    //result*=(M_EL*C_LIGHT*C_LIGHT); this is now done outside of function
 
     return result;
 
@@ -707,16 +707,27 @@ double calculateNormBrokenPowerLawEnergyDens(double p1, double p2, double gamma_
         int i=0;
         double result=0;
         double b_field = 0;
-        double energy_dens_per_particle=0;
+        double particle_dist_integral=0, energy_dens_per_particle=0;
+        double energy_dens_constraint=0;
+
 
         #if NONTHERMAL_E_DIST == POWERLAW
-            energy_dens_per_particle = calculateNormPowerLawEnergyDens(POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX);
+            particle_dist_integral = calculateNormPowerLawEnergyDens(POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX);
         #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
-            energy_dens_per_particle = calculateNormBrokenPowerLawEnergyDens(POWERLAW_INDEX_1, POWERLAW_INDEX_2, GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK);
+            particle_dist_integral = calculateNormBrokenPowerLawEnergyDens(POWERLAW_INDEX_1, POWERLAW_INDEX_2, GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK);
         #else
             #error Unknown nonthermal electron distribution.
         #endif
-
+        energy_dens_per_particle=particle_dist_integral*(M_EL*C_LIGHT*C_LIGHT);
+        
+        //Add a check here that the rest mass energy that we will be setting doesnt exceed the B field energy density
+        energy_dens_constraint=particle_dist_integral*M_EL/M_P;
+        if (NONTHERMAL_CONVERSION_FACTOR > energy_dens_constraint)
+        {
+            fprintf(fPtr, "The magentic field-to-nonthermal electron density conversion factor %e is greater than %e, indicating that there will be more energy in the rest mass of the non-thermal electrons compared to the magnetic field energy density which is unphysical.\n", NONTHERMAL_CONVERSION_FACTOR,energy_dens_constraint);
+            fflush(fPtr);
+            exit(1);
+        }
 
         for (i=0; i<hydro_data->num_elements; i++)
         {
