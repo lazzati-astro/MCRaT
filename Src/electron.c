@@ -102,12 +102,13 @@ void singleNonThermalElectron(double *el_p, double *ph_p, double gamma_min, doub
     double gamma=0, beta=0, phi=0, theta=0;
 
     //genertae a nonthermal electron within the subgroup that we had identified
-    //while (gamma<gamma_min || gamma>gamma_max)
-    //{
-    //    gamma=sampleNonThermalElectron(rand, fPtr);
-    //}
-    //prior way was inefficient
-    gamma=samplePowerLaw(POWERLAW_INDEX, gamma_min, gamma_max, rand, fPtr);
+    #if NONTHERMAL_E_DIST == POWERLAW
+        gamma = samplePowerLaw(POWERLAW_INDEX, gamma_min, gamma_max, rand, fPtr);
+    #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
+        gamma = sampleBrokenPowerLawSubgroup(POWERLAW_INDEX_1, POWERLAW_INDEX_2,
+                                             gamma_min, gamma_max, GAMMA_BREAK,
+                                             rand, fPtr);
+    #endif
 
     //fprintf(fPtr,"Chosen Gamma: %e\n",gamma);
 
@@ -249,20 +250,6 @@ double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr)
     return gamma;
 }
 
-double sampleNonThermalElectron(gsl_rng * rand, FILE *fPtr)
-{
-    double result=0;
-    #if NONTHERMAL_E_DIST == POWERLAW
-        result = samplePowerLaw(POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX, rand, fPtr);
-    #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
-        result = sampleBrokenPowerLaw(POWERLAW_INDEX_1, POWERLAW_INDEX_2, GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK, rand, fPtr);
-    #else
-        result=0;
-    #endif
-
-    return result;
-}
-
 double samplePowerLaw(double p, double gamma_min, double gamma_max, gsl_rng * rand, FILE *fPtr)
 {
     // p: power-law index, gmin/gmax: min/max gamma
@@ -280,6 +267,21 @@ double samplePowerLaw(double p, double gamma_min, double gamma_max, gsl_rng * ra
         gamma_e = gamma_min * pow(gamma_e, 1.0 / (1.0 - p));
     }
     return gamma_e;
+}
+
+double sampleBrokenPowerLawSubgroup(double p1, double p2, double gamma_min, double gamma_max, double gamma_break, gsl_rng * rand, FILE *fPtr)
+{
+    //decides if the electron subgroup can be sampled from a single powerlaw (below/above break) or if we need to do the normal sampling if the subgroup includes the break
+    double gamma_break_tolerance=1e-10
+    
+    if (gamma_max <= gamma_break * (1.0 - gamma_break_tolerance))
+        return samplePowerLaw(p1, gamma_min, gamma_max, rand, fPtr);
+
+    if (gamma_min >= gamma_break * (1.0 + gamma_break_tolerance))
+        return samplePowerLaw(p2, gamma_min, gamma_max, rand, fPtr);
+
+    return sampleBrokenPowerLaw(p1, p2, gamma_min, gamma_max,
+                                gamma_break, rand, fPtr);
 }
 
 double sampleBrokenPowerLaw(double p1, double p2, double gamma_min, double gamma_max, double gamma_break, gsl_rng * rand, FILE *fPtr)
