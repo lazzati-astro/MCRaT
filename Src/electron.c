@@ -272,7 +272,7 @@ double samplePowerLaw(double p, double gamma_min, double gamma_max, gsl_rng * ra
 double sampleBrokenPowerLawSubgroup(double p1, double p2, double gamma_min, double gamma_max, double gamma_break, gsl_rng * rand, FILE *fPtr)
 {
     //decides if the electron subgroup can be sampled from a single powerlaw (below/above break) or if we need to do the normal sampling if the subgroup includes the break
-    double gamma_break_tolerance=1e-10
+    double gamma_break_tolerance=1e-10;
     
     if (gamma_max <= gamma_break * (1.0 - gamma_break_tolerance))
         return samplePowerLaw(p1, gamma_min, gamma_max, rand, fPtr);
