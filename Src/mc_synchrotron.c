@@ -81,7 +81,7 @@ static double bessel_K53_integrand(double xi, void *params)
  * the critical frequency, not an absorption cross section).
  */
 
-static double synchComputeRatX(double x, gsl_integration_workspace *ws)
+static double synchComputeRatX(double x, gsl_integration_workspace *ws, FILE *fPtr)
 {
     double result = 0.0, abserr = 0.0;
     gsl_function F;
@@ -92,10 +92,30 @@ static double synchComputeRatX(double x, gsl_integration_workspace *ws)
 
     int status = gsl_integration_qagiu(&F, x, 1e-14, 1e-10,
                                         1000, ws, &result, &abserr);
-    if (status && x < 40.0)
+    if (status != GSL_SUCCESS)
     {
-        /* non-fatal: QAGIU occasionally warns near machine precision */
+        if (x < 40.0)
+        {
+            /* At x < 40 the integrand is well-behaved; a non-SUCCESS
+             * status here indicates a genuine quadrature failure, not
+             * just underflow. Log the warning but return the best
+             * available estimate rather than aborting, since a slightly
+             * inaccurate table value is preferable to crashing during
+             * table initialisation.                                      */
+            fprintf(fPtr,
+                    ">> [synchComputeRatX] WARNING: QAGIU returned %s "
+                    "at x = %.4e (abserr = %.2e, result = %.6e). "
+                    "Table accuracy may be reduced near this point.\n",
+                    gsl_strerror(status), x, abserr, result);
+            fflush(fPtr);
+        }
+        /* At x >= 40 a non-SUCCESS status is expected: the integrand
+         * has already decayed to near machine epsilon and QAGIU
+         * struggles with the near-zero integrand. The result is
+         * correct to within floating-point precision; no warning
+         * is needed.                                                     */
     }
+    
     return x * result;
 }
 
@@ -206,7 +226,7 @@ void initSynchTables(SynchUniversalTables *tables, FILE *fPtr)
     {
         double t        = (double)i / (SYNCH_N_X - 1);
         tables->x_arr[i] = pow(10.0, log_x_min + t*(log_x_max - log_x_min));
-        tables->R_arr[i] = synchComputeRatX(tables->x_arr[i], ws);
+        tables->R_arr[i] = synchComputeRatX(tables->x_arr[i], ws, fPtr);
     }
     gsl_integration_workspace_free(ws);
 
