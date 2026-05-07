@@ -131,7 +131,7 @@ void initSynchTables(SynchUniversalTables *tables, FILE *fPtr);
 void freeSynchTables(SynchUniversalTables *tables);
 
 /* Build / free per-cell kappa_nu table */
-SynchKappaTable *buildSynchKappaTable(double B, double ne,
+SynchKappaTable *buildSynchKappaTable(double B,
                                        const SynchUniversalTables *tables,
                                        FILE *fPtr);
 void             freeSynchKappaTable(SynchKappaTable *kt);
