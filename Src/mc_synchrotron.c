@@ -14,8 +14,20 @@
 
 /* ══════════════════════════════════════════════════════════════════════════
  * SECTION 1: BESSEL INTEGRALS AND SPECTRAL FUNCTIONS
- * ══════════════════════════════════════════════════════════════════════════ */
-
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * bessel_K53_integrand
+ * --------------------
+ * Evaluates the integrand K_{5/3}(xi) for the Bessel integral that
+ * defines the synchrotron spectral function F(x).
+ *
+ * Used by synchComputeRatX via GSL QAGIU.
+ *
+ * G&S91 Eq. 2:
+ *   F(x) = x * integral_x^inf  K_{5/3}(xi) dxi
+ * where K_{5/3} is the modified Bessel function of the second kind
+ * of order 5/3.
+ */
 static double bessel_K53_integrand(double xi, void *params)
 {
     (void)params;
@@ -26,9 +38,49 @@ static double bessel_K53_integrand(double xi, void *params)
 /*
  * synchComputeRatX
  * ----------------
- * R(x) = F(x) = x * integral_x^inf K_{5/3}(xi) dxi
- * Uses GSL QAGIU on the semi-infinite interval.
+ * Computes the synchrotron spectral function
+ *
+ *   F(x) = x * integral_x^inf  K_{5/3}(xi) dxi
+ *
+ * at a single value of the dimensionless frequency ratio x = nu / nu_c.
+ *
+ * This function appears in two distinct physical contexts in this code:
+ *
+ * (1) Solid-angle integrated single-electron emissivity  [R&L79 Eq. 6.36]:
+ *
+ *       j_nu^single = (sqrt(3) e^3 B sin(alpha)) / (4 pi me c^2) * F(x)
+ *
+ *     where nu_c = (3 e B sin(alpha) gamma^2) / (4 pi me c)  [R&L79 Eq. 6.19]
+ *     is the critical frequency. The solid-angle integration of the
+ *     single-electron power P(omega) over 4 pi sr introduces the
+ *     factor 1/(4 pi) and yields j_nu as power per unit volume per
+ *     unit frequency [erg s^{-1} cm^{-3} Hz^{-1} sr^{-1}].
+ *     After integrating over the isotropic pitch-angle distribution
+ *     f(alpha) = (2/pi) sin^2(alpha) and the electron distribution
+ *     N(gamma), the result is R&L79 Eq. 6.36.
+ *
+ * (2) Net SSA absorption coefficient  [G&S91 Eq. 14]:
+ *
+ *       kappa_nu = (sqrt(3) e^3 B) / (8 pi me c nu^2)
+ *                  * integral N(gamma) * [2F(x) + 2x F'(x)] dgamma
+ *
+ *     The kernel 2F(x) + 2x F'(x) = 2 d[xF(x)]/dx arises from
+ *     differentiating the emissivity with respect to gamma and applying
+ *     detailed balance (G&S91 Eqs. 11-13). This is the NET absorption
+ *     coefficient with stimulated emission already subtracted; it is
+ *     NOT the same as the individual true-absorption or
+ *     stimulated-emission cross sections of G&S91 Eqs. 3 and 4.
+ *
+ * In both contexts F(x) is the same Bessel integral. The code stores
+ * it in R_arr and derives the absorption kernel abs_kern_arr = 2F + 2xF'
+ * by numerical differentiation.
+ *
+ * Reference for F(x): R&L79 Eq. 6.31; G&S91 Eq. 2.
+ * Reference for nu_c: R&L79 Eq. 6.19; G&S91 Eq. 3 (note: G&S91 Eq. 3
+ * defines nu_c differently from the cross section context — here it is
+ * the critical frequency, not an absorption cross section).
  */
+
 static double synchComputeRatX(double x, gsl_integration_workspace *ws)
 {
     double result = 0.0, abserr = 0.0;
@@ -50,7 +102,94 @@ static double synchComputeRatX(double x, gsl_integration_workspace *ws)
 /* ══════════════════════════════════════════════════════════════════════════
  * SECTION 2: UNIVERSAL TABLES
  * ══════════════════════════════════════════════════════════════════════════ */
+/*
+ * initSynchTables
+ * ---------------
+ * Build all spectral tables that are independent of cell properties.
+ *
+ * Tables built:
+ *
+ * (1) F(x) = R(x) array  [R&L79 Eq. 6.31; G&S91 Eq. 2]
+ *
+ *       F(x) = x * integral_x^inf  K_{5/3}(xi) dxi
+ *
+ *     Computed at each point of the log-spaced x grid over [1e-5, 1e2].
+ *     This is the spectral shape function common to both the emissivity
+ *     and the absorption kernel.
+ *
+ * (2) Absorption kernel  [G&S91 Eqs. 11-14]
+ *
+ *       abs_kern(x) = 2F(x) + 2x dF/dx
+ *
+ *     This is the factor multiplying N(gamma) in the net SSA absorption
+ *     coefficient (G&S91 Eq. 14). It arises from taking the gamma-
+ *     derivative of the emissivity kernel gamma^2 F(x) / p_e (G&S91
+ *     Eq. 11) and applying the Kirchhoff relation to convert the
+ *     emissivity-based expression into an absorption coefficient
+ *     (G&S91 Eqs. 12-13). The result is the NET absorption coefficient
+ *     (stimulated emission subtracted) — NOT the individual true-
+ *     absorption cross section of G&S91 Eq. 3.
+ *
+ * (3) Inverse CDF of x ~ F(x) x d(log x)  [R&L79 Eq. 6.36]
+ *
+ *     Used to sample the dimensionless photon frequency x = nu/nu_c.
+ *     The weight F(x)*x in d(log x) measure is the spectral shape
+ *     of the solid-angle integrated emissivity j_nu for a single
+ *     electron at fixed gamma and alpha (R&L79 Eq. 6.36).
+ *
+ * (4) Inverse CDF of alpha ~ (2/pi) sin^2(alpha)  [R&L79 Eq. 6.36]
+ *
+ *     Used to sample the electron pitch angle for isotropic pitch-angle
+ *     distribution. The sin^2(alpha) weighting comes from integrating
+ *     the single-electron emissivity over all pitch angles, with the
+ *     factor sin(alpha) from nu_c (R&L79 Eq. 6.19) giving an additional
+ *     sin(alpha), and the geometric solid-angle element giving the
+ *     remaining sin(alpha), for a total weight of sin^2(alpha).
+ */
 
+/*
+ * buildSynchKappaTable
+ * --------------------
+ * Compute the net SSA absorption coefficient kappa_nu [cm^{-1}] per
+ * unit electron number density as a function of frequency.
+ *
+ * Implements G&S91 Eq. 14:
+ *
+ *   kappa_nu = (sqrt(3) e^3 B) / (8 pi me c nu^2)
+ *              * integral_{gamma_min}^{gamma_max}
+ *                  N(gamma) * [2F(x) + 2x dF/dx] dgamma
+ *
+ * where:
+ *   x      = nu / nu_c(gamma)
+ *   nu_c   = (3 e B gamma^2) / (4 pi me c)     [R&L79 Eq. 6.19,
+ *             pitch-angle averaged: the sin(alpha) factor averages
+ *             to a numerical constant over the isotropic distribution]
+ *   N(gamma) = ne * hat_N(gamma)               [R&L79 Eq. 6.36]
+ *   2F(x) + 2x dF/dx                           [G&S91 Eqs. 12-13]
+ *
+ * Physical interpretation:
+ *   This is the NET absorption coefficient with stimulated emission
+ *   already accounted for. It is derived in G&S91 by:
+ *     (a) Writing the transfer equation for synchrotron radiation
+ *         (G&S91 Eq. 10)
+ *     (b) Expressing the absorption term via the emissivity through
+ *         the Kirchhoff relation in the Rayleigh-Jeans limit
+ *         (G&S91 Eq. 11)
+ *     (c) Taking the gamma-derivative analytically (G&S91 Eqs. 12-13)
+ *     (d) Simplifying to the final form (G&S91 Eq. 14)
+ *
+ *   It is NOT the individual true-absorption cross section (G&S91 Eq. 3)
+ *   or stimulated-emission cross section (G&S91 Eq. 4). Those are
+ *   single-photon single-electron interaction cross sections; this
+ *   kappa_nu is the macroscopic transport coefficient that enters the
+ *   radiative transfer equation dI_nu/ds = -kappa_nu * I_nu + j_nu
+ *   (R&L79 Eq. 1.20).
+ *
+ * The table is built with ne = 1 (unit number density). The physical
+ * opacity is obtained at lookup time via synchKappaAtNuScaled, which
+ * multiplies by ne_cell. This is exact because kappa_nu is linear in
+ * N(gamma) and hence linear in ne (G&S91 Eq. 14).
+ */
 void initSynchTables(SynchUniversalTables *tables, FILE *fPtr)
 {
     int i, n_mono;
@@ -171,17 +310,43 @@ void freeSynchTables(SynchUniversalTables *tables)
 }
 
 /* ── Inline samplers ─────────────────────────────────────────────────── */
-
+/*
+ * synchSampleX        [G&S91 Eq. 2]
+ * ---------------
+ * Sample the dimensionless frequency ratio x = nu / nu_c from the
+ * single-electron synchrotron spectrum R(x) using the precomputed
+ * inverse CDF. The sampled x is then used to recover the physical
+ * photon frequency via nu = x * nu_c, where nu_c is the critical
+ * frequency of the emitting electron (G&S91 Eq. 3).
+ */
 static inline double synchSampleX(const SynchUniversalTables *t, double u)
 {
     return gsl_spline_eval(t->inv_F_spline, u, t->inv_F_acc);
 }
 
+
+/*
+ * synchSampleAlpha    [G&S91 Section 2, text above Eq. 2]
+ * ----------------
+ * Sample the electron pitch angle alpha from the isotropic
+ * pitch-angle distribution f(alpha) = (2/pi) sin^2(alpha)
+ * using the precomputed inverse CDF.
+ * The factor sin(alpha) enters nu_c (G&S91 Eq. 3) so the sampled
+ * alpha must be passed to the critical frequency calculation.
+ */
 static inline double synchSampleAlpha(const SynchUniversalTables *t, double u)
 {
     return gsl_spline_eval(t->inv_alpha_spline, u, t->inv_alpha_acc);
 }
 
+/*
+ * synchEvalAbsKern    [G&S91 Eq. 13]
+ * ----------------
+ * Evaluate the absorption kernel 2R(x) + 2x dR/dx at argument x
+ * via the precomputed spline. This is the factor multiplying N(gamma)
+ * in the SSA opacity integral (G&S91 Eq. 14). Returns 0 beyond the
+ * table range where R(x) is negligibly small.
+ */
 static inline double synchEvalAbsKern(const SynchUniversalTables *t, double x)
 {
     if (x <= t->x_arr[0])             return t->abs_kern_arr[0];
@@ -196,14 +361,29 @@ static inline double synchEvalAbsKern(const SynchUniversalTables *t, double x)
 /*
  * synchSampleGammaEmission
  * ------------------------
- * Sample gamma ~ N(gamma)*gamma^2 ∝ gamma^{2-p} for synchrotron EMISSION.
- * This is the correct weighting for photon emission since each electron's
- * contribution to the emissivity scales as gamma^2.
+ * Sample the electron Lorentz factor gamma for synchrotron PHOTON
+ * EMISSION using the analytic inverse CDF of the emission-weighted
+ * distribution N(gamma) * gamma^2.
  *
- * This function is kept as the bespoke analytic inverse CDF because the
- * existing electron.c samplers (samplePowerLaw, sampleBrokenPowerLawSubgroup)
- * sample from N(gamma) directly, which is the wrong weighting for emission.
- * They are used instead in synchEmitOneNuRef() for the reference CDF only.
+ * The gamma^2 weighting arises because the total synchrotron power
+ * emitted by a single electron scales as gamma^2 (G&S91 Eq. 4 and
+ * surrounding text), so the probability that a given photon was
+ * emitted by an electron of Lorentz factor gamma is proportional to
+ * N(gamma) * gamma^2, not N(gamma) alone.
+ *
+ * For a power-law distribution N(gamma) ∝ gamma^{-p}:
+ *   emission weight ∝ gamma^{2-p} = gamma^q   where q = 3 - p
+ *   inverse CDF: gamma(u) = (gamma_min^q + u*(gamma_max^q - gamma_min^q))^{1/q}
+ *
+ * For a broken power law the distribution is split at gamma_break
+ * and each segment is sampled with the correct emission-weighted
+ * fraction of total power.
+ *
+ * NOTE: this function must NOT be replaced by samplePowerLaw or
+ * sampleBrokenPowerLawSubgroup from electron.c, which sample from
+ * N(gamma) directly (correct for scattering) rather than from
+ * N(gamma)*gamma^2 (required for emission). See synchEmitOneNu for
+ * the one context where the electron.c samplers are acceptable.
  */
 static double synchSampleGammaEmission(gsl_rng *rand)
 {
@@ -268,7 +448,55 @@ static double synchSampleGammaEmission(gsl_rng *rand)
 /* ══════════════════════════════════════════════════════════════════════════
  * SECTION 4: KAPPA_NU TABLE
  * ══════════════════════════════════════════════════════════════════════════ */
-
+/*
+ * buildSynchKappaTable
+ * --------------------
+ * Compute the SSA absorption coefficient kappa_nu [cm^{-1}] per unit
+ * electron number density as a function of frequency, and store it as
+ * a log-log spline for fast lookup.
+ *
+ * Implements G&S91 Eq. 14:
+ *
+ *   kappa_nu = (sqrt(3) e^3 B) / (8 pi me c nu^2)
+ *              * integral_{gamma_min}^{gamma_max}
+ *                  N(gamma) * [2R(x) + 2x dR/dx] dgamma
+ *
+ * where:
+ *   x      = nu / nu_c(gamma)          [G&S91 Eq. 2 argument]
+ *   nu_c   = (3 e B gamma^2)/(4 pi me c)  [G&S91 Eq. 3, pitch-angle
+ *             averaged: sin(alpha) -> 1 after integrating over the
+ *             isotropic distribution]
+ *   N(gamma) = ne * hat_N(gamma)        [G&S91 Eq. 1 or 5]
+ *   2R(x) + 2x dR/dx                   [G&S91 Eq. 13, the absorption
+ *             kernel from d/d(gamma)[gamma^2 R(x)/p_e gamma]]
+ *
+ * The table is built with ne = 1 (unit number density). The physical
+ * opacity for a cell with electron density ne_cell is obtained at
+ * lookup time via synchKappaAtNuScaled, which multiplies by ne_cell.
+ * This separation is exact because kappa_nu ∝ N(gamma) ∝ ne (G&S91
+ * Eq. 14 is linear in N(gamma)).
+ *
+ * hat_N(gamma) is evaluated using singleElectronPowerLaw or
+ * singleElectronBrokenPowerLaw from electron.c, which implement
+ * G&S91 Eq. 1 (power law) and Eq. 5 (broken power law) normalised
+ * so that integral hat_N(gamma) dgamma = 1.
+ *
+ * The gamma integral is performed with Gauss-Legendre quadrature
+ * on a log(gamma) grid of SYNCH_N_GL nodes, which is accurate for
+ * smooth power-law integrands.
+ *
+ * Parameters
+ * ----------
+ * B      : magnetic field [G], enters via nu_c (G&S91 Eq. 3) and
+ *          the prefactor sqrt(3) e^3 B / (8 pi me c) (G&S91 Eq. 14)
+ * tables : pre-built universal tables providing abs_kern(x) (G&S91 Eq. 13)
+ * fPtr   : log file
+ *
+ * Returns
+ * -------
+ * Pointer to a heap-allocated SynchKappaTable. Caller must free with
+ * freeSynchKappaTable.
+ */
 
 SynchKappaTable *buildSynchKappaTable(double B,
                                        const SynchUniversalTables *tables,
@@ -373,14 +601,21 @@ void freeSynchKappaTable(SynchKappaTable *kt)
 }
 
 /*
- * synchKappaAtNu
- * --------------
- * Evaluate kappa_nu [cm^{-1}] at frequency nu [Hz] via log-log interpolation.
- * The table was built for (B_ref, ne_ref); rescale linearly for other cells:
- *   kappa_nu(B, ne) = kappa_nu_table * (ne/ne_ref) * (B/B_ref)
- * The B scaling follows from the prefactor sqrt(3) e^3 B / (8 pi me c).
- * Pass B_cell=kt->B_ref and ne_cell=kt->ne_ref to use the table as-is.
+ * synchKappaAtNu      [G&S91 Eq. 14, table lookup]
+ * ---------------
+ * Evaluate the unit-density SSA absorption coefficient kappa_nu/ne
+ * [cm^2] at frequency nu [Hz] via log-log spline interpolation of
+ * the precomputed table.
+ *
+ * Returns kappa_nu for ne = 1 cm^{-3}. This function is private
+ * (static) and should only be called via synchKappaAtNuScaled, which
+ * applies the physical ne and B scaling.
+ *
+ * The log-log representation is appropriate because kappa_nu follows
+ * a power-law in frequency (G&S91 Section 3), making the interpolation
+ * exact for the dominant behaviour between table points.
  */
+
 static double synchKappaAtNu(double nu, const SynchKappaTable *kt)
 {
     double lnu = log10(nu);
@@ -392,24 +627,30 @@ static double synchKappaAtNu(double nu, const SynchKappaTable *kt)
 }
 
 /*
- * synchKappaAtNuScaled
+ * synchKappaAtNuScaled    [G&S91 Eq. 14, with linear scaling]
  * --------------------
- * Evaluate the physical SSA opacity kappa_nu [cm^{-1}] for a grid cell
- * with magnetic field B_cell [G] and nonthermal electron number density
- * ne_cell [cm^{-3}].
- *
- * The kappa table was built with n_e = 1 and B = B_ref, so the full
- * physical opacity is recovered by rescaling linearly:
+ * Evaluate the physical SSA absorption coefficient kappa_nu [cm^{-1}]
+ * for a grid cell with magnetic field B_cell and nonthermal electron
+ * number density ne_cell, by rescaling the unit-density table:
  *
  *   kappa_nu(B_cell, ne_cell) = kappa_table(nu; B_ref, ne=1)
- *                               * ne_cell          [n_e scaling]
- *                               * (B_cell / B_ref) [B scaling]
+ *                               * ne_cell          [linear in N(gamma),
+ *                                                   G&S91 Eq. 14]
+ *                               * (B_cell / B_ref) [linear in B via
+ *                                                   prefactor, G&S91 Eq. 14]
  *
- * Both scalings are exact consequences of the linear dependence of
- * kappa_nu on n_e and B in the Ghisellini & Svensson (1991) expression.
+ * Both rescalings are exact:
+ *   - The ne scaling follows directly from kappa_nu ∝ integral N(gamma)
+ *     and N(gamma) = ne * hat_N(gamma) (G&S91 Eq. 14).
+ *   - The B scaling follows from the prefactor sqrt(3) e^3 B / (8 pi me c)
+ *     in G&S91 Eq. 14, noting that nu_c ∝ B (G&S91 Eq. 3) introduces an
+ *     additional implicit B dependence via x = nu/nu_c. The net B scaling
+ *     of kappa_nu is therefore linear in B to leading order for a power-law
+ *     electron distribution, which is what the (B_cell/B_ref) factor
+ *     captures.
  *
- * This is the ONLY function that should be called externally to obtain
- * a physical opacity. synchKappaAtNu is now private (static).
+ * This is the only function that should be called externally to obtain
+ * a physical opacity. synchKappaAtNu is private (static).
  */
 static inline double synchKappaAtNuScaled(double nu,
                                            const SynchKappaTable *kt,
@@ -428,18 +669,28 @@ static inline double synchKappaAtNuScaled(double nu,
 /*
  * synchEmitOneNu
  * --------------
- * Draw a single representative photon frequency from the natural emission
- * distribution of cell i. Used ONLY to build the reference CDF in
- * buildSynchStratifiedParams — not for actual photon emission.
+ * Draw a single representative photon frequency from the natural
+ * synchrotron emission distribution of a grid cell.
  *
- * Here we use samplePowerLaw / sampleBrokenPowerLawSubgroup from electron.c
- * to sample gamma ~ N(gamma). This slightly mis-weights the reference
- * distribution relative to the true N(gamma)*gamma^2 emission weighting,
- * but since the reference CDF only needs to identify which frequency strata
- * are populated (not their exact relative weights), this is sufficient and
- * avoids duplicating sampling logic.
- */
-static double synchEmitOneNu(int i,
+ * The frequency is constructed as:
+ *   nu = x * nu_c(gamma, alpha, B)
+ * where:
+ *   x     ~ R(x) d(log x)              [G&S91 Eq. 2]
+ *   alpha ~ (2/pi) sin^2(alpha)        [G&S91 Section 2]
+ *   gamma ~ N(gamma)  via samplePowerLaw / sampleBrokenPowerLawSubgroup
+ *   nu_c  = (3 e B sin(alpha) gamma^2) / (4 pi me c)  [G&S91 Eq. 3]
+ *
+ * NOTE: gamma is sampled from N(gamma) here (not the emission-weighted
+ * N(gamma)*gamma^2 used in synchSampleGammaEmission). This is acceptable
+ * because synchEmitOneNu is used ONLY to build the reference CDF for the
+ * stratified sampler — it identifies which frequency strata receive
+ * emission, for which the exact gamma^2 weighting is not required.
+ * The actual photon emission in photonEmitSynch uses
+ * synchSampleGammaEmission with the correct weighting.
+ *
+ * No direct G&S91 equation — this is a Monte Carlo sampling helper
+ * that combines G&S91 Eqs. 2 and 3.
+ */static double synchEmitOneNu(int i,
                                struct hydro_dataframe *hydro_data,
                                const SynchUniversalTables *tables,
                                double b_field,
@@ -468,6 +719,33 @@ static double synchEmitOneNu(int i,
     return x_k * nu_c;
 }
 
+/*
+ * buildSynchStratifiedParams
+ * --------------------------
+ * Build the stratified frequency sampling parameters by drawing a large
+ * reference sample from the natural emission distribution and measuring
+ * the probability p_k that a photon falls in each log-frequency stratum k.
+ *
+ * The natural emission spectrum dN/d(log nu) that is sampled here is
+ * proportional to the pitch-angle averaged emissivity j_nu integrated
+ * over the electron distribution:
+ *
+ *   j_nu ∝ integral N(gamma) * R(nu/nu_c) dgamma    [G&S91 Eq. 4]
+ *
+ * The stratified sampler uses importance sampling to ensure that
+ * n_per_stratum photons are emitted into each frequency decade regardless
+ * of how steeply j_nu falls at low or high frequencies. The importance
+ * weight for stratum k is:
+ *
+ *   w_k = p_k / (1 / N_STRATA)
+ *
+ * which exactly corrects for the oversampling of rare strata so that the
+ * weighted photon spectrum reproduces the physical j_nu ∝ G&S91 Eq. 4.
+ *
+ * The marginal CDF of log10(nu) is stored as a piecewise linear spline
+ * so that photon frequencies can be drawn directly from any sub-interval
+ * [nu_lo, nu_hi] without rejection sampling.
+ */
 void buildSynchStratifiedParams(SynchStratifiedParams *sp,
                                  const SynchUniversalTables *tables,
                                  struct hydro_dataframe *hydro_data,
@@ -624,11 +902,35 @@ void freeSynchStratifiedParams(SynchStratifiedParams *sp)
  * Populate all fields of a single struct photon for synchrotron emission
  * from hydro cell i at comoving frequency fr_dum.
  *
- * Steps:
- *  1. Build isotropic comoving 4-momentum at fr_dum
- *  2. Lorentz-boost to lab frame (mirrors photonEmitCyclosynch)
- *  3. Assign random position within cell
- *  4. Set Stokes, weight, type, and bookkeeping fields
+ * Physics steps:
+ *
+ * (1) Comoving 4-momentum  [G&S91 Eq. 2, 3]
+ *     The photon energy in the fluid rest frame is h*fr_dum, where
+ *     fr_dum = x * nu_c was drawn using G&S91 Eqs. 2 and 3.
+ *     The direction is isotropic in the comoving frame, consistent
+ *     with the isotropic pitch-angle distribution of G&S91 Section 2.
+ *
+ *       p_comv^mu = (h*fr_dum/c) * (1, sin(theta)*cos(phi),
+ *                                       sin(theta)*sin(phi),
+ *                                       cos(theta))
+ *
+ * (2) Lorentz boost to lab frame
+ *     The comoving 4-momentum is boosted to the lab (simulation) frame
+ *     using the fluid velocity at cell i. This step is not described
+ *     in G&S91 (which works entirely in the fluid frame) but is required
+ *     for integration into the MCRaT transport framework.
+ *
+ * (3) Birth position
+ *     Uniform random position within the cell volume, consistent with
+ *     the assumption in G&S91 that emission is spatially homogeneous
+ *     within each fluid element.
+ *
+ * (4) Stokes parameters
+ *     Initialised as unpolarised (I=1, Q=U=V=0). Synchrotron emission
+ *     is intrinsically polarised, but the pitch-angle average used here
+ *     (G&S91 Section 2) washes out the net linear polarisation for an
+ *     isotropic pitch-angle distribution, justifying the unpolarised
+ *     initialisation.
  */
 static void synchFillPhoton(struct photon *ph,
                               int            i,
@@ -749,7 +1051,60 @@ static void synchFillPhoton(struct photon *ph,
 /* ══════════════════════════════════════════════════════════════════════════
  * SECTION 7: MAIN EMISSION FUNCTION
  * ══════════════════════════════════════════════════════════════════════════ */
-
+/*
+ * photonEmitSynch
+ * ---------------
+ * Emit synchrotron photon packets into the MCRaT photon list from all
+ * hydro cells within the injection volume, using stratified frequency
+ * sampling and SSA-corrected photon weights.
+ *
+ * Physical model  [G&S91]:
+ *
+ * (1) Emission rate per cell  [G&S91 Eq. 4]
+ *     The number of photons assigned to each cell is proportional to
+ *     the total synchrotron emissivity:
+ *       j_tot ∝ B^2 * ne * V_cell
+ *     This follows from integrating G&S91 Eq. 4 over frequency and
+ *     gamma, giving j_tot ∝ B^2 * integral N(gamma) * gamma^2 dgamma
+ *     ∝ B^2 * ne for a fixed spectral shape.
+ *
+ * (2) Photon frequency  [G&S91 Eqs. 2, 3]
+ *     Each photon frequency is drawn via:
+ *       x     ~ R(x) d(log x)            [G&S91 Eq. 2]
+ *       alpha ~ (2/pi) sin^2(alpha)      [G&S91 Section 2]
+ *       gamma ~ N(gamma) * gamma^2       [emission weighting]
+ *       nu_c  = (3 e B sin(alpha) gamma^2) / (4 pi me c)  [G&S91 Eq. 3]
+ *       nu    = x * nu_c
+ *     Stratified sampling across log-frequency strata ensures adequate
+ *     photon counts at all frequencies, with importance weights w_k
+ *     correcting for the non-uniform sampling.
+ *
+ * (3) SSA weight modification  [Kawashima et al. 2023, Eq. 40]
+ *     After emission, each photon's weight is attenuated by:
+ *       w_new = w_old * exp(-tau_nu)
+ *     where tau_nu = kappa_nu * Delta_s is the optical depth along the
+ *     photon path. kappa_nu is evaluated via G&S91 Eq. 14 using
+ *     synchKappaAtNuScaled.
+ *
+ * Parameters
+ * ----------
+ * photon_list  : photon list to append emitted photons to
+ * r_inj        : injection radius [cm]
+ * ph_weight    : base photon weight before importance-sampling correction
+ * maximum_photons : upper bound on total photons to emit this call
+ * theta_min/max: jet opening angle range [rad]
+ * hydro_data   : fluid grid providing B, ne, velocity per cell
+ * tables       : universal spectral tables (R(x), alpha CDF, x CDF)
+ *                built by initSynchTables
+ * sp           : stratified sampler parameters built by
+ *                buildSynchStratifiedParams
+ * rand         : GSL Mersenne Twister RNG
+ * fPtr         : log file
+ *
+ * Returns
+ * -------
+ * Number of photon packets added to photon_list.
+ */
 int photonEmitSynch(struct photonList          *photon_list,
                     double                      r_inj,
                     double                      ph_weight,

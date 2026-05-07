@@ -3,18 +3,47 @@
  * ================
  * Header for pitch-angle averaged synchrotron photon emission with SSA.
  *
- * Physics:
- *   - R(x) emissivity kernel      [Crusius & Schlickeiser 1986]
- *   - SSA opacity kappa_nu        [Ghisellini & Svensson 1991]
- *   - Weight modification          [Kawashima et al. 2023, Eq. 40]
- *   - Stratified frequency sampling for uniform spectral coverage
+ * The physics implemented in this file follows the framework of
+ * Ghisellini & Svensson (1991) [G&S91], MNRAS 252, 313, supplemented
+ * by Crusius & Schlickeiser (1986) [C&S86] for the spectral kernel and
+ * Kawashima et al. (2023) [K23] for the Monte Carlo weight modification.
  *
- * Compiler directives honoured (defined in mcrat_input.h):
- *   NONTHERMAL_E_DIST  OFF        -> error: synchrotron requires nonthermal dist
- *   NONTHERMAL_E_DIST  POWERLAW   -> single power law N(gamma) ∝ gamma^{-p}
- *   NONTHERMAL_E_DIST  BROKENPOWERLAW -> broken power law
- *   DIMENSIONS         TWO / TWO_POINT_FIVE / THREE
- *   B_FIELD_CALC       TOTAL_E / INTERNAL_E / SIMULATION
+ * Equation map (G&S91 unless otherwise noted):
+ * ─────────────────────────────────────────────
+ *
+ * Single-electron emissivity kernel R(x):
+ *   R(x) = F(x) = x * integral_x^inf K_{5/3}(xi) dxi
+ *   This is the standard synchrotron spectral function, see G&S91 Eq. 2
+ *   and C&S86 Eq. A4. For an isotropic pitch-angle distribution the
+ *   pitch-angle average reduces to F(x) (G&S91 Section 2).
+ *
+ * SSA absorption coefficient kappa_nu:
+ *   G&S91 Eq. 12:
+ *     kappa_nu = -(e^3 B) / (8 pi^2 me^2 c^2 nu^2)
+ *                * integral N(gamma) * d/d(gamma)[ gamma^2 * (p_e / gamma)
+ *                  * R(nu/nu_c) ] dgamma
+ *   where nu_c = (3 e B gamma^2) / (4 pi me c)  [G&S91 Eq. 3]
+ *
+ *   After performing the gamma derivative and simplifying, G&S91 Eq. 13
+ *   gives the absorption kernel as:
+ *     d/d(gamma)[ gamma^2 * R(x) / (p_e * gamma) ] dx/dgamma
+ *       -> 2R(x) + 2x dR/dx  [the abs_kern_arr stored in this struct]
+ *
+ *   The full expression for kappa_nu used in buildSynchKappaTable is
+ *   G&S91 Eq. 14:
+ *     kappa_nu = (sqrt(3) e^3 B) / (8 pi me c nu^2)
+ *                * integral N(gamma) * [2R(x) + 2x dR/dx] dgamma
+ *
+ * Pitch-angle distribution:
+ *   Isotropic: f(alpha) = (2/pi) sin^2(alpha)  [G&S91 Section 2, text
+ *   above Eq. 2]. The factor sin(alpha) in nu_c ensures that the
+ *   pitch-angle averaged emissivity integrates correctly.
+ *
+ * Critical frequency:
+ *   nu_c = (3 e B sin(alpha) gamma^2) / (4 pi me c)  [G&S91 Eq. 3]
+ *
+ * Dimensionless frequency ratio:
+ *   x = nu / nu_c  [G&S91 Eq. 2, argument of R(x)]
  */
 
 #ifndef MC_SYNCHROTRON_H
