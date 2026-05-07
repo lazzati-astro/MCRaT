@@ -54,6 +54,7 @@
 #define COMPTONIZED_PHOTON 'k'
 #define CS_POOL_PHOTON 'p'
 #define UNABSORBED_CS_PHOTON 'c'
+#define SYNCH_PHOTON 's'
 #define REBINNED_PHOTON 'r'
 #define NULL_PHOTON 'N'
 
@@ -131,6 +132,10 @@ extern const double R_EL;
 //include all other header files in mcrat
 #include "mcrat_input.h"
 
+#ifndef SYNCHROTRON_SWITCH
+    #define SYNCHROTRON_SWITCH OFF
+#endif
+
 //set the nonthermal electrons to be off
 //this is placed here so we can define it in prep for the photon struct
 #ifndef NONTHERMAL_E_DIST
@@ -146,6 +151,11 @@ extern const double R_EL;
     #ifndef SCATTERING_BIAS_SWITCH
         #define SCATTERING_BIAS_SWITCH OFF
     #endif
+#endif
+
+//also make sure that if we are considering synchrotron that we have the nonthermal electron dist set
+#if SYNCHROTRON_SWITCH == ON && NONTHERMAL_E_DIST == OFF
+    #error A nonthermal electron distribution must be specified when SYNCHROTRON_SWITCH==ON
 #endif
 
 //if we want scattering bias, the user can set a scaling parameter (alpha_0 in the RAIKOU paper). if they havnt set anything, set this to be 1 by default
