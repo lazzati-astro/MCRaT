@@ -123,6 +123,7 @@ extern const double R_EL;
 #include <gsl/gsl_monte_vegas.h>
 #include <gsl/gsl_interp2d.h>
 #include <gsl/gsl_spline2d.h>
+#include <gsl/gsl_spline.h>
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_sf_gamma.h>
 
