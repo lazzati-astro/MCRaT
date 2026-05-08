@@ -375,7 +375,7 @@ void initSynchTables(FILE *fPtr)
         synch_tables.F_arr[i] = computeFatX(synch_tables.x_arr[i], ws, fPtr);
 
 
-    synch_tables.F_acc    = NULL;
+    synch_tables.F_acc    = gsl_interp_accel_alloc();
     synch_tables.F_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
     gsl_spline_init(synch_tables.F_spline,
                     synch_tables.x_arr, synch_tables.F_arr, SYNCH_N_X);
@@ -519,6 +519,7 @@ void initSynchTables(FILE *fPtr)
     gsl_integration_workspace_free(ws);
     
     /* Allocate thread-local accelerators */
+    gsl_interp_accel_free(synch_tables.F_acc);
     int num_threads = 1;
     #if defined(_OPENMP)
         num_threads = omp_get_max_threads();
