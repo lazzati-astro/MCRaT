@@ -1195,7 +1195,7 @@ void buildSynchCellStrata(SynchCellStrata            *cs,
 
     for (i = 0; i < SYNCH_N_REF; i++)
     {
-        double nu     = synchNaturalNu(tables, B_cell, rand);
+        double nu     = synchNaturalNu(B_cell, rand);
         double log_nu = log10(nu);
 
         /*
