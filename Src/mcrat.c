@@ -599,9 +599,16 @@ int main(int argc, char **argv)
         #endif
         */
     #else
-    fprintf(fPtr, "TAU_CALCULATION is set to DIRECT\n");
-    fflush(fPtr);
+        fprintf(fPtr, "TAU_CALCULATION is set to DIRECT\n");
+        fflush(fPtr);
     #endif
+    
+    /* Initialize synchrotron universal tables (F(x), G_a(x), CDF samplers).
+      * Must be called before any photonEmitSynch or calculateOpticalDepthSSA
+      * calls. Mirrors the initalizeHotCrossSection pattern above.         */
+     #if SYNCHROTRON_SWITCH == ON
+         initSynchTables(fPtr);
+     #endif
     
     /* Initialize thread-local resources */
     int num_threads = 1;
@@ -745,14 +752,17 @@ int main(int argc, char **argv)
             //emit synchrotron photons here
             num_cyclosynch_ph_emit=0;
                         
-            #if CYCLOSYNCHROTRON_SWITCH == ON
+            #if CYCLOSYNCHROTRON_SWITCH == ON || SYNCHROTRON_SWITCH == ON
                 if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //remember to revert back to !=
                 //if ((scatt_frame == scatt_framestart) || (restrt==CONTINUE))//for testing
                 {
                     //if injecting synch photons, emit them if continuing simulation from a point where scatt_frame != scatt_framestart
                     //if necessary, then add memory to then arrays allocated directly above
-                    
-                    fprintf(fPtr, "Emitting Cyclosynchrotron Photons in frame %d\n", scatt_frame);
+                    #if CYCLOSYNCHROTRON_SWITCH == ON
+                        fprintf(fPtr, "Emitting Cyclosynchrotron Photons in frame %d\n", scatt_frame);
+                    #else
+                        fprintf(fPtr, "Emitting Synchrotron Photons in frame %d\n", scatt_frame);
+                    #endif
                     
                     #if B_FIELD_CALC == INTERNAL_E
                         fprintf(fPtr, "Calculating the magnetic field using internal energy and epsilon_B is set to %lf.\n", EPSILON_B);
@@ -765,8 +775,11 @@ int main(int argc, char **argv)
                     //fprintf(fPtr, "HYDRO_B_SCALE %lf.\n", HYDRO_B_SCALE);
                     
                     phScattStats(&photon_list, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
-
-                    num_cyclosynch_ph_emit=photonEmitCyclosynch(&photon_list, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 0, 0, fPtr);
+                    #if CYCLOSYNCHROTRON_SWITCH == ON
+                        num_cyclosynch_ph_emit=photonEmitCyclosynch(&photon_list, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 0, 0, fPtr);
+                    #else
+                        num_cyclosynch_ph_emit = photonEmitSynch(&photon_list, r_inj, ph_weight_suggest, 1, CYCLOSYNCHROTRON_REBIN_E_PERC*max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, fPtr);
+                    #endif
                 }
             #endif
             
@@ -810,6 +823,7 @@ int main(int argc, char **argv)
 
                     
                     //see if the scattered phton was a seed photon, if so replenish the seed photon
+                    //for synchrotron we jsut emit photons and allow them to continue to scatter/be absorbed, we also dont change the type of the synchrotron photon, only keep track of the amount of times we have scattering since 2 photons are produced now and we can determine if/when we need to rebin
                     #if CYCLOSYNCHROTRON_SWITCH == ON
                     if (scattered_photon->type == CS_POOL_PHOTON)
                     {
@@ -828,6 +842,14 @@ int main(int argc, char **argv)
                          
                     }
                     #endif
+                    
+                    #if SYNCHROTRON_SWITCH == ON
+                    if (scattered_photon->type == SYNCH_PHOTON)
+                    {
+                        scatt_cyclosynch_num_ph++;//keep track of the number of synch photons that have scattered for later in checking of we need to rebin them
+                    }
+                    #endif
+
                                         
                     if ((frame_scatt_cnt%1000 == 0) && (frame_scatt_cnt != 0)) //modified this so it doesn't print when all photons get absorbed at first and frame_scatt_cnt=0
                     {
@@ -838,7 +860,7 @@ int main(int argc, char **argv)
                         //fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
                         fflush(fPtr);
                         
-                        #if CYCLOSYNCHROTRON_SWITCH == ON
+                        #if CYCLOSYNCHROTRON_SWITCH == ON || SYNCHROTRON_SWITCH == ON
                         if (scatt_cyclosynch_num_ph>max_photons)
                         {
                             //if the number of synch photons that have been scattered is too high rebin them
@@ -872,7 +894,7 @@ int main(int argc, char **argv)
 
             }
             
-            #if CYCLOSYNCHROTRON_SWITCH == ON
+            #if CYCLOSYNCHROTRON_SWITCH == ON || SYNCHROTRON_SWITCH == ON
             if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //rememebr to change to != also at the other place in the code
             //if ((scatt_frame == scatt_framestart) || (restrt==CONTINUE)) //for testing
             {
@@ -890,11 +912,13 @@ int main(int argc, char **argv)
                                         
 
                 
-                //make sure the photons that shou;d be absorbed should be absorbed if we have actually emitted any synchrotron photons
-                if (num_cyclosynch_ph_emit>0)
-                {
-                    n_comptonized-=phAbsCyclosynch(&photon_list, &frame_abs_cnt, &scatt_cyclosynch_num_ph, &hydrodata, fPtr);
-                }
+                //make sure the photons that shou;d be absorbed should be absorbed if we have actually emitted any cyclosynchrotron photons
+                #if CYCLOSYNCHROTRON_SWITCH == ON
+                    if (num_cyclosynch_ph_emit>0)
+                    {
+                        n_comptonized-=phAbsCyclosynch(&photon_list, &frame_abs_cnt, &scatt_cyclosynch_num_ph, &hydrodata, fPtr);
+                    }
+                #endif
                 
             }
             #endif
@@ -906,6 +930,7 @@ int main(int argc, char **argv)
             #if CYCLOSYNCHROTRON_SWITCH == ON
                 fprintf(fPtr,"The number of cyclosynchrotron photons absorbed in this frame is: %d\n", frame_abs_cnt);
             #endif
+            
             fprintf(fPtr,"The last time step was: %e.\nThe time now is: %e\n", time_step,time_now);
             fprintf(fPtr,"MCRaT had to refind the position of photons %d times in this frame.\n", num_photons_find_new_element);
             fprintf(fPtr,"The maximum number of scatterings for a photon is: %d\nThe minimum number of scatterings for a photon is: %d\n", max_scatt, min_scatt);
@@ -954,6 +979,11 @@ int main(int argc, char **argv)
     #endif
     
     freeGlobalThreadRNG();
+    
+    /* Free synchrotron universal tables */
+    #if SYNCHROTRON_SWITCH == ON
+        freeSynchTables(fPtr);
+    #endif
                 
     MPI_Barrier(angle_comm);
         
