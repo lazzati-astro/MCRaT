@@ -38,6 +38,32 @@ static int synch_num_threads_allocated = 0;
 /* SECTION 1 — BESSEL INTEGRAL: F(x)                                          */
 /* RAIKOU Eq. B13;  G&S91 Eq. 2;  R&L79 Eq. 6.31                             */
 /* ═══════════════════════════════════════════════════════════════════════════ */
+/*
+ * synch_gsl_underflow_handler
+ * ---------------------------
+ * Custom GSL error handler used during initSynchTables to suppress
+ * GSL_EUNDRFLW (underflow) errors that occur when integrating
+ * K_{5/3}(xi) to +infinity via gsl_integration_qagiu.
+ *
+ * K_{5/3}(xi) ~ sqrt(pi/(2xi)) * exp(-xi) decays exponentially and
+ * reaches machine zero around xi ~ 650. The quadrature routine sees
+ * this as an underflow which is harmless — the integral has already
+ * converged — but the default GSL handler aborts on any error.
+ *
+ * All other error codes are passed to gsl_error (the default handler)
+ * so that genuine errors still abort.
+ */
+static void synch_gsl_underflow_handler(const char *reason,
+                                         const char *file,
+                                         int         line,
+                                         int         gsl_errno)
+{
+    if (gsl_errno == GSL_EUNDRFLW)
+        return;   /* silently ignore underflow — integrand is negligible */
+
+    /* Re-raise all other errors through the default handler */
+    gsl_error(reason, file, line, gsl_errno);
+}
 
 /*
  * bessel_K53_integrand
@@ -52,6 +78,18 @@ static int synch_num_threads_allocated = 0;
 static double bessel_K53_integrand(double xi, void *params)
 {
     (void)params;
+    
+    /*
+     * K_{5/3}(xi) decays as sqrt(pi/(2xi)) * exp(-xi) for large xi.
+     * For xi > 650 the exponential underflows to zero on any IEEE 754
+     * platform (exp(-650) < DBL_MIN). Return 0 explicitly rather than
+     * letting gsl_sf_bessel_Knu trigger a GSL underflow abort.
+     * The contribution to the integral from xi > 650 is negligible
+     * since SYNCH_X_MAX = 50 and F(x) is already zero there.
+     */
+    if (xi > 650.0)
+        return 0.0;
+    
     return gsl_sf_bessel_Knu(5.0/3.0, xi);
 }
 
@@ -307,16 +345,27 @@ void initSynchTables(FILE *fPtr)
         synch_tables.x_arr[i] = pow(10.0, log_x_min + t*(log_x_max - log_x_min));
     }
 
-    /* ── (1) F(x)  [RAIKOU Eq. B13] ─────────────────────────────────────── */
-    fprintf(fPtr,
-            ">> [initSynchTables] Computing F(x) "
-            "[RAIKOU Eq. B13]...\n");
-    fflush(fPtr);
+    /* ── Install a custom GSL error handler for the table build ──────────
+     *
+     * gsl_integration_qagiu integrates K_{5/3}(xi) to +infinity.
+     * GSL's default error handler calls abort() on ANY error including
+     * GSL_EUNDRFLW (underflow), which occurs harmlessly when the
+     * exponentially decaying integrand reaches machine zero at large xi.
+     * We suppress underflow here and restore the original handler once
+     * all Bessel integrals are done.
+     */
+    gsl_error_handler_t *old_handler = gsl_set_error_handler(synch_gsl_underflow_handler);
 
     gsl_integration_workspace *ws = gsl_integration_workspace_alloc(1000);
 
+    fprintf(fPtr, ">> [initSynchTables] Computing F(x) [RAIKOU Eq. B13]...\n");
+    fflush(fPtr);
+
     for (i = 0; i < SYNCH_N_X; i++)
         synch_tables.F_arr[i] = computeFatX(synch_tables.x_arr[i], ws, fPtr);
+
+    /* Restore default error handler before any other GSL calls */
+    gsl_set_error_handler(old_handler);
 
     synch_tables.F_acc    = NULL;
     synch_tables.F_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
