@@ -1777,7 +1777,7 @@ int photonEmitSynch(struct photonList          *photon_list,
      * GAMMA_MAX, and POWERLAW_INDEX, all compile-time constants) and
      * factors out of the relative weight comparison between cells.
      *
-     * calcCellVolume (geometry.c) returns the proper coordinate-system
+     * hydroElementVolume (geometry.c) returns the proper coordinate-system
      * volume V_i accounting for the grid geometry and dimensionality.
      *
      * The same compound `if (has_nonthermal && in_shell)` structure as
@@ -1832,7 +1832,7 @@ int photonEmitSynch(struct photonList          *photon_list,
             if (in_shell)
             {
                 double B = getMagneticFieldMagnitude(hydro_data, i);
-                double V = calcCellVolume(hydro_data, i);
+                double V = hydroElementVolume(hydro_data, i);
 
                 cell_index[j] = i;
                 W_cell[j]     = (hydro_data->nonthermal_dens)[i] * B * B * V;
