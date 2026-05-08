@@ -18,6 +18,22 @@
 static SynchUniversalTables synch_tables;
 static int synch_tables_initialized = 0;
 
+/* Thread-local accelerators — one set per OpenMP thread.
+ * Mirrors the ThreadLocalAccel pattern in hot_x_section.c.
+ * gsl_interp_accel is a mutable search-cache and is NOT thread-safe
+ * when shared across threads (GSL manual Sec. 26.7).                */
+typedef struct {
+    gsl_interp_accel *F_acc;
+    gsl_interp_accel *Ga_acc;
+    gsl_interp_accel *Ga_acc_p1;
+    gsl_interp_accel *Ga_acc_p2;
+    gsl_interp_accel *inv_x_cdf_acc;
+    gsl_interp_accel *inv_alpha_cdf_acc;
+} SynchThreadAccel;
+
+static SynchThreadAccel *synch_thread_accels = NULL;
+static int synch_num_threads_allocated = 0;
+
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* SECTION 1 — BESSEL INTEGRAL: F(x)                                          */
 /* RAIKOU Eq. B13;  G&S91 Eq. 2;  R&L79 Eq. 6.31                             */
@@ -184,6 +200,62 @@ static double computeGaAtX(double x,
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* SECTION 3 — UNIVERSAL TABLE INITIALISATION AND TEARDOWN                    */
 /* ═══════════════════════════════════════════════════════════════════════════ */
+static void initSynchThreadAccels(int num_threads, FILE *fPtr)
+{
+    int i;
+    synch_num_threads_allocated = num_threads;
+    synch_thread_accels = calloc(num_threads, sizeof(SynchThreadAccel));
+    if (!synch_thread_accels)
+    {
+        fprintf(fPtr, ">> [initSynchThreadAccels] FATAL: allocation failed.\n");
+        fflush(fPtr);
+        exit(1);
+    }
+    for (i = 0; i < num_threads; i++)
+    {
+        synch_thread_accels[i].F_acc           = gsl_interp_accel_alloc();
+        synch_thread_accels[i].Ga_acc          = gsl_interp_accel_alloc();
+        synch_thread_accels[i].Ga_acc_p1       = gsl_interp_accel_alloc();
+        synch_thread_accels[i].Ga_acc_p2       = gsl_interp_accel_alloc();
+        synch_thread_accels[i].inv_x_cdf_acc   = gsl_interp_accel_alloc();
+        synch_thread_accels[i].inv_alpha_cdf_acc = gsl_interp_accel_alloc();
+    }
+    fprintf(fPtr,
+            ">> [initSynchThreadAccels] Allocated thread-local accelerators "
+            "for %d thread(s).\n", num_threads);
+    fflush(fPtr);
+}
+
+static void freeSynchThreadAccels(void)
+{
+    int i;
+    if (!synch_thread_accels) return;
+    for (i = 0; i < synch_num_threads_allocated; i++)
+    {
+        gsl_interp_accel_free(synch_thread_accels[i].F_acc);
+        gsl_interp_accel_free(synch_thread_accels[i].Ga_acc);
+        gsl_interp_accel_free(synch_thread_accels[i].Ga_acc_p1);
+        gsl_interp_accel_free(synch_thread_accels[i].Ga_acc_p2);
+        gsl_interp_accel_free(synch_thread_accels[i].inv_x_cdf_acc);
+        gsl_interp_accel_free(synch_thread_accels[i].inv_alpha_cdf_acc);
+    }
+    free(synch_thread_accels);
+    synch_thread_accels = NULL;
+    synch_num_threads_allocated = 0;
+}
+
+static SynchThreadAccel *getSynchAccel(void)
+{
+    int thread_id = 0;
+    #if defined(_OPENMP)
+        thread_id = omp_get_thread_num();
+    #endif
+    /* Fallback to thread 0 if called outside a parallel region or if
+     * thread_id exceeds the allocated count (should not happen).     */
+    if (thread_id >= synch_num_threads_allocated)
+        thread_id = 0;
+    return &synch_thread_accels[thread_id];
+}
 
 /*
  * initSynchTables
@@ -246,7 +318,7 @@ void initSynchTables(FILE *fPtr)
     for (i = 0; i < SYNCH_N_X; i++)
         synch_tables.F_arr[i] = computeFatX(synch_tables.x_arr[i], ws, fPtr);
 
-    synch_tables.F_acc    = gsl_interp_accel_alloc();
+    synch_tables.F_acc    = NULL;
     synch_tables.F_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
     gsl_spline_init(synch_tables.F_spline,
                     synch_tables.x_arr, synch_tables.F_arr, SYNCH_N_X);
@@ -257,9 +329,9 @@ void initSynchTables(FILE *fPtr)
             "[RAIKOU Eq. C3]...\n");
     fflush(fPtr);
 
-    synch_tables.Ga_acc    = gsl_interp_accel_alloc();
-    synch_tables.Ga_acc_p1 = gsl_interp_accel_alloc();
-    synch_tables.Ga_acc_p2 = gsl_interp_accel_alloc();
+    synch_tables.Ga_acc    = NULL;
+    synch_tables.Ga_acc_p1 = NULL;
+    synch_tables.Ga_acc_p2 = NULL;
 
     #if NONTHERMAL_E_DIST == POWERLAW
 
@@ -350,7 +422,7 @@ void initSynchTables(FILE *fPtr)
         free(Fx_weight);
     }
 
-    synch_tables.inv_x_cdf_acc    = gsl_interp_accel_alloc();
+    synch_tables.inv_x_cdf_acc    = NULL;
     synch_tables.inv_x_cdf_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
     gsl_spline_init(synch_tables.inv_x_cdf_spline,
                     synch_tables.inv_x_cdf_u,
@@ -376,7 +448,7 @@ void initSynchTables(FILE *fPtr)
     }
     synch_tables.inv_alpha_cdf_u[SYNCH_N_X - 1] = 1.0;
 
-    synch_tables.inv_alpha_cdf_acc    = gsl_interp_accel_alloc();
+    synch_tables.inv_alpha_cdf_acc    = NULL;
     synch_tables.inv_alpha_cdf_spline = gsl_spline_alloc(gsl_interp_linear,
                                                       SYNCH_N_X);
     gsl_spline_init(synch_tables.inv_alpha_cdf_spline,
@@ -386,8 +458,15 @@ void initSynchTables(FILE *fPtr)
 
     gsl_integration_workspace_free(ws);
     
-    synch_tables_initialized = 1;
+    /* Allocate thread-local accelerators */
+    int num_threads = 1;
+    #if defined(_OPENMP)
+        num_threads = omp_get_max_threads();
+    #endif
+    initSynchThreadAccels(num_threads, fPtr);
 
+    synch_tables_initialized = 1;
+    
     fprintf(fPtr,
             ">> [initSynchTables] All universal tables ready.\n\n");
     fflush(fPtr);
@@ -410,6 +489,8 @@ void freeSynchTables(FILE *fPtr)
         fflush(fPtr);
         return;
     }
+    
+    freeSynchThreadAccels();
 
     free(synch_tables.x_arr);
     free(synch_tables.F_arr);
@@ -485,15 +566,9 @@ static const SynchUniversalTables *getSynchTables(FILE *fPtr)
 double synchSampleX(double u)
 {
     const SynchUniversalTables *tables = getSynchTables(NULL);
-    
-    double u_lo = tables->inv_x_cdf_u[0];
-    double u_hi = tables->inv_x_cdf_u[SYNCH_N_X - 1];
-    if (u < u_lo + 1e-12) u = u_lo + 1e-12;
-    if (u > u_hi - 1e-12) u = u_hi - 1e-12;
-
-    double log10_x = gsl_spline_eval(tables->inv_x_cdf_spline,
-                                      u, tables->inv_x_cdf_acc);
-    return pow(10.0, log10_x);
+    SynchThreadAccel *ta = getSynchAccel();
+    return pow(10.0, gsl_spline_eval(tables->inv_x_cdf_spline, u,
+                                      ta->inv_x_cdf_acc));
 }
 
 
@@ -516,14 +591,9 @@ double synchSampleX(double u)
 double synchSampleAlpha(double u)
 {
     const SynchUniversalTables *tables = getSynchTables(NULL);
-    
-    double u_lo = tables->inv_alpha_cdf_u[0];
-    double u_hi = tables->inv_alpha_cdf_u[SYNCH_N_X - 1];
-    if (u < u_lo + 1e-12) u = u_lo + 1e-12;
-    if (u > u_hi - 1e-12) u = u_hi - 1e-12;
-
-    return gsl_spline_eval(tables->inv_alpha_cdf_spline,
-                            u, tables->inv_alpha_cdf_acc);
+    SynchThreadAccel *ta = getSynchAccel();
+    return gsl_spline_eval(tables->inv_alpha_cdf_spline, u,
+                            ta->inv_alpha_cdf_acc);
 }
 
 
@@ -649,12 +719,20 @@ double synchSampleGammaEmission(gsl_rng *rand)
  * spectral integral differences [G_a(x_max) - G_a(x_min)] that appear in
  * RAIKOU Eqs. C2 and C4.
  */
-static inline double evalGa(double x,
-                              gsl_spline       *spline,
-                              gsl_interp_accel *acc)
+static double evalGa(double x, gsl_spline *spline)
 {
-    if (x >= SYNCH_X_MAX) return 0.0;
-    if (x <= SYNCH_X_MIN) return gsl_spline_eval(spline, SYNCH_X_MIN, acc);
+    SynchThreadAccel *ta = getSynchAccel();
+
+    gsl_interp_accel *acc =
+        (spline == synch_tables.Ga_spline)    ? ta->Ga_acc    :
+        (spline == synch_tables.Ga_spline_p1) ? ta->Ga_acc_p1 :
+                                                 ta->Ga_acc_p2;
+
+    if (x <= synch_tables.x_arr[0])
+        return gsl_spline_eval(spline, synch_tables.x_arr[0], acc);
+    if (x >= SYNCH_X_MAX)
+        return 0.0;
+
     return gsl_spline_eval(spline, x, acc);
 }
 
@@ -765,8 +843,8 @@ double synchAlphaNu(double nu_f,
          * Note: G_a is monotonically decreasing in x, so delta_Ga >= 0 when
          * x_max >= x_min, which holds because gmin <= gmax.
          */
-        double Ga_xmax  = evalGa(x_max, tables->Ga_spline, tables->Ga_acc);
-        double Ga_xmin  = evalGa(x_min, tables->Ga_spline, tables->Ga_acc);
+        double Ga_xmax  = evalGa(x_max, tables->Ga_spline);
+        double Ga_xmin  = evalGa(x_min, tables->Ga_spline);
         double delta_Ga = Ga_xmax - Ga_xmin;
         if (delta_Ga <= 0.0) return 0.0;
 
@@ -830,13 +908,13 @@ double synchAlphaNu(double nu_f,
          *   delta_Ga_p2 = G_a(x_br; p2) - G_a(x_min; p2)
          *   spans gamma in [gbr, gmax], i.e. x in [x_min, x_br]
          */
-        double Ga_xmax_p1 = evalGa(x_max, tables->Ga_spline_p1, tables->Ga_acc_p1);
-        double Ga_xbr_p1  = evalGa(x_br,  tables->Ga_spline_p1, tables->Ga_acc_p1);
+        double Ga_xmax_p1 = evalGa(x_max, tables->Ga_spline_p1);
+        double Ga_xbr_p1  = evalGa(x_br,  tables->Ga_spline_p1);
         double delta_Ga_p1 = Ga_xmax_p1 - Ga_xbr_p1;
         if (delta_Ga_p1 < 0.0) delta_Ga_p1 = 0.0;
 
-        double Ga_xbr_p2  = evalGa(x_br,  tables->Ga_spline_p2, tables->Ga_acc_p2);
-        double Ga_xmin_p2 = evalGa(x_min, tables->Ga_spline_p2, tables->Ga_acc_p2);
+        double Ga_xbr_p2  = evalGa(x_br,  tables->Ga_spline_p2);
+        double Ga_xmin_p2 = evalGa(x_min, tables->Ga_spline_p2);
         double delta_Ga_p2 = Ga_xbr_p2 - Ga_xmin_p2;
         if (delta_Ga_p2 < 0.0) delta_Ga_p2 = 0.0;
 
@@ -1250,7 +1328,7 @@ void buildSynchCellStrata(SynchCellStrata            *cs,
     }
     cs->cdf_log_nu_vals[SYNCH_N_CDF_BINS] = 1.0;
 
-    cs->inv_nu_cdf_acc    = gsl_interp_accel_alloc();
+    cs->inv_nu_cdf_acc    = NULL;
     cs->inv_nu_cdf_spline = gsl_spline_alloc(gsl_interp_linear,
                                                SYNCH_N_CDF_BINS + 1);
     gsl_spline_init(cs->inv_nu_cdf_spline,
