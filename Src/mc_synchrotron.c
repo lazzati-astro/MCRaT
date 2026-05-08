@@ -899,7 +899,7 @@ void applyabsorption(struct photon *ph, double dl)
     #if SYNCHROTRON_SWITCH == ON
         if (ph == NULL)             return;
         if (dl <= 0.0)              return;
-        if (ph->ssa_abs_coeff <= 0.0) return;
+        if (ph->abs_optical_depth <= 0.0) return;
 
         double tau = ph->abs_optical_depth * dl;
 
