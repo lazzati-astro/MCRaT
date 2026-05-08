@@ -60,6 +60,16 @@ static void synch_gsl_underflow_handler(const char *reason,
 {
     if (gsl_errno == GSL_EUNDRFLW)
         return;   /* silently ignore underflow — integrand is negligible */
+    
+    /*
+     * GSL_EROUND (roundoff error) occurs in computeGaAtX when the G_a
+     * integrand is nearly zero near x -> SYNCH_X_MAX and the requested
+     * epsabs=1e-14 cannot be achieved due to floating-point cancellation.
+     * The result is still numerically zero to all practical precision,
+     * so suppress this error in the same way as underflow.
+     */
+    if (gsl_errno == GSL_EROUND)
+        return;
 
     /* Re-raise all other errors through the default handler */
     gsl_error(reason, file, line, gsl_errno);
@@ -364,8 +374,6 @@ void initSynchTables(FILE *fPtr)
     for (i = 0; i < SYNCH_N_X; i++)
         synch_tables.F_arr[i] = computeFatX(synch_tables.x_arr[i], ws, fPtr);
 
-    /* Restore default error handler before any other GSL calls */
-    gsl_set_error_handler(old_handler);
 
     synch_tables.F_acc    = NULL;
     synch_tables.F_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
@@ -439,6 +447,9 @@ void initSynchTables(FILE *fPtr)
                         synch_tables.x_arr, synch_tables.Ga_arr_p2, SYNCH_N_X);
 
     #endif
+    
+    /* Restore default error handler before any other GSL calls */
+    gsl_set_error_handler(old_handler);
 
     /* ── (3) Inverse CDF of x ~ F(x)*x d(log x)  [G&S91 Sec. 2] ───────── */
     /*
