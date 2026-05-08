@@ -1,411 +1,523 @@
 /*
  * mc_synchrotron.c
  * ================
- * Pitch-angle averaged synchrotron photon emission with SSA weight
- * modification, integrated into the MCRaT photonList framework.
+ * Pitch-angle averaged synchrotron photon emission and SSA for non-thermal
+ * electron distributions (single or broken power law).
  *
- * References:
- *   Crusius & Schlickeiser (1986)  A&A 164, L16        [R(x) function]
- *   Ghisellini & Svensson (1991)   MNRAS 252, 313      [SSA kappa_nu]
- *   Kawashima et al. (2023)        ApJ 949, 101        [weight Eq. 40]
+ * See mc_synchrotron.h for the physics overview and equation references.
  */
 
 #include "mc_synchrotron.h"
+#include "electron.h"
+#include "mc_cyclosynch.h"
+#include "geometry.h"
+#include "photons.h"
 
-/* ══════════════════════════════════════════════════════════════════════════
- * SECTION 1: BESSEL INTEGRALS AND SPECTRAL FUNCTIONS
- * ══════════════════════════════════════════════════════════════════════════
- *
+#include <string.h>
+#include <float.h>
+
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* SECTION 1 — BESSEL INTEGRAL: F(x)                                          */
+/* RAIKOU Eq. B13;  G&S91 Eq. 2;  R&L79 Eq. 6.31                             */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+/*
  * bessel_K53_integrand
  * --------------------
- * Evaluates the integrand K_{5/3}(xi) for the Bessel integral that
- * defines the synchrotron spectral function F(x).
+ * Returns K_{5/3}(xi), the modified Bessel function of the second kind of
+ * order 5/3, evaluated at xi. This is the integrand appearing in
  *
- * Used by synchComputeRatX via GSL QAGIU.
+ *   F(x) = x * integral_x^inf K_{5/3}(xi) dxi         [RAIKOU Eq. B13]
  *
- * G&S91 Eq. 2:
- *   F(x) = x * integral_x^inf  K_{5/3}(xi) dxi
- * where K_{5/3} is the modified Bessel function of the second kind
- * of order 5/3.
+ * GSL's gsl_sf_bessel_Knu handles arbitrary real orders correctly.
  */
 static double bessel_K53_integrand(double xi, void *params)
 {
     (void)params;
-    if (xi > 500.0) return 0.0;
     return gsl_sf_bessel_Knu(5.0/3.0, xi);
 }
 
-/*
- * synchComputeRatX
- * ----------------
- * Computes the synchrotron spectral function
- *
- *   F(x) = x * integral_x^inf  K_{5/3}(xi) dxi
- *
- * at a single value of the dimensionless frequency ratio x = nu / nu_c.
- *
- * This function appears in two distinct physical contexts in this code:
- *
- * (1) Solid-angle integrated single-electron emissivity  [R&L79 Eq. 6.36]:
- *
- *       j_nu^single = (sqrt(3) e^3 B sin(alpha)) / (4 pi me c^2) * F(x)
- *
- *     where nu_c = (3 e B sin(alpha) gamma^2) / (4 pi me c)  [R&L79 Eq. 6.19]
- *     is the critical frequency. The solid-angle integration of the
- *     single-electron power P(omega) over 4 pi sr introduces the
- *     factor 1/(4 pi) and yields j_nu as power per unit volume per
- *     unit frequency [erg s^{-1} cm^{-3} Hz^{-1} sr^{-1}].
- *     After integrating over the isotropic pitch-angle distribution
- *     f(alpha) = (2/pi) sin^2(alpha) and the electron distribution
- *     N(gamma), the result is R&L79 Eq. 6.36.
- *
- * (2) Net SSA absorption coefficient  [G&S91 Eq. 14]:
- *
- *       kappa_nu = (sqrt(3) e^3 B) / (8 pi me c nu^2)
- *                  * integral N(gamma) * [2F(x) + 2x F'(x)] dgamma
- *
- *     The kernel 2F(x) + 2x F'(x) = 2 d[xF(x)]/dx arises from
- *     differentiating the emissivity with respect to gamma and applying
- *     detailed balance (G&S91 Eqs. 11-13). This is the NET absorption
- *     coefficient with stimulated emission already subtracted; it is
- *     NOT the same as the individual true-absorption or
- *     stimulated-emission cross sections of G&S91 Eqs. 3 and 4.
- *
- * In both contexts F(x) is the same Bessel integral. The code stores
- * it in R_arr and derives the absorption kernel abs_kern_arr = 2F + 2xF'
- * by numerical differentiation.
- *
- * Reference for F(x): R&L79 Eq. 6.31; G&S91 Eq. 2.
- * Reference for nu_c: R&L79 Eq. 6.19; G&S91 Eq. 3 (note: G&S91 Eq. 3
- * defines nu_c differently from the cross section context — here it is
- * the critical frequency, not an absorption cross section).
- */
 
-static double synchComputeRatX(double x, gsl_integration_workspace *ws, FILE *fPtr)
+/*
+ * computeFatX
+ * -----------
+ * Compute the synchrotron spectral function
+ *
+ *   F(x) = x * integral_x^inf K_{5/3}(xi) dxi         [RAIKOU Eq. B13]
+ *
+ * at a single value of the dimensionless frequency ratio
+ *
+ *   x = nu_f / (gamma_e^2 * nu_c)
+ *
+ * F(x) appears as the kernel of both the emission spectral integral G(x)
+ * [RAIKOU Eq. B12] and the absorption spectral integral G_a(x)
+ * [RAIKOU Eq. C3]. It is positive for all x > 0 and decays exponentially
+ * for x >> 1 (R&L79 Eq. 6.33b).
+ *
+ * Parameters
+ * ----------
+ * x   : dimensionless frequency ratio, x > 0
+ * ws  : pre-allocated GSL quadrature workspace (size >= 1000)
+ * fPtr: log file
+ *
+ * Returns F(x) >= 0; returns 0.0 for x >= SYNCH_X_MAX.
+ */
+static double computeFatX(double x,
+                           gsl_integration_workspace *ws,
+                           FILE *fPtr)
 {
-    double result = 0.0, abserr = 0.0;
+    if (x >= SYNCH_X_MAX) return 0.0;
+
     gsl_function F;
     F.function = bessel_K53_integrand;
     F.params   = NULL;
 
-    if (x > 50.0) return 0.0;
+    double result = 0.0, abserr = 0.0;
+    int status = gsl_integration_qagiu(&F, x,
+                                        1e-14, 1e-10,
+                                        1000, ws,
+                                        &result, &abserr);
 
-    int status = gsl_integration_qagiu(&F, x, 1e-14, 1e-10,
-                                        1000, ws, &result, &abserr);
-    if (status != GSL_SUCCESS)
+    if (status != GSL_SUCCESS && x < 40.0)
     {
-        if (x < 40.0)
-        {
-            /* At x < 40 the integrand is well-behaved; a non-SUCCESS
-             * status here indicates a genuine quadrature failure, not
-             * just underflow. Log the warning but return the best
-             * available estimate rather than aborting, since a slightly
-             * inaccurate table value is preferable to crashing during
-             * table initialisation.                                      */
-            fprintf(fPtr,
-                    ">> [synchComputeRatX] WARNING: QAGIU returned %s "
-                    "at x = %.4e (abserr = %.2e, result = %.6e). "
-                    "Table accuracy may be reduced near this point.\n",
-                    gsl_strerror(status), x, abserr, result);
-            fflush(fPtr);
-        }
-        /* At x >= 40 a non-SUCCESS status is expected: the integrand
-         * has already decayed to near machine epsilon and QAGIU
-         * struggles with the near-zero integrand. The result is
-         * correct to within floating-point precision; no warning
-         * is needed.                                                     */
+        fprintf(fPtr,
+                ">> [computeFatX] WARNING: QAGIU status '%s' at "
+                "x = %.4e (abserr = %.2e). "
+                "Consider increasing SYNCH_N_X.\n",
+                gsl_strerror(status), x, abserr);
+        fflush(fPtr);
     }
-    
+
     return x * result;
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
- * SECTION 2: UNIVERSAL TABLES
- * ══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* SECTION 2 — ABSORPTION SPECTRAL INTEGRAL: G_a(x)                           */
+/* RAIKOU Eq. C3                                                               */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Params struct for the G_a integrand */
+struct Ga_integrand_params
+{
+    double            p;
+    gsl_spline       *F_spline;
+    gsl_interp_accel *F_acc;
+};
+
+/*
+ * Ga_integrand_fn
+ * ---------------
+ * Evaluates the integrand z^{(p-2)/2} * F(z) for the absorption spectral
+ * integral G_a(x; p) = integral_x^inf z^{(p-2)/2} F(z) dz [RAIKOU Eq. C3].
+ */
+static double Ga_integrand_fn(double z, void *vp)
+{
+    struct Ga_integrand_params *par = (struct Ga_integrand_params *)vp;
+    double Fz = gsl_spline_eval(par->F_spline, z, par->F_acc);
+    return pow(z, 0.5*(par->p - 2.0)) * Fz;
+}
+
+
+/*
+ * computeGaAtX
+ * ------------
+ * Compute the absorption spectral integral
+ *
+ *   G_a(x; p) = integral_x^inf z^{(p-2)/2} F(z) dz    [RAIKOU Eq. C3]
+ *
+ * at a single value of x and power-law index p.
+ *
+ * This quantity depends only on x and p, not on B, nu_f, or n_e individually.
+ * A 1D table of G_a(x) at fixed p therefore captures the entire spectral
+ * shape of alpha_{nu_f}^(f), with B and n_e entering analytically through
+ * the RAIKOU Eq. C2 prefactor evaluated at runtime.
+ *
+ * Parameters
+ * ----------
+ * x      : lower integration limit (dimensionless frequency ratio)
+ * p      : power-law index of the electron distribution
+ * F_spl  : pre-built spline of F(z) on [SYNCH_X_MIN, SYNCH_X_MAX]
+ * F_acc  : GSL accelerator for F_spl
+ * ws     : pre-allocated GSL quadrature workspace
+ * fPtr   : log file
+ *
+ * Returns G_a(x; p) >= 0; returns 0.0 for x >= SYNCH_X_MAX.
+ */
+static double computeGaAtX(double x,
+                             double p,
+                             gsl_spline               *F_spl,
+                             gsl_interp_accel         *F_acc,
+                             gsl_integration_workspace *ws,
+                             FILE *fPtr)
+{
+    if (x >= SYNCH_X_MAX) return 0.0;
+
+    struct Ga_integrand_params par = { p, F_spl, F_acc };
+    gsl_function G;
+    G.function = Ga_integrand_fn;
+    G.params   = &par;
+
+    double result = 0.0, abserr = 0.0;
+    double upper  = SYNCH_X_MAX;
+
+    int status = gsl_integration_qags(&G, x, upper,
+                                       1e-14, 1e-8,
+                                       1000, ws,
+                                       &result, &abserr);
+
+    if (status != GSL_SUCCESS)
+    {
+        fprintf(fPtr,
+                ">> [computeGaAtX] WARNING: QAGS status '%s' at "
+                "x = %.4e, p = %.3f (abserr = %.2e).\n",
+                gsl_strerror(status), x, p, abserr);
+        fflush(fPtr);
+    }
+
+    return (result > 0.0) ? result : 0.0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* SECTION 3 — UNIVERSAL TABLE INITIALISATION AND TEARDOWN                    */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
 /*
  * initSynchTables
  * ---------------
- * Build all spectral tables that are independent of cell properties.
+ * Build all x-dependent spectral tables. Must be called once before any
+ * other function in this file.
  *
- * Tables built:
+ * (1) F(x) grid  [RAIKOU Eq. B13]
+ *     F_arr[i] = computeFatX(x_arr[i]) for i = 0..SYNCH_N_X-1
+ *     on a log-spaced grid over [SYNCH_X_MIN, SYNCH_X_MAX].
  *
- * (1) F(x) = R(x) array  [R&L79 Eq. 6.31; G&S91 Eq. 2]
+ * (2) G_a(x) grid  [RAIKOU Eq. C3]
+ *     For POWERLAW:      Ga_arr[i]    = computeGaAtX(x_arr[i], POWERLAW_INDEX)
+ *     For BROKENPOWERLAW: Ga_arr_p1[i] = computeGaAtX(x_arr[i], POWERLAW_INDEX_1)
+ *                         Ga_arr_p2[i] = computeGaAtX(x_arr[i], POWERLAW_INDEX_2)
+ *     Both tables are needed to evaluate RAIKOU Eq. C4.
  *
- *       F(x) = x * integral_x^inf  K_{5/3}(xi) dxi
+ * (3) Inverse CDF of x ~ F(x)*x d(log x)  [G&S91 Sec. 2]
+ *     Allows direct sampling of x without rejection.
  *
- *     Computed at each point of the log-spaced x grid over [1e-5, 1e2].
- *     This is the spectral shape function common to both the emissivity
- *     and the absorption kernel.
- *
- * (2) Absorption kernel  [G&S91 Eqs. 11-14]
- *
- *       abs_kern(x) = 2F(x) + 2x dF/dx
- *
- *     This is the factor multiplying N(gamma) in the net SSA absorption
- *     coefficient (G&S91 Eq. 14). It arises from taking the gamma-
- *     derivative of the emissivity kernel gamma^2 F(x) / p_e (G&S91
- *     Eq. 11) and applying the Kirchhoff relation to convert the
- *     emissivity-based expression into an absorption coefficient
- *     (G&S91 Eqs. 12-13). The result is the NET absorption coefficient
- *     (stimulated emission subtracted) — NOT the individual true-
- *     absorption cross section of G&S91 Eq. 3.
- *
- * (3) Inverse CDF of x ~ F(x) x d(log x)  [R&L79 Eq. 6.36]
- *
- *     Used to sample the dimensionless photon frequency x = nu/nu_c.
- *     The weight F(x)*x in d(log x) measure is the spectral shape
- *     of the solid-angle integrated emissivity j_nu for a single
- *     electron at fixed gamma and alpha (R&L79 Eq. 6.36).
- *
- * (4) Inverse CDF of alpha ~ (2/pi) sin^2(alpha)  [R&L79 Eq. 6.36]
- *
- *     Used to sample the electron pitch angle for isotropic pitch-angle
- *     distribution. The sin^2(alpha) weighting comes from integrating
- *     the single-electron emissivity over all pitch angles, with the
- *     factor sin(alpha) from nu_c (R&L79 Eq. 6.19) giving an additional
- *     sin(alpha), and the geometric solid-angle element giving the
- *     remaining sin(alpha), for a total weight of sin^2(alpha).
- */
-
-/*
- * buildSynchKappaTable
- * --------------------
- * Compute the net SSA absorption coefficient kappa_nu [cm^{-1}] per
- * unit electron number density as a function of frequency.
- *
- * Implements G&S91 Eq. 14:
- *
- *   kappa_nu = (sqrt(3) e^3 B) / (8 pi me c nu^2)
- *              * integral_{gamma_min}^{gamma_max}
- *                  N(gamma) * [2F(x) + 2x dF/dx] dgamma
- *
- * where:
- *   x      = nu / nu_c(gamma)
- *   nu_c   = (3 e B gamma^2) / (4 pi me c)     [R&L79 Eq. 6.19,
- *             pitch-angle averaged: the sin(alpha) factor averages
- *             to a numerical constant over the isotropic distribution]
- *   N(gamma) = ne * hat_N(gamma)               [R&L79 Eq. 6.36]
- *   2F(x) + 2x dF/dx                           [G&S91 Eqs. 12-13]
- *
- * Physical interpretation:
- *   This is the NET absorption coefficient with stimulated emission
- *   already accounted for. It is derived in G&S91 by:
- *     (a) Writing the transfer equation for synchrotron radiation
- *         (G&S91 Eq. 10)
- *     (b) Expressing the absorption term via the emissivity through
- *         the Kirchhoff relation in the Rayleigh-Jeans limit
- *         (G&S91 Eq. 11)
- *     (c) Taking the gamma-derivative analytically (G&S91 Eqs. 12-13)
- *     (d) Simplifying to the final form (G&S91 Eq. 14)
- *
- *   It is NOT the individual true-absorption cross section (G&S91 Eq. 3)
- *   or stimulated-emission cross section (G&S91 Eq. 4). Those are
- *   single-photon single-electron interaction cross sections; this
- *   kappa_nu is the macroscopic transport coefficient that enters the
- *   radiative transfer equation dI_nu/ds = -kappa_nu * I_nu + j_nu
- *   (R&L79 Eq. 1.20).
- *
- * The table is built with ne = 1 (unit number density). The physical
- * opacity is obtained at lookup time via synchKappaAtNuScaled, which
- * multiplies by ne_cell. This is exact because kappa_nu is linear in
- * N(gamma) and hence linear in ne (G&S91 Eq. 14).
+ * (4) Inverse CDF of alpha ~ sin^2(alpha)  [G&S91 Sec. 2; R&L79 Sec. 6.2]
+ *     CDF(alpha) = (alpha - sin(2*alpha)/2) / pi.
  */
 void initSynchTables(SynchUniversalTables *tables, FILE *fPtr)
 {
-    int i, n_mono;
-    double log_x_min = -5.0, log_x_max = 2.0;
+    int i;
+    fprintf(fPtr,
+            ">> [initSynchTables] Building universal spectral tables "
+            "(SYNCH_N_X = %d)...\n", SYNCH_N_X);
+    fflush(fPtr);
 
-    fprintf(fPtr, ">> [initSynchTables] Computing R(x) via Bessel integrals "
-            "(%d points)...\n", SYNCH_N_X);
+    /* ── Allocate arrays ──────────────────────────────────────────────────── */
+    tables->x_arr       = (double *)malloc(SYNCH_N_X * sizeof(double));
+    tables->F_arr       = (double *)malloc(SYNCH_N_X * sizeof(double));
+    tables->Ga_arr      = (double *)malloc(SYNCH_N_X * sizeof(double));
+    tables->Ga_arr_p1   = (double *)malloc(SYNCH_N_X * sizeof(double));
+    tables->Ga_arr_p2   = (double *)malloc(SYNCH_N_X * sizeof(double));
+    tables->inv_x_cdf_u    = (double *)malloc(SYNCH_N_X * sizeof(double));
+    tables->inv_x_cdf_logx = (double *)malloc(SYNCH_N_X * sizeof(double));
+    tables->inv_alpha_cdf_u     = (double *)malloc(SYNCH_N_X * sizeof(double));
+    tables->inv_alpha_cdf_alpha = (double *)malloc(SYNCH_N_X * sizeof(double));
+
+    /* ── Log-spaced x grid ───────────────────────────────────────────────── */
+    double log_x_min = log10(SYNCH_X_MIN);
+    double log_x_max = log10(SYNCH_X_MAX);
+    for (i = 0; i < SYNCH_N_X; i++)
+    {
+        double t = (double)i / (SYNCH_N_X - 1);
+        tables->x_arr[i] = pow(10.0, log_x_min + t*(log_x_max - log_x_min));
+    }
+
+    /* ── (1) F(x)  [RAIKOU Eq. B13] ─────────────────────────────────────── */
+    fprintf(fPtr,
+            ">> [initSynchTables] Computing F(x) "
+            "[RAIKOU Eq. B13]...\n");
     fflush(fPtr);
 
     gsl_integration_workspace *ws = gsl_integration_workspace_alloc(1000);
 
-    /* ── R(x) array ──────────────────────────────────────────────────── */
+    for (i = 0; i < SYNCH_N_X; i++)
+        tables->F_arr[i] = computeFatX(tables->x_arr[i], ws, fPtr);
+
+    tables->F_acc    = gsl_interp_accel_alloc();
+    tables->F_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+    gsl_spline_init(tables->F_spline,
+                    tables->x_arr, tables->F_arr, SYNCH_N_X);
+
+    /* ── (2) G_a(x)  [RAIKOU Eq. C3] ────────────────────────────────────── */
+    fprintf(fPtr,
+            ">> [initSynchTables] Computing G_a(x) "
+            "[RAIKOU Eq. C3]...\n");
+    fflush(fPtr);
+
+    tables->Ga_acc    = gsl_interp_accel_alloc();
+    tables->Ga_acc_p1 = gsl_interp_accel_alloc();
+    tables->Ga_acc_p2 = gsl_interp_accel_alloc();
+
+    #if NONTHERMAL_E_DIST == POWERLAW
+
+        for (i = 0; i < SYNCH_N_X; i++)
+            tables->Ga_arr[i] = computeGaAtX(tables->x_arr[i],
+                                              POWERLAW_INDEX,
+                                              tables->F_spline,
+                                              tables->F_acc,
+                                              ws, fPtr);
+
+        /* p1 / p2 arrays are unused for a single power law; zero-fill */
+        for (i = 0; i < SYNCH_N_X; i++)
+            tables->Ga_arr_p1[i] = tables->Ga_arr_p2[i] = 0.0;
+
+        tables->Ga_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+        gsl_spline_init(tables->Ga_spline,
+                        tables->x_arr, tables->Ga_arr, SYNCH_N_X);
+
+        /* Allocate p1/p2 splines as empty so freeSynchTables can always free */
+        tables->Ga_spline_p1 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+        tables->Ga_spline_p2 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+
+    #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
+
+        /*
+         * For the broken power law (RAIKOU Eq. C4) we need two separate G_a
+         * tables — one evaluated with p1 (for the low-energy segment
+         * gamma_min <= gamma <= gamma_br) and one with p2 (for the high-energy
+         * segment gamma_br < gamma <= gamma_max). Ga_arr is set as an alias
+         * for Ga_arr_p1 for consistency with the single power-law path.
+         */
+        for (i = 0; i < SYNCH_N_X; i++)
+        {
+            tables->Ga_arr_p1[i] = computeGaAtX(tables->x_arr[i],
+                                                  POWERLAW_INDEX_1,
+                                                  tables->F_spline,
+                                                  tables->F_acc,
+                                                  ws, fPtr);
+            tables->Ga_arr_p2[i] = computeGaAtX(tables->x_arr[i],
+                                                  POWERLAW_INDEX_2,
+                                                  tables->F_spline,
+                                                  tables->F_acc,
+                                                  ws, fPtr);
+            tables->Ga_arr[i] = tables->Ga_arr_p1[i];
+        }
+
+        tables->Ga_spline    = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+        tables->Ga_spline_p1 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+        tables->Ga_spline_p2 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+
+        gsl_spline_init(tables->Ga_spline,
+                        tables->x_arr, tables->Ga_arr, SYNCH_N_X);
+        gsl_spline_init(tables->Ga_spline_p1,
+                        tables->x_arr, tables->Ga_arr_p1, SYNCH_N_X);
+        gsl_spline_init(tables->Ga_spline_p2,
+                        tables->x_arr, tables->Ga_arr_p2, SYNCH_N_X);
+
+    #endif
+
+    /* ── (3) Inverse CDF of x ~ F(x)*x d(log x)  [G&S91 Sec. 2] ───────── */
+    /*
+     * The probability that a photon from a single electron has dimensionless
+     * frequency ratio in [x, x+dx] is proportional to F(x) dx (R&L79
+     * Eq. 6.36). Rewriting in d(log x) measure gives weight F(x)*x per
+     * unit log x. We normalise the cumulative sum of this weight to [0,1]
+     * and store the inverse map u -> log10(x) as a linear spline.
+     */
+    {
+        double *Fx_weight = (double *)malloc(SYNCH_N_X * sizeof(double));
+        double  dlog_x    = (log_x_max - log_x_min) / (SYNCH_N_X - 1);
+        double  cum       = 0.0;
+
+        for (i = 0; i < SYNCH_N_X; i++)
+            Fx_weight[i] = tables->F_arr[i] * tables->x_arr[i];
+
+        tables->inv_x_cdf_u[0]    = 0.0;
+        tables->inv_x_cdf_logx[0] = log10(tables->x_arr[0]);
+        for (i = 1; i < SYNCH_N_X; i++)
+        {
+            cum += 0.5*(Fx_weight[i] + Fx_weight[i-1]) * dlog_x;
+            tables->inv_x_cdf_u[i]    = cum;
+            tables->inv_x_cdf_logx[i] = log10(tables->x_arr[i]);
+        }
+        for (i = 0; i < SYNCH_N_X; i++)
+            tables->inv_x_cdf_u[i] /= cum;
+        tables->inv_x_cdf_u[SYNCH_N_X - 1] = 1.0;
+
+        free(Fx_weight);
+    }
+
+    tables->inv_x_cdf_acc    = gsl_interp_accel_alloc();
+    tables->inv_x_cdf_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+    gsl_spline_init(tables->inv_x_cdf_spline,
+                    tables->inv_x_cdf_u,
+                    tables->inv_x_cdf_logx,
+                    SYNCH_N_X);
+
+    /* ── (4) Inverse CDF of alpha ~ sin^2(alpha)  [G&S91 Sec. 2] ───────── */
+    /*
+     * The isotropic pitch-angle distribution is
+     *   f(alpha) = (2/pi) * sin^2(alpha),  alpha in [0, pi]
+     *
+     * Its analytic CDF is:
+     *   C(alpha) = (alpha - sin(2*alpha)/2) / pi
+     *
+     * We evaluate this on a uniform alpha grid and store the inverse map
+     * u -> alpha as a linear spline.
+     */
     for (i = 0; i < SYNCH_N_X; i++)
     {
-        double t        = (double)i / (SYNCH_N_X - 1);
-        tables->x_arr[i] = pow(10.0, log_x_min + t*(log_x_max - log_x_min));
-        tables->R_arr[i] = synchComputeRatX(tables->x_arr[i], ws, fPtr);
+        double alpha = M_PI * (double)i / (SYNCH_N_X - 1);
+        tables->inv_alpha_cdf_alpha[i] = alpha;
+        tables->inv_alpha_cdf_u[i]     = (alpha - 0.5*sin(2.0*alpha)) / M_PI;
     }
+    tables->inv_alpha_cdf_u[SYNCH_N_X - 1] = 1.0;
+
+    tables->inv_alpha_cdf_acc    = gsl_interp_accel_alloc();
+    tables->inv_alpha_cdf_spline = gsl_spline_alloc(gsl_interp_linear,
+                                                      SYNCH_N_X);
+    gsl_spline_init(tables->inv_alpha_cdf_spline,
+                    tables->inv_alpha_cdf_u,
+                    tables->inv_alpha_cdf_alpha,
+                    SYNCH_N_X);
+
     gsl_integration_workspace_free(ws);
 
-    /* ── Absorption kernel 2R + 2x dR/dx (central differences in log x) */
-    for (i = 0; i < SYNCH_N_X; i++)
-    {
-        double dR_dlnx;
-        if (i == 0)
-            dR_dlnx = (tables->R_arr[1] - tables->R_arr[0]) /
-                      (log(tables->x_arr[1]) - log(tables->x_arr[0]));
-        else if (i == SYNCH_N_X - 1)
-            dR_dlnx = (tables->R_arr[i] - tables->R_arr[i-1]) /
-                      (log(tables->x_arr[i]) - log(tables->x_arr[i-1]));
-        else
-            dR_dlnx = (tables->R_arr[i+1] - tables->R_arr[i-1]) /
-                      (log(tables->x_arr[i+1]) - log(tables->x_arr[i-1]));
-
-        double ak = 2.0*tables->R_arr[i]
-                  + 2.0*tables->x_arr[i] * (dR_dlnx / tables->x_arr[i]);
-        tables->abs_kern_arr[i] = (ak > 0.0) ? ak : 0.0;
-    }
-
-    /* ── R(x) forward spline ─────────────────────────────────────────── */
-    tables->R_acc    = gsl_interp_accel_alloc();
-    tables->R_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-    gsl_spline_init(tables->R_spline,
-                    tables->x_arr, tables->R_arr, SYNCH_N_X);
-
-    /* ── abs_kern(x) forward spline ──────────────────────────────────── */
-    tables->abs_kern_acc    = gsl_interp_accel_alloc();
-    tables->abs_kern_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-    gsl_spline_init(tables->abs_kern_spline,
-                    tables->x_arr, tables->abs_kern_arr, SYNCH_N_X);
-
-    /* ── CDF of x ~ R(x) d(log x) ───────────────────────────────────── */
-    tables->cdf_x[0] = 0.0;
-    for (i = 1; i < SYNCH_N_X; i++)
-    {
-        double dlnx = log(tables->x_arr[i]) - log(tables->x_arr[i-1]);
-        double f0   = tables->R_arr[i-1] * tables->x_arr[i-1];
-        double f1   = tables->R_arr[i]   * tables->x_arr[i];
-        tables->cdf_x[i] = tables->cdf_x[i-1] + 0.5*(f0 + f1)*dlnx;
-    }
-    double norm_x = tables->cdf_x[SYNCH_N_X - 1];
-    for (i = 0; i < SYNCH_N_X; i++)
-        tables->cdf_x[i] /= norm_x;
-
-    /* Enforce strict monotonicity for inverse CDF spline */
-    double cdf_mono[SYNCH_N_X], x_mono[SYNCH_N_X];
-    n_mono = 0;
-    for (i = 0; i < SYNCH_N_X; i++)
-    {
-        if (n_mono == 0 || tables->cdf_x[i] > cdf_mono[n_mono-1] + 1e-15)
-        {
-            cdf_mono[n_mono] = tables->cdf_x[i];
-            x_mono[n_mono]   = tables->x_arr[i];
-            n_mono++;
-        }
-    }
-    tables->inv_F_acc    = gsl_interp_accel_alloc();
-    tables->inv_F_spline = gsl_spline_alloc(gsl_interp_linear, n_mono);
-    gsl_spline_init(tables->inv_F_spline, cdf_mono, x_mono, n_mono);
-
-    /* ── CDF of alpha ~ (2/pi) sin^2(alpha) on [0, pi] ──────────────── */
-    for (i = 0; i < SYNCH_N_ALPHA; i++)
-    {
-        double a              = (double)i / (SYNCH_N_ALPHA - 1) * M_PI;
-        tables->alpha_arr[i]  = a;
-        tables->cdf_alpha[i]  = (a - 0.5*sin(2.0*a)) / M_PI;
-    }
-    double cdf_am[SYNCH_N_ALPHA], alpha_am[SYNCH_N_ALPHA];
-    n_mono = 0;
-    for (i = 0; i < SYNCH_N_ALPHA; i++)
-    {
-        if (n_mono == 0 ||
-            tables->cdf_alpha[i] > cdf_am[n_mono-1] + 1e-15)
-        {
-            cdf_am[n_mono]   = tables->cdf_alpha[i];
-            alpha_am[n_mono] = tables->alpha_arr[i];
-            n_mono++;
-        }
-    }
-    tables->inv_alpha_acc    = gsl_interp_accel_alloc();
-    tables->inv_alpha_spline = gsl_spline_alloc(gsl_interp_linear, n_mono);
-    gsl_spline_init(tables->inv_alpha_spline, cdf_am, alpha_am, n_mono);
-
-    fprintf(fPtr, ">> [initSynchTables] All tables ready.\n");
+    fprintf(fPtr,
+            ">> [initSynchTables] All universal tables ready.\n\n");
     fflush(fPtr);
 }
 
+
+/*
+ * freeSynchTables
+ * ---------------
+ * Release all heap memory allocated by initSynchTables.
+ * Must be called once at end of simulation.
+ */
 void freeSynchTables(SynchUniversalTables *tables)
 {
-    gsl_spline_free(tables->R_spline);
-    gsl_spline_free(tables->abs_kern_spline);
-    gsl_spline_free(tables->inv_F_spline);
-    gsl_spline_free(tables->inv_alpha_spline);
-    gsl_interp_accel_free(tables->R_acc);
-    gsl_interp_accel_free(tables->abs_kern_acc);
-    gsl_interp_accel_free(tables->inv_F_acc);
-    gsl_interp_accel_free(tables->inv_alpha_acc);
+    free(tables->x_arr);
+    free(tables->F_arr);
+    free(tables->Ga_arr);
+    free(tables->Ga_arr_p1);
+    free(tables->Ga_arr_p2);
+    free(tables->inv_x_cdf_u);
+    free(tables->inv_x_cdf_logx);
+    free(tables->inv_alpha_cdf_u);
+    free(tables->inv_alpha_cdf_alpha);
+
+    gsl_spline_free(tables->F_spline);
+    gsl_spline_free(tables->Ga_spline);
+    gsl_spline_free(tables->Ga_spline_p1);
+    gsl_spline_free(tables->Ga_spline_p2);
+    gsl_spline_free(tables->inv_x_cdf_spline);
+    gsl_spline_free(tables->inv_alpha_cdf_spline);
+
+    gsl_interp_accel_free(tables->F_acc);
+    gsl_interp_accel_free(tables->Ga_acc);
+    gsl_interp_accel_free(tables->Ga_acc_p1);
+    gsl_interp_accel_free(tables->Ga_acc_p2);
+    gsl_interp_accel_free(tables->inv_x_cdf_acc);
+    gsl_interp_accel_free(tables->inv_alpha_cdf_acc);
 }
 
-/* ── Inline samplers ─────────────────────────────────────────────────── */
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* SECTION 4 — EMISSION MONTE CARLO SAMPLERS                                  */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
 /*
- * synchSampleX        [G&S91 Eq. 2]
- * ---------------
- * Sample the dimensionless frequency ratio x = nu / nu_c from the
- * single-electron synchrotron spectrum R(x) using the precomputed
- * inverse CDF. The sampled x is then used to recover the physical
- * photon frequency via nu = x * nu_c, where nu_c is the critical
- * frequency of the emitting electron (G&S91 Eq. 3).
+ * synchSampleX
+ * ------------
+ * Sample x = nu_f / (gamma_e^2 * nu_c) from the single-electron synchrotron
+ * spectrum F(x) via the precomputed inverse CDF  [G&S91 Sec. 2; R&L79 Eq. 6.36].
+ *
+ * The photon frequency is then assembled as:
+ *   nu_f = x * gamma_e^2 * nu_c(B, alpha)
+ * where nu_c = 3 e B sin(alpha) / (4 pi me c)          [RAIKOU Eq. B7]
+ *
+ * Parameters
+ * ----------
+ * tables : initialised SynchUniversalTables
+ * u      : uniform random variate in (0, 1)
+ *
+ * Returns x > 0.
  */
-static inline double synchSampleX(const SynchUniversalTables *t, double u)
+double synchSampleX(const SynchUniversalTables *tables, double u)
 {
-    return gsl_spline_eval(t->inv_F_spline, u, t->inv_F_acc);
+    double u_lo = tables->inv_x_cdf_u[0];
+    double u_hi = tables->inv_x_cdf_u[SYNCH_N_X - 1];
+    if (u < u_lo + 1e-12) u = u_lo + 1e-12;
+    if (u > u_hi - 1e-12) u = u_hi - 1e-12;
+
+    double log10_x = gsl_spline_eval(tables->inv_x_cdf_spline,
+                                      u, tables->inv_x_cdf_acc);
+    return pow(10.0, log10_x);
 }
 
 
 /*
- * synchSampleAlpha    [G&S91 Section 2, text above Eq. 2]
+ * synchSampleAlpha
  * ----------------
- * Sample the electron pitch angle alpha from the isotropic
- * pitch-angle distribution f(alpha) = (2/pi) sin^2(alpha)
- * using the precomputed inverse CDF.
- * The factor sin(alpha) enters nu_c (G&S91 Eq. 3) so the sampled
- * alpha must be passed to the critical frequency calculation.
+ * Sample the electron pitch angle alpha from the isotropic distribution
+ *   f(alpha) = (2/pi) * sin^2(alpha)                   [G&S91 Sec. 2]
+ *
+ * alpha enters the photon frequency as nu_c ∝ sin(alpha) * gamma^2 * B
+ *                                                        [RAIKOU Eq. B7]
+ *
+ * Parameters
+ * ----------
+ * tables : initialised SynchUniversalTables
+ * u      : uniform random variate in (0, 1)
+ *
+ * Returns alpha in (0, pi).
  */
-static inline double synchSampleAlpha(const SynchUniversalTables *t, double u)
+double synchSampleAlpha(const SynchUniversalTables *tables, double u)
 {
-    return gsl_spline_eval(t->inv_alpha_spline, u, t->inv_alpha_acc);
+    double u_lo = tables->inv_alpha_cdf_u[0];
+    double u_hi = tables->inv_alpha_cdf_u[SYNCH_N_X - 1];
+    if (u < u_lo + 1e-12) u = u_lo + 1e-12;
+    if (u > u_hi - 1e-12) u = u_hi - 1e-12;
+
+    return gsl_spline_eval(tables->inv_alpha_cdf_spline,
+                            u, tables->inv_alpha_cdf_acc);
 }
 
-/*
- * synchEvalAbsKern    [G&S91 Eq. 13]
- * ----------------
- * Evaluate the absorption kernel 2R(x) + 2x dR/dx at argument x
- * via the precomputed spline. This is the factor multiplying N(gamma)
- * in the SSA opacity integral (G&S91 Eq. 14). Returns 0 beyond the
- * table range where R(x) is negligibly small.
- */
-static inline double synchEvalAbsKern(const SynchUniversalTables *t, double x)
-{
-    if (x <= t->x_arr[0])             return t->abs_kern_arr[0];
-    if (x >= t->x_arr[SYNCH_N_X - 1]) return 0.0;
-    return gsl_spline_eval(t->abs_kern_spline, x, t->abs_kern_acc);
-}
-
-/* ══════════════════════════════════════════════════════════════════════════
- * SECTION 3: GAMMA SAMPLER
- * ══════════════════════════════════════════════════════════════════════════ */
 
 /*
  * synchSampleGammaEmission
  * ------------------------
- * Sample the electron Lorentz factor gamma for synchrotron PHOTON
- * EMISSION using the analytic inverse CDF of the emission-weighted
- * distribution N(gamma) * gamma^2.
+ * Sample the electron Lorentz factor gamma_e for synchrotron PHOTON EMISSION
+ * using the emission-weighted distribution N(gamma) * gamma^2.
  *
- * The gamma^2 weighting arises because the total synchrotron power
- * emitted by a single electron scales as gamma^2 (G&S91 Eq. 4 and
- * surrounding text), so the probability that a given photon was
- * emitted by an electron of Lorentz factor gamma is proportional to
- * N(gamma) * gamma^2, not N(gamma) alone.
+ * The gamma^2 weighting arises because the total synchrotron power emitted
+ * by a single electron scales as gamma^2 (R&L79 Eq. 6.38). A photon drawn
+ * at random from the full emission distribution was therefore emitted by an
+ * electron with Lorentz factor distributed as N(gamma)*gamma^2, not N(gamma).
  *
- * For a power-law distribution N(gamma) ∝ gamma^{-p}:
- *   emission weight ∝ gamma^{2-p} = gamma^q   where q = 3 - p
- *   inverse CDF: gamma(u) = (gamma_min^q + u*(gamma_max^q - gamma_min^q))^{1/q}
+ * This function must NOT be replaced by samplePowerLaw or
+ * sampleBrokenPowerLawSubgroup from electron.c, which sample from N(gamma)
+ * directly (correct for scattering, not for emission).
  *
- * For a broken power law the distribution is split at gamma_break
- * and each segment is sampled with the correct emission-weighted
- * fraction of total power.
+ * SINGLE POWER LAW  N(gamma) ∝ gamma^{-p}  [RAIKOU Eq. A2]:
+ *   emission weight ∝ gamma^{2-p} = gamma^q,  q = 2-p
+ *   inverse CDF: gamma(u) = (gmin^q + u*(gmax^q - gmin^q))^{1/q}
+ *   special case q=0 (p=2): gamma(u) = gmin * (gmax/gmin)^u
  *
- * NOTE: this function must NOT be replaced by samplePowerLaw or
- * sampleBrokenPowerLawSubgroup from electron.c, which sample from
- * N(gamma) directly (correct for scattering) rather than from
- * N(gamma)*gamma^2 (required for emission). See synchEmitOneNu for
- * the one context where the electron.c samplers are acceptable.
+ * BROKEN POWER LAW  [RAIKOU Eq. A4-A5]:
+ *   split at gamma_break; each segment sampled with its share of the
+ *   total emission power (integral of N(gamma)*gamma^2 dgamma).
+ *
+ * Parameters
+ * ----------
+ * rand : GSL Mersenne Twister RNG
+ *
+ * Returns gamma_e in [GAMMA_MIN, GAMMA_MAX].
  */
-static double synchSampleGammaEmission(gsl_rng *rand)
+double synchSampleGammaEmission(gsl_rng *rand)
 {
     double u = gsl_rng_uniform_pos(rand);
 
@@ -414,14 +526,14 @@ static double synchSampleGammaEmission(gsl_rng *rand)
         double p    = POWERLAW_INDEX;
         double gmin = GAMMA_MIN;
         double gmax = GAMMA_MAX;
-        double q    = 3.0 - p;    /* exponent for gamma^{2-p} weighting */
+        double q    = 2.0 - p;   /* exponent of emission-weighted distribution */
 
         if (fabs(q) < 1e-6)
-            return gmin * pow(gmax/gmin, u);   /* p==3: log-uniform in gamma */
+            return gmin * pow(gmax / gmin, u);   /* p == 2: log-uniform */
 
-        double glo_q = pow(gmin, q);
-        double ghi_q = pow(gmax, q);
-        return pow(glo_q + u*(ghi_q - glo_q), 1.0/q);
+        double gmin_q = pow(gmin, q);
+        double gmax_q = pow(gmax, q);
+        return pow(gmin_q + u*(gmax_q - gmin_q), 1.0/q);
 
     #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
 
@@ -430,1015 +542,1514 @@ static double synchSampleGammaEmission(gsl_rng *rand)
         double gmin = GAMMA_MIN;
         double gmax = GAMMA_MAX;
         double gbr  = GAMMA_BREAK;
-        double q1   = 3.0 - p1;
-        double q2   = 3.0 - p2;
+        double q1   = 2.0 - p1;
+        double q2   = 2.0 - p2;
 
-        /* Continuity factor at the break for the gamma^2-weighted distribution */
+        /*
+         * Continuity factor at gamma_break: enforces N(gamma) continuous at
+         * gamma_br [RAIKOU Eq. A4-A5], consistent with electron.c convention.
+         */
         double C_cont = pow(gbr, p2 - p1);
 
-        /* Power (integral of N(gamma)*gamma^2) in each segment */
-        double I1 = (fabs(q1) < 1e-6)
-                    ? log(gbr/gmin)
-                    : (pow(gbr,q1) - pow(gmin,q1)) / q1;
-        double I2 = C_cont * ((fabs(q2) < 1e-6)
-                               ? log(gmax/gbr)
-                               : (pow(gmax,q2) - pow(gbr,q2)) / q2);
-        double f1 = I1 / (I1 + I2);
+        /*
+         * Total emission power in each segment:
+         *   I1 = integral_{gmin}^{gbr}  gamma^{-p1} * gamma^2 dgamma
+         *   I2 = C_cont * integral_{gbr}^{gmax} gamma^{-p2} * gamma^2 dgamma
+         */
+        double I1, I2;
+
+        if (fabs(q1) < 1e-6)
+            I1 = log(gbr / gmin);
+        else
+            I1 = (pow(gbr, q1) - pow(gmin, q1)) / q1;
+
+        if (fabs(q2) < 1e-6)
+            I2 = C_cont * log(gmax / gbr);
+        else
+            I2 = C_cont * (pow(gmax, q2) - pow(gbr, q2)) / q2;
+
+        double f1 = I1 / (I1 + I2);   /* fraction of emission from low segment */
 
         if (u < f1)
         {
+            /* Sample from low-energy segment */
             double u1 = u / f1;
-            if (fabs(q1) < 1e-6) return gmin * pow(gbr/gmin, u1);
-            double glo_q = pow(gmin, q1);
-            double ghi_q = pow(gbr,  q1);
-            return pow(glo_q + u1*(ghi_q - glo_q), 1.0/q1);
+            if (fabs(q1) < 1e-6)
+                return gmin * pow(gbr / gmin, u1);
+            double gmin_q1 = pow(gmin, q1);
+            double gbr_q1  = pow(gbr,  q1);
+            return pow(gmin_q1 + u1*(gbr_q1 - gmin_q1), 1.0/q1);
         }
         else
         {
+            /* Sample from high-energy segment */
             double u2 = (u - f1) / (1.0 - f1);
-            if (fabs(q2) < 1e-6) return gbr * pow(gmax/gbr, u2);
-            double glo_q = pow(gbr,  q2);
-            double ghi_q = pow(gmax, q2);
-            return pow(glo_q + u2*(ghi_q - glo_q), 1.0/q2);
+            if (fabs(q2) < 1e-6)
+                return gbr * pow(gmax / gbr, u2);
+            double gbr_q2  = pow(gbr,  q2);
+            double gmax_q2 = pow(gmax, q2);
+            return pow(gbr_q2 + u2*(gmax_q2 - gbr_q2), 1.0/q2);
         }
 
     #endif
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
- * SECTION 4: KAPPA_NU TABLE
- * ══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* SECTION 5 — ABSORPTION COEFFICIENT: RAIKOU APPENDIX C                      */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
 /*
- * buildSynchKappaTable
- * --------------------
- * Compute the SSA absorption coefficient kappa_nu [cm^{-1}] per unit
- * electron number density as a function of frequency, and store it as
- * a log-log spline for fast lookup.
+ * evalGa
+ * ------
+ * Evaluate G_a(x; p) from a precomputed spline, clamping x to the table
+ * range. Returns 0 for x >= SYNCH_X_MAX where F(z) = 0.
  *
- * Implements G&S91 Eq. 14:
+ * This is the core table lookup called by synchAlphaNu to evaluate the
+ * spectral integral differences [G_a(x_max) - G_a(x_min)] that appear in
+ * RAIKOU Eqs. C2 and C4.
+ */
+static inline double evalGa(double x,
+                              gsl_spline       *spline,
+                              gsl_interp_accel *acc)
+{
+    if (x >= SYNCH_X_MAX) return 0.0;
+    if (x <= SYNCH_X_MIN) return gsl_spline_eval(spline, SYNCH_X_MIN, acc);
+    return gsl_spline_eval(spline, x, acc);
+}
+
+
+/*
+ * synchAlphaNu
+ * ------------
+ * Evaluate the SSA absorption coefficient alpha_{nu_f}^(f) [cm^{-1}] in
+ * the fluid rest frame at comoving frequency nu_f [Hz], for a cell with
+ * magnetic field B [G] and nonthermal electron number density n_e_nth
+ * [cm^{-3}].
  *
- *   kappa_nu = (sqrt(3) e^3 B) / (8 pi me c nu^2)
- *              * integral_{gamma_min}^{gamma_max}
- *                  N(gamma) * [2R(x) + 2x dR/dx] dgamma
+ * SINGLE POWER LAW  [RAIKOU Eq. C2]:
  *
- * where:
- *   x      = nu / nu_c(gamma)          [G&S91 Eq. 2 argument]
- *   nu_c   = (3 e B gamma^2)/(4 pi me c)  [G&S91 Eq. 3, pitch-angle
- *             averaged: sin(alpha) -> 1 after integrating over the
- *             isotropic distribution]
- *   N(gamma) = ne * hat_N(gamma)        [G&S91 Eq. 1 or 5]
- *   2R(x) + 2x dR/dx                   [G&S91 Eq. 13, the absorption
- *             kernel from d/d(gamma)[gamma^2 R(x)/p_e gamma]]
+ *   alpha_{nu_f}^(f) =
+ *       (p-1)(p+2) n_{e,nth} e^2 nu_c
+ *       / (4 sqrt(3) me c (gamma_min^{1-p} - gamma_max^{1-p}))
+ *       * (nu_f / nu_c)^{-(p+4)/2}
+ *       * [G_a(x_max; p) - G_a(x_min; p)]
  *
- * The table is built with ne = 1 (unit number density). The physical
- * opacity for a cell with electron density ne_cell is obtained at
- * lookup time via synchKappaAtNuScaled, which multiplies by ne_cell.
- * This separation is exact because kappa_nu ∝ N(gamma) ∝ ne (G&S91
- * Eq. 14 is linear in N(gamma)).
+ * where (pitch-angle averaged, sin(theta_B) -> 1):
+ *   nu_c  = 3 e B / (4 pi me c)                         [RAIKOU Eq. B7]
+ *   x_min = nu_f / (gamma_max^2 * nu_c)
+ *   x_max = nu_f / (gamma_min^2 * nu_c)
+ *   G_a(x; p) = integral_x^inf z^{(p-2)/2} F(z) dz     [RAIKOU Eq. C3]
  *
- * hat_N(gamma) is evaluated using singleElectronPowerLaw or
- * singleElectronBrokenPowerLaw from electron.c, which implement
- * G&S91 Eq. 1 (power law) and Eq. 5 (broken power law) normalised
- * so that integral hat_N(gamma) dgamma = 1.
+ * BROKEN POWER LAW  [RAIKOU Eq. C4]:
  *
- * The gamma integral is performed with Gauss-Legendre quadrature
- * on a log(gamma) grid of SYNCH_N_GL nodes, which is accurate for
- * smooth power-law integrands.
+ *   alpha_{nu_f}^(f) =
+ *       A n_{e,nth} e^2 / (4 sqrt(3) me c nu_c)
+ *       * { (p1+2) * (nu_f/nu_c)^{-(p1+4)/2}
+ *             * [G_a(x_max; p1) - G_a(x_br; p1)]
+ *         + (p2+2) * C_cont * (nu_f/nu_c)^{-(p2+4)/2}
+ *             * [G_a(x_br; p2) - G_a(x_min; p2)] }
+ *
+ * where A is the broken power-law normalisation (RAIKOU Eq. B17,
+ * implemented in electron.c as brokenPowerLawNorm), C_cont =
+ * gamma_br^{p2-p1} is the continuity factor [RAIKOU Eq. A4-A5], and:
+ *   x_br  = nu_f / (gamma_br^2  * nu_c)
+ *   x_min = nu_f / (gamma_max^2 * nu_c)   [smallest x: largest gamma]
+ *   x_max = nu_f / (gamma_min^2 * nu_c)   [largest  x: smallest gamma]
+ *
+ * The B dependence enters both through nu_c ∝ B in the prefactor AND
+ * through the x arguments of G_a. Both contributions are evaluated exactly
+ * here — no B-scaling approximation is made.
  *
  * Parameters
  * ----------
- * B      : magnetic field [G], enters via nu_c (G&S91 Eq. 3) and
- *          the prefactor sqrt(3) e^3 B / (8 pi me c) (G&S91 Eq. 14)
- * tables : pre-built universal tables providing abs_kern(x) (G&S91 Eq. 13)
- * fPtr   : log file
+ * nu_f    : comoving photon frequency [Hz]
+ * B       : magnetic field strength in the cell [G]
+ * n_e_nth : nonthermal electron number density [cm^{-3}]
+ * tables  : initialised SynchUniversalTables
+ * fPtr    : log file
  *
- * Returns
- * -------
- * Pointer to a heap-allocated SynchKappaTable. Caller must free with
- * freeSynchKappaTable.
+ * Returns alpha_{nu_f}^(f) >= 0  [cm^{-1}].
  */
-
-SynchKappaTable *buildSynchKappaTable(double B,
-                                       const SynchUniversalTables *tables,
-                                       FILE *fPtr)
+double synchAlphaNu(double nu_f,
+                    double B,
+                    double n_e_nth,
+                    const SynchUniversalTables *tables,
+                    FILE *fPtr)
 {
+    if (nu_f <= 0.0 || B <= 0.0 || n_e_nth <= 0.0) return 0.0;
+
     /*
-     * Build the opacity table with n_e = 1 (unit number density).
-     * The actual cell n_e is applied at lookup time in synchKappaAtNuScaled.
-     *
-     * N(gamma) is evaluated using singleElectronPowerLaw /
-     * singleElectronBrokenPowerLaw from electron.c, which return the
-     * normalised shape hat_N(gamma) = N(gamma)/n_e.  This keeps all
-     * normalisation logic in one place and avoids duplicating it here.
+     * Pitch-angle averaged critical frequency  [RAIKOU Eq. B7]:
+     *   nu_c = 3 e B / (4 pi me c)
+     * The sin(theta_B) factor is unity after averaging over the isotropic
+     * pitch-angle distribution f(alpha) = (2/pi) sin^2(alpha).
      */
-    int j, k;
-    SynchKappaTable *kt = (SynchKappaTable *)malloc(sizeof(SynchKappaTable));
-    kt->n_nu      = SYNCH_N_NU;
-    kt->log_nu    = (double *)malloc(SYNCH_N_NU * sizeof(double));
-    kt->log_kappa = (double *)malloc(SYNCH_N_NU * sizeof(double));
-    kt->B_ref     = B;
-    kt->ne_ref    = 1.0;   /* table is built for n_e = 1; scale at lookup */
+    double nu_c = (3.0 * CHARGE_EL * B) / (4.0 * M_PI * M_EL * C_LIGHT);
+    if (nu_c <= 0.0) return 0.0;
 
-    double nu_s_coeff = (3.0*CHARGE_EL) / (4.0*M_PI*M_EL*C_LIGHT);
-    double nu_lo = 1e-4 * nu_s_coeff * B * GAMMA_MIN*GAMMA_MIN;
-    double nu_hi = 1e4  * nu_s_coeff * B * GAMMA_MAX*GAMMA_MAX;
-
-    /* Prefactor: sqrt(3) e^3 B / (8 pi me c)  [Ghisellini & Svensson 1991] */
-    double prefac = (sqrt(3.0)*CHARGE_EL*CHARGE_EL*CHARGE_EL * B)
-                  / (8.0*M_PI*M_EL*C_LIGHT);
-
-    /* Gauss-Legendre nodes in log(gamma) */
-    gsl_integration_glfixed_table *gl =
-        gsl_integration_glfixed_table_alloc(SYNCH_N_GL);
-
-    for (j = 0; j < SYNCH_N_NU; j++)
-    {
-        double t  = (double)j / (SYNCH_N_NU - 1);
-        double nu = nu_lo * pow(nu_hi/nu_lo, t);
-        kt->log_nu[j] = log10(nu);
-
-        double integral = 0.0;
-        for (k = 0; k < SYNCH_N_GL; k++)
-        {
-            double xi, wi;
-            gsl_integration_glfixed_point(log(GAMMA_MIN), log(GAMMA_MAX),
-                                           k, &xi, &wi, gl);
-            double gam = exp(xi);
-            double x_k = nu / (nu_s_coeff * B * gam*gam);
-            double ak  = synchEvalAbsKern(tables, x_k);
-
-            /*
-             * hat_N(gamma) = N(gamma)/n_e evaluated using electron.c:
-             *   singleElectronPowerLaw    -> A * gamma^{-p}
-             *   singleElectronBrokenPowerLaw -> A * gamma^{-p1 or -p2}
-             * Both functions already include the normalisation constant A.
-             * Multiply by gamma (Jacobian for d log gamma measure).
-             */
-            #if NONTHERMAL_E_DIST == POWERLAW
-                double Nhat_x_gam = singleElectronPowerLaw(gam,
-                                                            POWERLAW_INDEX,
-                                                            GAMMA_MIN,
-                                                            GAMMA_MAX) * gam;
-            #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
-                double Nhat_x_gam = singleElectronBrokenPowerLaw(gam,
-                                                                   POWERLAW_INDEX_1,
-                                                                   POWERLAW_INDEX_2,
-                                                                   GAMMA_MIN,
-                                                                   GAMMA_MAX,
-                                                                   GAMMA_BREAK) * gam;
-            #endif
-            /* n_e = 1 here; actual n_e applied at lookup via scaling */
-            integral += wi * Nhat_x_gam * ak;
-        }
-
-        double kap = (prefac / (nu*nu)) * integral;
-        kt->log_kappa[j] = log10((kap > 1e-300) ? kap : 1e-300);
-    }
-
-    gsl_integration_glfixed_table_free(gl);
-
-    kt->acc    = gsl_interp_accel_alloc();
-    kt->spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_NU);
-    gsl_spline_init(kt->spline, kt->log_nu, kt->log_kappa, SYNCH_N_NU);
-
-    fprintf(fPtr,
-            ">> [buildSynchKappaTable] Built unit kappa_nu table: "
-            "B=%.2e G  ne=1  nu=[%.2e, %.2e] Hz\n",
-            B, pow(10.0, kt->log_nu[0]),
-            pow(10.0, kt->log_nu[SYNCH_N_NU-1]));
-    fflush(fPtr);
-
-    return kt;
-}
-
-void freeSynchKappaTable(SynchKappaTable *kt)
-{
-    gsl_spline_free(kt->spline);
-    gsl_interp_accel_free(kt->acc);
-    free(kt->log_nu);
-    free(kt->log_kappa);
-    free(kt);
-}
-
-/*
- * synchKappaAtNu      [G&S91 Eq. 14, table lookup]
- * ---------------
- * Evaluate the unit-density SSA absorption coefficient kappa_nu/ne
- * [cm^2] at frequency nu [Hz] via log-log spline interpolation of
- * the precomputed table.
- *
- * Returns kappa_nu for ne = 1 cm^{-3}. This function is private
- * (static) and should only be called via synchKappaAtNuScaled, which
- * applies the physical ne and B scaling.
- *
- * The log-log representation is appropriate because kappa_nu follows
- * a power-law in frequency (G&S91 Section 3), making the interpolation
- * exact for the dominant behaviour between table points.
- */
-
-static double synchKappaAtNu(double nu, const SynchKappaTable *kt)
-{
-    double lnu = log10(nu);
-    if (lnu <= kt->log_nu[0])
-        return pow(10.0, kt->log_kappa[0]);
-    if (lnu >= kt->log_nu[kt->n_nu - 1])
-        return pow(10.0, kt->log_kappa[kt->n_nu - 1]);
-    return pow(10.0, gsl_spline_eval(kt->spline, lnu, kt->acc));
-}
-
-/*
- * synchKappaAtNuScaled    [G&S91 Eq. 14, with linear scaling]
- * --------------------
- * Evaluate the physical SSA absorption coefficient kappa_nu [cm^{-1}]
- * for a grid cell with magnetic field B_cell and nonthermal electron
- * number density ne_cell, by rescaling the unit-density table:
- *
- *   kappa_nu(B_cell, ne_cell) = kappa_table(nu; B_ref, ne=1)
- *                               * ne_cell          [linear in N(gamma),
- *                                                   G&S91 Eq. 14]
- *                               * (B_cell / B_ref) [linear in B via
- *                                                   prefactor, G&S91 Eq. 14]
- *
- * Both rescalings are exact:
- *   - The ne scaling follows directly from kappa_nu ∝ integral N(gamma)
- *     and N(gamma) = ne * hat_N(gamma) (G&S91 Eq. 14).
- *   - The B scaling follows from the prefactor sqrt(3) e^3 B / (8 pi me c)
- *     in G&S91 Eq. 14, noting that nu_c ∝ B (G&S91 Eq. 3) introduces an
- *     additional implicit B dependence via x = nu/nu_c. The net B scaling
- *     of kappa_nu is therefore linear in B to leading order for a power-law
- *     electron distribution, which is what the (B_cell/B_ref) factor
- *     captures.
- *
- * This is the only function that should be called externally to obtain
- * a physical opacity. synchKappaAtNu is private (static).
- */
-static inline double synchKappaAtNuScaled(double nu,
-                                           const SynchKappaTable *kt,
-                                           double B_cell,
-                                           double ne_cell)
-{
-    return synchKappaAtNu(nu, kt)
-           * ne_cell
-           * (B_cell / kt->B_ref);
-}
-
-/* ══════════════════════════════════════════════════════════════════════════
- * SECTION 5: STRATIFIED FREQUENCY SAMPLER SETUP
- * ══════════════════════════════════════════════════════════════════════════ */
-
-/*
- * synchEmitOneNu
- * --------------
- * Draw a single representative photon frequency from the natural
- * synchrotron emission distribution of a grid cell.
- *
- * The frequency is constructed as:
- *   nu = x * nu_c(gamma, alpha, B)
- * where:
- *   x     ~ R(x) d(log x)              [G&S91 Eq. 2]
- *   alpha ~ (2/pi) sin^2(alpha)        [G&S91 Section 2]
- *   gamma ~ N(gamma)  via samplePowerLaw / sampleBrokenPowerLawSubgroup
- *   nu_c  = (3 e B sin(alpha) gamma^2) / (4 pi me c)  [G&S91 Eq. 3]
- *
- * NOTE: gamma is sampled from N(gamma) here (not the emission-weighted
- * N(gamma)*gamma^2 used in synchSampleGammaEmission). This is acceptable
- * because synchEmitOneNu is used ONLY to build the reference CDF for the
- * stratified sampler — it identifies which frequency strata receive
- * emission, for which the exact gamma^2 weighting is not required.
- * The actual photon emission in photonEmitSynch uses
- * synchSampleGammaEmission with the correct weighting.
- *
- * No direct G&S91 equation — this is a Monte Carlo sampling helper
- * that combines G&S91 Eqs. 2 and 3.
- */static double synchEmitOneNu(int i,
-                               struct hydro_dataframe *hydro_data,
-                               const SynchUniversalTables *tables,
-                               double b_field,
-                               gsl_rng *rand)
-{
-    double nu_s_coeff = (3.0*CHARGE_EL) / (4.0*M_PI*M_EL*C_LIGHT);
-
-    /* Sample gamma from N(gamma) using existing electron.c functions.
-     * These are not weighted by gamma^2 but are correct for identifying
-     * which frequency strata receive emission. */
     #if NONTHERMAL_E_DIST == POWERLAW
-        double gamma_k = samplePowerLaw(POWERLAW_INDEX,
-                                         GAMMA_MIN, GAMMA_MAX,
-                                         rand, NULL);
+
+        double p    = POWERLAW_INDEX;
+        double gmin = GAMMA_MIN;
+        double gmax = GAMMA_MAX;
+
+        /*
+         * Normalisation denominator from RAIKOU Eq. C2:
+         *   gamma_min^{1-p} - gamma_max^{1-p}
+         * For p=1 this is zero; guard and return 0.
+         */
+        if (fabs(p - 1.0) < 1e-6)
+        {
+            fprintf(fPtr,
+                    ">> [synchAlphaNu] WARNING: p = 1, degenerate normalisation. "
+                    "Returning 0.\n");
+            fflush(fPtr);
+            return 0.0;
+        }
+        double denom = pow(gmin, 1.0 - p) - pow(gmax, 1.0 - p);
+        if (fabs(denom) < 1e-300) return 0.0;
+
+        /*
+         * Dimensionless frequency arguments  [x = nu_f / (gamma^2 nu_c)]:
+         *   x_min corresponds to gamma_max (largest gamma -> smallest x)
+         *   x_max corresponds to gamma_min (smallest gamma -> largest x)
+         */
+        double x_min = nu_f / (gmax * gmax * nu_c);
+        double x_max = nu_f / (gmin * gmin * nu_c);
+
+        /*
+         * Spectral integral difference  [RAIKOU Eq. C3]:
+         *   delta_Ga = G_a(x_max; p) - G_a(x_min; p)
+         * Note: G_a is monotonically decreasing in x, so delta_Ga >= 0 when
+         * x_max >= x_min, which holds because gmin <= gmax.
+         */
+        double Ga_xmax  = evalGa(x_max, tables->Ga_spline, tables->Ga_acc);
+        double Ga_xmin  = evalGa(x_min, tables->Ga_spline, tables->Ga_acc);
+        double delta_Ga = Ga_xmax - Ga_xmin;
+        if (delta_Ga <= 0.0) return 0.0;
+
+        /*
+         * Full expression  [RAIKOU Eq. C2]:
+         *
+         *   alpha = (p-1)(p+2) n_e e^2 nu_c
+         *           / (4 sqrt(3) me c denom)
+         *           * (nu_f/nu_c)^{-(p+4)/2}
+         *           * delta_Ga
+         */
+        double prefac  = ((p - 1.0) * (p + 2.0) * n_e_nth
+                          * CHARGE_EL * CHARGE_EL * nu_c)
+                       / (4.0 * sqrt(3.0) * M_EL * C_LIGHT * denom);
+
+        double spectral = pow(nu_f / nu_c, -0.5*(p + 4.0)) * delta_Ga;
+
+        return prefac * spectral;
+
     #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
-        double gamma_k = sampleBrokenPowerLawSubgroup(POWERLAW_INDEX_1,
-                                                       POWERLAW_INDEX_2,
-                                                       GAMMA_MIN, GAMMA_MAX,
-                                                       GAMMA_BREAK,
-                                                       rand, NULL);
+
+        double p1   = POWERLAW_INDEX_1;
+        double p2   = POWERLAW_INDEX_2;
+        double gmin = GAMMA_MIN;
+        double gmax = GAMMA_MAX;
+        double gbr  = GAMMA_BREAK;
+
+        /*
+         * Normalisation constant A  [RAIKOU Eq. B17].
+         * brokenPowerLawNorm is implemented in electron.c and returns the
+         * constant A such that integral_{gmin}^{gmax} N(gamma) dgamma = 1
+         * when N is expressed per unit n_e_nth.
+         */
+        double A = brokenPowerLawNorm(p1, p2, gmin, gmax, gbr);
+        if (A <= 0.0) return 0.0;
+
+        /*
+         * Continuity factor gamma_br^{p2-p1} that enforces N(gamma) continuous
+         * at gamma_br  [RAIKOU Eq. A4-A5].
+         */
+        double C_cont = pow(gbr, p2 - p1);
+
+        /*
+         * Dimensionless frequency arguments for both segments:
+         *   x_max = nu_f / (gmin^2 * nu_c)   lower limit of low-segment integral
+         *   x_br  = nu_f / (gbr^2  * nu_c)   boundary between segments
+         *   x_min = nu_f / (gmax^2 * nu_c)   lower limit of high-segment integral
+         */
+        double x_max = nu_f / (gmin * gmin * nu_c);
+        double x_br  = nu_f / (gbr  * gbr  * nu_c);
+        double x_min = nu_f / (gmax * gmax * nu_c);
+
+        /*
+         * Spectral integral differences  [RAIKOU Eq. C3]:
+         *
+         * Low-energy segment (p1):
+         *   delta_Ga_p1 = G_a(x_max; p1) - G_a(x_br; p1)
+         *   spans gamma in [gmin, gbr], i.e. x in [x_br, x_max]
+         *
+         * High-energy segment (p2):
+         *   delta_Ga_p2 = G_a(x_br; p2) - G_a(x_min; p2)
+         *   spans gamma in [gbr, gmax], i.e. x in [x_min, x_br]
+         */
+        double Ga_xmax_p1 = evalGa(x_max, tables->Ga_spline_p1, tables->Ga_acc_p1);
+        double Ga_xbr_p1  = evalGa(x_br,  tables->Ga_spline_p1, tables->Ga_acc_p1);
+        double delta_Ga_p1 = Ga_xmax_p1 - Ga_xbr_p1;
+        if (delta_Ga_p1 < 0.0) delta_Ga_p1 = 0.0;
+
+        double Ga_xbr_p2  = evalGa(x_br,  tables->Ga_spline_p2, tables->Ga_acc_p2);
+        double Ga_xmin_p2 = evalGa(x_min, tables->Ga_spline_p2, tables->Ga_acc_p2);
+        double delta_Ga_p2 = Ga_xbr_p2 - Ga_xmin_p2;
+        if (delta_Ga_p2 < 0.0) delta_Ga_p2 = 0.0;
+
+        if (delta_Ga_p1 == 0.0 && delta_Ga_p2 == 0.0) return 0.0;
+
+        /*
+         * Full broken power-law expression  [RAIKOU Eq. C4]:
+         *
+         *   alpha = A n_{e,nth} e^2 / (4 sqrt(3) me c nu_c)
+         *           * { (p1+2) * (nu_f/nu_c)^{-(p1+4)/2} * delta_Ga_p1
+         *             + (p2+2) * C_cont * (nu_f/nu_c)^{-(p2+4)/2} * delta_Ga_p2 }
+         */
+        double common = (A * n_e_nth * CHARGE_EL * CHARGE_EL)
+                      / (4.0 * sqrt(3.0) * M_EL * C_LIGHT * nu_c);
+
+        double term1  = (p1 + 2.0)
+                      * pow(nu_f / nu_c, -0.5*(p1 + 4.0))
+                      * delta_Ga_p1;
+
+        double term2  = (p2 + 2.0) * C_cont
+                      * pow(nu_f / nu_c, -0.5*(p2 + 4.0))
+                      * delta_Ga_p2;
+
+        return common * (term1 + term2);
+
+    #endif
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* SECTION 6 — SSA WEIGHT MODIFICATION                                         */
+/* RAIKOU Eqs. 31, 37, 40                                                      */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+/*
+ * applySynchSSAWeightModification
+ * --------------------------------
+ * Attenuate the weight of photon ph due to synchrotron self-absorption
+ * along a comoving path of length dl [cm] through a cell.
+ *
+ * The optical depth increment for SSA absorption is  [RAIKOU Eq. 31]:
+ *
+ *   Delta tau_{nu_f}^(a) = (nu_f / nu_z) * alpha_{nu_f}^(f) * dl
+ *
+ * where nu_f is the photon frequency in the fluid rest frame, nu_z is the
+ * photon frequency in the lab / ZAMO frame, and dl is the path length in
+ * that same frame. The ratio (nu_f / nu_z) is the covariant frame correction
+ * that transforms the fluid-frame opacity to the lab-frame optical depth
+ * increment [RAIKOU Eq. 31].
+ *
+ * The weight is then modified by  [RAIKOU Eq. 40]:
+ *
+ *   w_new = w_old * exp(-Delta tau_{nu_f}^(a))
+ *
+ * This is the continuous-absorption treatment in which the photon packet
+ * carries a reduced weight proportional to the survival probability, rather
+ * than being stochastically destroyed. This is consistent with the approach
+ * described in RAIKOU Sec. 5.2.
+ *
+ * Parameters
+ * ----------
+ * ph           : photon packet to modify in-place
+ * dl           : lab-frame path length through the cell [cm]
+ * B_cell       : magnetic field magnitude in the cell [G]
+ * n_e_nth_cell : nonthermal electron number density in the cell [cm^{-3}]
+ * tables       : initialised SynchUniversalTables
+ * fPtr         : log file
+ */
+void applySynchSSAWeightModification(struct photon              *ph,
+                                      double                      dl,
+                                      double                      B_cell,
+                                      double                      n_e_nth_cell,
+                                      const SynchUniversalTables *tables,
+                                      FILE                       *fPtr)
+{
+    if (dl <= 0.0 || B_cell <= 0.0 || n_e_nth_cell <= 0.0) return;
+
+    /*
+     * Comoving photon frequency nu_f [Hz]:
+     *   ph->comv_p0 is the comoving 0-component of the photon 4-momentum
+     *   in units of [erg/c], so nu_f = comv_p0 * c / h.
+     */
+    double nu_f = (ph->comv_p0 * C_LIGHT) / PL_CONST;
+
+    /*
+     * Lab-frame photon frequency nu_z [Hz]:
+     *   ph->p0 is the lab-frame 0-momentum in units of [erg/c].
+     */
+    double nu_z = (ph->p0 * C_LIGHT) / PL_CONST;
+
+    if (nu_f <= 0.0 || nu_z <= 0.0) return;
+
+    /*
+     * Absorption coefficient in the fluid rest frame [cm^{-1}]
+     * following RAIKOU Eq. C2 (single power law) or C4 (broken power law).
+     */
+    double alpha_nu_f = synchAlphaNu(nu_f, B_cell, n_e_nth_cell,
+                                      tables, fPtr);
+
+    /*
+     * Optical depth increment  [RAIKOU Eq. 31]:
+     *   Delta tau = (nu_f / nu_z) * alpha_{nu_f}^(f) * dl
+     */
+    double delta_tau = (nu_f / nu_z) * alpha_nu_f * dl;
+
+    /*
+     * Weight modification  [RAIKOU Eq. 40]:
+     *   w_new = w_old * exp(-Delta tau)
+     */
+    ph->weight *= exp(-delta_tau);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* SECTION 7 — PER-CELL STRATIFIED FREQUENCY SAMPLER                          */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+/*
+ * synchNaturalNu  — unchanged from previously approved version.
+ * See Section 7 documentation above.
+ */
+static double synchNaturalNu(const SynchUniversalTables *tables,
+                               double                      B_cell,
+                               gsl_rng                    *rand)
+{
+    double x      = synchSampleX(tables, gsl_rng_uniform_pos(rand));
+    double alpha  = synchSampleAlpha(tables, gsl_rng_uniform_pos(rand));
+    double gamma_e;
+
+    #if NONTHERMAL_E_DIST == POWERLAW
+        gamma_e = samplePowerLaw(POWERLAW_INDEX, GAMMA_MIN, GAMMA_MAX,
+                                  rand, NULL);
+    #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
+        gamma_e = sampleBrokenPowerLawSubgroup(POWERLAW_INDEX_1, POWERLAW_INDEX_2,
+                                                GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK,
+                                                rand, NULL);
     #endif
 
-    double alpha_k = synchSampleAlpha(tables, gsl_rng_uniform_pos(rand));
-    double x_k     = synchSampleX(tables,     gsl_rng_uniform_pos(rand));
-    double nu_c    = nu_s_coeff * b_field * sin(alpha_k) * gamma_k*gamma_k;
-    return x_k * nu_c;
+    double nu_c = (3.0 * CHARGE_EL * B_cell * sin(alpha) * gamma_e * gamma_e)
+                / (4.0 * M_PI * M_EL * C_LIGHT);
+    return x * nu_c;
 }
 
+
 /*
- * buildSynchStratifiedParams
- * --------------------------
- * Build the stratified frequency sampling parameters by drawing a large
- * reference sample from the natural emission distribution and measuring
- * the probability p_k that a photon falls in each log-frequency stratum k.
+ * buildSynchCellStrata
+ * --------------------
+ * Build the stratified frequency sampling parameters for a single fluid cell
+ * with magnetic field B_cell.
  *
- * The natural emission spectrum dN/d(log nu) that is sampled here is
- * proportional to the pitch-angle averaged emissivity j_nu integrated
- * over the electron distribution:
+ * Full algorithm description: see mc_synchrotron.h SynchCellStrata and the
+ * previously approved Section 7 documentation. This version removes the
+ * `continue` statement in the reference sample loop.
  *
- *   j_nu ∝ integral N(gamma) * R(nu/nu_c) dgamma    [G&S91 Eq. 4]
+ * The previous implementation used:
  *
- * The stratified sampler uses importance sampling to ensure that
- * n_per_stratum photons are emitted into each frequency decade regardless
- * of how steeply j_nu falls at low or high frequencies. The importance
- * weight for stratum k is:
+ *   for (i = 0; i < SYNCH_N_REF; i++) {
+ *       ...
+ *       if (log_nu < log_nu_min || log_nu >= log_nu_max) continue;
+ *       ...
+ *   }
  *
- *   w_k = p_k / (1 / N_STRATA)
- *
- * which exactly corrects for the oversampling of rare strata so that the
- * weighted photon spectrum reproduces the physical j_nu ∝ G&S91 Eq. 4.
- *
- * The marginal CDF of log10(nu) is stored as a piecewise linear spline
- * so that photon frequencies can be drawn directly from any sub-interval
- * [nu_lo, nu_hi] without rejection sampling.
+ * This is replaced with an explicit `if (in_range)` block so that the loop
+ * body that populates counts[] and hist[] only executes when the sampled
+ * frequency actually falls within the cell's natural emission range. The
+ * logic is identical; only the control flow structure changes.
  */
-void buildSynchStratifiedParams(SynchStratifiedParams *sp,
-                                 const SynchUniversalTables *tables,
-                                 struct hydro_dataframe *hydro_data,
-                                 double nu_min, double nu_max,
-                                 gsl_rng *rand, FILE *fPtr)
+void buildSynchCellStrata(SynchCellStrata            *cs,
+                           double                      B_cell,
+                           const SynchUniversalTables *tables,
+                           gsl_rng                    *rand,
+                           FILE                       *fPtr)
 {
-    int i, k, n_mono, bin;
-    double log_nu_min = log10(nu_min);
-    double log_nu_max = log10(nu_max);
-    double dlog       = (log_nu_max - log_nu_min) / SYNCH_N_CDF_BINS;
+    int i, k;
 
-    sp->n_strata = SYNCH_N_STRATA;
+    cs->B_cell = B_cell;
 
-    /* Log-spaced stratum edges */
+    /*
+     * ── (1) Stratum frequency range for this cell ─────────────────────────
+     *
+     * Pitch-angle averaged critical frequency  [RAIKOU Eq. B7]:
+     *   nu_c_cell = 3 e B_cell / (4 pi me c)
+     *
+     * The cell's natural emission spectrum spans
+     *   [nu_c_cell * SYNCH_X_MIN * gamma_min^2,
+     *    nu_c_cell * SYNCH_X_MAX * gamma_max^2]
+     *
+     * using the x-table range [SYNCH_X_MIN, SYNCH_X_MAX] as the full
+     * extent of the F(x) kernel  [RAIKOU Eq. B13].
+     */
+    double nu_c_cell   = (3.0 * CHARGE_EL * B_cell)
+                       / (4.0 * M_PI * M_EL * C_LIGHT);
+    double nu_min_cell = nu_c_cell * SYNCH_X_MIN * GAMMA_MIN * GAMMA_MIN;
+    double nu_max_cell = nu_c_cell * SYNCH_X_MAX * GAMMA_MAX * GAMMA_MAX;
+
+    if (nu_min_cell <= 0.0 || nu_max_cell <= nu_min_cell)
+    {
+        /*
+         * Degenerate frequency range — B_cell is effectively zero or the
+         * gamma range produces a zero-width spectrum. Mark all strata as
+         * empty and set the spline pointer to NULL so the caller can detect
+         * this condition and apply the fallback frequency.
+         */
+        fprintf(fPtr,
+                ">> [buildSynchCellStrata] WARNING: degenerate frequency "
+                "range for B_cell = %.3e G "
+                "(nu_min = %.3e, nu_max = %.3e). "
+                "Setting all stratum probabilities to zero.\n",
+                B_cell, nu_min_cell, nu_max_cell);
+        fflush(fPtr);
+
+        for (k = 0; k <= SYNCH_N_STRATA; k++)
+            cs->strata_edges[k] = 0.0;
+        for (k = 0; k < SYNCH_N_STRATA; k++)
+            cs->stratum_probs[k] = 0.0;
+
+        cs->inv_nu_cdf_spline = NULL;
+        cs->inv_nu_cdf_acc    = NULL;
+        return;
+    }
+
+    /* ── (2) Stratum boundaries ───────────────────────────────────────────── */
+    double log_nu_min  = log10(nu_min_cell);
+    double log_nu_max  = log10(nu_max_cell);
+    double dlog_strata = (log_nu_max - log_nu_min) / SYNCH_N_STRATA;
+
     for (k = 0; k <= SYNCH_N_STRATA; k++)
-    {
-        double t = (double)k / SYNCH_N_STRATA;
-        sp->strata_edges[k] = pow(10.0,
-                                   log_nu_min + t*(log_nu_max - log_nu_min));
-    }
+        cs->strata_edges[k] = pow(10.0, log_nu_min + k * dlog_strata);
 
-    /* ── Draw reference sample from all emitting cells ───────────────── */
-    fprintf(fPtr,
-            ">> [buildSynchStratifiedParams] Drawing %d reference photons "
-            "to measure stratum probabilities...\n", SYNCH_N_REF);
-    fflush(fPtr);
+    /* ── (3) Reference sample ─────────────────────────────────────────────── */
+    /*
+     * Draw SYNCH_N_REF photon frequencies from the natural emission
+     * distribution using this cell's B_cell via synchNaturalNu. For each
+     * draw, check whether the frequency falls within [nu_min_cell,
+     * nu_max_cell] and, only if it does, increment the coarse stratum
+     * counter and the fine histogram bin.
+     *
+     * The in-range check previously used `continue` to skip out-of-range
+     * samples. It is now expressed as an explicit `if (in_range)` block
+     * that contains all histogram update logic. The semantic meaning is
+     * identical: out-of-range samples contribute nothing to counts[] or
+     * hist[] and only increment n_in_range when they are in range.
+     */
+    int    counts[SYNCH_N_STRATA];
+    double hist[SYNCH_N_CDF_BINS];
+    memset(counts, 0, sizeof(counts));
+    memset(hist,   0, sizeof(hist));
 
-    /* Weight cells by B^2 * ne to select emitting cell for each ref photon */
-    double *cell_weights = (double *)malloc(hydro_data->num_elements
-                                             * sizeof(double));
-    double  wsum = 0.0;
-    for (i = 0; i < hydro_data->num_elements; i++)
-    {
-        double b = getMagneticFieldMagnitude(hydro_data, i);
-        /* nonthermal_dens is defined when NONTHERMAL_E_DIST != OFF */
-        double ne_i = (hydro_data->nonthermal_dens)[i];
-        cell_weights[i] = b*b * ne_i;
-        wsum += cell_weights[i];
-    }
-    /* Build a simple alias table for cell selection */
-    /* Re-use the alias logic from the existing codebase style:
-       walk the CDF with a binary search for simplicity here since
-       this is only called once at initialisation                   */
-    double *cell_cdf = (double *)malloc(hydro_data->num_elements
-                                         * sizeof(double));
-    cell_cdf[0] = cell_weights[0] / wsum;
-    for (i = 1; i < hydro_data->num_elements; i++)
-        cell_cdf[i] = cell_cdf[i-1] + cell_weights[i] / wsum;
-
-    /* Histogram counters */
-    int stratum_counts[SYNCH_N_STRATA];
-    memset(stratum_counts, 0, sizeof(stratum_counts));
-    int hist[SYNCH_N_CDF_BINS];
-    memset(hist, 0, sizeof(hist));
+    double dlog_fine  = (log_nu_max - log_nu_min) / SYNCH_N_CDF_BINS;
+    int    n_in_range = 0;
 
     for (i = 0; i < SYNCH_N_REF; i++)
     {
-        /* Select a cell proportional to B^2 * ne */
-        double u_cell = gsl_rng_uniform_pos(rand);
-        int    cell   = 0;
-        /* Binary search for cell index in CDF */
-        int lo = 0, hi = hydro_data->num_elements - 1;
-        while (lo < hi)
+        double nu     = synchNaturalNu(tables, B_cell, rand);
+        double log_nu = log10(nu);
+
+        /*
+         * Only process this sample if it falls within the cell's frequency
+         * range. This replaces the previous `continue` statement with an
+         * explicit conditional block. All histogram update logic lives
+         * inside this block so that it is clear exactly what happens to
+         * in-range versus out-of-range samples.
+         */
+        if (log_nu >= log_nu_min && log_nu < log_nu_max)
         {
-            int mid = (lo + hi) / 2;
-            if (cell_cdf[mid] < u_cell) lo = mid + 1;
-            else                         hi = mid;
+            n_in_range++;
+
+            /* Coarse stratum bin index */
+            int k_idx = (int)((log_nu - log_nu_min) / dlog_strata);
+            if (k_idx < 0)               k_idx = 0;
+            if (k_idx >= SYNCH_N_STRATA) k_idx = SYNCH_N_STRATA - 1;
+            counts[k_idx]++;
+
+            /* Fine histogram bin index for marginal CDF */
+            int b = (int)((log_nu - log_nu_min) / dlog_fine);
+            if (b < 0)                b = 0;
+            if (b >= SYNCH_N_CDF_BINS) b = SYNCH_N_CDF_BINS - 1;
+            hist[b] += 1.0;
         }
-        cell = lo;
-
-        double b = getMagneticFieldMagnitude(hydro_data, cell);
-        double nu = synchEmitOneNu(cell, hydro_data, tables, b, rand);
-
-        /* Clamp to global range */
-        if (nu < nu_min) nu = nu_min;
-        if (nu > nu_max) nu = nu_max * (1.0 - 1e-10);
-
-        /* Stratum count */
-        for (k = 0; k < SYNCH_N_STRATA; k++)
-        {
-            if (nu >= sp->strata_edges[k] && nu < sp->strata_edges[k+1])
-            {
-                stratum_counts[k]++;
-                break;
-            }
-        }
-
-        /* Fine CDF histogram */
-        bin = (int)((log10(nu) - log_nu_min) / dlog);
-        if (bin >= 0 && bin < SYNCH_N_CDF_BINS) hist[bin]++;
     }
 
-    free(cell_weights);
-    free(cell_cdf);
-
-    /* Stratum probabilities */
-    fprintf(fPtr, ">> [buildSynchStratifiedParams] Stratum probabilities:\n");
+    /* Stratum probabilities p_k = n_k / N_in_range  [see class docstring] */
     for (k = 0; k < SYNCH_N_STRATA; k++)
     {
-        sp->stratum_probs[k] = (double)stratum_counts[k] / SYNCH_N_REF;
-        fprintf(fPtr, "     stratum %2d  [%.2e, %.2e] Hz  p = %.6f\n",
-                k, sp->strata_edges[k], sp->strata_edges[k+1],
-                sp->stratum_probs[k]);
+        cs->stratum_probs[k] = (n_in_range > 0)
+                               ? (double)counts[k] / n_in_range
+                               : 0.0;
     }
-    fflush(fPtr);
 
-    /* ── Build marginal CDF of log10(nu) ─────────────────────────────── */
+    /* ── (4) Marginal CDF and inverse spline ──────────────────────────────── */
+    cs->cdf_log_nu_edges[0] = log_nu_min;
+    cs->cdf_log_nu_vals[0]  = 0.0;
+
     double cum = 0.0;
-    sp->cdf_log_nu_edges[0] = log_nu_min;
-    sp->cdf_log_nu_vals[0]  = 0.0;
     for (i = 0; i < SYNCH_N_CDF_BINS; i++)
     {
-        cum += (double)hist[i];
-        sp->cdf_log_nu_edges[i+1] = log_nu_min + (i+1)*dlog;
-        sp->cdf_log_nu_vals[i+1]  = cum / SYNCH_N_REF;
+        cum += hist[i];
+        cs->cdf_log_nu_edges[i + 1] = log_nu_min + (i + 1) * dlog_fine;
+        cs->cdf_log_nu_vals [i + 1] = cum;
     }
-    sp->cdf_log_nu_vals[SYNCH_N_CDF_BINS] = 1.0; /* enforce endpoint */
 
-    /* Enforce strict monotonicity */
-    double mono_cdf[SYNCH_N_CDF_BINS+1], mono_edges[SYNCH_N_CDF_BINS+1];
-    n_mono = 0;
-    for (i = 0; i <= SYNCH_N_CDF_BINS; i++)
+    if (cum > 0.0)
     {
-        if (n_mono == 0 ||
-            sp->cdf_log_nu_vals[i] > mono_cdf[n_mono-1] + 1e-12)
-        {
-            mono_cdf[n_mono]   = sp->cdf_log_nu_vals[i];
-            mono_edges[n_mono] = sp->cdf_log_nu_edges[i];
-            n_mono++;
-        }
+        for (i = 0; i <= SYNCH_N_CDF_BINS; i++)
+            cs->cdf_log_nu_vals[i] /= cum;
     }
-    sp->inv_nu_cdf_acc    = gsl_interp_accel_alloc();
-    sp->inv_nu_cdf_spline = gsl_spline_alloc(gsl_interp_linear, n_mono);
-    gsl_spline_init(sp->inv_nu_cdf_spline, mono_cdf, mono_edges, n_mono);
+    cs->cdf_log_nu_vals[SYNCH_N_CDF_BINS] = 1.0;
 
-    fprintf(fPtr,
-            ">> [buildSynchStratifiedParams] Stratified sampler ready.\n");
-    fflush(fPtr);
+    cs->inv_nu_cdf_acc    = gsl_interp_accel_alloc();
+    cs->inv_nu_cdf_spline = gsl_spline_alloc(gsl_interp_linear,
+                                               SYNCH_N_CDF_BINS + 1);
+    gsl_spline_init(cs->inv_nu_cdf_spline,
+                    cs->cdf_log_nu_vals,
+                    cs->cdf_log_nu_edges,
+                    SYNCH_N_CDF_BINS + 1);
 }
 
-void freeSynchStratifiedParams(SynchStratifiedParams *sp)
+
+/*
+ * freeSynchCellStrata  — unchanged from previously approved version.
+ */
+void freeSynchCellStrata(SynchCellStrata *cs)
 {
-    gsl_spline_free(sp->inv_nu_cdf_spline);
-    gsl_interp_accel_free(sp->inv_nu_cdf_acc);
+    if (cs->inv_nu_cdf_spline != NULL)
+    {
+        gsl_spline_free(cs->inv_nu_cdf_spline);
+        cs->inv_nu_cdf_spline = NULL;
+    }
+    if (cs->inv_nu_cdf_acc != NULL)
+    {
+        gsl_interp_accel_free(cs->inv_nu_cdf_acc);
+        cs->inv_nu_cdf_acc = NULL;
+    }
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
- * SECTION 6: SINGLE-PHOTON EMISSION HELPER
- * ══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* SECTION 8 — SINGLE-PHOTON FILL HELPER                                       */
+/* (unchanged from previously approved version — reproduced in full)           */
+/* ═══════════════════════════════════════════════════════════════════════════ */
 
 /*
  * synchFillPhoton
  * ---------------
- * Populate all fields of a single struct photon for synchrotron emission
- * from hydro cell i at comoving frequency fr_dum.
+ * Populate all fields of a struct photon for synchrotron emission from
+ * fluid cell cell_idx at comoving frequency nu_f_comv [Hz] with weight
+ * ph_weight. See previous approved version for full documentation.
  *
- * Physics steps:
- *
- * (1) Comoving 4-momentum  [G&S91 Eq. 2, 3]
- *     The photon energy in the fluid rest frame is h*fr_dum, where
- *     fr_dum = x * nu_c was drawn using G&S91 Eqs. 2 and 3.
- *     The direction is isotropic in the comoving frame, consistent
- *     with the isotropic pitch-angle distribution of G&S91 Section 2.
- *
- *       p_comv^mu = (h*fr_dum/c) * (1, sin(theta)*cos(phi),
- *                                       sin(theta)*sin(phi),
- *                                       cos(theta))
- *
- * (2) Lorentz boost to lab frame
- *     The comoving 4-momentum is boosted to the lab (simulation) frame
- *     using the fluid velocity at cell i. This step is not described
- *     in G&S91 (which works entirely in the fluid frame) but is required
- *     for integration into the MCRaT transport framework.
- *
- * (3) Birth position
- *     Uniform random position within the cell volume, consistent with
- *     the assumption in G&S91 that emission is spatially homogeneous
- *     within each fluid element.
- *
- * (4) Stokes parameters
- *     Initialised as unpolarised (I=1, Q=U=V=0). Synchrotron emission
- *     is intrinsically polarised, but the pitch-angle average used here
- *     (G&S91 Section 2) washes out the net linear polarisation for an
- *     isotropic pitch-angle distribution, justifying the unpolarised
- *     initialisation.
+ * Steps:
+ *   (1) Isotropic comoving 4-momentum with energy h*nu_f_comv
+ *   (2) Lorentz boost to lab frame — exact pattern from mc_cyclosynch.c
+ *       (hydroVectorToCartesian -> negate -> lorentzBoost 'p')
+ *   (3) Birth position via hydroCoordinateToMcratCoordinate with random
+ *       offset within cell bounding box
+ *   (4) Stokes s0=1, s1=s2=s3=0 (unpolarised)  [G&S91 Sec. 2]
+ *   (5) type=CS_POOL_PHOTON, num_scatt=0, recalc_properties=1
  */
-static void synchFillPhoton(struct photon *ph,
-                              int            i,
-                              double         fr_dum,
-                              double         ph_weight_adjusted,
+static void synchFillPhoton(struct photon          *ph,
+                              int                     cell_idx,
+                              double                  nu_f_comv,
+                              double                  ph_weight,
                               struct hydro_dataframe *hydro_data,
-                              gsl_rng       *rand,
-                              FILE          *fPtr)
+                              gsl_rng                *rand,
+                              FILE                   *fPtr)
 {
-    double com_v_phi, com_v_theta;
-    double position_phi = 0.0;
-    double position_rand = 0.0, position2_rand = 0.0, position3_rand = 0.0;
-    double cartesian_position_rand_array[3];
-    double *p_comv = NULL, *boost = NULL, *l_boost = NULL;
+    double p_comv[4], p_lab[4];
+    double boost[3];
+    double position_phi;
+    double cartesian_pos[3];
 
-    p_comv  = (double *)malloc(4 * sizeof(double));
-    boost   = (double *)malloc(3 * sizeof(double));
-    l_boost = (double *)malloc(4 * sizeof(double));
+    /* ── (1) Isotropic comoving direction ─────────────────────────────────── */
+    double com_v_phi   = samplePhotonPhi(rand, fPtr);
+    double com_v_theta = gsl_rng_uniform(rand) * M_PI;
+    double p_mag       = (PL_CONST * nu_f_comv) / C_LIGHT;
 
-    /* ── (1) Random isotropic direction in comoving frame ────────────── */
-    /*     Matches the same convention as photonEmitCyclosynch           */
-    com_v_phi   = gsl_rng_uniform(rand) * 2.0 * M_PI;
-    com_v_theta = acos((gsl_rng_uniform(rand) * 2.0) - 1.0);
+    p_comv[0] = p_mag;
+    p_comv[1] = p_mag * sin(com_v_theta) * cos(com_v_phi);
+    p_comv[2] = p_mag * sin(com_v_theta) * sin(com_v_phi);
+    p_comv[3] = p_mag * cos(com_v_theta);
 
-    *(p_comv+0) = PL_CONST * fr_dum / C_LIGHT;
-    *(p_comv+1) = (PL_CONST * fr_dum / C_LIGHT) * sin(com_v_theta) * cos(com_v_phi);
-    *(p_comv+2) = (PL_CONST * fr_dum / C_LIGHT) * sin(com_v_theta) * sin(com_v_phi);
-    *(p_comv+3) = (PL_CONST * fr_dum / C_LIGHT) * cos(com_v_theta);
+    ph->comv_p0 = p_comv[0];
+    ph->comv_p1 = p_comv[1];
+    ph->comv_p2 = p_comv[2];
+    ph->comv_p3 = p_comv[3];
 
-    /* ── (2) Lorentz boost to lab frame ──────────────────────────────── */
-    /*     Mirrors the convention in photonEmitCyclosynch exactly        */
-#if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
-    position_phi = gsl_rng_uniform(rand) * 2.0 * M_PI;
-#else
-    position_phi = 0.0;
-#endif
+    /* ── (2) Lorentz boost to lab frame ──────────────────────────────────── */
+    /*
+     * Exact pattern from mc_cyclosynch.c: populate boost[] with the
+     * Cartesian fluid velocity, negate all three spatial components, then
+     * call lorentzBoost with flag 'p' (4-momentum).
+     */
+    #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
+        position_phi = gsl_rng_uniform(rand) * 2.0 * M_PI;
+        hydroVectorToCartesian(boost,
+                                (hydro_data->v0)[cell_idx],
+                                (hydro_data->v1)[cell_idx],
+                                (hydro_data->v2)[cell_idx],
+                                (hydro_data->r0)[cell_idx],
+                                (hydro_data->r1)[cell_idx],
+                                position_phi);
+    #else
+        position_phi = 0.0;
+        hydroVectorToCartesian(boost,
+                                (hydro_data->v0)[cell_idx],
+                                (hydro_data->v1)[cell_idx],
+                                (hydro_data->v2)[cell_idx],
+                                (hydro_data->r0)[cell_idx],
+                                (hydro_data->r1)[cell_idx],
+                                (hydro_data->r2)[cell_idx]);
+    #endif
+    boost[0] *= -1.0;
+    boost[1] *= -1.0;
+    boost[2] *= -1.0;
 
-#if DIMENSIONS == THREE
-    hydroVectorToCartesian(boost,
-                            (hydro_data->v0)[i],
-                            (hydro_data->v1)[i],
-                            (hydro_data->v2)[i],
-                            (hydro_data->r0)[i],
-                            (hydro_data->r1)[i],
-                            (hydro_data->r2)[i]);
-#elif DIMENSIONS == TWO_POINT_FIVE
-    hydroVectorToCartesian(boost,
-                            (hydro_data->v0)[i],
-                            (hydro_data->v1)[i],
-                            (hydro_data->v2)[i],
-                            (hydro_data->r0)[i],
-                            (hydro_data->r1)[i],
-                            position_phi);
-#else
-    hydroVectorToCartesian(boost,
-                            (hydro_data->v0)[i],
-                            (hydro_data->v1)[i],
-                            0,
-                            (hydro_data->r0)[i],
-                            (hydro_data->r1)[i],
-                            position_phi);
-#endif
-    /* Negate boost to go from fluid -> lab frame (same sign convention  */
-    /* as photonEmitCyclosynch)                                          */
-    (*(boost+0)) *= -1.0;
-    (*(boost+1)) *= -1.0;
-    (*(boost+2)) *= -1.0;
+    lorentzBoost(boost, p_comv, p_lab, 'p', fPtr);
 
-    lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
+    ph->p0 = p_lab[0];
+    ph->p1 = p_lab[1];
+    ph->p2 = p_lab[2];
+    ph->p3 = p_lab[3];
 
-    ph->p0     = *(l_boost+0);
-    ph->p1     = *(l_boost+1);
-    ph->p2     = *(l_boost+2);
-    ph->p3     = *(l_boost+3);
-    ph->comv_p0 = *(p_comv+0);
-    ph->comv_p1 = *(p_comv+1);
-    ph->comv_p2 = *(p_comv+2);
-    ph->comv_p3 = *(p_comv+3);
+    /* ── (3) Birth position ──────────────────────────────────────────────── */
+    double pos_rand0 = gsl_rng_uniform_pos(rand)
+                     * (hydro_data->r0_size)[cell_idx]
+                     - 0.5*(hydro_data->r0_size)[cell_idx];
+    double pos_rand1 = gsl_rng_uniform_pos(rand)
+                     * (hydro_data->r1_size)[cell_idx]
+                     - 0.5*(hydro_data->r1_size)[cell_idx];
 
-    /* ── (3) Random position within cell ─────────────────────────────── */
-    position_rand  = gsl_rng_uniform_pos(rand) * (hydro_data->r0_size)[i]
-                   - 0.5 * (hydro_data->r0_size)[i];
-    position2_rand = gsl_rng_uniform_pos(rand) * (hydro_data->r1_size)[i]
-                   - 0.5 * (hydro_data->r1_size)[i];
+    #if DIMENSIONS == THREE
+        double pos_rand2 = gsl_rng_uniform_pos(rand)
+                         * (hydro_data->r2_size)[cell_idx]
+                         - 0.5*(hydro_data->r2_size)[cell_idx];
+        hydroCoordinateToMcratCoordinate(cartesian_pos,
+                                          (hydro_data->r0)[cell_idx] + pos_rand0,
+                                          (hydro_data->r1)[cell_idx] + pos_rand1,
+                                          (hydro_data->r2)[cell_idx] + pos_rand2);
+    #else
+        hydroCoordinateToMcratCoordinate(cartesian_pos,
+                                          (hydro_data->r0)[cell_idx] + pos_rand0,
+                                          (hydro_data->r1)[cell_idx] + pos_rand1,
+                                          position_phi);
+    #endif
 
-#if DIMENSIONS == THREE
-    position3_rand = gsl_rng_uniform_pos(rand) * (hydro_data->r2_size)[i]
-                   - 0.5 * (hydro_data->r2_size)[i];
-    hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array,
-                                      (hydro_data->r0)[i] + position_rand,
-                                      (hydro_data->r1)[i] + position2_rand,
-                                      (hydro_data->r2)[i] + position3_rand);
-#else
-    hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array,
-                                      (hydro_data->r0)[i] + position_rand,
-                                      (hydro_data->r1)[i] + position2_rand,
-                                      position_phi);
-#endif
+    ph->r0 = cartesian_pos[0];
+    ph->r1 = cartesian_pos[1];
+    ph->r2 = cartesian_pos[2];
 
-    ph->r0 = cartesian_position_rand_array[0];
-    ph->r1 = cartesian_position_rand_array[1];
-    ph->r2 = cartesian_position_rand_array[2];
+    /* ── (4) Stokes: unpolarised  [G&S91 Sec. 2] ────────────────────────── */
+    ph->s0 = 1.0;
+    ph->s1 = 0.0;
+    ph->s2 = 0.0;
+    ph->s3 = 0.0;
 
-    /* ── (4) Stokes, weight, bookkeeping ─────────────────────────────── */
-    ph->s0  = 1;  /* unpolarised: I=1, Q=U=V=0 */
-    ph->s1  = 0;
-    ph->s2  = 0;
-    ph->s3  = 0;
-    ph->num_scatt          = 0;
-    ph->weight             = ph_weight_adjusted;
-    ph->nearest_block_index = i;
-    ph->type               = SYNCH_PHOTON;
-    ph->recalc_properties  = 1;
+    /* ── (5) Bookkeeping ─────────────────────────────────────────────────── */
+    ph->type                = SYNCH_PHOTON;
+    ph->num_scatt           = 0.0;
+    ph->weight              = ph_weight;
+    ph->nearest_block_index = cell_idx;
+    ph->recalc_properties   = 1;
+    ph->time_to_scatter     = 0.0;
+    ph->total_optical_depth = 0.0;
 
-    free(p_comv); free(boost); free(l_boost);
+    #if SCATTERING_BIAS_SWITCH != OFF
+        {
+            int idx;
+            for (idx = 0; idx < 1 + N_GAMMA; idx++)
+            {
+                ph->optical_depths[idx]  = 0.0;
+                ph->scattering_bias[idx] = 0.0;
+            }
+        }
+    #endif
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
- * SECTION 7: MAIN EMISSION FUNCTION
- * ══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* SECTION 9 — MAIN EMISSION FUNCTION: HYBRID PER-CELL PHYSICAL COUNT         */
+/*             WITH PER-CELL STRATIFIED FREQUENCY SAMPLING                    */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
 /*
- * photonEmitSynch
+ * emitCellPackets
  * ---------------
- * Emit synchrotron photon packets into the MCRaT photon list from all
- * hydro cells within the injection volume, using stratified frequency
- * sampling and SSA-corrected photon weights.
+ * Helper: emit all ph_count photon packets for a single active cell ci,
+ * using the pre-built per-cell strata cs and placing results into
+ * ph_emit[*idx_ptr ... *idx_ptr + ph_count - 1].
  *
- * Physical model  [G&S91]:
+ * This helper exists to keep photonEmitSynch readable: the per-cell
+ * emission logic (strata validity check, stratum allocation, per-stratum
+ * frequency sampling, SSA attenuation) is isolated here so that the main
+ * function body is a clean loop over active cells.
  *
- * (1) Emission rate per cell  [G&S91 Eq. 4]
- *     The number of photons assigned to each cell is proportional to
- *     the total synchrotron emissivity:
- *       j_tot ∝ B^2 * ne * V_cell
- *     This follows from integrating G&S91 Eq. 4 over frequency and
- *     gamma, giving j_tot ∝ B^2 * integral N(gamma) * gamma^2 dgamma
- *     ∝ B^2 * ne for a fixed spectral shape.
+ * FALLBACK PATH
+ * -------------
+ * If cs->inv_nu_cdf_spline == NULL (degenerate B_cell) OR if no stratum
+ * has p_k >= SYNCH_P_MIN, all ph_count packets are emitted at the fallback
+ * frequency:
+ *   nu_fallback = nu_c(B_cell) * GAMMA_MAX^2
+ * with weight ph_weight_adjusted. This preserves ph_tot and photon list
+ * integrity while logging the condition.
  *
- * (2) Photon frequency  [G&S91 Eqs. 2, 3]
- *     Each photon frequency is drawn via:
- *       x     ~ R(x) d(log x)            [G&S91 Eq. 2]
- *       alpha ~ (2/pi) sin^2(alpha)      [G&S91 Section 2]
- *       gamma ~ N(gamma) * gamma^2       [emission weighting]
- *       nu_c  = (3 e B sin(alpha) gamma^2) / (4 pi me c)  [G&S91 Eq. 3]
- *       nu    = x * nu_c
- *     Stratified sampling across log-frequency strata ensures adequate
- *     photon counts at all frequencies, with importance weights w_k
- *     correcting for the non-uniform sampling.
+ * NORMAL PATH
+ * -----------
+ * ph_count packets are divided across active strata using integer division
+ * with remainder distributed to the lowest strata first, so that
+ *   sum_k stratum_alloc[k] == ph_count  exactly.
  *
- * (3) SSA weight modification  [Kawashima et al. 2023, Eq. 40]
- *     After emission, each photon's weight is attenuated by:
- *       w_new = w_old * exp(-tau_nu)
- *     where tau_nu = kappa_nu * Delta_s is the optical depth along the
- *     photon path. kappa_nu is evaluated via G&S91 Eq. 14 using
- *     synchKappaAtNuScaled.
+ * For each packet in stratum k:
+ *   - nu_f drawn via inverse CDF within stratum  [RAIKOU Eq. B11]
+ *   - weight = ph_weight_adjusted * p_k * SYNCH_N_STRATA
+ *   - synchFillPhoton sets kinematics
+ *   - applySynchSSAWeightModification attenuates at birth  [RAIKOU Eq. 40]
  *
  * Parameters
  * ----------
- * photon_list  : photon list to append emitted photons to
- * r_inj        : injection radius [cm]
- * ph_weight    : base photon weight before importance-sampling correction
- * maximum_photons : upper bound on total photons to emit this call
- * theta_min/max: jet opening angle range [rad]
- * hydro_data   : fluid grid providing B, ne, velocity per cell
- * tables       : universal spectral tables (R(x), alpha CDF, x CDF)
- *                built by initSynchTables
- * sp           : stratified sampler parameters built by
- *                buildSynchStratifiedParams
- * rand         : GSL Mersenne Twister RNG
- * fPtr         : log file
- *
- * Returns
- * -------
- * Number of photon packets added to photon_list.
+ * ci                 : hydro_data cell index
+ * ph_count           : number of packets to emit from this cell
+ * cs                 : per-cell strata (may have NULL spline)
+ * ph_weight_adjusted : converged photon packet weight
+ * ph_emit            : output photon array (must have space for ph_count)
+ * idx_ptr            : pointer to the running write index into ph_emit
+ * hydro_data         : fluid grid
+ * tables             : SynchUniversalTables (for SSA)
+ * rand               : GSL RNG
+ * fPtr               : log file
  */
-int photonEmitSynch(struct photonList          *photon_list,
-                    double                      r_inj,
-                    double                      ph_weight,
-                    int                         maximum_photons,
-                    double                      theta_min,
-                    double                      theta_max,
-                    struct hydro_dataframe     *hydro_data,
-                    const SynchUniversalTables *tables,
-                    const SynchStratifiedParams *sp,
-                    gsl_rng                    *rand,
-                    FILE                       *fPtr)
+static void emitCellPackets(int                         ci,
+                              int                         ph_count,
+                              const SynchCellStrata      *cs,
+                              double                      ph_weight_adjusted,
+                              struct photon              *ph_emit,
+                              int                        *idx_ptr,
+                              struct hydro_dataframe     *hydro_data,
+                              const SynchUniversalTables *tables,
+                              gsl_rng                    *rand,
+                              FILE                       *fPtr)
 {
-    int    i, k, j;
-    int    block_cnt = 0, ph_tot = 0;
-    double r_grid_innercorner = 0, r_grid_outercorner   = 0;
-    double theta_grid_innercorner = 0, theta_grid_outercorner = 0;
-    double rmin = 0, rmax = 0;
-    double b_field = 0, ne_cell = 0;
-    double nu_s_coeff = (3.0*CHARGE_EL) / (4.0*M_PI*M_EL*C_LIGHT);
+    int    i, k;
+    double B_cell  = getMagneticFieldMagnitude(hydro_data, ci);
+    double n_e_nth = (hydro_data->nonthermal_dens)[ci];
+    double dl_birth = 0.5 * (hydro_data->r0_size)[ci];
 
-    /* ── Step 1: Determine injection radial limits ───────────────────── */
-    /*   Mirrors photonEmitCyclosynch: use the light-travel window       */
-    rmin = calcCyclosynchRLimits(hydro_data->scatt_frame_number,
-                                  hydro_data->inj_frame_number,
-                                  hydro_data->fps, r_inj, "min");
-    rmax = calcCyclosynchRLimits(hydro_data->scatt_frame_number,
-                                  hydro_data->inj_frame_number,
-                                  hydro_data->fps, r_inj, "max");
+    /*
+     * Determine whether the normal stratified path is available.
+     * Two conditions must both hold:
+     *   (a) The strata were built successfully (spline is non-NULL).
+     *   (b) At least one stratum has p_k >= SYNCH_P_MIN.
+     * If either fails we use the fallback path.
+     */
+    int n_active_strata = 0;
 
-    fprintf(fPtr,
-            ">> [photonEmitSynch] rmin=%.3e rmax=%.3e "
-            "theta=[%.3f, %.3f] rad\n",
-            rmin, rmax, theta_min, theta_max);
-    fflush(fPtr);
-
-    /* ── Step 2: Count eligible cells and compute emission weights ───── */
-    for (i = 0; i < hydro_data->num_elements; i++)
+    if (cs->inv_nu_cdf_spline != NULL)
     {
-        #if DIMENSIONS == THREE
-            hydroCoordinateToSpherical(&r_grid_innercorner,
-                                        &theta_grid_innercorner,
-                                        fabs((hydro_data->r0)[i])
-                                            - 0.5*(hydro_data->r0_size)[i],
-                                        fabs((hydro_data->r1)[i])
-                                            - 0.5*(hydro_data->r1_size)[i],
-                                        fabs((hydro_data->r2)[i])
-                                            - 0.5*(hydro_data->r2_size)[i]);
-            hydroCoordinateToSpherical(&r_grid_outercorner,
-                                        &theta_grid_outercorner,
-                                        fabs((hydro_data->r0)[i])
-                                            + 0.5*(hydro_data->r0_size)[i],
-                                        fabs((hydro_data->r1)[i])
-                                            + 0.5*(hydro_data->r1_size)[i],
-                                        fabs((hydro_data->r2)[i])
-                                            + 0.5*(hydro_data->r2_size)[i]);
-        #else
-            hydroCoordinateToSpherical(&r_grid_innercorner,
-                                        &theta_grid_innercorner,
-                                        (hydro_data->r0)[i]
-                                            - 0.5*(hydro_data->r0_size)[i],
-                                        (hydro_data->r1)[i]
-                                            - 0.5*(hydro_data->r1_size)[i],
-                                        0);
-            hydroCoordinateToSpherical(&r_grid_outercorner,
-                                        &theta_grid_outercorner,
-                                        (hydro_data->r0)[i]
-                                            + 0.5*(hydro_data->r0_size)[i],
-                                        (hydro_data->r1)[i]
-                                            + 0.5*(hydro_data->r1_size)[i],
-                                        0);
-        #endif
-        if ((rmin       <= r_grid_outercorner)   &&
-            (r_grid_innercorner  < rmax)          &&
-            (theta_grid_outercorner >= theta_min) &&
-            (theta_grid_innercorner  < theta_max))
+        for (k = 0; k < SYNCH_N_STRATA; k++)
         {
-            block_cnt++;
+            if (cs->stratum_probs[k] >= SYNCH_P_MIN)
+                n_active_strata++;
         }
     }
-
-    fprintf(fPtr,
-            ">> [photonEmitSynch] %d hydro elements selected for emission.\n",
-            block_cnt);
-    fflush(fPtr);
-
-    //TODO: make this throw an error
-    if (block_cnt == 0) return 0;
-
-    /* ── Step 3: Determine photons per stratum ───────────────────────── */
-    /*   Cap total at maximum_photons; distribute evenly across strata   */
-    int n_active_strata = 0;
-    double P_MIN = 1e-7;
-    for (k = 0; k < SYNCH_N_STRATA; k++)
-        if (sp->stratum_probs[k] >= P_MIN) n_active_strata++;
 
     if (n_active_strata == 0)
     {
-        fprintf(fPtr, ">> [photonEmitSynch] WARNING: no active strata.\n");
+        /*
+         * FALLBACK PATH
+         * -------------
+         * Emit all ph_count packets at a single representative frequency:
+         *   nu_fallback = nu_c(B_cell) * GAMMA_MAX^2
+         * which is the critical frequency for the highest-energy electrons.
+         * Weight is ph_weight_adjusted (no importance correction needed
+         * since all packets are identical).
+         *
+         * This path is taken when:
+         *   - B_cell is effectively zero (cs->inv_nu_cdf_spline == NULL), OR
+         *   - the reference sample found no photons in any stratum (all
+         *     natural emission lies outside [nu_min_cell, nu_max_cell]).
+         */
+        double nu_c_fallback = (3.0 * CHARGE_EL * B_cell)
+                             / (4.0 * M_PI * M_EL * C_LIGHT);
+        double nu_fallback   = nu_c_fallback * GAMMA_MAX * GAMMA_MAX;
+
+        fprintf(fPtr,
+                ">> [emitCellPackets] Cell %d: using fallback frequency "
+                "nu = %.3e Hz (B_cell = %.3e G, n_active_strata = 0). "
+                "Emitting %d packets.\n",
+                ci, nu_fallback, B_cell, ph_count);
         fflush(fPtr);
-        return 0;
-    }
 
-    int n_per_stratum = maximum_photons / n_active_strata;
-    if (n_per_stratum < 1) n_per_stratum = 1;
-
-    int n_total_emit = n_per_stratum * n_active_strata;
-
-    /* Allocate temporary array for all new photons */
-    struct photon *ph_emit = (struct photon *)malloc(
-                                n_total_emit * sizeof(struct photon));
-    if (!ph_emit)
-    {
-        fprintf(fPtr, ">> [photonEmitSynch] ERROR: malloc failed.\n");
-        fflush(fPtr);
-        return 0;
-    }
-
-    /* ── Step 4: Build cell selection alias (B^2 * ne weights) ──────── */
-    /*   Only over eligible cells; reuse simple CDF here                 */
-    int    *eligible    = (int    *)malloc(block_cnt * sizeof(int));
-    double *cell_cdf    = (double *)malloc(block_cnt * sizeof(double));
-    int     el_cnt      = 0;
-    double  wsum        = 0.0;
-
-    for (i = 0; i < hydro_data->num_elements; i++)
-    {
-        #if DIMENSIONS == THREE
-            hydroCoordinateToSpherical(&r_grid_innercorner,
-                                        &theta_grid_innercorner,
-                                        fabs((hydro_data->r0)[i])
-                                            - 0.5*(hydro_data->r0_size)[i],
-                                        fabs((hydro_data->r1)[i])
-                                            - 0.5*(hydro_data->r1_size)[i],
-                                        fabs((hydro_data->r2)[i])
-                                            - 0.5*(hydro_data->r2_size)[i]);
-            hydroCoordinateToSpherical(&r_grid_outercorner,
-                                        &theta_grid_outercorner,
-                                        fabs((hydro_data->r0)[i])
-                                            + 0.5*(hydro_data->r0_size)[i],
-                                        fabs((hydro_data->r1)[i])
-                                            + 0.5*(hydro_data->r1_size)[i],
-                                        fabs((hydro_data->r2)[i])
-                                            + 0.5*(hydro_data->r2_size)[i]);
-        #else
-            hydroCoordinateToSpherical(&r_grid_innercorner,
-                                        &theta_grid_innercorner,
-                                        (hydro_data->r0)[i]
-                                            - 0.5*(hydro_data->r0_size)[i],
-                                        (hydro_data->r1)[i]
-                                            - 0.5*(hydro_data->r1_size)[i],
-                                        0);
-            hydroCoordinateToSpherical(&r_grid_outercorner,
-                                        &theta_grid_outercorner,
-                                        (hydro_data->r0)[i]
-                                            + 0.5*(hydro_data->r0_size)[i],
-                                        (hydro_data->r1)[i]
-                                            + 0.5*(hydro_data->r1_size)[i],
-                                        0);
-        #endif
-        if ((rmin       <= r_grid_outercorner)   &&
-            (r_grid_innercorner  < rmax)          &&
-            (theta_grid_outercorner >= theta_min) &&
-            (theta_grid_innercorner  < theta_max))
+        for (i = 0; i < ph_count; i++)
         {
-            eligible[el_cnt] = i;
-            b_field  = getMagneticFieldMagnitude(hydro_data, i);
-            ne_cell  = (hydro_data->nonthermal_dens)[i];
-            double w = b_field*b_field * ne_cell
-                     * hydroElementVolume(hydro_data, i);
-            cell_cdf[el_cnt] = (el_cnt == 0) ? w : cell_cdf[el_cnt-1] + w;
-            wsum += w;
-            el_cnt++;
+            synchFillPhoton(&ph_emit[*idx_ptr], ci, nu_fallback,
+                             ph_weight_adjusted, hydro_data, rand, fPtr);
+            applySynchSSAWeightModification(&ph_emit[*idx_ptr],
+                                            dl_birth, B_cell, n_e_nth,
+                                            tables, fPtr);
+            (*idx_ptr)++;
         }
     }
-    /* Normalise CDF */
-    for (i = 0; i < el_cnt; i++) cell_cdf[i] /= wsum;
-
-    /* ── Step 5: Emit photons stratum by stratum ──────────────────────── */
-    double uniform_prob = 1.0 / SYNCH_N_STRATA;
-    ph_tot = 0;
-
-    for (k = 0; k < SYNCH_N_STRATA; k++)
+    else
     {
-        double p_k = sp->stratum_probs[k];
+        /*
+         * NORMAL STRATIFIED PATH
+         * ----------------------
+         * Divide ph_count packets across active strata using integer
+         * division; distribute any remainder (ph_count % n_active_strata)
+         * one extra packet to the lowest-indexed active strata in order.
+         * This guarantees sum_k stratum_alloc[k] == ph_count exactly, with
+         * no packet lost to truncation.
+         */
+        int base_per_stratum = ph_count / n_active_strata;
+        int remainder        = ph_count % n_active_strata;
+        int remainder_given  = 0;
 
-        if (p_k >= P_MIN)
+        int stratum_alloc[SYNCH_N_STRATA];
+        for (k = 0; k < SYNCH_N_STRATA; k++)
         {
-            double w_correction      = p_k / uniform_prob;
-            double ph_weight_adjusted = ph_weight * w_correction;
-
-            double log_nu_lo = log10(sp->strata_edges[k]);
-            double log_nu_hi = log10(sp->strata_edges[k+1]);
-
-            /* Forward CDF at lower stratum edge */
-            double C_lo = 0.0;
-            for (i = 1; i <= SYNCH_N_CDF_BINS; i++)
+            if (cs->stratum_probs[k] >= SYNCH_P_MIN)
             {
-                if (sp->cdf_log_nu_edges[i] >= log_nu_lo)
+                stratum_alloc[k] = base_per_stratum;
+                if (remainder_given < remainder)
                 {
-                    double t = (log_nu_lo - sp->cdf_log_nu_edges[i-1])
-                             / (sp->cdf_log_nu_edges[i]
-                                - sp->cdf_log_nu_edges[i-1]);
-                    C_lo = sp->cdf_log_nu_vals[i-1]
-                         + t*(sp->cdf_log_nu_vals[i]
-                              - sp->cdf_log_nu_vals[i-1]);
-                    break;
-                }
-            }
-
-            /* Forward CDF at upper stratum edge */
-            double C_hi = 1.0;
-            for (i = 1; i <= SYNCH_N_CDF_BINS; i++)
-            {
-                if (sp->cdf_log_nu_edges[i] >= log_nu_hi)
-                {
-                    double t = (log_nu_hi - sp->cdf_log_nu_edges[i-1])
-                             / (sp->cdf_log_nu_edges[i]
-                                - sp->cdf_log_nu_edges[i-1]);
-                    C_hi = sp->cdf_log_nu_vals[i-1]
-                         + t*(sp->cdf_log_nu_vals[i]
-                              - sp->cdf_log_nu_vals[i-1]);
-                    break;
-                }
-            }
-
-            double dC = C_hi - C_lo;
-
-            if (dC >= 1e-10)
-            {
-                fprintf(fPtr,
-                        ">> [photonEmitSynch] stratum %2d  "
-                        "[%.2e, %.2e] Hz  p=%.4f  w_corr=%.4f  N=%d\n",
-                        k, sp->strata_edges[k], sp->strata_edges[k+1],
-                        p_k, w_correction, n_per_stratum);
-                fflush(fPtr);
-
-                for (j = 0; j < n_per_stratum; j++)
-                {
-                    /* (a) Select emitting cell from eligible list via CDF */
-                    double u_cell = gsl_rng_uniform_pos(rand);
-                    int    lo     = 0, hi = el_cnt - 1;
-                    while (lo < hi)
-                    {
-                        int mid = (lo + hi) / 2;
-                        if (cell_cdf[mid] < u_cell) lo = mid + 1;
-                        else                         hi = mid;
-                    }
-                    int cell_idx = eligible[lo];
-
-                    /* (b) Get local B and nonthermal electron density */
-                    b_field = getMagneticFieldMagnitude(hydro_data, cell_idx);
-                    ne_cell = (hydro_data->nonthermal_dens)[cell_idx];
-
-                    /* (c) Sample gamma and alpha from their natural
-                     *     distributions */
-                    double gamma_k = synchSampleGammaEmission(rand);
-                    double alpha_k = synchSampleAlpha(tables,
-                                                       gsl_rng_uniform_pos(rand));
-
-                    /* (d) Conditional nu sampling via inverse marginal CDF */
-                    double u_cond  = C_lo + gsl_rng_uniform_pos(rand) * dC;
-                    double u_lo_sp = sp->cdf_log_nu_vals[0];
-                    double u_hi_sp = sp->cdf_log_nu_vals[SYNCH_N_CDF_BINS];
-                    if (u_cond < u_lo_sp + 1e-12) u_cond = u_lo_sp + 1e-12;
-                    if (u_cond > u_hi_sp - 1e-12) u_cond = u_hi_sp - 1e-12;
-
-                    double log_nu_k = gsl_spline_eval(sp->inv_nu_cdf_spline,
-                                                       u_cond,
-                                                       sp->inv_nu_cdf_acc);
-                    double fr_dum = pow(10.0, log_nu_k);
-
-                    /* Clamp strictly within stratum */
-                    if (fr_dum < sp->strata_edges[k])
-                        fr_dum = sp->strata_edges[k];
-                    if (fr_dum > sp->strata_edges[k+1])
-                        fr_dum = sp->strata_edges[k+1];
-
-                    /* (e) Fill the photon struct */
-                    synchFillPhoton(&ph_emit[ph_tot],
-                                     cell_idx,
-                                     fr_dum,
-                                     ph_weight_adjusted,
-                                     hydro_data,
-                                     rand,
-                                     fPtr);
-                    ph_tot++;
+                    stratum_alloc[k]++;
+                    remainder_given++;
                 }
             }
             else
             {
-                fprintf(fPtr,
-                        ">> [photonEmitSynch] WARNING: stratum %d passed "
-                        "P_MIN but has degenerate CDF interval (dC=%.2e). "
-                        "Skipping — increase SYNCH_N_REF if this recurs.\n",
-                        k, dC);
-                fflush(fPtr);
+                stratum_alloc[k] = 0;
+            }
+        }
+
+        for (k = 0; k < SYNCH_N_STRATA; k++)
+        {
+            /*
+             * Only emit into stratum k if it received a non-zero allocation.
+             * This replaces the previous `continue` with an explicit
+             * conditional block that wraps all per-stratum emission logic.
+             */
+            if (stratum_alloc[k] > 0)
+            {
+                /*
+                 * Importance weight for stratum k  [RAIKOU Eq. B11]:
+                 *   w_k = ph_weight_adjusted * p_k * SYNCH_N_STRATA
+                 *
+                 * This corrects for the forced equal allocation across strata
+                 * (each stratum gets 1/N_STRATA of ph_count packets, but the
+                 * natural fraction is p_k). The weighted sum over all packets
+                 * therefore recovers the correct RAIKOU Eq. B11 spectral shape.
+                 */
+                double w_stratum = ph_weight_adjusted
+                                 * cs->stratum_probs[k]
+                                 * (double)SYNCH_N_STRATA;
+
+                /*
+                 * CDF limits for conditional frequency sampling within
+                 * stratum k. Scan the marginal CDF array to find the u
+                 * values that bracket [log_nu_lo, log_nu_hi].
+                 *
+                 * The scan replaces the use of a separate forward-CDF spline
+                 * and is O(SYNCH_N_CDF_BINS) per stratum per cell. Since
+                 * this is called at most SYNCH_N_STRATA times per cell and
+                 * SYNCH_N_CDF_BINS = 1000, the total cost per cell is at
+                 * most 10000 comparisons — negligible compared to the
+                 * SYNCH_N_REF reference draws in buildSynchCellStrata.
+                 */
+                double log_nu_lo  = log10(cs->strata_edges[k]);
+                double log_nu_hi  = log10(cs->strata_edges[k + 1]);
+                double u_lo       = cs->cdf_log_nu_vals[0];
+                double u_hi       = cs->cdf_log_nu_vals[SYNCH_N_CDF_BINS];
+                int    found_lo   = 0;
+                int    found_hi   = 0;
+
+                for (i = 0; i <= SYNCH_N_CDF_BINS; i++)
+                {
+                    if (found_lo == 0 &&
+                        cs->cdf_log_nu_edges[i] >= log_nu_lo)
+                    {
+                        u_lo    = cs->cdf_log_nu_vals[i];
+                        found_lo = 1;
+                    }
+                    if (found_hi == 0 &&
+                        cs->cdf_log_nu_edges[i] >= log_nu_hi)
+                    {
+                        u_hi    = cs->cdf_log_nu_vals[i];
+                        found_hi = 1;
+                    }
+                }
+
+                /* Clamp to valid spline domain */
+                if (u_lo < cs->cdf_log_nu_vals[0])
+                    u_lo = cs->cdf_log_nu_vals[0];
+                if (u_hi > cs->cdf_log_nu_vals[SYNCH_N_CDF_BINS])
+                    u_hi = cs->cdf_log_nu_vals[SYNCH_N_CDF_BINS];
+
+                /*
+                 * Only emit packets for this stratum if the CDF interval
+                 * has non-zero width. A zero-width interval means the
+                 * stratum's frequency range has no support in the CDF,
+                 * which can occur at the extreme tails of the spectrum
+                 * where the reference sample has no counts. In this case
+                 * we absorb these packets into the fallback frequency rather
+                 * than losing them, preserving ph_count exactly.
+                 *
+                 * This replaces the previous `continue` on the degenerate
+                 * CDF interval with an if/else that either samples normally
+                 * or uses the fallback, so every allocated packet is emitted.
+                 */
+                if (u_hi > u_lo)
+                {
+                    for (i = 0; i < stratum_alloc[k]; i++)
+                    {
+                        /*
+                         * Draw u ~ Uniform[u_lo, u_hi] and map through the
+                         * inverse marginal CDF spline to get log10(nu_f)
+                         * within stratum k. This is equivalent to drawing
+                         * from RAIKOU Eq. B11 restricted to the stratum
+                         * frequency interval.
+                         */
+                        double u_nu = u_lo
+                                    + gsl_rng_uniform_pos(rand)
+                                    * (u_hi - u_lo);
+
+                        double nu_f = pow(10.0,
+                                          gsl_spline_eval(
+                                              cs->inv_nu_cdf_spline,
+                                              u_nu,
+                                              cs->inv_nu_cdf_acc));
+
+                        /*
+                         * Hard clamp to stratum bounds to guard against
+                         * spline overshoot at the piecewise-linear CDF
+                         * boundaries.
+                         */
+                        if (nu_f < cs->strata_edges[k])
+                            nu_f = cs->strata_edges[k];
+                        if (nu_f > cs->strata_edges[k + 1])
+                            nu_f = cs->strata_edges[k + 1];
+
+                        /*
+                         * Fill all photon fields: comoving 4-momentum,
+                         * Lorentz boost to lab frame, birth position, Stokes
+                         * parameters (s0=1, s1=s2=s3=0), and bookkeeping
+                         * (type=CS_POOL_PHOTON, recalc_properties=1).
+                         */
+                        synchFillPhoton(&ph_emit[*idx_ptr], ci, nu_f,
+                                         w_stratum, hydro_data, rand, fPtr);
+
+                        /*
+                         * SSA pre-attenuation at birth  [RAIKOU Eqs. 31, 40]:
+                         *   w_new = w_old * exp(-(nu_f/nu_z) * alpha * dl)
+                         * dl = 0.5 * r0_size[ci] is the mean path length
+                         * from a uniformly distributed birth point to the
+                         * nearest cell boundary.
+                         */
+                        applySynchSSAWeightModification(&ph_emit[*idx_ptr],
+                                                        dl_birth,
+                                                        B_cell, n_e_nth,
+                                                        tables, fPtr);
+                        (*idx_ptr)++;
+                    }
+                }
+                else
+                {
+                    /*
+                     * Degenerate CDF interval: emit stratum_alloc[k] packets
+                     * at the fallback frequency with ph_weight_adjusted so
+                     * that ph_count is preserved exactly. Log the condition
+                     * so it can be diagnosed if the spectrum looks wrong.
+                     */
+                    double nu_c_fallback = (3.0 * CHARGE_EL * B_cell)
+                                         / (4.0 * M_PI * M_EL * C_LIGHT);
+                    double nu_fallback   = nu_c_fallback
+                                        * GAMMA_MAX * GAMMA_MAX;
+
+                    fprintf(fPtr,
+                            ">> [emitCellPackets] Cell %d stratum %d: "
+                            "degenerate CDF interval [u_lo=%.4f, u_hi=%.4f]. "
+                            "Emitting %d packets at fallback nu = %.3e Hz.\n",
+                            ci, k, u_lo, u_hi, stratum_alloc[k], nu_fallback);
+                    fflush(fPtr);
+
+                    for (i = 0; i < stratum_alloc[k]; i++)
+                    {
+                        synchFillPhoton(&ph_emit[*idx_ptr], ci, nu_fallback,
+                                         ph_weight_adjusted,
+                                         hydro_data, rand, fPtr);
+                        applySynchSSAWeightModification(&ph_emit[*idx_ptr],
+                                                        dl_birth,
+                                                        B_cell, n_e_nth,
+                                                        tables, fPtr);
+                        (*idx_ptr)++;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+/*
+ * photonEmitSynch
+ * ---------------
+ * Emit non-thermal synchrotron photon packets from all active fluid cells
+ * within a thin shell at the injection radius.
+ *
+ * Full physics documentation: see previously approved Section 9 docstring.
+ * This version:
+ *   (a) Removes all `continue` statements.
+ *   (b) Delegates all per-cell packet emission to emitCellPackets, which
+ *       itself contains no `continue` statements.
+ *   (c) Uses explicit `if (ph_dens[j] > 0)` guards wherever the previous
+ *       version used `continue` to skip zero-packet cells.
+ *
+ * STRUCTURE OVERVIEW
+ * ------------------
+ * Step 1 : Compute shell rmin / rmax via calcCyclosynchRLimits.
+ * Step 2 : First pass over hydro grid — count active cells (block_cnt).
+ * Step 3 : Allocate per-cell arrays ph_dens[], cell_index[], W_cell[].
+ * Step 4 : Second pass — compute emission weights W_i = n_e * B^2 * V.
+ * Step 5 : Weight-tuning loop — adjust ph_weight_adjusted until
+ *           min_photons <= sum lambda_i <= max_photons.
+ * Step 6 : Poisson draw — n_cell_i ~ Poisson(lambda_i) for each cell.
+ * Step 7 : Allocate ph_emit[ph_tot] and initialise all entries.
+ * Step 8 : Per-cell emission loop — for each cell j with ph_dens[j] > 0,
+ *           build per-cell strata, call emitCellPackets.
+ * Step 9 : Add all emitted photons to the photon list in a single batch call.
+ * Step 10: Free all heap allocations.
+ */
+int photonEmitSynch(struct photonList          *photon_list,
+                    double                      r_inj,
+                    double                      ph_weight,
+                    int                         min_photons,
+                    int                         max_photons,
+                    double                      theta_min,
+                    double                      theta_max,
+                    struct hydro_dataframe     *hydro_data,
+                    const SynchUniversalTables *tables,
+                    gsl_rng                    *rand,
+                    FILE                       *fPtr)
+{
+    int    i, j;
+    int    n_emitted = 0;
+    int    block_cnt = 0;
+
+    double r_grid_innercorner    = 0.0;
+    double r_grid_outercorner    = 0.0;
+    double theta_grid_innercorner = 0.0;
+    double theta_grid_outercorner = 0.0;
+
+    /* ── Step 1: Shell boundaries  [mirrors photonEmitCyclosynch] ────────────
+     *
+     * rmin = r_inj - c/fps,  rmax = r_inj + c/fps.
+     * The shell thickness equals the distance light travels between
+     * consecutive hydro frames, capturing exactly the region of newly
+     * emitting gas at each injection epoch.
+     */
+    double rmin = calcCyclosynchRLimits(hydro_data->scatt_frame_number,
+                                         hydro_data->inj_frame_number,
+                                         hydro_data->fps, r_inj, "min");
+    double rmax = calcCyclosynchRLimits(hydro_data->scatt_frame_number,
+                                             hydro_data->inj_frame_number,
+                                             hydro_data->fps, r_inj, "max");
+
+    fprintf(fPtr,
+            ">> [photonEmitSynch] Shell: rmin = %.3e cm, "
+            "rmax = %.3e cm, theta = [%.3f, %.3f] rad\n",
+            rmin, rmax, theta_min, theta_max);
+    fflush(fPtr);
+
+    /* ── Step 2: First pass — count active cells (block_cnt) ─────────────────
+     *
+     * A cell is active if ALL of the following hold:
+     *   (a) nonthermal_dens[i] > 0  (has a non-thermal electron population)
+     *   (b) Its bounding-box corners overlap the shell [rmin, rmax] in r
+     *   (c) Its bounding-box corners overlap [theta_min, theta_max] in theta
+     *
+     * The corner test uses hydroCoordinateToSpherical on the min and max
+     * corners of the cell bounding box, identical to photonEmitCyclosynch.
+     * Cells that only partially overlap the shell boundary are included,
+     * which avoids a systematic undercount at the shell edges.
+     *
+     * block_cnt is used to allocate ph_dens[], cell_index[], and W_cell[]
+     * to exactly the right size before the second pass.
+     *
+     * The previous implementation used `continue` inside the loop to skip
+     * cells that fail the nonthermal_dens or geometry test. Here the
+     * active-cell test is expressed as a single compound `if` whose body
+     * increments block_cnt, so the loop has one clear execution path per
+     * cell with no early-exit jumps.
+     */
+    for (i = 0; i < hydro_data->num_elements; i++)
+    {
+        int has_nonthermal = ((hydro_data->nonthermal_dens)[i] > 0.0);
+
+        if (has_nonthermal)
+        {
+            #if DIMENSIONS == THREE
+                hydroCoordinateToSpherical(&r_grid_innercorner,
+                                            &theta_grid_innercorner,
+                                            fabs((hydro_data->r0)[i])
+                                                - 0.5*(hydro_data->r0_size)[i],
+                                            fabs((hydro_data->r1)[i])
+                                                - 0.5*(hydro_data->r1_size)[i],
+                                            fabs((hydro_data->r2)[i])
+                                                - 0.5*(hydro_data->r2_size)[i]);
+                hydroCoordinateToSpherical(&r_grid_outercorner,
+                                            &theta_grid_outercorner,
+                                            fabs((hydro_data->r0)[i])
+                                                + 0.5*(hydro_data->r0_size)[i],
+                                            fabs((hydro_data->r1)[i])
+                                                + 0.5*(hydro_data->r1_size)[i],
+                                            fabs((hydro_data->r2)[i])
+                                                + 0.5*(hydro_data->r2_size)[i]);
+            #else
+                hydroCoordinateToSpherical(&r_grid_innercorner,
+                                            &theta_grid_innercorner,
+                                            (hydro_data->r0)[i]
+                                                - 0.5*(hydro_data->r0_size)[i],
+                                            (hydro_data->r1)[i]
+                                                - 0.5*(hydro_data->r1_size)[i],
+                                            0.0);
+                hydroCoordinateToSpherical(&r_grid_outercorner,
+                                            &theta_grid_outercorner,
+                                            (hydro_data->r0)[i]
+                                                + 0.5*(hydro_data->r0_size)[i],
+                                            (hydro_data->r1)[i]
+                                                + 0.5*(hydro_data->r1_size)[i],
+                                            0.0);
+            #endif
+            int in_shell = (rmin <= r_grid_outercorner)
+                        && (r_grid_innercorner  <  rmax)
+                        && (theta_grid_outercorner >= theta_min)
+                        && (theta_grid_innercorner  <  theta_max);
+
+            if (in_shell)
+                block_cnt++;
+        }
+    }
+
+    fprintf(fPtr,
+            ">> [photonEmitSynch] Found %d active cells in the shell.\n",
+            block_cnt);
+    fflush(fPtr);
+
+    if (block_cnt == 0)
+    {
+        fprintf(fPtr,
+                ">> [photonEmitSynch] WARNING: no active cells with "
+                "nonthermal electrons in the injection shell. "
+                "No photons emitted.\n\n");
+        fflush(fPtr);
+        return 0;
+    }
+
+    /* ── Step 3: Allocate per-cell arrays ────────────────────────────────────
+     *
+     * ph_dens[j]    : Poisson-drawn packet count for active cell j
+     * cell_index[j] : hydro_data array index of active cell j
+     * W_cell[j]     : unnormalised emission weight W_i = n_e_nth * B^2 * V
+     *
+     * All three arrays are indexed by j in [0, block_cnt), where j
+     * increments only for cells that pass the active-cell test in Step 4.
+     */
+    int    *ph_dens    = (int    *)malloc(block_cnt * sizeof(int));
+    int    *cell_index = (int    *)malloc(block_cnt * sizeof(int));
+    double *W_cell     = (double *)malloc(block_cnt * sizeof(double));
+
+    /* ── Step 4: Second pass — record cell indices and emission weights ───────
+     *
+     * W_i = n_{e,nth,i} * B_i^2 * V_i
+     *
+     * This is the unnormalised total synchrotron emission power of cell i,
+     * obtained by integrating RAIKOU Eq. B11 over nu_f and gamma_e.
+     * The B^2 factor arises from:
+     *   integral_0^inf j_{nu_f}^(f) d nu_f
+     *     ∝ n_{e,nth} * B^2 * integral N_hat(gamma) gamma^2 dgamma
+     *                                      [R&L79 Eq. 6.38; G&S91 Eq. 4]
+     * The gamma integral is cell-independent (depends only on GAMMA_MIN,
+     * GAMMA_MAX, and POWERLAW_INDEX, all compile-time constants) and
+     * factors out of the relative weight comparison between cells.
+     *
+     * calcCellVolume (geometry.c) returns the proper coordinate-system
+     * volume V_i accounting for the grid geometry and dimensionality.
+     *
+     * The same compound `if (has_nonthermal && in_shell)` structure as
+     * Step 2 is used, with `j` incrementing only for active cells to keep
+     * cell_index[], W_cell[], and ph_dens[] aligned.
+     */
+    j = 0;
+    for (i = 0; i < hydro_data->num_elements; i++)
+    {
+        int has_nonthermal = ((hydro_data->nonthermal_dens)[i] > 0.0);
+
+        if (has_nonthermal)
+        {
+            #if DIMENSIONS == THREE
+                hydroCoordinateToSpherical(&r_grid_innercorner,
+                                            &theta_grid_innercorner,
+                                            fabs((hydro_data->r0)[i])
+                                                - 0.5*(hydro_data->r0_size)[i],
+                                            fabs((hydro_data->r1)[i])
+                                                - 0.5*(hydro_data->r1_size)[i],
+                                            fabs((hydro_data->r2)[i])
+                                                - 0.5*(hydro_data->r2_size)[i]);
+                hydroCoordinateToSpherical(&r_grid_outercorner,
+                                            &theta_grid_outercorner,
+                                            fabs((hydro_data->r0)[i])
+                                                + 0.5*(hydro_data->r0_size)[i],
+                                            fabs((hydro_data->r1)[i])
+                                                + 0.5*(hydro_data->r1_size)[i],
+                                            fabs((hydro_data->r2)[i])
+                                                + 0.5*(hydro_data->r2_size)[i]);
+            #else
+                hydroCoordinateToSpherical(&r_grid_innercorner,
+                                            &theta_grid_innercorner,
+                                            (hydro_data->r0)[i]
+                                                - 0.5*(hydro_data->r0_size)[i],
+                                            (hydro_data->r1)[i]
+                                                - 0.5*(hydro_data->r1_size)[i],
+                                            0.0);
+                hydroCoordinateToSpherical(&r_grid_outercorner,
+                                            &theta_grid_outercorner,
+                                            (hydro_data->r0)[i]
+                                                + 0.5*(hydro_data->r0_size)[i],
+                                            (hydro_data->r1)[i]
+                                                + 0.5*(hydro_data->r1_size)[i],
+                                            0.0);
+            #endif
+            int in_shell = (rmin <= r_grid_outercorner)
+                        && (r_grid_innercorner  <  rmax)
+                        && (theta_grid_outercorner >= theta_min)
+                        && (theta_grid_innercorner  <  theta_max);
+
+            if (in_shell)
+            {
+                double B = getMagneticFieldMagnitude(hydro_data, i);
+                double V = calcCellVolume(hydro_data, i);
+
+                cell_index[j] = i;
+                W_cell[j]     = (hydro_data->nonthermal_dens)[i] * B * B * V;
+                j++;
             }
         }
     }
 
-    free(eligible);
-    free(cell_cdf);
+    /* ── Step 5: Weight-tuning loop  [mirrors photonEmitCyclosynch] ──────────
+     *
+     * The expected packet count for active cell j is:
+     *   lambda_j = W_cell[j] / ph_weight_adjusted / fps
+     *
+     * analogous to:
+     *   ph_dens_calc = integral_BB * V / ph_weight_adjusted / fps
+     * in photonEmitCyclosynch.
+     *
+     * Iterate ph_weight_adjusted until:
+     *   min_photons <= sum_j lambda_j <= max_photons
+     *
+     * Adjustment rules (identical to photonEmitCyclosynch):
+     *   sum > max_photons : ph_weight_adjusted *= 10  (weight each packet
+     *                        more, so fewer packets are needed)
+     *   sum < min_photons : ph_weight_adjusted *= 0.5 (weight each packet
+     *                        less, so more packets are needed)
+     *
+     * The loop operates on expected counts (before the Poisson draw) so
+     * that the SYNCH_N_REF reference draws in buildSynchCellStrata are
+     * not repeated during tuning.
+     */
+    double ph_weight_adjusted = ph_weight;
+    double lambda_total       = 0.0;
 
-    /* ── Step 6: Add all emitted photons to the photon list ───────────── */
-    /*   addToPhotonList handles memory growth and null-slot reuse,        */
-    /*   exactly as photonEmitCyclosynch does via setPhotonList            */
-    addToPhotonList(photon_list, ph_emit, (size_t)ph_tot);
-    free(ph_emit);
+    do
+    {
+        lambda_total = 0.0;
+        for (j = 0; j < block_cnt; j++)
+            lambda_total += W_cell[j] / ph_weight_adjusted / hydro_data->fps;
+
+        if (lambda_total > (double)max_photons)
+            ph_weight_adjusted *= 10.0;
+        else if (lambda_total < (double)min_photons)
+            ph_weight_adjusted *= 0.5;
+
+    } while ((lambda_total > (double)max_photons) ||
+             (lambda_total < (double)min_photons));
 
     fprintf(fPtr,
-            ">> [photonEmitSynch] Added %d synchrotron photons "
-            "to photon_list (total now: %d).\n",
-            ph_tot, photon_list->num_photons);
+            ">> [photonEmitSynch] Converged: ph_weight_adjusted = %.3e, "
+            "expected total packets = %.1f\n",
+            ph_weight_adjusted, lambda_total);
     fflush(fPtr);
 
-    return ph_tot;
+    /* ── Step 6: Poisson draw of per-cell packet counts ──────────────────────
+     *
+     * With ph_weight_adjusted converged, draw the actual packet count for
+     * each active cell j from a Poisson distribution:
+     *   ph_dens[j] ~ Poisson( W_cell[j] / ph_weight_adjusted / fps )
+     *
+     * The Poisson draw gives shot-noise-correct fluctuations around the
+     * physical mean packet count, exactly as in photonEmitCyclosynch.
+     * ph_tot accumulates the total across all cells.
+     */
+    int ph_tot = 0;
+    for (j = 0; j < block_cnt; j++)
+    {
+        double lambda_j = W_cell[j] / ph_weight_adjusted / hydro_data->fps;
+        ph_dens[j] = (int)gsl_ran_poisson(rand, lambda_j);
+        ph_tot    += ph_dens[j];
+    }
+
+    fprintf(fPtr,
+            ">> [photonEmitSynch] Poisson draw: ph_tot = %d packets "
+            "across %d active cells.\n",
+            ph_tot, block_cnt);
+    fflush(fPtr);
+
+    /* ── Step 7: Allocate and initialise output photon array ─────────────────
+     *
+     * Allocate ph_tot photon structs and initialise each to the canonical
+     * null-photon state via initializePhoton. We fill these in the per-cell
+     * loop in Step 8 and add them to the photon_list in a single batch call
+     * in Step 9, mirroring the ph_emit pattern in photonEmitCyclosynch.
+     */
+    if (ph_tot == 0)
+    {
+        /*
+         * All cells drew zero packets from the Poisson distribution.
+         * This can happen when lambda_total is small and the Poisson
+         * fluctuation rounds everything to zero. Log and return cleanly.
+         */
+        fprintf(fPtr,
+                ">> [photonEmitSynch] WARNING: all cells drew ph_dens = 0 "
+                "from the Poisson distribution (lambda_total = %.3f). "
+                "No photons emitted.\n\n",
+                lambda_total);
+        fflush(fPtr);
+
+        free(ph_dens);
+        free(cell_index);
+        free(W_cell);
+        return 0;
+    }
+
+    struct photon *ph_emit = (struct photon *)
+                             malloc(ph_tot * sizeof(struct photon));
+
+    if (ph_emit == NULL)
+    {
+        fprintf(fPtr,
+                ">> [photonEmitSynch] ERROR: malloc failed for ph_emit "
+                "(%d photons). No photons emitted.\n\n", ph_tot);
+        fflush(fPtr);
+
+        free(ph_dens);
+        free(cell_index);
+        free(W_cell);
+        return 0;
+    }
+
+    for (i = 0; i < ph_tot; i++)
+        initializePhoton(&ph_emit[i]);
+
+    /* ── Step 8: Per-cell emission loop ──────────────────────────────────────
+     *
+     * For each active cell j, if ph_dens[j] > 0:
+     *
+     *   (8a) Build per-cell strata from B_cell using buildSynchCellStrata.
+     *        This constructs SYNCH_N_STRATA frequency intervals and their
+     *        natural probabilities p_k anchored to B_cell, not a global
+     *        representative field. Cells with very different B values
+     *        (e.g. jet spine vs. sheath) therefore each get strata correctly
+     *        centred on their own nu_c(B_cell).
+     *
+     *   (8b) Call emitCellPackets to fill ph_dens[j] photon structs into
+     *        ph_emit[idx ... idx + ph_dens[j] - 1], advancing idx by
+     *        ph_dens[j] on return.
+     *
+     *   (8c) Free the per-cell SynchCellStrata memory immediately to keep
+     *        peak heap usage proportional to one cell's strata at a time.
+     *
+     * The previous implementation used `continue` to skip cells with
+     * ph_dens[j] == 0. This is replaced by wrapping the cell body in
+     * `if (ph_dens[j] > 0)` so cells with zero packets simply produce no
+     * work without a jump statement.
+     */
+    int idx = 0;
+
+    for (j = 0; j < block_cnt; j++)
+    {
+        if (ph_dens[j] > 0)
+        {
+            int ci = cell_index[j];
+
+            /* ── (8a) Build per-cell strata anchored to B_cell ───────────── */
+            SynchCellStrata cs;
+            buildSynchCellStrata(&cs,
+                                  getMagneticFieldMagnitude(hydro_data, ci),
+                                  tables, rand, fPtr);
+
+            /* ── (8b) Emit ph_dens[j] packets from this cell ─────────────── */
+            emitCellPackets(ci, ph_dens[j], &cs, ph_weight_adjusted,
+                             ph_emit, &idx, hydro_data, tables, rand, fPtr);
+
+            /* ── (8c) Free per-cell strata ───────────────────────────────── */
+            freeSynchCellStrata(&cs);
+        }
+    }
+
+    /*
+     * Sanity check: idx must equal ph_tot after the loop. A mismatch
+     * indicates a logic error in the stratum allocation arithmetic inside
+     * emitCellPackets. Log the discrepancy and truncate ph_tot to idx so
+     * that addToPhotonList does not access uninitialised memory.
+     */
+    if (idx != ph_tot)
+    {
+        fprintf(fPtr,
+                ">> [photonEmitSynch] WARNING: expected to fill %d photon "
+                "structs but actually filled %d. "
+                "Check stratum allocation logic in emitCellPackets.\n",
+                ph_tot, idx);
+        fflush(fPtr);
+        ph_tot = idx;
+    }
+
+    /* ── Step 9: Add emitted photons to the photon list ──────────────────────
+     *
+     * A single batch call to addToPhotonList is more efficient than one
+     * call per photon because it amortises the null-photon index scan over
+     * the entire batch. addToPhotonList handles photon_list reallocation
+     * if required and updates num_photons and num_null_photons correctly.
+     * The ph_emit array is copied into photon_list->photons via memcpy
+     * inside addToPhotonList, so ph_emit can be freed immediately after.
+     */
+    if (ph_tot > 0)
+    {
+        addToPhotonList(photon_list, ph_emit, ph_tot);
+        n_emitted = ph_tot;
+    }
+
+    /* ── Step 10: Free all heap allocations ──────────────────────────────────
+     *
+     * ph_emit contents have been copied into photon_list by addToPhotonList
+     * so freeing here is safe.
+     */
+    free(ph_emit);
+    free(ph_dens);
+    free(cell_index);
+    free(W_cell);
+
+    fprintf(fPtr,
+            ">> [photonEmitSynch] Complete: emitted %d synchrotron photon "
+            "packets from %d active cells "
+            "(ph_weight_adjusted = %.3e).\n\n",
+            n_emitted, block_cnt, ph_weight_adjusted);
+    fflush(fPtr);
+
+    return n_emitted;
 }
