@@ -18,7 +18,6 @@
 static SynchUniversalTables synch_tables;
 static int synch_tables_initialized = 0;
 
-
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* SECTION 1 — BESSEL INTEGRAL: F(x)                                          */
 /* RAIKOU Eq. B13;  G&S91 Eq. 2;  R&L79 Eq. 6.31                             */
@@ -217,15 +216,15 @@ void initSynchTables(FILE *fPtr)
     fflush(fPtr);
 
     /* ── Allocate arrays ──────────────────────────────────────────────────── */
-    synch_tables->x_arr       = (double *)malloc(SYNCH_N_X * sizeof(double));
-    synch_tables->F_arr       = (double *)malloc(SYNCH_N_X * sizeof(double));
-    synch_tables->Ga_arr      = (double *)malloc(SYNCH_N_X * sizeof(double));
-    synch_tables->Ga_arr_p1   = (double *)malloc(SYNCH_N_X * sizeof(double));
-    synch_tables->Ga_arr_p2   = (double *)malloc(SYNCH_N_X * sizeof(double));
-    synch_tables->inv_x_cdf_u    = (double *)malloc(SYNCH_N_X * sizeof(double));
-    synch_tables->inv_x_cdf_logx = (double *)malloc(SYNCH_N_X * sizeof(double));
-    synch_tables->inv_alpha_cdf_u     = (double *)malloc(SYNCH_N_X * sizeof(double));
-    synch_tables->inv_alpha_cdf_alpha = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.x_arr       = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.F_arr       = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.Ga_arr      = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.Ga_arr_p1   = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.Ga_arr_p2   = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.inv_x_cdf_u    = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.inv_x_cdf_logx = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.inv_alpha_cdf_u     = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.inv_alpha_cdf_alpha = (double *)malloc(SYNCH_N_X * sizeof(double));
 
     /* ── Log-spaced x grid ───────────────────────────────────────────────── */
     double log_x_min = log10(SYNCH_X_MIN);
@@ -233,7 +232,7 @@ void initSynchTables(FILE *fPtr)
     for (i = 0; i < SYNCH_N_X; i++)
     {
         double t = (double)i / (SYNCH_N_X - 1);
-        synch_tables->x_arr[i] = pow(10.0, log_x_min + t*(log_x_max - log_x_min));
+        synch_tables.x_arr[i] = pow(10.0, log_x_min + t*(log_x_max - log_x_min));
     }
 
     /* ── (1) F(x)  [RAIKOU Eq. B13] ─────────────────────────────────────── */
@@ -245,12 +244,12 @@ void initSynchTables(FILE *fPtr)
     gsl_integration_workspace *ws = gsl_integration_workspace_alloc(1000);
 
     for (i = 0; i < SYNCH_N_X; i++)
-        synch_tables->F_arr[i] = computeFatX(synch_tables->x_arr[i], ws, fPtr);
+        synch_tables.F_arr[i] = computeFatX(synch_tables.x_arr[i], ws, fPtr);
 
-    synch_tables->F_acc    = gsl_interp_accel_alloc();
-    synch_tables->F_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-    gsl_spline_init(synch_tables->F_spline,
-                    synch_tables->x_arr, synch_tables->F_arr, SYNCH_N_X);
+    synch_tables.F_acc    = gsl_interp_accel_alloc();
+    synch_tables.F_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+    gsl_spline_init(synch_tables.F_spline,
+                    synch_tables.x_arr, synch_tables.F_arr, SYNCH_N_X);
 
     /* ── (2) G_a(x)  [RAIKOU Eq. C3] ────────────────────────────────────── */
     fprintf(fPtr,
@@ -258,30 +257,30 @@ void initSynchTables(FILE *fPtr)
             "[RAIKOU Eq. C3]...\n");
     fflush(fPtr);
 
-    synch_tables->Ga_acc    = gsl_interp_accel_alloc();
-    synch_tables->Ga_acc_p1 = gsl_interp_accel_alloc();
-    synch_tables->Ga_acc_p2 = gsl_interp_accel_alloc();
+    synch_tables.Ga_acc    = gsl_interp_accel_alloc();
+    synch_tables.Ga_acc_p1 = gsl_interp_accel_alloc();
+    synch_tables.Ga_acc_p2 = gsl_interp_accel_alloc();
 
     #if NONTHERMAL_E_DIST == POWERLAW
 
         for (i = 0; i < SYNCH_N_X; i++)
-            synch_tables->Ga_arr[i] = computeGaAtX(synch_tables->x_arr[i],
+            synch_tables.Ga_arr[i] = computeGaAtX(synch_tables.x_arr[i],
                                               POWERLAW_INDEX,
-                                                   synch_tables->F_spline,
-                                                   synch_tables->F_acc,
+                                                   synch_tables.F_spline,
+                                                   synch_tables.F_acc,
                                               ws, fPtr);
 
         /* p1 / p2 arrays are unused for a single power law; zero-fill */
         for (i = 0; i < SYNCH_N_X; i++)
-            synch_tables->Ga_arr_p1[i] = synch_tables->Ga_arr_p2[i] = 0.0;
+            synch_tables.Ga_arr_p1[i] = synch_tables.Ga_arr_p2[i] = 0.0;
 
-        synch_tables->Ga_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-        gsl_spline_init(synch_tables->Ga_spline,
-                        synch_tables->x_arr, synch_tables->Ga_arr, SYNCH_N_X);
+        synch_tables.Ga_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+        gsl_spline_init(synch_tables.Ga_spline,
+                        synch_tables.x_arr, synch_tables.Ga_arr, SYNCH_N_X);
 
         /* Allocate p1/p2 splines as empty so freeSynchTables can always free */
-        synch_tables->Ga_spline_p1 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-        synch_tables->Ga_spline_p2 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+        synch_tables.Ga_spline_p1 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+        synch_tables.Ga_spline_p2 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
 
     #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
 
@@ -294,29 +293,29 @@ void initSynchTables(FILE *fPtr)
          */
         for (i = 0; i < SYNCH_N_X; i++)
         {
-            synch_tables->Ga_arr_p1[i] = computeGaAtX(synch_tables->x_arr[i],
+            synch_tables.Ga_arr_p1[i] = computeGaAtX(synch_tables.x_arr[i],
                                                   POWERLAW_INDEX_1,
-                                                      synch_tables->F_spline,
-                                                      synch_tables->F_acc,
+                                                      synch_tables.F_spline,
+                                                      synch_tables.F_acc,
                                                   ws, fPtr);
-            synch_tables->Ga_arr_p2[i] = computeGaAtX(synch_tables->x_arr[i],
+            synch_tables.Ga_arr_p2[i] = computeGaAtX(synch_tables.x_arr[i],
                                                   POWERLAW_INDEX_2,
-                                                      synch_tables->F_spline,
-                                                      synch_tables->F_acc,
+                                                      synch_tables.F_spline,
+                                                      synch_tables.F_acc,
                                                   ws, fPtr);
-            synch_tables->Ga_arr[i] = synch_tables->Ga_arr_p1[i];
+            synch_tables.Ga_arr[i] = synch_tables.Ga_arr_p1[i];
         }
 
-        synch_tables->Ga_spline    = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-        synch_tables->Ga_spline_p1 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-        synch_tables->Ga_spline_p2 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+        synch_tables.Ga_spline    = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+        synch_tables.Ga_spline_p1 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+        synch_tables.Ga_spline_p2 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
 
-        gsl_spline_init(synch_tables->Ga_spline,
-                        synch_tables->x_arr, synch_tables->Ga_arr, SYNCH_N_X);
-        gsl_spline_init(synch_tables->Ga_spline_p1,
-                        synch_tables->x_arr, synch_tables->Ga_arr_p1, SYNCH_N_X);
-        gsl_spline_init(synch_tables->Ga_spline_p2,
-                        synch_tables->x_arr, synch_tables->Ga_arr_p2, SYNCH_N_X);
+        gsl_spline_init(synch_tables.Ga_spline,
+                        synch_tables.x_arr, synch_tables.Ga_arr, SYNCH_N_X);
+        gsl_spline_init(synch_tables.Ga_spline_p1,
+                        synch_tables.x_arr, synch_tables.Ga_arr_p1, SYNCH_N_X);
+        gsl_spline_init(synch_tables.Ga_spline_p2,
+                        synch_tables.x_arr, synch_tables.Ga_arr_p2, SYNCH_N_X);
 
     #endif
 
@@ -334,28 +333,28 @@ void initSynchTables(FILE *fPtr)
         double  cum       = 0.0;
 
         for (i = 0; i < SYNCH_N_X; i++)
-            Fx_weight[i] = synch_tables->F_arr[i] * synch_tables->x_arr[i];
+            Fx_weight[i] = synch_tables.F_arr[i] * synch_tables.x_arr[i];
 
-        synch_tables->inv_x_cdf_u[0]    = 0.0;
-        synch_tables->inv_x_cdf_logx[0] = log10(synch_tables->x_arr[0]);
+        synch_tables.inv_x_cdf_u[0]    = 0.0;
+        synch_tables.inv_x_cdf_logx[0] = log10(synch_tables.x_arr[0]);
         for (i = 1; i < SYNCH_N_X; i++)
         {
             cum += 0.5*(Fx_weight[i] + Fx_weight[i-1]) * dlog_x;
-            synch_tables->inv_x_cdf_u[i]    = cum;
-            synch_tables->inv_x_cdf_logx[i] = log10(synch_tables->x_arr[i]);
+            synch_tables.inv_x_cdf_u[i]    = cum;
+            synch_tables.inv_x_cdf_logx[i] = log10(synch_tables.x_arr[i]);
         }
         for (i = 0; i < SYNCH_N_X; i++)
-            synch_tables->inv_x_cdf_u[i] /= cum;
-        synch_tables->inv_x_cdf_u[SYNCH_N_X - 1] = 1.0;
+            synch_tables.inv_x_cdf_u[i] /= cum;
+        synch_tables.inv_x_cdf_u[SYNCH_N_X - 1] = 1.0;
 
         free(Fx_weight);
     }
 
-    synch_tables->inv_x_cdf_acc    = gsl_interp_accel_alloc();
-    synch_tables->inv_x_cdf_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-    gsl_spline_init(synch_tables->inv_x_cdf_spline,
-                    synch_tables->inv_x_cdf_u,
-                    synch_tables->inv_x_cdf_logx,
+    synch_tables.inv_x_cdf_acc    = gsl_interp_accel_alloc();
+    synch_tables.inv_x_cdf_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+    gsl_spline_init(synch_tables.inv_x_cdf_spline,
+                    synch_tables.inv_x_cdf_u,
+                    synch_tables.inv_x_cdf_logx,
                     SYNCH_N_X);
 
     /* ── (4) Inverse CDF of alpha ~ sin^2(alpha)  [G&S91 Sec. 2] ───────── */
@@ -372,17 +371,17 @@ void initSynchTables(FILE *fPtr)
     for (i = 0; i < SYNCH_N_X; i++)
     {
         double alpha = M_PI * (double)i / (SYNCH_N_X - 1);
-        synch_tables->inv_alpha_cdf_alpha[i] = alpha;
-        synch_tables->inv_alpha_cdf_u[i]     = (alpha - 0.5*sin(2.0*alpha)) / M_PI;
+        synch_tables.inv_alpha_cdf_alpha[i] = alpha;
+        synch_tables.inv_alpha_cdf_u[i]     = (alpha - 0.5*sin(2.0*alpha)) / M_PI;
     }
-    synch_tables->inv_alpha_cdf_u[SYNCH_N_X - 1] = 1.0;
+    synch_tables.inv_alpha_cdf_u[SYNCH_N_X - 1] = 1.0;
 
-    synch_tables->inv_alpha_cdf_acc    = gsl_interp_accel_alloc();
-    synch_tables->inv_alpha_cdf_spline = gsl_spline_alloc(gsl_interp_linear,
+    synch_tables.inv_alpha_cdf_acc    = gsl_interp_accel_alloc();
+    synch_tables.inv_alpha_cdf_spline = gsl_spline_alloc(gsl_interp_linear,
                                                       SYNCH_N_X);
-    gsl_spline_init(synch_tables->inv_alpha_cdf_spline,
-                    synch_tables->inv_alpha_cdf_u,
-                    synch_tables->inv_alpha_cdf_alpha,
+    gsl_spline_init(synch_tables.inv_alpha_cdf_spline,
+                    synch_tables.inv_alpha_cdf_u,
+                    synch_tables.inv_alpha_cdf_alpha,
                     SYNCH_N_X);
 
     gsl_integration_workspace_free(ws);
@@ -412,29 +411,31 @@ void freeSynchTables(FILE *fPtr)
         return;
     }
 
-    free(synch_tables->x_arr);
-    free(synch_tables->F_arr);
-    free(synch_tables->Ga_arr);
-    free(synch_tables->Ga_arr_p1);
-    free(synch_tables->Ga_arr_p2);
-    free(synch_tables->inv_x_cdf_u);
-    free(synch_tables->inv_x_cdf_logx);
-    free(synch_tables->inv_alpha_cdf_u);
-    free(synch_tables->inv_alpha_cdf_alpha);
+    free(synch_tables.x_arr);
+    free(synch_tables.F_arr);
+    free(synch_tables.Ga_arr);
+    free(synch_tables.Ga_arr_p1);
+    free(synch_tables.Ga_arr_p2);
+    free(synch_tables.inv_x_cdf_u);
+    free(synch_tables.inv_x_cdf_logx);
+    free(synch_tables.inv_alpha_cdf_u);
+    free(synch_tables.inv_alpha_cdf_alpha);
 
-    gsl_spline_free(synch_tables->F_spline);
-    gsl_spline_free(synch_tables->Ga_spline);
-    gsl_spline_free(synch_tables->Ga_spline_p1);
-    gsl_spline_free(synch_tables->Ga_spline_p2);
-    gsl_spline_free(synch_tables->inv_x_cdf_spline);
-    gsl_spline_free(synch_tables->inv_alpha_cdf_spline);
+    gsl_spline_free(synch_tables.F_spline);
+    gsl_spline_free(synch_tables.Ga_spline);
+    gsl_spline_free(synch_tables.Ga_spline_p1);
+    gsl_spline_free(synch_tables.Ga_spline_p2);
+    gsl_spline_free(synch_tables.inv_x_cdf_spline);
+    gsl_spline_free(synch_tables.inv_alpha_cdf_spline);
 
-    gsl_interp_accel_free(synch_tables->F_acc);
-    gsl_interp_accel_free(synch_tables->Ga_acc);
-    gsl_interp_accel_free(synch_tables->Ga_acc_p1);
-    gsl_interp_accel_free(synch_tables->Ga_acc_p2);
-    gsl_interp_accel_free(synch_tables->inv_x_cdf_acc);
-    gsl_interp_accel_free(synch_tables->inv_alpha_cdf_acc);
+    gsl_interp_accel_free(synch_tables.F_acc);
+    gsl_interp_accel_free(synch_tables.Ga_acc);
+    gsl_interp_accel_free(synch_tables.Ga_acc_p1);
+    gsl_interp_accel_free(synch_tables.Ga_acc_p2);
+    gsl_interp_accel_free(synch_tables.inv_x_cdf_acc);
+    gsl_interp_accel_free(synch_tables.inv_alpha_cdf_acc);
+    
+    synch_tables_initialized = 0;
 }
 
 /*
@@ -1035,7 +1036,7 @@ void applySynchSSAWeightModification(struct photon              *ph,
      * following RAIKOU Eq. C2 (single power law) or C4 (broken power law).
      */
     double alpha_nu_f = synchAlphaNu(nu_f, B_cell, n_e_nth_cell,
-                                      tables, fPtr);
+                                    fPtr);
 
     /*
      * Optical depth increment  [RAIKOU Eq. 31]:
@@ -1486,9 +1487,6 @@ static void emitCellPackets(int                         ci,
 {
     int    i, k;
     double B_cell  = getMagneticFieldMagnitude(hydro_data, ci);
-    double n_e_nth = (hydro_data->nonthermal_dens)[ci];
-    double dl_birth = 0.5 * (hydro_data->r0_size)[ci];
-    const SynchUniversalTables *tables = getSynchTables(fPtr);
 
     /*
      * Determine whether the normal stratified path is available.
@@ -1780,7 +1778,6 @@ int photonEmitSynch(struct photonList          *photon_list,
                     double                      theta_min,
                     double                      theta_max,
                     struct hydro_dataframe     *hydro_data,
-                    const SynchUniversalTables *tables,
                     gsl_rng                    *rand,
                     FILE                       *fPtr)
 {
@@ -2139,11 +2136,11 @@ int photonEmitSynch(struct photonList          *photon_list,
             SynchCellStrata cs;
             buildSynchCellStrata(&cs,
                                   getMagneticFieldMagnitude(hydro_data, ci),
-                                  tables, rand, fPtr);
+                                  rand, fPtr);
 
             /* ── (8b) Emit ph_dens[j] packets from this cell ─────────────── */
             emitCellPackets(ci, ph_dens[j], &cs, ph_weight_adjusted,
-                             ph_emit, &idx, hydro_data, tables, rand, fPtr);
+                             ph_emit, &idx, hydro_data, rand, fPtr);
 
             /* ── (8c) Free per-cell strata ───────────────────────────────── */
             freeSynchCellStrata(&cs);
