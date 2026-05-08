@@ -1139,7 +1139,7 @@ void updatePhotonPosition(struct photonList *photon_list, double t, FILE *fPtr)
     //move photons by speed of light
  
     int i=0;
-    double old_position=0, new_position=0, divide_p0=0;
+    double old_position=0, new_position=0, divide_p0=0, dl=C_LIGHT*t;
     struct photon *ph=NULL; //pointer to a photon struct
     #if defined(_OPENMP)
         int num_thread=1;
@@ -1157,11 +1157,11 @@ void updatePhotonPosition(struct photonList *photon_list, double t, FILE *fPtr)
             
             divide_p0=1.0/(ph->p0);
             
-            (ph->r0)+=(ph->p1)*divide_p0*C_LIGHT*t; //update x position
+            (ph->r0)+=(ph->p1)*divide_p0*dl; //update x position
             
-            (ph->r1)+=(ph->p2)*divide_p0*C_LIGHT*t;//update y
+            (ph->r1)+=(ph->p2)*divide_p0*dl;//update y
             
-            (ph->r2)+=(ph->p3)*divide_p0*C_LIGHT*t;//update z
+            (ph->r2)+=(ph->p3)*divide_p0*dl;//update z
             
             new_position= sqrt((ph->r0)*(ph->r0)+(ph->r1)*(ph->r1)+(ph->r2)*(ph->r2));
             /*
@@ -1176,6 +1176,9 @@ void updatePhotonPosition(struct photonList *photon_list, double t, FILE *fPtr)
             }
             
             //printf("In update  function: %e, %e, %e, %e, %e, %e, %e\n",(ph->r0), (ph->r1), (ph->r2), t, (ph->p1)/(ph->p0), (ph->p2)/(ph->p0), (ph->p3)/(ph->p0) );
+            #if SYNCHROTRON_SWITCH == ON
+                applyabsorption(ph, dl);
+            #endif
         }
     }
         

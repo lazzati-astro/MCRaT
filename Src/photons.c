@@ -331,6 +331,11 @@ void initializePhoton(struct photon *ph)
     #endif
 
     ph->total_optical_depth = NAN;
+    
+    #if SYNCHROTRON_SWITCH == ON
+        ph->abs_optical_depth=NAN; //this holds the opacity for synchrotron absorption (multiply by path length to get optical depth when modifying the weight correspondent with synchrotron self absorption
+    #endif
+
 }
 
 double samplePhotonPhi(gsl_rng * rand, FILE *fPtr)

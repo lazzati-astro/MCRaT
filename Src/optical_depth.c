@@ -20,11 +20,11 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
         int i_start=0;
         double norm_cross_section[1+N_GAMMA], nonthermal_n_dens_lab_i, nonthermal_n_dens_lab, norm_optical_depth;
     #endif
-
-
+    
+    
     ph_block_index=ph->nearest_block_index;
-
-
+    
+    
     #if DIMENSIONS == THREE
         hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[ph_block_index], (hydro_data->v1)[ph_block_index], (hydro_data->v2)[ph_block_index], (hydro_data->r0)[ph_block_index], (hydro_data->r1)[ph_block_index], (hydro_data->r2)[ph_block_index]);
     #elif DIMENSIONS == TWO_POINT_FIVE
@@ -35,33 +35,33 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
         //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
         hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[ph_block_index], (hydro_data->v1)[ph_block_index], 0, (hydro_data->r0)[ph_block_index], (hydro_data->r1)[ph_block_index], ph_phi);
     #endif
-
+    
     beta = sqrt(1.0-1.0/((hydro_data->gamma)[ph_block_index]*(hydro_data->gamma)[ph_block_index]));
-
+    
     if (beta != 0)
     {
         fl_v_x = fluid_beta[0];
         fl_v_y = fluid_beta[1];
         fl_v_z = fluid_beta[2];
-
+        
         fl_v_norm = sqrt(fl_v_x*fl_v_x+fl_v_y*fl_v_y+fl_v_z*fl_v_z);
         ph_v_norm = sqrt((ph->p1)*(ph->p1)+(ph->p2)*(ph->p2)+(ph->p3)*(ph->p3));
-
+        
         //find cosine of the angle between the photon and the fluid velocities via a dot product
         n_cosangle = ((fl_v_x* (ph->p1))+(fl_v_y* (ph->p2))+(fl_v_z* (ph->p3)))/(fl_v_norm*ph_v_norm ); //make 1 for cylindrical otherwise its undefined
-
+        
         fluid_factor=(1.0-beta*n_cosangle);
     }
     else
     {
-        //if beta =0 which is the less likely scenario (for jets) then n_cosangle and fluid_factor is nan b/c dividing by 0. 
+        //if beta =0 which is the less likely scenario (for jets) then n_cosangle and fluid_factor is nan b/c dividing by 0.
         //we already konw that in this case, the optical depth modification due to the fluid motion is removed, so just set this to 1.
         fluid_factor=1;
     }
-
+    
     //save values
     thermal_n_dens_lab = (hydro_data->dens_lab)[ph_block_index]/M_P;
-
+    
     //TODO: extend this to the non-thermal electron dist
     #if NONTHERMAL_E_DIST == OFF
         getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index], &norm_cross_section,  rand, fPtr);
@@ -70,25 +70,25 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
         #else
             (ph->optical_depths)[0] = (thermal_n_dens_lab)*(THOM_X_SECT*norm_cross_section)*fluid_factor;
             //fprintf(fPtr, "thermal tau: %e\n", (ph->optical_depths)[0] );
-
+            
             //set to 1 for now, this is most likely the best value for us
             //we calculate the max optical depth as the optical depth until the next simulation frame is loaded (so multiply by c*dt)
             thermal_bias= calculateThermalScatteringBias(SCATTERING_BIAS_SCALING, hydro_data->average_dimless_theta, (hydro_data->temp)[ph_block_index], (ph->optical_depths)[0]*C_LIGHT/hydro_data->fps);
             (ph->scattering_bias)[0]=thermal_bias;
-    
+            
             ph->total_optical_depth=(ph->scattering_bias)[0]*(ph->optical_depths)[0];
-
+            
         #endif
-    
+        
         tau = (ph->total_optical_depth);
     #else
         getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index], norm_cross_section,  rand, fPtr);
-
+        
         //get the nonthermal electron density based on magnetic energy density and electron distribution
         //then multiply by gamma to get the nonthermal electron density in lab frame
         nonthermal_n_dens_lab=(hydro_data->nonthermal_dens)[ph_block_index]*(hydro_data->gamma)[ph_block_index];
-
-
+        
+        
         //if thermal_n_dens_lab==0, we need to normalize the nonthermal scattering biases by the first subgroup's
         //scattering bias
         if (thermal_n_dens_lab != 0)
@@ -97,7 +97,7 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
             (ph->optical_depths)[0] = (thermal_n_dens_lab)*(THOM_X_SECT*(*(norm_cross_section+0)))*fluid_factor;
             norm_optical_depth = (ph->optical_depths)[0];
             //fprintf(fPtr, "thermal tau: %e\n", (ph->optical_depths)[0] );
-
+            
             //set to 1 for now, this is most likely the best value for us
             thermal_bias= calculateThermalScatteringBias(SCATTERING_BIAS_SCALING, hydro_data->average_dimless_theta, (hydro_data->temp)[ph_block_index], (ph->optical_depths)[0]*C_LIGHT/hydro_data->fps);
             (ph->scattering_bias)[0]=thermal_bias;
@@ -116,17 +116,17 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
             // the first temp that gets passed in is assumed to be the dimless temp already while the second temp that is passed in, will be passed to calcDimlessTheta within the function. We want these to cancel out in the calulation of the bias parameter.
             thermal_bias=calculateThermalScatteringBias(SCATTERING_BIAS_SCALING, calcDimlessTheta(1.0), 1.0, norm_optical_depth*C_LIGHT/hydro_data->fps);
             //fprintf(fPtr, "nonthermal scatterig bias: %e\n", thermal_bias);
-
+            
             (ph->scattering_bias)[1] = thermal_bias;
             (ph->optical_depths)[1] = (nonthermal_n_dens_lab)*(THOM_X_SECT*(*(norm_cross_section+(1))))*fluid_factor;
-
+            
             
             //make sure we set the thermal values to be 0
             (ph->optical_depths)[0] = 0;
             (ph->scattering_bias)[0] = 0;
         }
-
-
+        
+        
         //calculate the nonthermal tau
         for (i=i_start;i<N_GAMMA;i++)
         {
@@ -137,19 +137,35 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
             //fprintf(fPtr, "nonthermal_n_dens_lab_i: %e, subgroup_dens: %e, norm_cross_section: %e ith tau: %e, ith bias: %e\n", nonthermal_n_dens_lab_i, (hydro_data->electron_dens_subgroup)[i], *(norm_cross_section+(i+1)), (ph->optical_depths)[i+1], (ph->scattering_bias)[i+1] );
             //fflush(fPtr);
         }
-
+        
         tau=0;
         for (i=0;i<N_GAMMA+1;i++)
         {
             tau += ((ph->scattering_bias)[i]*(ph->optical_depths)[i]);
         }
         (ph->total_optical_depth) = tau;
-
+        
         //fprintf(fPtr, "total tau: %e\n", (ph->total_optical_depth) );
         //fflush(fPtr);
-
+        
     #endif
-
+    
+    /*
+     * SSA absorption coefficient  [RAIKOU Eq. C2]
+     * --------------------------------------------
+     * Store alpha_{nu_f}^(f) on the photon so that applySSAAbsorption in
+     * updatePhotonPosition can attenuate the weight continuously along the
+     * trajectory without re-evaluating the Bessel integrals every step.
+     *
+     * The coefficient is only meaningful for SYNCH_PHOTON packets; for all
+     * other types set it to zero so applySSAAbsorption is a no-op.
+     *
+     * The comoving frequency is reconstructed from comv_p0 [erg/c]:
+     *   nu_f = comv_p0 * C_LIGHT / PL_CONST
+     */
+    #if SYNCHROTRON_SWITCH == ON
+        calculateOpticalDepthSSA(ph, hydro_data, fPtr);
+    #endif
 }
 
 void getCrossSection(double photon_comv_e, double fluid_temp, double *cross_section, gsl_rng *rand, FILE *fPtr)

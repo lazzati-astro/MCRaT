@@ -216,33 +216,36 @@ typedef struct
 /* ── Function prototypes ───────────────────────────────────────────────────── */
 
 /* Universal table lifecycle */
-void   initSynchTables (SynchUniversalTables *tables, FILE *fPtr);
-void   freeSynchTables (SynchUniversalTables *tables);
+void   initSynchTables (FILE *fPtr);
+void   freeSynchTables (FILE *fPtr);
 
 /* Emission MC samplers */
-double synchSampleX            (const SynchUniversalTables *tables, double u);
-double synchSampleAlpha        (const SynchUniversalTables *tables, double u);
+double synchSampleX            ( double u);
+double synchSampleAlpha        ( double u);
 double synchSampleGammaEmission(gsl_rng *rand);
 
 /* Absorption coefficient  [RAIKOU Appendix C] */
 double synchAlphaNu(double nu_f,
                     double B,
                     double n_e_nth,
-                    const SynchUniversalTables *tables,
                     FILE *fPtr);
 
 /* SSA weight modification  [RAIKOU Eqs. 31, 40] */
+void calculateOpticalDepthSSA(struct photon          *ph,
+                               struct hydro_dataframe *hydro_data,
+                               FILE                   *fPtr);
+
+void applyabsorption(struct photon *ph, double dl);
+
 void applySynchSSAWeightModification(struct photon              *ph,
                                       double                      dl,
                                       double                      B_cell,
                                       double                      n_e_nth_cell,
-                                      const SynchUniversalTables *tables,
                                       FILE                       *fPtr);
 
 /* Stratified sampler lifecycle */
 void buildSynchCellStrata  (SynchCellStrata            *cs,
                              double                      B_cell,
-                             const SynchUniversalTables *tables,
                              gsl_rng                    *rand,
                              FILE                       *fPtr);
 void freeSynchCellStrata   (SynchCellStrata *cs);
@@ -256,7 +259,6 @@ int photonEmitSynch(struct photonList          *photon_list,
                     double                      theta_min,
                     double                      theta_max,
                     struct hydro_dataframe     *hydro_data,
-                    const SynchUniversalTables *tables,
                     gsl_rng                    *rand,
                     FILE                       *fPtr);
 

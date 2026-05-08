@@ -9,6 +9,14 @@
 
 #include "mcrat.h"
 
+/*
+ * File-scope SynchUniversalTables instance.
+ * Populated once by initSynchTables at startup (called from mcrat.c).
+ * All functions in this file access it directly — no pointer passing needed.
+ * Pattern mirrors global_interp_thermal_data in hot_x_section.c.
+ */
+static SynchUniversalTables synch_tables;
+static int synch_tables_initialized = 0;
 
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -200,7 +208,7 @@ static double computeGaAtX(double x,
  * (4) Inverse CDF of alpha ~ sin^2(alpha)  [G&S91 Sec. 2; R&L79 Sec. 6.2]
  *     CDF(alpha) = (alpha - sin(2*alpha)/2) / pi.
  */
-void initSynchTables(SynchUniversalTables *tables, FILE *fPtr)
+void initSynchTables(FILE *fPtr)
 {
     int i;
     fprintf(fPtr,
@@ -209,15 +217,15 @@ void initSynchTables(SynchUniversalTables *tables, FILE *fPtr)
     fflush(fPtr);
 
     /* ── Allocate arrays ──────────────────────────────────────────────────── */
-    tables->x_arr       = (double *)malloc(SYNCH_N_X * sizeof(double));
-    tables->F_arr       = (double *)malloc(SYNCH_N_X * sizeof(double));
-    tables->Ga_arr      = (double *)malloc(SYNCH_N_X * sizeof(double));
-    tables->Ga_arr_p1   = (double *)malloc(SYNCH_N_X * sizeof(double));
-    tables->Ga_arr_p2   = (double *)malloc(SYNCH_N_X * sizeof(double));
-    tables->inv_x_cdf_u    = (double *)malloc(SYNCH_N_X * sizeof(double));
-    tables->inv_x_cdf_logx = (double *)malloc(SYNCH_N_X * sizeof(double));
-    tables->inv_alpha_cdf_u     = (double *)malloc(SYNCH_N_X * sizeof(double));
-    tables->inv_alpha_cdf_alpha = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables->x_arr       = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables->F_arr       = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables->Ga_arr      = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables->Ga_arr_p1   = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables->Ga_arr_p2   = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables->inv_x_cdf_u    = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables->inv_x_cdf_logx = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables->inv_alpha_cdf_u     = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables->inv_alpha_cdf_alpha = (double *)malloc(SYNCH_N_X * sizeof(double));
 
     /* ── Log-spaced x grid ───────────────────────────────────────────────── */
     double log_x_min = log10(SYNCH_X_MIN);
@@ -225,7 +233,7 @@ void initSynchTables(SynchUniversalTables *tables, FILE *fPtr)
     for (i = 0; i < SYNCH_N_X; i++)
     {
         double t = (double)i / (SYNCH_N_X - 1);
-        tables->x_arr[i] = pow(10.0, log_x_min + t*(log_x_max - log_x_min));
+        synch_tables->x_arr[i] = pow(10.0, log_x_min + t*(log_x_max - log_x_min));
     }
 
     /* ── (1) F(x)  [RAIKOU Eq. B13] ─────────────────────────────────────── */
@@ -237,12 +245,12 @@ void initSynchTables(SynchUniversalTables *tables, FILE *fPtr)
     gsl_integration_workspace *ws = gsl_integration_workspace_alloc(1000);
 
     for (i = 0; i < SYNCH_N_X; i++)
-        tables->F_arr[i] = computeFatX(tables->x_arr[i], ws, fPtr);
+        synch_tables->F_arr[i] = computeFatX(synch_tables->x_arr[i], ws, fPtr);
 
-    tables->F_acc    = gsl_interp_accel_alloc();
-    tables->F_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-    gsl_spline_init(tables->F_spline,
-                    tables->x_arr, tables->F_arr, SYNCH_N_X);
+    synch_tables->F_acc    = gsl_interp_accel_alloc();
+    synch_tables->F_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+    gsl_spline_init(synch_tables->F_spline,
+                    synch_tables->x_arr, synch_tables->F_arr, SYNCH_N_X);
 
     /* ── (2) G_a(x)  [RAIKOU Eq. C3] ────────────────────────────────────── */
     fprintf(fPtr,
@@ -250,30 +258,30 @@ void initSynchTables(SynchUniversalTables *tables, FILE *fPtr)
             "[RAIKOU Eq. C3]...\n");
     fflush(fPtr);
 
-    tables->Ga_acc    = gsl_interp_accel_alloc();
-    tables->Ga_acc_p1 = gsl_interp_accel_alloc();
-    tables->Ga_acc_p2 = gsl_interp_accel_alloc();
+    synch_tables->Ga_acc    = gsl_interp_accel_alloc();
+    synch_tables->Ga_acc_p1 = gsl_interp_accel_alloc();
+    synch_tables->Ga_acc_p2 = gsl_interp_accel_alloc();
 
     #if NONTHERMAL_E_DIST == POWERLAW
 
         for (i = 0; i < SYNCH_N_X; i++)
-            tables->Ga_arr[i] = computeGaAtX(tables->x_arr[i],
+            synch_tables->Ga_arr[i] = computeGaAtX(synch_tables->x_arr[i],
                                               POWERLAW_INDEX,
-                                              tables->F_spline,
-                                              tables->F_acc,
+                                                   synch_tables->F_spline,
+                                                   synch_tables->F_acc,
                                               ws, fPtr);
 
         /* p1 / p2 arrays are unused for a single power law; zero-fill */
         for (i = 0; i < SYNCH_N_X; i++)
-            tables->Ga_arr_p1[i] = tables->Ga_arr_p2[i] = 0.0;
+            synch_tables->Ga_arr_p1[i] = synch_tables->Ga_arr_p2[i] = 0.0;
 
-        tables->Ga_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-        gsl_spline_init(tables->Ga_spline,
-                        tables->x_arr, tables->Ga_arr, SYNCH_N_X);
+        synch_tables->Ga_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+        gsl_spline_init(synch_tables->Ga_spline,
+                        synch_tables->x_arr, synch_tables->Ga_arr, SYNCH_N_X);
 
         /* Allocate p1/p2 splines as empty so freeSynchTables can always free */
-        tables->Ga_spline_p1 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-        tables->Ga_spline_p2 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+        synch_tables->Ga_spline_p1 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+        synch_tables->Ga_spline_p2 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
 
     #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
 
@@ -286,29 +294,29 @@ void initSynchTables(SynchUniversalTables *tables, FILE *fPtr)
          */
         for (i = 0; i < SYNCH_N_X; i++)
         {
-            tables->Ga_arr_p1[i] = computeGaAtX(tables->x_arr[i],
+            synch_tables->Ga_arr_p1[i] = computeGaAtX(synch_tables->x_arr[i],
                                                   POWERLAW_INDEX_1,
-                                                  tables->F_spline,
-                                                  tables->F_acc,
+                                                      synch_tables->F_spline,
+                                                      synch_tables->F_acc,
                                                   ws, fPtr);
-            tables->Ga_arr_p2[i] = computeGaAtX(tables->x_arr[i],
+            synch_tables->Ga_arr_p2[i] = computeGaAtX(synch_tables->x_arr[i],
                                                   POWERLAW_INDEX_2,
-                                                  tables->F_spline,
-                                                  tables->F_acc,
+                                                      synch_tables->F_spline,
+                                                      synch_tables->F_acc,
                                                   ws, fPtr);
-            tables->Ga_arr[i] = tables->Ga_arr_p1[i];
+            synch_tables->Ga_arr[i] = synch_tables->Ga_arr_p1[i];
         }
 
-        tables->Ga_spline    = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-        tables->Ga_spline_p1 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-        tables->Ga_spline_p2 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+        synch_tables->Ga_spline    = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+        synch_tables->Ga_spline_p1 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+        synch_tables->Ga_spline_p2 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
 
-        gsl_spline_init(tables->Ga_spline,
-                        tables->x_arr, tables->Ga_arr, SYNCH_N_X);
-        gsl_spline_init(tables->Ga_spline_p1,
-                        tables->x_arr, tables->Ga_arr_p1, SYNCH_N_X);
-        gsl_spline_init(tables->Ga_spline_p2,
-                        tables->x_arr, tables->Ga_arr_p2, SYNCH_N_X);
+        gsl_spline_init(synch_tables->Ga_spline,
+                        synch_tables->x_arr, synch_tables->Ga_arr, SYNCH_N_X);
+        gsl_spline_init(synch_tables->Ga_spline_p1,
+                        synch_tables->x_arr, synch_tables->Ga_arr_p1, SYNCH_N_X);
+        gsl_spline_init(synch_tables->Ga_spline_p2,
+                        synch_tables->x_arr, synch_tables->Ga_arr_p2, SYNCH_N_X);
 
     #endif
 
@@ -326,28 +334,28 @@ void initSynchTables(SynchUniversalTables *tables, FILE *fPtr)
         double  cum       = 0.0;
 
         for (i = 0; i < SYNCH_N_X; i++)
-            Fx_weight[i] = tables->F_arr[i] * tables->x_arr[i];
+            Fx_weight[i] = synch_tables->F_arr[i] * synch_tables->x_arr[i];
 
-        tables->inv_x_cdf_u[0]    = 0.0;
-        tables->inv_x_cdf_logx[0] = log10(tables->x_arr[0]);
+        synch_tables->inv_x_cdf_u[0]    = 0.0;
+        synch_tables->inv_x_cdf_logx[0] = log10(synch_tables->x_arr[0]);
         for (i = 1; i < SYNCH_N_X; i++)
         {
             cum += 0.5*(Fx_weight[i] + Fx_weight[i-1]) * dlog_x;
-            tables->inv_x_cdf_u[i]    = cum;
-            tables->inv_x_cdf_logx[i] = log10(tables->x_arr[i]);
+            synch_tables->inv_x_cdf_u[i]    = cum;
+            synch_tables->inv_x_cdf_logx[i] = log10(synch_tables->x_arr[i]);
         }
         for (i = 0; i < SYNCH_N_X; i++)
-            tables->inv_x_cdf_u[i] /= cum;
-        tables->inv_x_cdf_u[SYNCH_N_X - 1] = 1.0;
+            synch_tables->inv_x_cdf_u[i] /= cum;
+        synch_tables->inv_x_cdf_u[SYNCH_N_X - 1] = 1.0;
 
         free(Fx_weight);
     }
 
-    tables->inv_x_cdf_acc    = gsl_interp_accel_alloc();
-    tables->inv_x_cdf_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-    gsl_spline_init(tables->inv_x_cdf_spline,
-                    tables->inv_x_cdf_u,
-                    tables->inv_x_cdf_logx,
+    synch_tables->inv_x_cdf_acc    = gsl_interp_accel_alloc();
+    synch_tables->inv_x_cdf_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+    gsl_spline_init(synch_tables->inv_x_cdf_spline,
+                    synch_tables->inv_x_cdf_u,
+                    synch_tables->inv_x_cdf_logx,
                     SYNCH_N_X);
 
     /* ── (4) Inverse CDF of alpha ~ sin^2(alpha)  [G&S91 Sec. 2] ───────── */
@@ -364,20 +372,22 @@ void initSynchTables(SynchUniversalTables *tables, FILE *fPtr)
     for (i = 0; i < SYNCH_N_X; i++)
     {
         double alpha = M_PI * (double)i / (SYNCH_N_X - 1);
-        tables->inv_alpha_cdf_alpha[i] = alpha;
-        tables->inv_alpha_cdf_u[i]     = (alpha - 0.5*sin(2.0*alpha)) / M_PI;
+        synch_tables->inv_alpha_cdf_alpha[i] = alpha;
+        synch_tables->inv_alpha_cdf_u[i]     = (alpha - 0.5*sin(2.0*alpha)) / M_PI;
     }
-    tables->inv_alpha_cdf_u[SYNCH_N_X - 1] = 1.0;
+    synch_tables->inv_alpha_cdf_u[SYNCH_N_X - 1] = 1.0;
 
-    tables->inv_alpha_cdf_acc    = gsl_interp_accel_alloc();
-    tables->inv_alpha_cdf_spline = gsl_spline_alloc(gsl_interp_linear,
+    synch_tables->inv_alpha_cdf_acc    = gsl_interp_accel_alloc();
+    synch_tables->inv_alpha_cdf_spline = gsl_spline_alloc(gsl_interp_linear,
                                                       SYNCH_N_X);
-    gsl_spline_init(tables->inv_alpha_cdf_spline,
-                    tables->inv_alpha_cdf_u,
-                    tables->inv_alpha_cdf_alpha,
+    gsl_spline_init(synch_tables->inv_alpha_cdf_spline,
+                    synch_tables->inv_alpha_cdf_u,
+                    synch_tables->inv_alpha_cdf_alpha,
                     SYNCH_N_X);
 
     gsl_integration_workspace_free(ws);
+    
+    synch_tables_initialized = 1;
 
     fprintf(fPtr,
             ">> [initSynchTables] All universal tables ready.\n\n");
@@ -391,31 +401,60 @@ void initSynchTables(SynchUniversalTables *tables, FILE *fPtr)
  * Release all heap memory allocated by initSynchTables.
  * Must be called once at end of simulation.
  */
-void freeSynchTables(SynchUniversalTables *tables)
+void freeSynchTables(FILE *fPtr)
 {
-    free(tables->x_arr);
-    free(tables->F_arr);
-    free(tables->Ga_arr);
-    free(tables->Ga_arr_p1);
-    free(tables->Ga_arr_p2);
-    free(tables->inv_x_cdf_u);
-    free(tables->inv_x_cdf_logx);
-    free(tables->inv_alpha_cdf_u);
-    free(tables->inv_alpha_cdf_alpha);
+    if (!synch_tables_initialized)
+    {
+        fprintf(fPtr,
+                ">> [freeSynchTables] WARNING: called before initSynchTables "
+                "or already freed. No-op.\n");
+        fflush(fPtr);
+        return;
+    }
 
-    gsl_spline_free(tables->F_spline);
-    gsl_spline_free(tables->Ga_spline);
-    gsl_spline_free(tables->Ga_spline_p1);
-    gsl_spline_free(tables->Ga_spline_p2);
-    gsl_spline_free(tables->inv_x_cdf_spline);
-    gsl_spline_free(tables->inv_alpha_cdf_spline);
+    free(synch_tables->x_arr);
+    free(synch_tables->F_arr);
+    free(synch_tables->Ga_arr);
+    free(synch_tables->Ga_arr_p1);
+    free(synch_tables->Ga_arr_p2);
+    free(synch_tables->inv_x_cdf_u);
+    free(synch_tables->inv_x_cdf_logx);
+    free(synch_tables->inv_alpha_cdf_u);
+    free(synch_tables->inv_alpha_cdf_alpha);
 
-    gsl_interp_accel_free(tables->F_acc);
-    gsl_interp_accel_free(tables->Ga_acc);
-    gsl_interp_accel_free(tables->Ga_acc_p1);
-    gsl_interp_accel_free(tables->Ga_acc_p2);
-    gsl_interp_accel_free(tables->inv_x_cdf_acc);
-    gsl_interp_accel_free(tables->inv_alpha_cdf_acc);
+    gsl_spline_free(synch_tables->F_spline);
+    gsl_spline_free(synch_tables->Ga_spline);
+    gsl_spline_free(synch_tables->Ga_spline_p1);
+    gsl_spline_free(synch_tables->Ga_spline_p2);
+    gsl_spline_free(synch_tables->inv_x_cdf_spline);
+    gsl_spline_free(synch_tables->inv_alpha_cdf_spline);
+
+    gsl_interp_accel_free(synch_tables->F_acc);
+    gsl_interp_accel_free(synch_tables->Ga_acc);
+    gsl_interp_accel_free(synch_tables->Ga_acc_p1);
+    gsl_interp_accel_free(synch_tables->Ga_acc_p2);
+    gsl_interp_accel_free(synch_tables->inv_x_cdf_acc);
+    gsl_interp_accel_free(synch_tables->inv_alpha_cdf_acc);
+}
+
+/*
+ * getSynchTables
+ * --------------
+ * Return a const pointer to the file-scope synch_tables for use by
+ * functions in this translation unit. Exits if called before
+ * initSynchTables.
+ */
+static const SynchUniversalTables *getSynchTables(FILE *fPtr)
+{
+    if (!synch_tables_initialized)
+    {
+        fprintf(fPtr,
+                ">> [getSynchTables] FATAL: synch_tables accessed before "
+                "initSynchTables was called.\n");
+        fflush(fPtr);
+        exit(1);
+    }
+    return &synch_tables;
 }
 
 
@@ -440,8 +479,10 @@ void freeSynchTables(SynchUniversalTables *tables)
  *
  * Returns x > 0.
  */
-double synchSampleX(const SynchUniversalTables *tables, double u)
+double synchSampleX(double u)
 {
+    const SynchUniversalTables *tables = getSynchTables(fPtr);
+    
     double u_lo = tables->inv_x_cdf_u[0];
     double u_hi = tables->inv_x_cdf_u[SYNCH_N_X - 1];
     if (u < u_lo + 1e-12) u = u_lo + 1e-12;
@@ -469,8 +510,10 @@ double synchSampleX(const SynchUniversalTables *tables, double u)
  *
  * Returns alpha in (0, pi).
  */
-double synchSampleAlpha(const SynchUniversalTables *tables, double u)
+double synchSampleAlpha(double u)
 {
+    const SynchUniversalTables *tables = getSynchTables(fPtr);
+    
     double u_lo = tables->inv_alpha_cdf_u[0];
     double u_hi = tables->inv_alpha_cdf_u[SYNCH_N_X - 1];
     if (u < u_lo + 1e-12) u = u_lo + 1e-12;
@@ -668,9 +711,10 @@ static inline double evalGa(double x,
 double synchAlphaNu(double nu_f,
                     double B,
                     double n_e_nth,
-                    const SynchUniversalTables *tables,
                     FILE *fPtr)
 {
+    const SynchUniversalTables *tables = getSynchTables(fPtr);
+    
     if (nu_f <= 0.0 || B <= 0.0 || n_e_nth <= 0.0) return 0.0;
 
     /*
@@ -819,11 +863,114 @@ double synchAlphaNu(double nu_f,
 }
 
 
+
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* SECTION 6 — SSA WEIGHT MODIFICATION                                         */
 /* RAIKOU Eqs. 31, 37, 40                                                      */
 /* ═══════════════════════════════════════════════════════════════════════════ */
+/*
+ * applySSAAbsorption
+ * ------------------
+ * Apply continuous SSA weight attenuation over a lab-frame step of length
+ * dl [cm]:
+ *
+ *   w_new = w_old * exp(-ssa_abs_coeff * dl)     [RAIKOU Eq. 40]
+ *
+ * The ssa_abs_coeff was set by calculateOpticalDepth using the fluid-frame
+ * opacity evaluated at the photon's comoving frequency and the local B and
+ * n_e_nth [RAIKOU Eq. C2].
+ *
+ * Note: no Doppler factor (nu_f / nu_z) is applied here because dl is
+ * already the lab-frame path length and the coeff was computed in the
+ * fluid frame. The two frame corrections cancel for the weight update when
+ * the medium is non-relativistic; for relativistic flows the full RAIKOU
+ * Eq. 31 correction should be applied in calculateOpticalDepth instead.
+ *
+ * Parameters
+ * ----------
+ * ph : photon packet (modified in-place)
+ * dl : lab-frame step length [cm]; must be >= 0
+ */
+void applyabsorption(struct photon *ph, double dl)
+{
+    #if SYNCHROTRON_SWITCH == ON
+        if (ph == NULL)             return;
+        if (dl <= 0.0)              return;
+        if (ph->ssa_abs_coeff <= 0.0) return;
 
+        double tau = ph->abs_optical_depth * dl;
+
+        /* Guard against exp underflow for very large optical depths */
+        if (tau > 700.0)
+        {
+            ph->weight = 0.0;
+            return;
+        }
+
+        ph->weight *= exp(-tau);
+    #else
+        (void)ph;
+        (void)dl;
+    #endif
+}
+
+/*
+ * calculateOpticalDepthSSA
+ * ------------------------
+ * Compute the SSA absorption coefficient alpha_{nu_f}^(f) [cm^{-1}] for
+ * the photon's current cell and store it in ph->abs_optical_depth.
+ *
+ * Called from calculateOpticalDepth in optical_depth.c whenever
+ * recalc_properties == 1, i.e. on the same trigger that refreshes the
+ * scattering optical depth. Uses the file-scope synch_tables global
+ * directly — no pointer passing needed, matching the hot_x_section.c
+ * pattern.
+ *
+ * Only acts on SYNCH_PHOTON packets in cells where B > 0 and n_e_nth > 0.
+ * For all other photon types abs_optical_depth is set to 0.0 so that
+ * applyabsorption is a no-op.
+ *
+ * Parameters
+ * ----------
+ * ph         : photon packet (ph->abs_optical_depth modified in-place)
+ * hydro_data : hydro frame (provides B and nonthermal_dens)
+ * fPtr       : log file
+ */
+void calculateOpticalDepthSSA(struct photon          *ph,
+                               struct hydro_dataframe *hydro_data,
+                               FILE                   *fPtr)
+{
+    #if SYNCHROTRON_SWITCH == ON
+
+    ph->abs_optical_depth = 0.0;
+
+    if (ph->type != SYNCH_PHOTON)
+        return;
+
+    int ci = ph->nearest_block_index;
+    if (ci < 0)
+        return;
+
+    double B_cell  = getMagneticFieldMagnitude(hydro_data, ci);
+    double n_e_nth = (hydro_data->nonthermal_dens)[ci];
+
+    if (B_cell <= 0.0 || n_e_nth <= 0.0)
+        return;
+
+    /*
+     * Recover comoving frequency from comv_p0 [erg/c]:
+     *   nu_f = comv_p0 * C_LIGHT / PL_CONST
+     */
+    double nu_f = ph->comv_p0 * C_LIGHT / PL_CONST;
+
+    ph->abs_optical_depth = synchAlphaNu(nu_f, B_cell, n_e_nth, fPtr);
+
+    #else
+    (void)ph;
+    (void)hydro_data;
+    (void)fPtr;
+    #endif
+}
 /*
  * applySynchSSAWeightModification
  * --------------------------------
@@ -862,9 +1009,10 @@ void applySynchSSAWeightModification(struct photon              *ph,
                                       double                      dl,
                                       double                      B_cell,
                                       double                      n_e_nth_cell,
-                                      const SynchUniversalTables *tables,
                                       FILE                       *fPtr)
 {
+    const SynchUniversalTables *tables = getSynchTables(fPtr);
+    
     if (dl <= 0.0 || B_cell <= 0.0 || n_e_nth_cell <= 0.0) return;
 
     /*
@@ -911,10 +1059,11 @@ void applySynchSSAWeightModification(struct photon              *ph,
  * synchNaturalNu  — unchanged from previously approved version.
  * See Section 7 documentation above.
  */
-static double synchNaturalNu(const SynchUniversalTables *tables,
-                               double                      B_cell,
+static double synchNaturalNu(double                      B_cell,
                                gsl_rng                    *rand)
 {
+    const SynchUniversalTables *tables = getSynchTables(fPtr);
+    
     double x      = synchSampleX(tables, gsl_rng_uniform_pos(rand));
     double alpha  = synchSampleAlpha(tables, gsl_rng_uniform_pos(rand));
     double gamma_e;
@@ -959,10 +1108,11 @@ static double synchNaturalNu(const SynchUniversalTables *tables,
  */
 void buildSynchCellStrata(SynchCellStrata            *cs,
                            double                      B_cell,
-                           const SynchUniversalTables *tables,
                            gsl_rng                    *rand,
                            FILE                       *fPtr)
 {
+    const SynchUniversalTables *tables = getSynchTables(fPtr);
+    
     int i, k;
 
     cs->B_cell = B_cell;
@@ -1263,7 +1413,14 @@ static void synchFillPhoton(struct photon          *ph,
             }
         }
     #endif
+    
+    #if SYNCHROTRON_SWITCH == ON
+        ph->abs_optical_depth=0.0; //this holds the opacity for synchrotron absorption (multiply by path length to get optical depth when modifying the weight correspondent with synchrotron self absorption
+    #endif
+
 }
+
+
 
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -1324,7 +1481,6 @@ static void emitCellPackets(int                         ci,
                               struct photon              *ph_emit,
                               int                        *idx_ptr,
                               struct hydro_dataframe     *hydro_data,
-                              const SynchUniversalTables *tables,
                               gsl_rng                    *rand,
                               FILE                       *fPtr)
 {
@@ -1332,6 +1488,7 @@ static void emitCellPackets(int                         ci,
     double B_cell  = getMagneticFieldMagnitude(hydro_data, ci);
     double n_e_nth = (hydro_data->nonthermal_dens)[ci];
     double dl_birth = 0.5 * (hydro_data->r0_size)[ci];
+    const SynchUniversalTables *tables = getSynchTables(fPtr);
 
     /*
      * Determine whether the normal stratified path is available.
@@ -1382,9 +1539,9 @@ static void emitCellPackets(int                         ci,
         {
             synchFillPhoton(&ph_emit[*idx_ptr], ci, nu_fallback,
                              ph_weight_adjusted, hydro_data, rand, fPtr);
-            applySynchSSAWeightModification(&ph_emit[*idx_ptr],
-                                            dl_birth, B_cell, n_e_nth,
-                                            tables, fPtr);
+            //applySynchSSAWeightModification(&ph_emit[*idx_ptr],
+            //                                dl_birth, B_cell, n_e_nth,
+            //                               tables, fPtr);
             (*idx_ptr)++;
         }
     }
@@ -1544,10 +1701,10 @@ static void emitCellPackets(int                         ci,
                          * from a uniformly distributed birth point to the
                          * nearest cell boundary.
                          */
-                        applySynchSSAWeightModification(&ph_emit[*idx_ptr],
-                                                        dl_birth,
-                                                        B_cell, n_e_nth,
-                                                        tables, fPtr);
+                        //applySynchSSAWeightModification(&ph_emit[*idx_ptr],
+                        //                                dl_birth,
+                        //                                B_cell, n_e_nth,
+                        //                                tables, fPtr);
                         (*idx_ptr)++;
                     }
                 }
