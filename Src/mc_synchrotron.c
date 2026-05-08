@@ -7,14 +7,8 @@
  * See mc_synchrotron.h for the physics overview and equation references.
  */
 
-#include "mc_synchrotron.h"
-#include "electron.h"
-#include "mc_cyclosynch.h"
-#include "geometry.h"
-#include "photons.h"
+#include "mcrat.h"
 
-#include <string.h>
-#include <float.h>
 
 
 /* ═══════════════════════════════════════════════════════════════════════════ */

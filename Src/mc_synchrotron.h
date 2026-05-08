@@ -70,8 +70,6 @@
 #ifndef MC_SYNCHROTRON_H
 #define MC_SYNCHROTRON_H
 
-#include "mcrat.h"
-
 /* ── Table dimensions ──────────────────────────────────────────────────────── */
 
 /*

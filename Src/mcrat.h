@@ -286,6 +286,7 @@ struct hydro_dataframe
 #include "mclib_pluto.h"
 #include "mclib_flash.h"
 #include "mc_cyclosynch.h"
+#include "mc_synchrotron.h"
 #include "mcrat_scattering.h"
 #include "mcrat_io.h"
 #include "analytic_outflows.h"
