@@ -449,15 +449,17 @@ static const SynchUniversalTables *getSynchTables(FILE *fPtr)
 {
     if (!synch_tables_initialized)
     {
-        fprintf(fPtr,
-                ">> [getSynchTables] FATAL: synch_tables accessed before "
-                "initSynchTables was called.\n");
-        fflush(fPtr);
+        if (fPtr != NULL)
+        {
+            fprintf(fPtr,
+                    ">> [getSynchTables] FATAL: synch_tables accessed before "
+                    "initSynchTables was called.\n");
+            fflush(fPtr);
+        }
         exit(1);
     }
     return &synch_tables;
 }
-
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* SECTION 4 — EMISSION MONTE CARLO SAMPLERS                                  */
@@ -482,7 +484,7 @@ static const SynchUniversalTables *getSynchTables(FILE *fPtr)
  */
 double synchSampleX(double u)
 {
-    const SynchUniversalTables *tables = getSynchTables(fPtr);
+    const SynchUniversalTables *tables = getSynchTables(NULL);
     
     double u_lo = tables->inv_x_cdf_u[0];
     double u_hi = tables->inv_x_cdf_u[SYNCH_N_X - 1];
@@ -513,7 +515,7 @@ double synchSampleX(double u)
  */
 double synchSampleAlpha(double u)
 {
-    const SynchUniversalTables *tables = getSynchTables(fPtr);
+    const SynchUniversalTables *tables = getSynchTables(NULL);
     
     double u_lo = tables->inv_alpha_cdf_u[0];
     double u_hi = tables->inv_alpha_cdf_u[SYNCH_N_X - 1];
@@ -1063,10 +1065,9 @@ void applySynchSSAWeightModification(struct photon              *ph,
 static double synchNaturalNu(double                      B_cell,
                                gsl_rng                    *rand)
 {
-    const SynchUniversalTables *tables = getSynchTables(fPtr);
     
-    double x      = synchSampleX(tables, gsl_rng_uniform_pos(rand));
-    double alpha  = synchSampleAlpha(tables, gsl_rng_uniform_pos(rand));
+    double x      = synchSampleX(gsl_rng_uniform_pos(rand));
+    double alpha  = synchSampleAlpha(gsl_rng_uniform_pos(rand));
     double gamma_e;
 
     #if NONTHERMAL_E_DIST == POWERLAW
