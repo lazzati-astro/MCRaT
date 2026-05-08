@@ -1576,10 +1576,7 @@ static void emitCellPackets(int                         ci,
                         synchFillPhoton(&ph_emit[*idx_ptr], ci, nu_fallback,
                                          ph_weight_adjusted,
                                          hydro_data, rand, fPtr);
-                        applySynchSSAWeightModification(&ph_emit[*idx_ptr],
-                                                        dl_birth,
-                                                        B_cell, n_e_nth,
-                                                        tables, fPtr);
+                        
                         (*idx_ptr)++;
                     }
                 }
