@@ -463,32 +463,78 @@ void initSynchTables(FILE *fPtr)
         double *Fx_weight = (double *)malloc(SYNCH_N_X * sizeof(double));
         double  dlog_x    = (log_x_max - log_x_min) / (SYNCH_N_X - 1);
         double  cum       = 0.0;
+        int     n_cdf     = SYNCH_N_X;
+        int     i;
 
         for (i = 0; i < SYNCH_N_X; i++)
             Fx_weight[i] = synch_tables.F_arr[i] * synch_tables.x_arr[i];
 
-        synch_tables.inv_x_cdf_u[0]    = 0.0;
+        /* ── Build unnormalised cumulative sum ───────────────────────────── */
         synch_tables.inv_x_cdf_logx[0] = log10(synch_tables.x_arr[0]);
+        synch_tables.inv_x_cdf_u[0]    = 0.0;   /* placeholder; overwritten below */
+
         for (i = 1; i < SYNCH_N_X; i++)
         {
             cum += 0.5*(Fx_weight[i] + Fx_weight[i-1]) * dlog_x;
             synch_tables.inv_x_cdf_u[i]    = cum;
             synch_tables.inv_x_cdf_logx[i] = log10(synch_tables.x_arr[i]);
         }
+
+        /* ── Normalise to [0, 1] ─────────────────────────────────────────── */
         for (i = 0; i < SYNCH_N_X; i++)
             synch_tables.inv_x_cdf_u[i] /= cum;
         synch_tables.inv_x_cdf_u[SYNCH_N_X - 1] = 1.0;
 
+        /*
+         * Transform to log-complementary space:
+         *
+         *   v[i] = -log10(1 - u[i])
+         *
+         * u[i] -> 1 as F(x) -> 0, so (1-u[i]) -> 0 and v[i] -> +inf.
+         * Unlike u[i], consecutive v[i] values remain strictly increasing
+         * even deep in the tail where u[i] rounds to 1.0 in double precision.
+         *
+         * We find the last index where (1 - u[i]) > 0 in double precision
+         * and truncate there; everything beyond is unsamplable anyway since
+         * F(x) = 0 to machine precision.
+         *
+         * The first point u[0]=0 gives v[0]=0; the last valid point is
+         * capped at v = -log10(DBL_MIN) ~ 307.
+         */
+        n_cdf = 1;   /* always keep first point */
+        for (i = 1; i < SYNCH_N_X; i++)
+        {
+            double complement = 1.0 - synch_tables.inv_x_cdf_u[i];
+
+            if (complement <= 0.0)
+                break;   /* underflowed — stop here */
+
+            synch_tables.inv_x_cdf_u[i] = -log10(complement);   /* v[i] */
+            n_cdf = i + 1;
+        }
+        /* First point: u[0]=0, complement=1, -log10(1)=0 */
+        synch_tables.inv_x_cdf_u[0] = 0.0;
+
+        fprintf(fPtr,
+                ">> [initSynchTables] CDF spline: %d / %d points used "
+                "(v_max = %.4e, x_max = %.4e).\n",
+                n_cdf, SYNCH_N_X,
+                synch_tables.inv_x_cdf_u[n_cdf - 1],
+                synch_tables.x_arr[n_cdf - 1]);
+        fflush(fPtr);
+
         free(Fx_weight);
+
+        /* Build spline: v -> log10(x), strictly increasing in both axes */
+        synch_tables.inv_x_cdf_acc    = NULL;
+        synch_tables.inv_x_cdf_spline = gsl_spline_alloc(gsl_interp_linear,
+                                                          n_cdf);
+        gsl_spline_init(synch_tables.inv_x_cdf_spline,
+                        synch_tables.inv_x_cdf_u,    /* v values (abscissa) */
+                        synch_tables.inv_x_cdf_logx, /* log10(x) (ordinate) */
+                        n_cdf);
     }
-
-    synch_tables.inv_x_cdf_acc    = NULL;
-    synch_tables.inv_x_cdf_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-    gsl_spline_init(synch_tables.inv_x_cdf_spline,
-                    synch_tables.inv_x_cdf_u,
-                    synch_tables.inv_x_cdf_logx,
-                    SYNCH_N_X);
-
+    
     /* ── (4) Inverse CDF of alpha ~ sin^2(alpha)  [G&S91 Sec. 2] ───────── */
     /*
      * The isotropic pitch-angle distribution is
@@ -628,10 +674,30 @@ double synchSampleX(double u)
 {
     const SynchUniversalTables *tables = getSynchTables(NULL);
     SynchThreadAccel *ta = getSynchAccel();
-    return pow(10.0, gsl_spline_eval(tables->inv_x_cdf_spline, u,
+
+    /*
+     * The CDF spline is stored in log-complementary space:
+     *   abscissa  v = -log10(1 - u_cdf)
+     *   ordinate  log10(x)
+     *
+     * Given a uniform variate u in (0,1), compute v = -log10(1-u)
+     * and evaluate the spline.
+     *
+     * Clamp v to the valid spline range [v_lo, v_hi].
+     */
+    if (u <= 0.0) u = 1e-14;
+    if (u >= 1.0) u = 1.0 - 1e-14;
+
+    double v    = -log10(1.0 - u);
+    double v_lo = tables->inv_x_cdf_u[0];
+    double v_hi = tables->inv_x_cdf_u[tables->inv_x_cdf_spline->size - 1];
+
+    if (v < v_lo) v = v_lo;
+    if (v > v_hi) v = v_hi;
+
+    return pow(10.0, gsl_spline_eval(tables->inv_x_cdf_spline, v,
                                       ta->inv_x_cdf_acc));
 }
-
 
 /*
  * synchSampleAlpha
