@@ -121,7 +121,7 @@ void addToPhotonList(struct photonList *photon_list, struct photon *ph, size_t n
         else
         {
             //take care of the case where doubling the memory is not enough
-            new_capacity = photon_list->list_capacity * (num_photons/photon_list->list_capacity) ;
+            new_capacity = photon_list->list_capacity * (double) ceil((double) (photon_list->list_capacity + num_photons)/ (double) photon_list->list_capacity) ;
         }
         reallocatePhotonListMemory(photon_list, new_capacity);
     }
