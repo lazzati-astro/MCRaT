@@ -26,6 +26,27 @@
  *   nu_c  = 3 e B / (4 pi me c)  (pitch-angle averaged)  [RAIKOU Eq. B7]
  *   x     = nu_f / (gamma_e^2 nu_c)
  *
+ * FREQUENCY SAMPLING — UNIVERSAL CDF
+ * ------------------------------------
+ * The photon-number emissivity per unit log-frequency is:
+ *
+ *   dN/d(ln nu) propto integral gamma^{1-p} F(nu/(gamma^2 nu_c)) d(ln gamma)
+ *
+ * Substituting the dimensionless frequency nu_tilde = nu / nu_c:
+ *
+ *   dN/d(ln nu_tilde) propto integral gamma^{1-p} F(nu_tilde/gamma^2) d(ln gamma)
+ *
+ * The magnetic field B has disappeared completely. The CDF shape depends
+ * only on p, gamma_min, gamma_max — all compile-time constants. A single
+ * universal CDF in nu_tilde is therefore built once at initialisation inside
+ * initSynchTables. At emission time the physical frequency is recovered as:
+ *
+ *   nu_f = nu_tilde * nu_c(B_cell)   where nu_c = 3 e B / (4 pi me c)
+ *
+ * This eliminates the per-cell numerical integration that was previously
+ * required, reducing the cost from O(N_cells * N_nu * N_gamma) per emission
+ * epoch to O(1) per photon.
+ *
  * ABSORPTION
  * ----------
  * The SSA absorption coefficient in the fluid rest frame for a single
@@ -46,7 +67,7 @@
  * G_a(x) depends on p and x = nu/(nu_c * gamma^2) but NOT on B or nu_f
  * individually. A single 1D table of G_a(x) therefore serves all cells,
  * with B and n_e entering analytically through the RAIKOU Eq. C2 prefactor
- * at runtime. This is the RAIKOU analytic approach described in Appendix C.
+ * at runtime.
  *
  * WEIGHT MODIFICATION
  * -------------------
@@ -70,7 +91,10 @@
 #ifndef MC_SYNCHROTRON_H
 #define MC_SYNCHROTRON_H
 
-/* ── Table dimensions ──────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────────
+ * TABLE DIMENSIONS
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 
 /*
  * Number of log-spaced points in the universal x-grid used for both F(x)
@@ -88,149 +112,180 @@
 #define SYNCH_X_MAX      50.0
 
 /*
- * Number of log-frequency strata for stratified importance sampling.
- * One stratum per decade of frequency, spanning nu_c(gamma_min) to
- * nu_c(gamma_max).
+ * Number of log-spaced points in the universal dimensionless-frequency
+ * (nu_tilde = nu/nu_c) grid used to build the photon-number CDF.
+ * 2000 points gives sub-percent interpolation error across the full dynamic
+ * range [SYNCH_X_MIN * GAMMA_MIN^2, SYNCH_X_MAX * GAMMA_MAX^2].
  */
-#define SYNCH_N_STRATA   10
+#define SYNCH_N_NU        2000
 
 /*
- * Number of photons in the reference sample used to measure stratum
- * probabilities in buildSynchCellStrata. 500000 gives estimates
- * accurate to ~0.1%.
+ * Number of log-gamma integration points used in the trapezoid rule over
+ * the electron distribution when building the universal nu_tilde CDF.
+ * 300 points gives < 0.1% error on a power-law integrand.
  */
-#define SYNCH_N_REF      500000
+#define SYNCH_N_GAMMA_INT  300
 
 /*
- * Number of fine-grained bins in the marginal CDF of log10(nu_f) stored
- * inside SynchStratifiedParams.
+ * Number of equal log-nu_tilde strata used for stratified frequency
+ * sampling. Each stratum receives an equal number of photon packets;
+ * the importance weight w_k = w_0 * p_k * K corrects for the forced
+ * equal allocation. ~1 stratum per decade of frequency is recommended.
  */
-#define SYNCH_N_CDF_BINS 1000
-
-/*
- * Minimum stratum probability below which the stratum is skipped during
- * photon emission.
- */
-#define SYNCH_P_MIN      1e-7
+#define SYNCH_N_STRATA      20
 
 
-/* ── Universal spectral tables ─────────────────────────────────────────────── */
-
-/*
+/* ─────────────────────────────────────────────────────────────────────────────
+ * UNIVERSAL SPECTRAL TABLES
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
  * SynchUniversalTables
  * --------------------
- * All spectral functions that depend only on the dimensionless frequency
- * ratio x = nu / (gamma^2 nu_c), built once at initialisation and shared
- * across all cells and photons.
+ * All spectral quantities that depend only on compile-time constants
+ * (p, gamma_min, gamma_max) or the dimensionless ratio x = nu/(gamma^2 nu_c).
+ * Built once by initSynchTables at startup and shared read-only across all
+ * cells, photons, and OpenMP threads.
  *
- * F(x)    : synchrotron spectral function  [RAIKOU Eq. B13]
- * G_a(x)  : absorption spectral integral  [RAIKOU Eq. C3]
- *            For a single power law one G_a table is built with POWERLAW_INDEX.
- *            For a broken power law two tables are built: one with
- *            POWERLAW_INDEX_1 (Ga_spline_p1) and one with POWERLAW_INDEX_2
- *            (Ga_spline_p2), matching the two segment contributions in
- *            RAIKOU Eq. C4.
+ * Thread safety
+ * -------------
+ * The splines themselves are read-only after initSynchTables returns.
+ * The mutable gsl_interp_accel search caches are NOT stored here — they
+ * live in a per-thread SynchThreadAccel array inside mc_synchrotron.c.
  *
- * Inverse CDF of x ~ F(x)*x d(log x): used to sample x for emission
- *   [G&S91 Sec. 2; R&L79 Eq. 6.36]
+ * Members
+ * -------
+ * x_arr / F_arr / F_spline
+ *   Log-spaced x-grid and the synchrotron spectral function F(x)
+ *   [RAIKOU Eq. B13] evaluated on it.
  *
- * Inverse CDF of alpha ~ sin^2(alpha): used to sample pitch angle
- *   [G&S91 Sec. 2; R&L79 Sec. 6.2]
+ * Ga_arr / Ga_arr_p1 / Ga_arr_p2
+ *   G_a(x; p) [RAIKOU Eq. C3] evaluated on x_arr.
+ *   For POWERLAW:      Ga_arr holds G_a at POWERLAW_INDEX.
+ *   For BROKENPOWERLAW: Ga_arr_p1 holds G_a at POWERLAW_INDEX_1,
+ *                       Ga_arr_p2 holds G_a at POWERLAW_INDEX_2,
+ *                       Ga_arr is an alias for Ga_arr_p1.
+ *   Ga_spline / Ga_spline_p1 / Ga_spline_p2 are the corresponding splines.
+ *
+ * inv_x_cdf_u / inv_x_cdf_logx / inv_x_cdf_spline
+ *   Inverse CDF of x ~ F(x)*x d(log x), stored in log-complementary space
+ *   v = -log10(1-u) for numerical stability near u -> 1. Used to sample
+ *   the single-electron emission x directly [G&S91 Sec. 2; R&L79 Eq. 6.36].
+ *
+ * inv_alpha_cdf_u / inv_alpha_cdf_alpha / inv_alpha_cdf_spline
+ *   Inverse CDF of the isotropic pitch-angle distribution
+ *   f(alpha) = (2/pi) sin^2(alpha) [G&S91 Sec. 2; R&L79 Sec. 6.2].
+ *
+ * nu_cdf_u / nu_cdf_log_nu_tilde / n_nu_cdf
+ *   Universal photon-number CDF in nu_tilde = nu/nu_c space. Stores only
+ *   strictly-increasing (u, log10(nu_tilde)) pairs. At emission time the
+ *   physical frequency is nu_f = 10^(sampled log10(nu_tilde)) * nu_c(B_cell).
+ *
+ * strata_log_nu_tilde_edges / strata_cdf_lo / strata_cdf_hi / strata_p_k
+ *   Stratified sampling parameters. The nu_tilde range is divided into
+ *   SYNCH_N_STRATA equal log intervals. strata_p_k[k] is the fraction of
+ *   the total photon-number spectrum that falls in stratum k, used as the
+ *   importance weight correction w_k = w_0 * p_k * SYNCH_N_STRATA.
  */
 typedef struct
 {
-    /* Shared x-grid */
-    double  *x_arr;              /* [SYNCH_N_X] log-spaced x values          */
+    /* ── x-grid ────────────────────────────────────────────────────────── */
+    double  *x_arr;                  /* [SYNCH_N_X] log-spaced x values     */
 
-    /* F(x)  [RAIKOU Eq. B13] */
-    double  *F_arr;              /* [SYNCH_N_X] F(x) values                  */
-    gsl_spline       *F_spline;
-    gsl_interp_accel *F_acc;
+    /* ── F(x)  [RAIKOU Eq. B13] ────────────────────────────────────────── */
+    double  *F_arr;                  /* [SYNCH_N_X] F(x) values             */
+    gsl_spline *F_spline;
 
-    /* G_a(x; p)  [RAIKOU Eq. C3] */
-    double  *Ga_arr;             /* [SYNCH_N_X]  single PL or alias for p1   */
-    double  *Ga_arr_p1;          /* [SYNCH_N_X]  broken PL low segment       */
-    double  *Ga_arr_p2;          /* [SYNCH_N_X]  broken PL high segment      */
-    gsl_spline       *Ga_spline;
-    gsl_spline       *Ga_spline_p1;
-    gsl_spline       *Ga_spline_p2;
-    gsl_interp_accel *Ga_acc;
-    gsl_interp_accel *Ga_acc_p1;
-    gsl_interp_accel *Ga_acc_p2;
+    /* ── G_a(x; p)  [RAIKOU Eq. C3] ────────────────────────────────────── */
+    double  *Ga_arr;                 /* single PL, or alias for Ga_arr_p1   */
+    double  *Ga_arr_p1;              /* broken PL low-energy segment        */
+    double  *Ga_arr_p2;              /* broken PL high-energy segment       */
+    gsl_spline *Ga_spline;
+    gsl_spline *Ga_spline_p1;
+    gsl_spline *Ga_spline_p2;
 
-    /* Inverse CDF of x ~ F(x)*x  (emission x sampler)  [G&S91 Sec. 2] */
-    double  *inv_x_cdf_u;        /* [SYNCH_N_X] CDF values u in [0,1]        */
-    double  *inv_x_cdf_logx;     /* [SYNCH_N_X] corresponding log10(x)       */
-    gsl_spline       *inv_x_cdf_spline;
-    gsl_interp_accel *inv_x_cdf_acc;
+    /* ── Inverse CDF of x ~ F(x)*x  [G&S91 Sec. 2] ─────────────────────── */
+    double  *inv_x_cdf_u;            /* v = -log10(1-u) values              */
+    double  *inv_x_cdf_logx;         /* corresponding log10(x)              */
+    gsl_spline *inv_x_cdf_spline;
 
-    /* Inverse CDF of alpha ~ sin^2(alpha) (pitch-angle sampler)         */
-    double  *inv_alpha_cdf_u;    /* [SYNCH_N_X] CDF values u in [0,1]        */
-    double  *inv_alpha_cdf_alpha;/* [SYNCH_N_X] corresponding alpha in [0,pi]*/
-    gsl_spline       *inv_alpha_cdf_spline;
-    gsl_interp_accel *inv_alpha_cdf_acc;
+    /* ── Inverse CDF of alpha ~ sin^2(alpha)  [G&S91 Sec. 2] ───────────── */
+    double  *inv_alpha_cdf_u;        /* u in [0,1]                          */
+    double  *inv_alpha_cdf_alpha;    /* corresponding alpha in [0, pi]      */
+    gsl_spline *inv_alpha_cdf_spline;
+
+    /* ── Universal photon-number CDF in nu_tilde space ──────────────────── */
+    double   nu_cdf_u           [SYNCH_N_NU]; /* u in [0,1]                 */
+    double   nu_cdf_log_nu_tilde[SYNCH_N_NU]; /* log10(nu_tilde)            */
+    int      n_nu_cdf;                        /* number of valid CDF points */
+
+    /* ── Stratified sampling boundaries ─────────────────────────────────── */
+    double   strata_log_nu_tilde_edges[SYNCH_N_STRATA + 1]; /* log10(nu_tilde) edges  */
+    double   strata_cdf_lo            [SYNCH_N_STRATA];     /* CDF at lower edge      */
+    double   strata_cdf_hi            [SYNCH_N_STRATA];     /* CDF at upper edge      */
+    double   strata_p_k               [SYNCH_N_STRATA];     /* = cdf_hi - cdf_lo      */
 
 } SynchUniversalTables;
 
 
-/* ── Stratified frequency sampler parameters ───────────────────────────────── */
-
-/*
- * SynchCellStrata
- * ---------------
- * Precomputed conditional frequency sampling parameters for a single fluid
- * cell, built from that cell's own magnetic field B_cell.
- *
- * For a cell with critical frequency nu_c = 3 e B_cell / (4 pi me c)
- * [RAIKOU Eq. B7], the natural synchrotron emission spectrum spans
- * [nu_c * gamma_min^2, nu_c * gamma_max^2]. This range is divided into
- * SYNCH_N_STRATA equal log-frequency intervals (strata). The probability
- * p_k that a naturally emitted photon falls in stratum k is measured from
- * a reference sample of SYNCH_N_REF draws using synchNaturalNu at B_cell.
- *
- * During emission, n_cell photons are divided equally across active strata.
- * Each photon in stratum k carries the importance weight correction
- *   w_k = p_k * SYNCH_N_STRATA
- * so the weighted spectrum recovers RAIKOU Eq. B11 for this cell's B_cell.
- *
- * The inverse marginal CDF spline maps u in [0,1] -> log10(nu_f) and is
- * used to sample nu_f within a stratum without rejection.
+/* ─────────────────────────────────────────────────────────────────────────────
+ * FUNCTION PROTOTYPES
+ * ─────────────────────────────────────────────────────────────────────────────
  */
-typedef struct
-{
-    double  B_cell;                               /* field this was built for [G] */
-    double  strata_edges[SYNCH_N_STRATA + 1];     /* nu boundaries [Hz]          */
-    double  stratum_probs[SYNCH_N_STRATA];        /* p_k from reference sample   */
 
-    /* Fine-grained marginal CDF of log10(nu_f) */
-    double  cdf_log_nu_edges[SYNCH_N_CDF_BINS + 1];
-    double  cdf_log_nu_vals [SYNCH_N_CDF_BINS + 1];
+/* ── Table lifecycle ────────────────────────────────────────────────────────
+ *
+ * initSynchTables  — build all universal tables; call once at startup before
+ *                    any photon emission or SSA evaluation.
+ * freeSynchTables  — release all heap memory; call once at end of simulation.
+ */
+void initSynchTables(FILE *fPtr);
+void freeSynchTables(FILE *fPtr);
 
-    /* Inverse CDF spline: u -> log10(nu_f) */
-    gsl_spline       *inv_nu_cdf_spline;
-    gsl_interp_accel *inv_nu_cdf_acc;
+/* ── Frequency sampler ──────────────────────────────────────────────────────
+ *
+ * sampleSynchFrequency
+ *   Draw a photon frequency from stratum k of the universal nu_tilde CDF
+ *   and scale to physical Hz via nu_c(B_cell) = 3 e B / (4 pi me c).
+ *
+ *   Parameters
+ *     k       : stratum index in [0, SYNCH_N_STRATA)
+ *     B_cell  : magnetic field magnitude in the emitting cell [G]
+ *     rand    : GSL RNG
+ *
+ *   Returns nu_f [Hz] in the fluid rest frame.
+ */
+double sampleSynchFrequency(int k, double B_cell, gsl_rng *rand);
 
-} SynchCellStrata;
-
-
-/* ── Function prototypes ───────────────────────────────────────────────────── */
-
-/* Universal table lifecycle */
-void   initSynchTables (FILE *fPtr);
-void   freeSynchTables (FILE *fPtr);
-
-/* Emission MC samplers */
-double synchSampleX            ( double u);
-double synchSampleAlpha        ( double u);
-double synchSampleGammaEmission(gsl_rng *rand);
-
-/* Absorption coefficient  [RAIKOU Appendix C] */
+/* ── Absorption coefficient  [RAIKOU Appendix C] ───────────────────────────
+ *
+ * synchAlphaNu
+ *   Compute the SSA absorption coefficient alpha_{nu_f}^(f) [cm^-1] in the
+ *   fluid rest frame at comoving frequency nu_f [Hz].
+ *
+ *   For POWERLAW      uses RAIKOU Eq. C2.
+ *   For BROKENPOWERLAW uses RAIKOU Eq. C4.
+ */
 double synchAlphaNu(double nu_f,
                     double B,
                     double n_e_nth,
-                    FILE *fPtr);
+                    FILE  *fPtr);
 
-/* SSA weight modification  [RAIKOU Eqs. 31, 40] */
+/* ── SSA weight modification  [RAIKOU Eqs. 31, 40] ─────────────────────────
+ *
+ * calculateOpticalDepthSSA
+ *   Store alpha_{nu_f}^(f) in ph->abs_optical_depth for later use by
+ *   applyabsorption during photon transport. Called once per cell crossing.
+ *
+ * applyabsorption
+ *   Attenuate ph->weight by exp(-abs_optical_depth * dl) over a lab-frame
+ *   step of length dl [cm]. Called at each transport sub-step.
+ *
+ * applySynchSSAWeightModification
+ *   Combined convenience function: compute alpha and apply the full
+ *   RAIKOU Eq. 31 frame correction (nu_f/nu_z) * alpha * dl in one call.
+ *   Used at photon birth to pre-attenuate the weight for the birth-cell
+ *   path length.
+ */
 void calculateOpticalDepthSSA(struct photon          *ph,
                                struct hydro_dataframe *hydro_data,
                                FILE                   *fPtr);
@@ -243,14 +298,22 @@ void applySynchSSAWeightModification(struct photon              *ph,
                                       double                      n_e_nth_cell,
                                       FILE                       *fPtr);
 
-/* Stratified sampler lifecycle */
-void buildSynchCellStrata  (SynchCellStrata            *cs,
-                             double                      B_cell,
-                             gsl_rng                    *rand,
-                             FILE                       *fPtr);
-void freeSynchCellStrata   (SynchCellStrata *cs);
-
-/* Main emission function */
+/* ── Main emission function ─────────────────────────────────────────────────
+ *
+ * photonEmitSynch
+ *   Emit synchrotron photon packets from all active cells in the injection
+ *   shell at radius r_inj. Returns the number of packets emitted.
+ *
+ *   Active cells satisfy:
+ *     (a) nonthermal_dens > 0
+ *     (b) cell bounding box overlaps [rmin, rmax] in radius
+ *     (c) cell bounding box overlaps [theta_min, theta_max] in polar angle
+ *
+ *   Packet counts are drawn from Poisson distributions with means
+ *   proportional to n_e_nth * B^2 * V, tuned so that the total lies in
+ *   [min_photons, max_photons]. Frequencies are sampled from the universal
+ *   nu_tilde CDF using stratified sampling with SYNCH_N_STRATA strata.
+ */
 int photonEmitSynch(struct photonList          *photon_list,
                     double                      r_inj,
                     double                      ph_weight,
