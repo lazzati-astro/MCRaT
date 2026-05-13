@@ -532,6 +532,13 @@ static void buildUniversalNuCDF(FILE *fPtr)
         exit(1);
     }
 
+    /*
+     * Store the unnormalised integral total before dividing through.
+     * This is used by photonEmitSynch to compute the physical photon
+     * emission rate per cell [photons s^-1].
+     */
+    synch_tables.nu_cdf_norm = total;
+
     for (i = 0; i < SYNCH_N_NU; i++)
         cdf_raw[i] /= total;
     cdf_raw[SYNCH_N_NU - 1] = 1.0;
@@ -1798,10 +1805,102 @@ int photonEmitSynch(struct photonList          *photon_list,
     int    *cell_index = (int    *)malloc(block_cnt * sizeof(int));
     double *W_cell     = (double *)malloc(block_cnt * sizeof(double));
 
-    /* ── Step 4: Second pass — record indices and emission weights ─────────
+    /* ── Step 4: Compute physical prefactor K_phys and second pass ──────────
      *
-     * W_j = n_e_nth * B^2 * V  [proportional to total synchrotron power]
+     * W_cell[j] = Lambda_j is the physical photon emission rate from cell j
+     * per simulation frame [photons frame^-1], computed as:
+     *
+     *   W_cell[j] = K_phys * n_e_nth_j * B_j * V_j
+     *
+     * where K_phys is the compile-time constant:
+     *
+     *   K_phys = (sqrt(3) e^3) / (4 pi me c^2 h)
+     *            * A_norm
+     *            * ln(10)^2
+     *            * nu_cdf_norm
+     *            / fps
+     *
+     * Physical origins of each factor:
+     *   sqrt(3) e^3 / (4 pi me c^2)  — synchrotron emissivity prefactor
+     *                                   [RAIKOU Eq. B11; R&L79 Eq. 6.36]
+     *   1/h                           — converts energy rate -> photon rate
+     *   A_norm                        — electron distribution normalisation
+     *                                   [(p-1)/(gmin^{1-p}-gmax^{1-p})
+     *                                    for single PL;
+     *                                    brokenPowerLawNorm for broken PL]
+     *   ln(10)^2                      — converts the log10-space double
+     *                                   integral in nu_cdf_norm back to
+     *                                   natural-log measure
+     *   nu_cdf_norm                   — dimensionless double integral over
+     *                                   log10(nu_tilde) and log10(gamma)
+     *                                   stored by buildUniversalNuCDF
+     *   1/fps                         — converts photons s^-1 -> photons
+     *                                   frame^-1; computed once here so
+     *                                   it does not appear in the per-cell
+     *                                   or per-packet loops below
+     *
+     * The Poisson mean for cell j is then simply:
+     *
+     *   lambda_j = W_cell[j] / ph_weight_adjusted
+     *            = [photons frame^-1] / [photons packet^-1]
+     *            = [packets frame^-1]
+     *
+     * with no further fps factor anywhere in the function.
      */
+
+    /* Electron distribution normalisation constant A_norm */
+    double A_norm = 0.0;
+
+    #if NONTHERMAL_E_DIST == POWERLAW
+    {
+        double p    = POWERLAW_INDEX;
+        double gmin = GAMMA_MIN;
+        double gmax = GAMMA_MAX;
+
+        if (fabs(p - 1.0) < 1e-6)
+        {
+            fprintf(fPtr,
+                    ">> [photonEmitSynch] WARNING: POWERLAW_INDEX = 1, "
+                    "degenerate normalisation. A_norm set to 1.\n");
+            fflush(fPtr);
+            A_norm = 1.0;
+        }
+        else
+        {
+            double denom = pow(gmin, 1.0 - p) - pow(gmax, 1.0 - p);
+            A_norm = (fabs(denom) > 1e-300) ? (p - 1.0) / denom : 1.0;
+        }
+    }
+    #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
+    {
+        A_norm = brokenPowerLawNorm(POWERLAW_INDEX_1, POWERLAW_INDEX_2,
+                                    GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK);
+    }
+    #endif
+
+    /*
+     * Retrieve nu_cdf_norm from the universal tables built at initialisation.
+     * This is the unnormalised double integral over log10(nu_tilde) and
+     * log10(gamma) that, combined with K_phys, converts n_e_nth * B * V
+     * into a physical photon emission rate.
+     */
+    const SynchUniversalTables *tables = getSynchTables(fPtr);
+
+    double K_phys = (sqrt(3.0) * CHARGE_EL * CHARGE_EL * CHARGE_EL)
+                  / (4.0 * M_PI * M_EL * C_LIGHT * C_LIGHT * PL_CONST)
+                  * A_norm
+                  * log(10.0) * log(10.0)
+                  * tables->nu_cdf_norm
+                  / hydro_data->fps;
+
+    fprintf(fPtr,
+            ">> [photonEmitSynch] Physical prefactor: "
+            "A_norm=%.4e, nu_cdf_norm=%.4e, fps=%.4e, "
+            "K_phys=%.4e [photons frame^-1 G^-1 cm^-6]\n",
+            A_norm, tables->nu_cdf_norm, hydro_data->fps, K_phys);
+    fflush(fPtr);
+
+    /* Second pass — record cell indices and physical photon rates */
     j = 0;
     for (i = 0; i < hydro_data->num_elements; i++)
     {
@@ -1852,13 +1951,25 @@ int photonEmitSynch(struct photonList          *photon_list,
                 double V = hydroElementVolume(hydro_data, i);
 
                 cell_index[j] = i;
-                W_cell[j]     = (hydro_data->nonthermal_dens)[i] * B * B * V;
+
+                /*
+                 * W_cell[j] = Lambda_j [photons frame^-1]
+                 * = K_phys * n_e_nth * B * V
+                 */
+                W_cell[j] = K_phys
+                           * (hydro_data->nonthermal_dens)[i]
+                           * B
+                           * V;
                 j++;
             }
         }
     }
 
-    /* ── Step 5: Weight-tuning loop ──────────────────────────────────────── */
+    /* ── Step 5: Weight-tuning loop ──────────────────────────────────────────
+     *
+     * W_cell[j] is in [photons frame^-1] so the Poisson mean is simply
+     * W_cell[j] / ph_weight_adjusted with no fps factor.
+     */
     double ph_weight_adjusted = ph_weight;
     double lambda_total       = 0.0;
 
@@ -1866,7 +1977,7 @@ int photonEmitSynch(struct photonList          *photon_list,
     {
         lambda_total = 0.0;
         for (j = 0; j < block_cnt; j++)
-            lambda_total += W_cell[j] / ph_weight_adjusted / hydro_data->fps;
+            lambda_total += W_cell[j] / ph_weight_adjusted;
 
         if      (lambda_total > (double)max_photons) ph_weight_adjusted *= 10.0;
         else if (lambda_total < (double)min_photons) ph_weight_adjusted *= 0.5;
@@ -1876,15 +1987,21 @@ int photonEmitSynch(struct photonList          *photon_list,
 
     fprintf(fPtr,
             ">> [photonEmitSynch] Weight tuning converged: "
-            "ph_weight_adjusted=%.3e, expected packets=%.1f\n",
+            "ph_weight_adjusted=%.3e [photons packet^-1], "
+            "expected packets per frame=%.1f\n",
             ph_weight_adjusted, lambda_total);
     fflush(fPtr);
 
-    /* ── Step 6: Poisson draw of per-cell packet counts ──────────────────── */
+    /* ── Step 6: Poisson draw of per-cell packet counts ──────────────────────
+     *
+     * lambda_j = W_cell[j] / ph_weight_adjusted
+     *          = [photons frame^-1] / [photons packet^-1]
+     *          = [packets frame^-1]
+     */
     int ph_tot = 0;
     for (j = 0; j < block_cnt; j++)
     {
-        double lambda_j = W_cell[j] / ph_weight_adjusted / hydro_data->fps;
+        double lambda_j = W_cell[j] / ph_weight_adjusted;
         ph_dens[j] = (int)gsl_ran_poisson(rand, lambda_j);
         ph_tot    += ph_dens[j];
     }
@@ -1986,7 +2103,8 @@ int photonEmitSynch(struct photonList          *photon_list,
 
     fprintf(fPtr,
             ">> [photonEmitSynch] Complete: emitted %d synchrotron packets "
-            "from %d active cells (ph_weight_adjusted=%.3e).\n\n",
+            "from %d active cells (ph_weight_adjusted=%.3e "
+            "[photons packet^-1]).\n\n",
             n_emitted, block_cnt, ph_weight_adjusted);
     fflush(fPtr);
 
