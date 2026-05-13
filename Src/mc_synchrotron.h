@@ -294,23 +294,14 @@ double synchAlphaNu(double nu_f,
  *   Attenuate ph->weight by exp(-abs_optical_depth * dl) over a lab-frame
  *   step of length dl [cm]. Called at each transport sub-step.
  *
- * applySynchSSAWeightModification
- *   Combined convenience function: compute alpha and apply the full
- *   RAIKOU Eq. 31 frame correction (nu_f/nu_z) * alpha * dl in one call.
- *   Used at photon birth to pre-attenuate the weight for the birth-cell
- *   path length.
  */
 void calculateOpticalDepthSSA(struct photon          *ph,
                                struct hydro_dataframe *hydro_data,
-                               FILE                   *fPtr);
+                               double                  fluid_factor,
+                              FILE                   *fPtr);
 
 void applyabsorption(struct photon *ph, double dl);
 
-void applySynchSSAWeightModification(struct photon              *ph,
-                                      double                      dl,
-                                      double                      B_cell,
-                                      double                      n_e_nth_cell,
-                                      FILE                       *fPtr);
 
 /* ── Main emission function ─────────────────────────────────────────────────
  *

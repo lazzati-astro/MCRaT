@@ -1221,22 +1221,42 @@ double synchAlphaNu(double nu_f,
 /*
  * applyabsorption
  * ---------------
- * Attenuate ph->weight by synchrotron self-absorption over a lab-frame
- * step of length dl [cm]:
+ * Apply continuous SSA weight attenuation over a lab-frame step of length
+ * dl [cm]:
  *
- *   w_new = w_old * exp(-abs_optical_depth * dl)        [RAIKOU Eq. 40]
+ *   w_new = w_old * exp(-abs_optical_depth * dl)     [RAIKOU Eq. 40]
  *
- * abs_optical_depth holds alpha_{nu_f}^(f) [cm^-1] set by a prior call to
- * calculateOpticalDepthSSA. No-op if SYNCHROTRON_SWITCH is OFF.
+ * ph->abs_optical_depth was set by calculateOpticalDepthSSA (called from
+ * calculateOpticalDepth) as
+ *
+ *   abs_optical_depth = fluid_factor * alpha_{nu_f}^(f)
+ *                     = (nu_f / nu_z) * alpha_{nu_f}^(f)
+ *
+ * so the full RAIKOU Eq. 31 frame correction is already included and no
+ * additional Doppler factor is needed here.
+ *
+ * Parameters
+ * ----------
+ * ph : photon packet (modified in-place)
+ * dl : lab-frame step length [cm]; must be >= 0
  */
 void applyabsorption(struct photon *ph, double dl)
 {
     #if SYNCHROTRON_SWITCH == ON
-        if (ph == NULL)                   return;
-        if (dl <= 0.0)                    return;
-        if (ph->abs_optical_depth <= 0.0) return;
+        if (ph == NULL)                       return;
+        if (dl <= 0.0)                        return;
+        if (ph->abs_optical_depth <= 0.0)     return;
 
-        ph->weight *= exp(-ph->abs_optical_depth * dl);
+        double tau = ph->abs_optical_depth * dl;
+
+        /* Guard against exp underflow for very large optical depths */
+        if (tau > 700.0)
+        {
+            ph->weight = 0.0;
+            return;
+        }
+
+        ph->weight *= exp(-tau);
     #else
         (void)ph;
         (void)dl;
@@ -1246,69 +1266,62 @@ void applyabsorption(struct photon *ph, double dl)
 /*
  * calculateOpticalDepthSSA
  * ------------------------
- * Compute alpha_{nu_f}^(f) [cm^-1] for photon ph in its current cell and
- * store the result in ph->abs_optical_depth for use by applyabsorption
- * during subsequent transport steps.
+ * Compute the frame-corrected SSA absorption coefficient
  *
- * No-op for non-synchrotron photons or cells with zero B or n_e_nth.
+ *   ph->abs_optical_depth = fluid_factor * alpha_{nu_f}^(f)   [cm^{-1}]
+ *
+ * where fluid_factor = (1 - beta * cos(theta)) = nu_f / nu_z is the
+ * Doppler frame correction already computed in calculateOpticalDepth and
+ * applied identically to the scattering opacity.  Pre-multiplying here
+ * keeps all frame-correction arithmetic in one place (calculateOpticalDepth)
+ * so that applyabsorption can simply compute
+ *
+ *   w_new = w_old * exp(-ph->abs_optical_depth * dl)
+ *
+ * with no additional factors.  [RAIKOU Eq. 31, 40]
+ *
+ * Parameters
+ * ----------
+ * ph           : photon packet (ph->abs_optical_depth modified in-place)
+ * hydro_data   : hydro frame (provides B and nonthermal_dens)
+ * fluid_factor : (1 - beta*cos(theta)), computed in calculateOpticalDepth
+ * fPtr         : log file
  */
 void calculateOpticalDepthSSA(struct photon          *ph,
                                struct hydro_dataframe *hydro_data,
+                               double                  fluid_factor,
                                FILE                   *fPtr)
 {
     #if SYNCHROTRON_SWITCH == ON
+
         ph->abs_optical_depth = 0.0;
 
-        if (ph->type != SYNCH_PHOTON) return;
+        if (ph->type != SYNCH_PHOTON)
+            return;
 
-        int ci = ph->nearest_block_index;
-        if (ci < 0) return;
+        int    cell_idx  = ph->nearest_block_index;
+        double B         = (hydro_data->B_field)[cell_idx];
+        double n_e_nth   = (hydro_data->nonthermal_dens)[cell_idx]
+                         * (hydro_data->gamma)[cell_idx];   /* lab-frame density */
+        double nu_f      = ph->comv_p0 * C_LIGHT / PL_CONST;
 
-        double B_cell  = getMagneticFieldMagnitude(hydro_data, ci);
-        double n_e_nth = (hydro_data->nonthermal_dens)[ci];
+        double alpha = synchAlphaNu(nu_f, B, n_e_nth, fPtr);
 
-        if (B_cell <= 0.0 || n_e_nth <= 0.0) return;
+        /*
+         * Apply the frame correction (nu_f / nu_z = fluid_factor) here so that
+         * applyabsorption requires no additional frame arithmetic.
+         * [RAIKOU Eq. 31]
+         */
+        ph->abs_optical_depth = fluid_factor * alpha;
 
-        /* Recover comoving frequency from comv_p0 [erg/c] */
-        double nu_f = ph->comv_p0 * C_LIGHT / PL_CONST;
-
-        ph->abs_optical_depth = synchAlphaNu(nu_f, B_cell, n_e_nth, fPtr);
     #else
         (void)ph;
         (void)hydro_data;
+        (void)fluid_factor;
         (void)fPtr;
     #endif
 }
 
-/*
- * applySynchSSAWeightModification
- * --------------------------------
- * Apply the full RAIKOU Eq. 31 frame-corrected SSA attenuation over a
- * comoving path of length dl [cm]:
- *
- *   w_new = w_old * exp(-(nu_f/nu_z) * alpha_{nu_f}^(f) * dl)
- *
- * where nu_f/nu_z is the covariant frame-correction factor. Used at photon
- * birth to pre-attenuate the weight for the mean path length within the
- * birth cell.
- */
-void applySynchSSAWeightModification(struct photon              *ph,
-                                      double                      dl,
-                                      double                      B_cell,
-                                      double                      n_e_nth_cell,
-                                      FILE                       *fPtr)
-{
-    if (dl <= 0.0 || B_cell <= 0.0 || n_e_nth_cell <= 0.0) return;
-
-    double nu_f = ph->comv_p0 * C_LIGHT / PL_CONST;
-    double nu_z = ph->p0      * C_LIGHT / PL_CONST;
-    if (nu_f <= 0.0 || nu_z <= 0.0) return;
-
-    double alpha     = synchAlphaNu(nu_f, B_cell, n_e_nth_cell, fPtr);
-    double delta_tau = (nu_f / nu_z) * alpha * dl;
-
-    ph->weight *= exp(-delta_tau);
-}
 
 
 /* ═══════════════════════════════════════════════════════════════════════════ */

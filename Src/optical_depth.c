@@ -151,20 +151,20 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
     #endif
     
     /*
-     * SSA absorption coefficient  [RAIKOU Eq. C2]
-     * --------------------------------------------
-     * Store alpha_{nu_f}^(f) on the photon so that applySSAAbsorption in
-     * updatePhotonPosition can attenuate the weight continuously along the
-     * trajectory without re-evaluating the Bessel integrals every step.
+     * SSA absorption coefficient  [RAIKOU Eq. C2, 31]
+     * -------------------------------------------------
+     * Store fluid_factor * alpha_{nu_f}^(f) on the photon so that
+     * applyabsorption in updatePhotonPosition can attenuate the weight
+     * continuously along the trajectory.  The fluid_factor = (1 - beta*cos
+     * theta) = nu_f/nu_z frame correction is applied here, in the same place
+     * and with the same variable as for the scattering opacity, keeping all
+     * frame-correction arithmetic in one location.
      *
-     * The coefficient is only meaningful for SYNCH_PHOTON packets; for all
-     * other types set it to zero so applySSAAbsorption is a no-op.
-     *
-     * The comoving frequency is reconstructed from comv_p0 [erg/c]:
-     *   nu_f = comv_p0 * C_LIGHT / PL_CONST
+     * Only meaningful for SYNCH_PHOTON packets; for all other types
+     * abs_optical_depth is set to 0.0 so applyabsorption is a no-op.
      */
     #if SYNCHROTRON_SWITCH == ON
-        calculateOpticalDepthSSA(ph, hydro_data, fPtr);
+        calculateOpticalDepthSSA(ph, hydro_data, fluid_factor, fPtr);
     #endif
 }
 
