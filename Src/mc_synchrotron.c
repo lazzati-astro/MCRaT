@@ -407,168 +407,231 @@ return &synch_tables;
 */
 static void buildUniversalNuCDF(FILE *fPtr)
 {
-int i, j, k;
+    int i, j, k;
 
-fprintf(fPtr,
-        ">> [buildUniversalNuCDF] Building universal nu_tilde CDF "
-        "(SYNCH_N_NU=%d, SYNCH_N_GAMMA_INT=%d, SYNCH_N_STRATA=%d)...\n",
-        SYNCH_N_NU, SYNCH_N_GAMMA_INT, SYNCH_N_STRATA);
-fflush(fPtr);
-
-/* ── (1) Evaluate pdf on log-nu_tilde grid ────────────────────────────── */
-double log_nt_min = log10(SYNCH_X_MIN * GAMMA_MIN * GAMMA_MIN);
-double log_nt_max = log10(SYNCH_X_MAX * GAMMA_MAX * GAMMA_MAX);
-double dlog_nt    = (log_nt_max - log_nt_min) / (SYNCH_N_NU - 1);
-
-double log_nt_arr[SYNCH_N_NU];
-double pdf_arr   [SYNCH_N_NU];
-
-double log_g_min = log10(GAMMA_MIN);
-double log_g_max = log10(GAMMA_MAX);
-double dlog_g    = (log_g_max - log_g_min) / (SYNCH_N_GAMMA_INT - 1);
-double p         = POWERLAW_INDEX;
-
-for (i = 0; i < SYNCH_N_NU; i++)
-{
-    log_nt_arr[i]   = log_nt_min + i * dlog_nt;
-    double nu_tilde = pow(10.0, log_nt_arr[i]);
-
-    /* Trapezoid rule over log-gamma:
-     *   integral gamma^{1-p} * F(nu_tilde / gamma^2) * d(log_gamma)  */
-    double sum      = 0.0;
-    double prev_val = 0.0;
-
-    for (j = 0; j < SYNCH_N_GAMMA_INT; j++)
-    {
-        double gamma_j = pow(10.0, log_g_min + j * dlog_g);
-        double x_j     = nu_tilde / (gamma_j * gamma_j);
-        double val     = pow(gamma_j, 1.0 - p) * evalF(x_j);
-
-        if (j > 0)
-            sum += 0.5 * (val + prev_val) * dlog_g;
-        prev_val = val;
-    }
-
-    pdf_arr[i] = (sum > 0.0) ? sum : 0.0;
-}
-
-/* ── (2) Build normalised CDF ─────────────────────────────────────────── */
-double cdf_raw[SYNCH_N_NU];
-cdf_raw[0] = 0.0;
-for (i = 1; i < SYNCH_N_NU; i++)
-    cdf_raw[i] = cdf_raw[i-1]
-               + 0.5 * (pdf_arr[i] + pdf_arr[i-1]) * dlog_nt;
-
-double total = cdf_raw[SYNCH_N_NU - 1];
-if (total <= 0.0)
-{
     fprintf(fPtr,
-            ">> [buildUniversalNuCDF] FATAL: zero CDF total. "
-            "Check GAMMA_MIN/MAX and POWERLAW_INDEX.\n");
+            ">> [buildUniversalNuCDF] Building universal nu_tilde CDF "
+            "(SYNCH_N_NU=%d, SYNCH_N_GAMMA_INT=%d, SYNCH_N_STRATA=%d)...\n",
+            SYNCH_N_NU, SYNCH_N_GAMMA_INT, SYNCH_N_STRATA);
     fflush(fPtr);
-    exit(1);
-}
 
-for (i = 0; i < SYNCH_N_NU; i++)
-    cdf_raw[i] /= total;
-cdf_raw[SYNCH_N_NU - 1] = 1.0;
+    /* ── (1) Evaluate pdf on log-nu_tilde grid ────────────────────────────── */
+    double log_nt_min = log10(SYNCH_X_MIN * GAMMA_MIN * GAMMA_MIN);
+    double log_nt_max = log10(SYNCH_X_MAX * GAMMA_MAX * GAMMA_MAX);
+    double dlog_nt    = (log_nt_max - log_nt_min) / (SYNCH_N_NU - 1);
 
-/* Store only strictly increasing (u, log10(nu_tilde)) pairs */
-double prev_u = -1.0;
-int    n      = 0;
+    double log_nt_arr[SYNCH_N_NU];
+    double pdf_arr   [SYNCH_N_NU];
 
-for (i = 0; i < SYNCH_N_NU; i++)
-{
-    if (cdf_raw[i] > prev_u)
+    double log_g_min = log10(GAMMA_MIN);
+    double log_g_max = log10(GAMMA_MAX);
+    double dlog_g    = (log_g_max - log_g_min) / (SYNCH_N_GAMMA_INT - 1);
+
+    #if NONTHERMAL_E_DIST == POWERLAW
+
+        double p = POWERLAW_INDEX;
+
+        for (i = 0; i < SYNCH_N_NU; i++)
+        {
+            log_nt_arr[i]   = log_nt_min + i * dlog_nt;
+            double nu_tilde = pow(10.0, log_nt_arr[i]);
+
+            /*
+             * Trapezoid rule over log-gamma:
+             *   integrand = gamma^{1-p} * F(nu_tilde / gamma^2)
+             * The normalisation constant of N(gamma) cancels in the
+             * CDF normalisation so it is omitted here.
+             */
+            double sum      = 0.0;
+            double prev_val = 0.0;
+
+            for (j = 0; j < SYNCH_N_GAMMA_INT; j++)
+            {
+                double gamma_j = pow(10.0, log_g_min + j * dlog_g);
+                double x_j     = nu_tilde / (gamma_j * gamma_j);
+                double val     = pow(gamma_j, 1.0 - p) * evalF(x_j);
+
+                if (j > 0)
+                    sum += 0.5 * (val + prev_val) * dlog_g;
+                prev_val = val;
+            }
+
+            pdf_arr[i] = (sum > 0.0) ? sum : 0.0;
+        }
+
+    #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
+
+        /*
+         * For a broken power law:
+         *   N(gamma) propto gamma^{-p1}              gamma_min <= gamma <= gamma_br
+         *   N(gamma) propto C_cont * gamma^{-p2}     gamma_br  <  gamma <= gamma_max
+         *
+         * where C_cont = gamma_br^{p2-p1} enforces continuity at gamma_br.
+         *
+         * The photon-number emissivity integrand in d(ln gamma) measure is
+         * N(gamma)*gamma^2*F(x)/gamma = N(gamma)*gamma*F(x), giving:
+         *
+         *   pdf(nu_tilde) propto
+         *     integral_{gamma_min}^{gamma_br} gamma^{1-p1} F(nu_tilde/gamma^2) d(ln gamma)
+         *   + C_cont *
+         *     integral_{gamma_br}^{gamma_max} gamma^{1-p2} F(nu_tilde/gamma^2) d(ln gamma)
+         *
+         * The log-gamma grid covers the full range [gamma_min, gamma_max].
+         * At each grid point we select the appropriate exponent based on
+         * whether gamma <= gamma_br or gamma > gamma_br.
+         */
+        double p1     = POWERLAW_INDEX_1;
+        double p2     = POWERLAW_INDEX_2;
+        double g_br   = GAMMA_BREAK;
+        double C_cont = pow(g_br, p2 - p1);
+
+        for (i = 0; i < SYNCH_N_NU; i++)
+        {
+            log_nt_arr[i]   = log_nt_min + i * dlog_nt;
+            double nu_tilde = pow(10.0, log_nt_arr[i]);
+
+            double sum      = 0.0;
+            double prev_val = 0.0;
+
+            for (j = 0; j < SYNCH_N_GAMMA_INT; j++)
+            {
+                double gamma_j = pow(10.0, log_g_min + j * dlog_g);
+                double x_j     = nu_tilde / (gamma_j * gamma_j);
+                double F_j     = evalF(x_j);
+
+                double val;
+                if (gamma_j <= g_br)
+                    val = pow(gamma_j, 1.0 - p1) * F_j;
+                else
+                    val = C_cont * pow(gamma_j, 1.0 - p2) * F_j;
+
+                if (j > 0)
+                    sum += 0.5 * (val + prev_val) * dlog_g;
+                prev_val = val;
+            }
+
+            pdf_arr[i] = (sum > 0.0) ? sum : 0.0;
+        }
+
+    #endif
+
+    /* ── (2) Build normalised CDF ─────────────────────────────────────────── */
+    double cdf_raw[SYNCH_N_NU];
+    cdf_raw[0] = 0.0;
+    for (i = 1; i < SYNCH_N_NU; i++)
+        cdf_raw[i] = cdf_raw[i-1]
+                   + 0.5 * (pdf_arr[i] + pdf_arr[i-1]) * dlog_nt;
+
+    double total = cdf_raw[SYNCH_N_NU - 1];
+    if (total <= 0.0)
     {
-        synch_tables.nu_cdf_u           [n] = cdf_raw[i];
-        synch_tables.nu_cdf_log_nu_tilde[n] = log_nt_arr[i];
-        n++;
-        prev_u = cdf_raw[i];
+        fprintf(fPtr,
+                ">> [buildUniversalNuCDF] FATAL: zero CDF total. "
+                "Check GAMMA_MIN/MAX, POWERLAW_INDEX, and GAMMA_BREAK.\n");
+        fflush(fPtr);
+        exit(1);
     }
-}
-synch_tables.n_nu_cdf = n;
 
-/* ── (3) Stratum boundaries and probability masses ────────────────────── */
-double dlog_strata = (log_nt_max - log_nt_min) / SYNCH_N_STRATA;
+    for (i = 0; i < SYNCH_N_NU; i++)
+        cdf_raw[i] /= total;
+    cdf_raw[SYNCH_N_NU - 1] = 1.0;
 
-for (k = 0; k <= SYNCH_N_STRATA; k++)
-    synch_tables.strata_log_nu_tilde_edges[k] =
-        log_nt_min + k * dlog_strata;
+    /* Store only strictly increasing (u, log10(nu_tilde)) pairs */
+    double prev_u = -1.0;
+    int    n      = 0;
 
-for (k = 0; k < SYNCH_N_STRATA; k++)
-{
-    double log_lo = synch_tables.strata_log_nu_tilde_edges[k];
-    double log_hi = synch_tables.strata_log_nu_tilde_edges[k + 1];
-    double cdf_lo, cdf_hi;
-
-    /* Linear interpolation of CDF at lower stratum edge */
-    if (log_lo <= log_nt_arr[0])
+    for (i = 0; i < SYNCH_N_NU; i++)
     {
-        cdf_lo = cdf_raw[0];
+        if (cdf_raw[i] > prev_u)
+        {
+            synch_tables.nu_cdf_u           [n] = cdf_raw[i];
+            synch_tables.nu_cdf_log_nu_tilde[n] = log_nt_arr[i];
+            n++;
+            prev_u = cdf_raw[i];
+        }
     }
-    else if (log_lo >= log_nt_arr[SYNCH_N_NU - 1])
+    synch_tables.n_nu_cdf = n;
+
+    /* ── (3) Stratum boundaries and probability masses ────────────────────── */
+    double dlog_strata = (log_nt_max - log_nt_min) / SYNCH_N_STRATA;
+
+    for (k = 0; k <= SYNCH_N_STRATA; k++)
+        synch_tables.strata_log_nu_tilde_edges[k] =
+            log_nt_min + k * dlog_strata;
+
+    for (k = 0; k < SYNCH_N_STRATA; k++)
     {
-        cdf_lo = 1.0;
-    }
-    else
-    {
-        int idx = (int)((log_lo - log_nt_min) / dlog_nt);
-        if (idx < 0)             idx = 0;
-        if (idx >= SYNCH_N_NU-1) idx = SYNCH_N_NU - 2;
-        double frac = (log_lo - log_nt_arr[idx])
-                    / (log_nt_arr[idx+1] - log_nt_arr[idx]);
-        cdf_lo = cdf_raw[idx] + frac * (cdf_raw[idx+1] - cdf_raw[idx]);
+        double log_lo = synch_tables.strata_log_nu_tilde_edges[k];
+        double log_hi = synch_tables.strata_log_nu_tilde_edges[k + 1];
+        double cdf_lo, cdf_hi;
+
+        /* Linear interpolation of CDF at lower stratum edge */
+        if (log_lo <= log_nt_arr[0])
+        {
+            cdf_lo = cdf_raw[0];
+        }
+        else if (log_lo >= log_nt_arr[SYNCH_N_NU - 1])
+        {
+            cdf_lo = 1.0;
+        }
+        else
+        {
+            int idx = (int)((log_lo - log_nt_min) / dlog_nt);
+            if (idx < 0)             idx = 0;
+            if (idx >= SYNCH_N_NU-1) idx = SYNCH_N_NU - 2;
+            double frac = (log_lo - log_nt_arr[idx])
+                        / (log_nt_arr[idx+1] - log_nt_arr[idx]);
+            cdf_lo = cdf_raw[idx] + frac * (cdf_raw[idx+1] - cdf_raw[idx]);
+        }
+
+        /* Linear interpolation of CDF at upper stratum edge */
+        if (log_hi <= log_nt_arr[0])
+        {
+            cdf_hi = cdf_raw[0];
+        }
+        else if (log_hi >= log_nt_arr[SYNCH_N_NU - 1])
+        {
+            cdf_hi = 1.0;
+        }
+        else
+        {
+            int idx = (int)((log_hi - log_nt_min) / dlog_nt);
+            if (idx < 0)             idx = 0;
+            if (idx >= SYNCH_N_NU-1) idx = SYNCH_N_NU - 2;
+            double frac = (log_hi - log_nt_arr[idx])
+                        / (log_nt_arr[idx+1] - log_nt_arr[idx]);
+            cdf_hi = cdf_raw[idx] + frac * (cdf_raw[idx+1] - cdf_raw[idx]);
+        }
+
+        synch_tables.strata_cdf_lo[k] = cdf_lo;
+        synch_tables.strata_cdf_hi[k] = cdf_hi;
+        synch_tables.strata_p_k   [k] = cdf_hi - cdf_lo;
+        if (synch_tables.strata_p_k[k] < 0.0)
+            synch_tables.strata_p_k[k] = 0.0;
     }
 
-    /* Linear interpolation of CDF at upper stratum edge */
-    if (log_hi <= log_nt_arr[0])
-    {
-        cdf_hi = cdf_raw[0];
-    }
-    else if (log_hi >= log_nt_arr[SYNCH_N_NU - 1])
-    {
-        cdf_hi = 1.0;
-    }
-    else
-    {
-        int idx = (int)((log_hi - log_nt_min) / dlog_nt);
-        if (idx < 0)             idx = 0;
-        if (idx >= SYNCH_N_NU-1) idx = SYNCH_N_NU - 2;
-        double frac = (log_hi - log_nt_arr[idx])
-                    / (log_nt_arr[idx+1] - log_nt_arr[idx]);
-        cdf_hi = cdf_raw[idx] + frac * (cdf_raw[idx+1] - cdf_raw[idx]);
-    }
-
-    synch_tables.strata_cdf_lo[k] = cdf_lo;
-    synch_tables.strata_cdf_hi[k] = cdf_hi;
-    synch_tables.strata_p_k   [k] = cdf_hi - cdf_lo;
-    if (synch_tables.strata_p_k[k] < 0.0)
-        synch_tables.strata_p_k[k] = 0.0;
-}
-
-/* ── Diagnostic ───────────────────────────────────────────────────────── */
-fprintf(fPtr,
-        ">> [buildUniversalNuCDF] nu_tilde=[%.3e, %.3e] "
-        "(%.1f decades), %d CDF points, "
-        "%d strata of %.2f decades each.\n",
-        pow(10.0, log_nt_min), pow(10.0, log_nt_max),
-        log_nt_max - log_nt_min, n, SYNCH_N_STRATA,
-        (log_nt_max - log_nt_min) / SYNCH_N_STRATA);
-
-for (k = 0; k < SYNCH_N_STRATA; k++)
-{
+    /* ── Diagnostic ───────────────────────────────────────────────────────── */
     fprintf(fPtr,
-            ">>   stratum %2d: nu_tilde=[%.3e, %.3e]  "
-            "p_k=%.3e  cdf=[%.8e, %.8e]\n",
-            k,
-            pow(10.0, synch_tables.strata_log_nu_tilde_edges[k]),
-            pow(10.0, synch_tables.strata_log_nu_tilde_edges[k+1]),
-            synch_tables.strata_p_k[k],
-            synch_tables.strata_cdf_lo[k],
-            synch_tables.strata_cdf_hi[k]);
-}
-fflush(fPtr);
+            ">> [buildUniversalNuCDF] nu_tilde=[%.3e, %.3e] "
+            "(%.1f decades), %d CDF points, "
+            "%d strata of %.2f decades each.\n",
+            pow(10.0, log_nt_min), pow(10.0, log_nt_max),
+            log_nt_max - log_nt_min, n, SYNCH_N_STRATA,
+            (log_nt_max - log_nt_min) / SYNCH_N_STRATA);
+
+    for (k = 0; k < SYNCH_N_STRATA; k++)
+    {
+        fprintf(fPtr,
+                ">>   stratum %2d: nu_tilde=[%.3e, %.3e]  "
+                "p_k=%.3e  cdf=[%.8e, %.8e]\n",
+                k,
+                pow(10.0, synch_tables.strata_log_nu_tilde_edges[k]),
+                pow(10.0, synch_tables.strata_log_nu_tilde_edges[k+1]),
+                synch_tables.strata_p_k[k],
+                synch_tables.strata_cdf_lo[k],
+                synch_tables.strata_cdf_hi[k]);
+    }
+    fflush(fPtr);
 }
 
 /*
