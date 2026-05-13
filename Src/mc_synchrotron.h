@@ -217,6 +217,20 @@ typedef struct
     double   nu_cdf_u           [SYNCH_N_NU]; /* u in [0,1]                 */
     double   nu_cdf_log_nu_tilde[SYNCH_N_NU]; /* log10(nu_tilde)            */
     int      n_nu_cdf;                        /* number of valid CDF points */
+    
+    /*
+     * nu_cdf_norm : unnormalised integral of the pdf before normalisation,
+     *
+     *   nu_cdf_norm = integral_{log_nt_min}^{log_nt_max}
+     *                   integral_{log_g_min}^{log_g_max}
+     *                     gamma^{1-p} F(nu_tilde/gamma^2)
+     *                   d(log10 gamma) d(log10 nu_tilde)
+     *
+     * Combined with the physical prefactor K_phys (see photonEmitSynch),
+     * this converts W_cell = n_e_nth * B * V into the actual photon
+     * emission rate Lambda [photons s^-1] for each cell.
+     */
+    double   nu_cdf_norm;
 
     /* ── Stratified sampling boundaries ─────────────────────────────────── */
     double   strata_log_nu_tilde_edges[SYNCH_N_STRATA + 1]; /* log10(nu_tilde) edges  */
