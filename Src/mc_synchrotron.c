@@ -1300,7 +1300,7 @@ void calculateOpticalDepthSSA(struct photon          *ph,
             return;
 
         int    cell_idx  = ph->nearest_block_index;
-        double B         = (hydro_data->B_field)[cell_idx];
+        double B         = getMagneticFieldMagnitude(hydro_data, cell_idx);
         double n_e_nth   = (hydro_data->nonthermal_dens)[cell_idx]
                          * (hydro_data->gamma)[cell_idx];   /* lab-frame density */
         double nu_f      = ph->comv_p0 * C_LIGHT / PL_CONST;
