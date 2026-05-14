@@ -239,6 +239,13 @@ void setNullPhoton(struct photonList *photon_list, int index)
         photon_list->photons[index].scattering_bias[i]=0;
     }
     #endif
+    
+    ph->total_optical_depth = 0;
+    
+    #if SYNCHROTRON_SWITCH == ON
+        ph->abs_optical_depth=0;
+    #endif
+
 
 
     
