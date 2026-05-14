@@ -860,6 +860,12 @@ int main(int argc, char **argv)
                         //fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
                         fflush(fPtr);
                         
+                        #if SYNCHROTRON_SWITCH == ON
+                            //if we have synch want to determine if any have to be removed due to small weights
+                            scatt_cyclosynch_num_ph -= applyRussianRoulette(&photon_list, RR_WEIGHT_FRACTION, fPtr);
+                        #endif
+                        
+                        
                         #if CYCLOSYNCHROTRON_SWITCH == ON || SYNCHROTRON_SWITCH == ON
                         if (scatt_cyclosynch_num_ph>max_photons)
                         {
@@ -898,6 +904,11 @@ int main(int argc, char **argv)
             if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //rememebr to change to != also at the other place in the code
             //if ((scatt_frame == scatt_framestart) || (restrt==CONTINUE)) //for testing
             {
+                #if SYNCHROTRON_SWITCH == ON
+                    //if we have synch want to determine if any have to be removed due to small weights
+                    scatt_cyclosynch_num_ph -= applyRussianRoulette(&photon_list, RR_WEIGHT_FRACTION, fPtr);
+                #endif
+
                 if (scatt_cyclosynch_num_ph>max_photons)
                 {
                     //rebin the photons to ensure that we have a constant amount here
