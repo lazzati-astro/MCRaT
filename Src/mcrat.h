@@ -159,6 +159,19 @@ extern const double R_EL;
     #error A nonthermal electron distribution must be specified when SYNCHROTRON_SWITCH==ON
 #endif
 
+//if considering synchrotron also want russian roulette
+/*
+ * Fraction of the median SYNCH_PHOTON weight used as the Russian roulette
+ * threshold in applyRussianRoulette. Packets with weight below
+ * RR_WEIGHT_FRACTION * w_median are candidates for culling.
+ * Typical values: 1e-3 to 1e-2.
+ */
+#if SYNCHROTRON_SWITCH == ON
+    #ifndef RR_WEIGHT_FRACTION
+        #define RR_WEIGHT_FRACTION 1e-2
+    #endif
+#endif
+
 //if we want scattering bias, the user can set a scaling parameter (alpha_0 in the RAIKOU paper). if they havnt set anything, set this to be 1 by default
 #if SCATTERING_BIAS_SWITCH == ON
     #ifndef SCATTERING_BIAS_SCALING
