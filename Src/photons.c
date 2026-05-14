@@ -240,14 +240,11 @@ void setNullPhoton(struct photonList *photon_list, int index)
     }
     #endif
     
-    ph->total_optical_depth = 0;
+    photon_list->photons[index].total_optical_depth = 0;
     
     #if SYNCHROTRON_SWITCH == ON
-        ph->abs_optical_depth=0;
+        photon_list->photons[index].abs_optical_depth=0;
     #endif
-
-
-
     
     //photon_list->num_null_photons++;
     //photon_list->num_photons--;
