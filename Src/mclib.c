@@ -1670,3 +1670,289 @@ void logspace(double start, double stop, int num, double *array)
         hydro_data->average_dimless_theta=temp/volume;
     }
 #endif
+
+/*
+ * applyRussianRoulette
+ * --------------------
+ * Cull SYNCH_PHOTON packets whose weights have been reduced below a
+ * dynamically computed threshold by the continuous SSA absorption in
+ * applyabsorption.
+ *
+ * Algorithm
+ * ---------
+ * 1. [PARALLEL] Collect the weights of all live SYNCH_PHOTON packets into
+ *    per-thread local arrays, then merge into a single array serially.
+ *
+ * 2. [SERIAL] Sort the merged weight array and compute the median weight
+ *    w_median.  Derive the roulette threshold:
+ *
+ *      w_thresh = epsilon_rr * w_median
+ *
+ * 3. [PARALLEL] For each SYNCH_PHOTON packet with w < w_thresh, draw
+ *    u ~ Uniform(0,1) using the thread-local RNG from global_thread_rng:
+ *
+ *      P_surv = w / w_thresh
+ *
+ *      if u < P_surv:   packet survives, weight boosted to w_thresh
+ *      else:            packet killed via setNullPhoton (atomic update
+ *                       of photon list counters — see note below)
+ *
+ *    This is exactly unbiased: E[w_after] = P_surv * w_thresh = w.
+ *
+ * Thread safety
+ * -------------
+ * setNullPhoton calls incrementNullPhotonNum which modifies
+ * photon_list->num_photons and photon_list->num_null_photons.  These
+ * two counter updates are protected by an OpenMP critical section so
+ * that concurrent kills from different threads do not produce a race
+ * condition.  The photon struct itself is at a unique index in the
+ * array, so writing its fields requires no additional locking.
+ *
+ * Parameters
+ * ----------
+ * photon_list : the live photon population (modified in-place)
+ * epsilon_rr  : dimensionless threshold parameter (e.g. 1e-2);
+ *               w_thresh = epsilon_rr * w_median
+ * fPtr        : log file
+ *
+ * Returns
+ * -------
+ * Number of packets killed (set to NULL_PHOTON).  Returns 0 if there
+ * are no SYNCH_PHOTON packets or if no packet falls below w_thresh.
+ */
+int applyRussianRoulette(struct photonList *photon_list,
+                         double             epsilon_rr,
+                         FILE              *fPtr)
+{
+#if SYNCHROTRON_SWITCH == ON
+
+    int i;
+    int n_synch  = 0;
+    int n_killed = 0;
+    int num_threads = 1;
+    int thread_id   = 0;
+
+    #if defined(_OPENMP)
+        num_threads = omp_get_max_threads();
+    #endif
+
+    if (photon_list == NULL || photon_list->num_photons == 0)
+        return 0;
+
+    /* ── Step 1: collect weights of all live SYNCH_PHOTON packets ───────────
+     *
+     * Each thread fills its own local sub-array to avoid any shared-write
+     * contention.  After the parallel region the sub-arrays are merged
+     * serially into a single flat array for sorting.
+     *
+     * We allocate one sub-array of size list_capacity per thread — this
+     * is a safe upper bound on the number of SYNCH_PHOTONs any thread
+     * could encounter.  The actual count per thread is recorded in
+     * thread_n_synch[t].
+     */
+    int     *thread_n_synch = (int *)    calloc(num_threads, sizeof(int));
+    double **thread_weights = (double **)malloc(num_threads * sizeof(double *));
+
+    if (thread_n_synch == NULL || thread_weights == NULL)
+    {
+        fprintf(fPtr,
+                ">> [applyRussianRoulette] ERROR: malloc failed for "
+                "per-thread arrays. Skipping roulette.\n");
+        fflush(fPtr);
+        free(thread_n_synch);
+        free(thread_weights);
+        return 0;
+    }
+
+    for (i = 0; i < num_threads; i++)
+    {
+        thread_weights[i] = (double *)malloc(photon_list->list_capacity
+                                             * sizeof(double));
+        if (thread_weights[i] == NULL)
+        {
+            fprintf(fPtr,
+                    ">> [applyRussianRoulette] ERROR: malloc failed for "
+                    "thread_weights[%d]. Skipping roulette.\n", i);
+            fflush(fPtr);
+
+            /* free already-allocated sub-arrays before returning */
+            int k;
+            for (k = 0; k < i; k++)
+                free(thread_weights[k]);
+            free(thread_weights);
+            free(thread_n_synch);
+            return 0;
+        }
+    }
+
+    #pragma omp parallel for                                        \
+        num_threads(num_threads)                                    \
+        private(i, thread_id)                                       \
+        shared(photon_list, thread_weights, thread_n_synch)
+    for (i = 0; i < photon_list->list_capacity; i++)
+    {
+        #if defined(_OPENMP)
+            thread_id = omp_get_thread_num();
+        #else
+            thread_id = 0;
+        #endif
+
+        struct photon *ph = getPhoton(photon_list, i);
+
+        if (ph->type == SYNCH_PHOTON)
+        {
+            int local_idx = thread_n_synch[thread_id];
+            thread_weights[thread_id][local_idx] = ph->weight;
+
+            #pragma omp atomic
+            thread_n_synch[thread_id]++;
+        }
+    }
+
+    /* Serial merge of per-thread weight sub-arrays into one flat array */
+    for (i = 0; i < num_threads; i++)
+        n_synch += thread_n_synch[i];
+
+    if (n_synch == 0)
+    {
+        fprintf(fPtr,
+                ">> [applyRussianRoulette] No SYNCH_PHOTON packets found. "
+                "Skipping roulette.\n");
+        fflush(fPtr);
+
+        for (i = 0; i < num_threads; i++)
+            free(thread_weights[i]);
+        free(thread_weights);
+        free(thread_n_synch);
+        return 0;
+    }
+
+    double *weights = (double *)malloc(n_synch * sizeof(double));
+    if (weights == NULL)
+    {
+        fprintf(fPtr,
+                ">> [applyRussianRoulette] ERROR: malloc failed for merged "
+                "weights array. Skipping roulette.\n");
+        fflush(fPtr);
+
+        for (i = 0; i < num_threads; i++)
+            free(thread_weights[i]);
+        free(thread_weights);
+        free(thread_n_synch);
+        return 0;
+    }
+
+    int offset = 0;
+    for (i = 0; i < num_threads; i++)
+    {
+        memcpy(weights + offset, thread_weights[i],
+               thread_n_synch[i] * sizeof(double));
+        offset += thread_n_synch[i];
+        free(thread_weights[i]);
+    }
+    free(thread_weights);
+    free(thread_n_synch);
+
+    /* ── Step 2: sort and compute median weight (serial) ─────────────────────
+     *
+     * gsl_sort sorts in-place in ascending order.
+     * For odd  n_synch: median = weights[n_synch/2]
+     * For even n_synch: median = mean of two central values
+     */
+    gsl_sort(weights, 1, (size_t)n_synch);
+
+    double w_median;
+    if (n_synch % 2 == 1)
+        w_median = weights[n_synch / 2];
+    else
+        w_median = 0.5 * (weights[n_synch / 2 - 1] + weights[n_synch / 2]);
+
+    free(weights);
+
+    if (w_median <= 0.0)
+    {
+        fprintf(fPtr,
+                ">> [applyRussianRoulette] WARNING: median SYNCH_PHOTON "
+                "weight is <= 0 (w_median = %.3e). Skipping roulette.\n",
+                w_median);
+        fflush(fPtr);
+        return 0;
+    }
+
+    double w_thresh = epsilon_rr * w_median;
+
+    fprintf(fPtr,
+            ">> [applyRussianRoulette] n_synch=%d  w_median=%.3e  "
+            "epsilon_rr=%.3e  w_thresh=%.3e\n",
+            n_synch, w_median, epsilon_rr, w_thresh);
+    fflush(fPtr);
+
+    /* ── Step 3: roulette pass (parallel) ────────────────────────────────────
+     *
+     * Each photon slot is owned by exactly one thread, so reading and
+     * writing ph->weight and ph->type is race-free without locking.
+     *
+     * The only shared-state modification is the photon list counters
+     * (num_photons, num_null_photons) inside setNullPhoton via
+     * incrementNullPhotonNum.  These are protected by a critical section.
+     *
+     * n_killed is accumulated with an atomic update.
+     */
+    #pragma omp parallel for                                        \
+        num_threads(num_threads)                                    \
+        private(i, thread_id)                                       \
+        shared(photon_list, w_thresh, n_killed)
+    for (i = 0; i < photon_list->list_capacity; i++)
+    {
+        #if defined(_OPENMP)
+            thread_id = omp_get_thread_num();
+        #else
+            thread_id = 0;
+        #endif
+
+        struct photon *ph = getPhoton(photon_list, i);
+
+        if (ph->type == SYNCH_PHOTON && ph->weight < w_thresh)
+        {
+            double p_surv = ph->weight / w_thresh;
+            double u      = gsl_rng_uniform_pos(global_thread_rng[thread_id]);
+
+            if (u < p_surv)
+            {
+                /* Packet survives: boost weight to threshold.
+                 * Only this thread touches this slot — no lock needed. */
+                ph->weight = w_thresh;
+            }
+            else
+            {
+                /* Packet killed.
+                 * setNullPhoton writes to this slot (race-free) but also
+                 * calls incrementNullPhotonNum which modifies the shared
+                 * list counters — protect with a critical section.       */
+                #pragma omp critical (roulette_kill)
+                {
+                    setNullPhoton(photon_list, i);
+                }
+
+                #pragma omp atomic
+                n_killed++;
+            }
+        }
+    }
+
+    fprintf(fPtr,
+            ">> [applyRussianRoulette] Complete: %d of %d SYNCH_PHOTON "
+            "packets killed (%.1f%%).\n\n",
+            n_killed, n_synch,
+            (n_synch > 0) ? 100.0 * n_killed / n_synch : 0.0);
+    fflush(fPtr);
+
+    return n_killed;
+
+#else
+    (void)photon_list;
+    (void)epsilon_rr;
+    (void)fPtr;
+    return 0;
+#endif
+}

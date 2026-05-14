@@ -36,3 +36,7 @@ void logspace(double start, double stop, int num, double *array);
 #if SCATTERING_BIAS_SWITCH == ON
 void calculateAverageDimlessTheta(struct hydro_dataframe *hydro_data, FILE *fPtr);
 #endif
+
+int applyRussianRoulette(struct photonList *photon_list,
+                         double             epsilon_rr,
+                         FILE              *fPtr);
