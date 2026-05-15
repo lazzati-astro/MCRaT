@@ -2104,7 +2104,16 @@ int photonEmitSynch(struct photonList          *photon_list,
     /* ── Step 9: Add emitted photons to the photon list ──────────────────── */
     if (ph_tot > 0)
     {
-        addToPhotonList(photon_list, ph_emit, ph_tot);
+        //if we have at least 1 photon in the photon_list then we just add the emitted photons, otherwise we have to set the photons in the photon list
+        if (photon_list->list_capacity >0)
+        {
+            addToPhotonList(photon_list, ph_emit, ph_tot);
+        }
+        else
+        {
+            setPhotonList(photon_list, ph_emit, ph_tot);
+        }
+
         n_emitted = ph_tot;
     }
 
