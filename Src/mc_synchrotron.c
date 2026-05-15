@@ -663,99 +663,99 @@ static void buildUniversalNuCDF(FILE *fPtr)
 */
 void initSynchTables(FILE *fPtr)
 {
-int i;
-fprintf(fPtr,
-        ">> [initSynchTables] Building universal spectral tables "
-        "(SYNCH_N_X=%d, SYNCH_N_NU=%d, SYNCH_N_STRATA=%d)...\n",
-        SYNCH_N_X, SYNCH_N_NU, SYNCH_N_STRATA);
-fflush(fPtr);
+    int i;
+    fprintf(fPtr,
+            ">> [initSynchTables] Building universal spectral tables "
+            "(SYNCH_N_X=%d, SYNCH_N_NU=%d, SYNCH_N_STRATA=%d)...\n",
+            SYNCH_N_X, SYNCH_N_NU, SYNCH_N_STRATA);
+    fflush(fPtr);
 
-/* Suppress harmless underflow/roundoff during Bessel and G_a integrals */
-gsl_error_handler_t *old_handler =
-    gsl_set_error_handler(synch_gsl_underflow_handler);
+    /* Suppress harmless underflow/roundoff during Bessel and G_a integrals */
+    gsl_error_handler_t *old_handler =
+        gsl_set_error_handler(synch_gsl_underflow_handler);
 
-/* ── Allocate heap arrays ─────────────────────────────────────────────── */
-synch_tables.x_arr               = (double *)malloc(SYNCH_N_X * sizeof(double));
-synch_tables.F_arr               = (double *)malloc(SYNCH_N_X * sizeof(double));
-synch_tables.Ga_arr              = (double *)malloc(SYNCH_N_X * sizeof(double));
-synch_tables.Ga_arr_p1           = (double *)malloc(SYNCH_N_X * sizeof(double));
-synch_tables.Ga_arr_p2           = (double *)malloc(SYNCH_N_X * sizeof(double));
-synch_tables.inv_x_cdf_u         = (double *)malloc(SYNCH_N_X * sizeof(double));
-synch_tables.inv_x_cdf_logx      = (double *)malloc(SYNCH_N_X * sizeof(double));
-synch_tables.inv_alpha_cdf_u     = (double *)malloc(SYNCH_N_X * sizeof(double));
-synch_tables.inv_alpha_cdf_alpha = (double *)malloc(SYNCH_N_X * sizeof(double));
+    /* ── Allocate heap arrays ─────────────────────────────────────────────── */
+    synch_tables.x_arr               = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.F_arr               = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.Ga_arr              = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.Ga_arr_p1           = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.Ga_arr_p2           = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.inv_x_cdf_u         = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.inv_x_cdf_logx      = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.inv_alpha_cdf_u     = (double *)malloc(SYNCH_N_X * sizeof(double));
+    synch_tables.inv_alpha_cdf_alpha = (double *)malloc(SYNCH_N_X * sizeof(double));
 
-/* ── Log-spaced x grid ───────────────────────────────────────────────── */
-double log_x_min = log10(SYNCH_X_MIN);
-double log_x_max = log10(SYNCH_X_MAX);
-for (i = 0; i < SYNCH_N_X; i++)
-{
-    double t = (double)i / (SYNCH_N_X - 1);
-    synch_tables.x_arr[i] = pow(10.0,
-                                 log_x_min + t*(log_x_max - log_x_min));
-}
-
-/* Temporary single-threaded accelerator used for steps (1)-(4) only.
- * Freed before initSynchThreadAccels so it does not alias any per-thread
- * slot.                                                                  */
-gsl_interp_accel         *tmp_F_acc = gsl_interp_accel_alloc();
-gsl_integration_workspace *ws       = gsl_integration_workspace_alloc(1000);
-
-/* ── (1) F(x)  [RAIKOU Eq. B13] ─────────────────────────────────────── */
-fprintf(fPtr, ">> [initSynchTables] Computing F(x) [RAIKOU Eq. B13]...\n");
-fflush(fPtr);
-
-for (i = 0; i < SYNCH_N_X; i++)
-    synch_tables.F_arr[i] = computeFatX(synch_tables.x_arr[i], ws, fPtr);
-
-synch_tables.F_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-gsl_spline_init(synch_tables.F_spline,
-                synch_tables.x_arr, synch_tables.F_arr, SYNCH_N_X);
-
-/* ── (2) G_a(x)  [RAIKOU Eq. C3] ────────────────────────────────────── */
-fprintf(fPtr, ">> [initSynchTables] Computing G_a(x) [RAIKOU Eq. C3]...\n");
-fflush(fPtr);
-
-#if NONTHERMAL_E_DIST == POWERLAW
-
-    for (i = 0; i < SYNCH_N_X; i++)
-        synch_tables.Ga_arr[i] = computeGaAtX(synch_tables.x_arr[i],
-                                               POWERLAW_INDEX,
-                                               synch_tables.F_spline,
-                                               tmp_F_acc,
-                                               ws, fPtr);
-
-    /* p1/p2 arrays unused for single power law — zero-fill */
-    for (i = 0; i < SYNCH_N_X; i++)
-        synch_tables.Ga_arr_p1[i] = synch_tables.Ga_arr_p2[i] = 0.0;
-
-#elif NONTHERMAL_E_DIST == BROKENPOWERLAW
-
+    /* ── Log-spaced x grid ───────────────────────────────────────────────── */
+    double log_x_min = log10(SYNCH_X_MIN);
+    double log_x_max = log10(SYNCH_X_MAX);
     for (i = 0; i < SYNCH_N_X; i++)
     {
-        synch_tables.Ga_arr_p1[i] = computeGaAtX(synch_tables.x_arr[i],
-                                                  POWERLAW_INDEX_1,
-                                                  synch_tables.F_spline,
-                                                  tmp_F_acc,
-                                                  ws, fPtr);
-        synch_tables.Ga_arr_p2[i] = computeGaAtX(synch_tables.x_arr[i],
-                                                  POWERLAW_INDEX_2,
-                                                  synch_tables.F_spline,
-                                                  tmp_F_acc,
-                                                  ws, fPtr);
-        synch_tables.Ga_arr[i] = synch_tables.Ga_arr_p1[i];
+        double t = (double)i / (SYNCH_N_X - 1);
+        synch_tables.x_arr[i] = pow(10.0,
+                                     log_x_min + t*(log_x_max - log_x_min));
     }
 
-#endif
+    /* Temporary single-threaded accelerator used for steps (1)-(4) only.
+     * Freed before initSynchThreadAccels so it does not alias any per-thread
+     * slot.                                                                  */
+    gsl_interp_accel         *tmp_F_acc = gsl_interp_accel_alloc();
+    gsl_integration_workspace *ws       = gsl_integration_workspace_alloc(1000);
 
-synch_tables.Ga_spline    = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-synch_tables.Ga_spline_p1 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
-synch_tables.Ga_spline_p2 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+    /* ── (1) F(x)  [RAIKOU Eq. B13] ─────────────────────────────────────── */
+    fprintf(fPtr, ">> [initSynchTables] Computing F(x) [RAIKOU Eq. B13]...\n");
+    fflush(fPtr);
 
-gsl_spline_init(synch_tables.Ga_spline,
-                synch_tables.x_arr, synch_tables.Ga_arr,    SYNCH_N_X);
-gsl_spline_init(synch_tables.Ga_spline_p1,
-                synch_tables.x_arr, synch_tables.Ga_arr_p1, SYNCH_N_X);
+    for (i = 0; i < SYNCH_N_X; i++)
+        synch_tables.F_arr[i] = computeFatX(synch_tables.x_arr[i], ws, fPtr);
+
+    synch_tables.F_spline = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+    gsl_spline_init(synch_tables.F_spline,
+                    synch_tables.x_arr, synch_tables.F_arr, SYNCH_N_X);
+
+    /* ── (2) G_a(x)  [RAIKOU Eq. C3] ────────────────────────────────────── */
+    fprintf(fPtr, ">> [initSynchTables] Computing G_a(x) [RAIKOU Eq. C3]...\n");
+    fflush(fPtr);
+
+    #if NONTHERMAL_E_DIST == POWERLAW
+
+        for (i = 0; i < SYNCH_N_X; i++)
+            synch_tables.Ga_arr[i] = computeGaAtX(synch_tables.x_arr[i],
+                                                   POWERLAW_INDEX,
+                                                   synch_tables.F_spline,
+                                                   tmp_F_acc,
+                                                   ws, fPtr);
+
+        /* p1/p2 arrays unused for single power law — zero-fill */
+        for (i = 0; i < SYNCH_N_X; i++)
+            synch_tables.Ga_arr_p1[i] = synch_tables.Ga_arr_p2[i] = 0.0;
+
+    #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
+
+        for (i = 0; i < SYNCH_N_X; i++)
+        {
+            synch_tables.Ga_arr_p1[i] = computeGaAtX(synch_tables.x_arr[i],
+                                                      POWERLAW_INDEX_1,
+                                                      synch_tables.F_spline,
+                                                      tmp_F_acc,
+                                                      ws, fPtr);
+            synch_tables.Ga_arr_p2[i] = computeGaAtX(synch_tables.x_arr[i],
+                                                      POWERLAW_INDEX_2,
+                                                      synch_tables.F_spline,
+                                                      tmp_F_acc,
+                                                      ws, fPtr);
+            synch_tables.Ga_arr[i] = synch_tables.Ga_arr_p1[i];
+        }
+
+    #endif
+
+    synch_tables.Ga_spline    = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+    synch_tables.Ga_spline_p1 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+    synch_tables.Ga_spline_p2 = gsl_spline_alloc(gsl_interp_linear, SYNCH_N_X);
+
+    gsl_spline_init(synch_tables.Ga_spline,
+                    synch_tables.x_arr, synch_tables.Ga_arr,    SYNCH_N_X);
+    gsl_spline_init(synch_tables.Ga_spline_p1,
+                    synch_tables.x_arr, synch_tables.Ga_arr_p1, SYNCH_N_X);
     gsl_spline_init(synch_tables.Ga_spline_p2,
                     synch_tables.x_arr, synch_tables.Ga_arr_p2, SYNCH_N_X);
 
@@ -1159,8 +1159,8 @@ double synchAlphaNu(double nu_f,
         double x_min = nu_f / (gmax * gmax * nu_c);
         double x_max = nu_f / (gmin * gmin * nu_c);
 
-        double delta_Ga = evalGa(x_max, tables->Ga_spline)
-                        - evalGa(x_min, tables->Ga_spline);
+        double delta_Ga = evalGa(x_min, tables->Ga_spline)
+                    - evalGa(x_max, tables->Ga_spline);
         if (delta_Ga <= 0.0) return 0.0;
 
         double prefactor = (p - 1.0) * (p + 2.0)
@@ -1186,12 +1186,12 @@ double synchAlphaNu(double nu_f,
         double x_br  = nu_f / (gbr  * gbr  * nu_c);
         double x_min = nu_f / (gmax * gmax * nu_c);
 
-        double delta_Ga_p1 = evalGa(x_max, tables->Ga_spline_p1)
-                           - evalGa(x_br,  tables->Ga_spline_p1);
+        double delta_Ga_p1 = evalGa(x_br,  tables->Ga_spline_p1)
+                       - evalGa(x_max, tables->Ga_spline_p1);
         if (delta_Ga_p1 < 0.0) delta_Ga_p1 = 0.0;
 
-        double delta_Ga_p2 = evalGa(x_br,  tables->Ga_spline_p2)
-                           - evalGa(x_min, tables->Ga_spline_p2);
+        double delta_Ga_p2 = evalGa(x_min, tables->Ga_spline_p2)
+                       - evalGa(x_br,  tables->Ga_spline_p2);
         if (delta_Ga_p2 < 0.0) delta_Ga_p2 = 0.0;
 
         if (delta_Ga_p1 == 0.0 && delta_Ga_p2 == 0.0) return 0.0;
