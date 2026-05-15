@@ -1,5 +1,9 @@
-// define the extent of the tabulated fluid photon energies normalized by electron rest mass
-#define LOG_PH_E_MIN -12.0
+// define the extent of the tabulated fluid photon energies normalized by electron rest mass. If we have synchrotron photons, lower the min photon energy to tabulate hot cross sections for
+#if SYNCHROTRON_SWITCH == ON
+    #define LOG_PH_E_MIN -18.0
+#else
+    #define LOG_PH_E_MIN -12.0
+#endif
 #define LOG_PH_E_MAX 6.0
 #define N_PH_E 220
 
