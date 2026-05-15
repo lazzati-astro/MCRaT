@@ -765,7 +765,7 @@ void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hy
 
             //mfp=(-1)*log(rnd_tracker)*(M_P/((n_dens_tmp))/(THOM_X_SECT)); ///(1.0-beta*((n_cosangle)))) ; // the mfp and then multiply it by the ln of a random number to simulate distribution of mean free paths IN COMOV FRAME for reference
 
-            mfp = (-1.0/ph->total_optical_depth)*log(rnd_tracker);
+            mfp = (-1.0/ph->total_scattering_opacity)*log(rnd_tracker);
         }
         else
         {
@@ -1359,7 +1359,7 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
                     // ignore all of these steps
                     if (ph->scattering_bias[scattering_subgroup] != 1)
                     {
-                        double scattered_photon_weight = scatteredPhotonWeight(ph->weight, ph-> optical_depths[scattering_subgroup]*(scatt_time-old_scatt_time)*C_LIGHT, ph->total_optical_depth * (scatt_time-old_scatt_time) * C_LIGHT);
+                        double scattered_photon_weight = scatteredPhotonWeight(ph->weight, ph-> scattering_opacity[scattering_subgroup]*(scatt_time-old_scatt_time)*C_LIGHT, ph->total_scattering_opacity * (scatt_time-old_scatt_time) * C_LIGHT);
                         double unscattered_photon_weight = ph->weight - scattered_photon_weight;
                         
                         //first we set the weight of the scattered photon to be the unscattered weight and then copy it into a new element of the photon_list. This works since none of the fields of the photon struct have been updated based on teh actual scattering yet. That occurs below.

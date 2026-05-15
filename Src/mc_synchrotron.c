@@ -1245,9 +1245,9 @@ void applyabsorption(struct photon *ph, double dl)
     #if SYNCHROTRON_SWITCH == ON
         if (ph == NULL)                       return;
         if (dl <= 0.0)                        return;
-        if (ph->abs_optical_depth <= 0.0)     return;
+        if (ph->absorption_opacity <= 0.0)     return;
 
-        double tau = ph->abs_optical_depth * dl;
+        double tau = ph->absorption_opacity * dl;
 
         /* Guard against exp underflow for very large optical depths */
         if (tau > 700.0)
@@ -1294,7 +1294,7 @@ void calculateOpticalDepthSSA(struct photon          *ph,
 {
     #if SYNCHROTRON_SWITCH == ON
 
-        ph->abs_optical_depth = 0.0;
+        ph->absorption_opacity = 0.0;
 
         if (ph->type != SYNCH_PHOTON)
             return;
@@ -1312,7 +1312,7 @@ void calculateOpticalDepthSSA(struct photon          *ph,
          * applyabsorption requires no additional frame arithmetic.
          * [RAIKOU Eq. 31]
          */
-        ph->abs_optical_depth = fluid_factor * alpha;
+        ph->absorption_opacity = fluid_factor * alpha;
 
     #else
         (void)ph;
@@ -1532,21 +1532,21 @@ static void synchFillPhoton(struct photon          *ph,
     ph->nearest_block_index = cell_idx;
     ph->recalc_properties   = 1;
     ph->time_to_scatter     = 0.0;
-    ph->total_optical_depth = 0.0;
+    ph->total_scattering_opacity = 0.0;
 
     #if SCATTERING_BIAS_SWITCH != OFF
         {
             int idx;
             for (idx = 0; idx < 1 + N_GAMMA; idx++)
             {
-                ph->optical_depths[idx]  = 0.0;
+                ph->scattering_opacity[idx]  = 0.0;
                 ph->scattering_bias[idx] = 0.0;
             }
         }
     #endif
 
     #if SYNCHROTRON_SWITCH == ON
-        ph->abs_optical_depth = 0.0;
+        ph->absorption_opacity = 0.0;
     #endif
 }
 

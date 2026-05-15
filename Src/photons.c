@@ -230,20 +230,19 @@ void setNullPhoton(struct photonList *photon_list, int index)
     photon_list->photons[index].s2=0;
     photon_list->photons[index].s3=0;
     photon_list->photons[index].num_scatt=0;
-    photon_list->photons[index].total_optical_depth=0;
+    photon_list->photons[index].total_scattering_opacity=0;
     
     #if NONTHERMAL_E_DIST != OFF
-    for (i=0;i<(1+N_GAMMA);i++)
-    {
-        photon_list->photons[index].optical_depths[i]=0; //the optical depths that are calculated for thermal + non-thermal electrons with the nonthermal electron subgroups
-        photon_list->photons[index].scattering_bias[i]=0;
-    }
+        for (i=0;i<(1+N_GAMMA);i++)
+        {
+            photon_list->photons[index].scattering_opacity[i]=0; //the optical depths that are calculated for thermal + non-thermal electrons with the nonthermal electron subgroups
+            photon_list->photons[index].scattering_bias[i]=0;
+        }
     #endif
     
-    photon_list->photons[index].total_optical_depth = 0;
     
     #if SYNCHROTRON_SWITCH == ON
-        photon_list->photons[index].abs_optical_depth=0;
+        photon_list->photons[index].absorption_opacity=0;
     #endif
     
     //photon_list->num_null_photons++;
@@ -329,15 +328,15 @@ void initializePhoton(struct photon *ph)
     #if SCATTERING_BIAS_SWITCH != OFF
         for (int i = 0; i < 1 + N_GAMMA; ++i)
         {
-            ph->optical_depths[i] = NAN;
+            ph->scattering_opacity[i] = NAN;
             ph->scattering_bias[i] = NAN;
         }
     #endif
 
-    ph->total_optical_depth = NAN;
+    ph->total_scattering_opacity = NAN;
     
     #if SYNCHROTRON_SWITCH == ON
-        ph->abs_optical_depth=NAN; //this holds the opacity for synchrotron absorption (multiply by path length to get optical depth when modifying the weight correspondent with synchrotron self absorption
+        ph->absorption_opacity=NAN; //this holds the opacity for synchrotron absorption (multiply by path length to get optical depth when modifying the weight correspondent with synchrotron self absorption
     #endif
 
 }
@@ -421,7 +420,7 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
 
     }
     
-    if (!isnan(ph_user->total_optical_depth))
+    if (!isnan(ph_user->total_scattering_opacity))
     {
         fprintf(fPtr, "The user cannot redefine the injected photon's total optical depth field.\n");
         fflush(fPtr);
@@ -448,7 +447,7 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
     #if SCATTERING_BIAS_SWITCH != OFF
         for (int i = 0; i < 1 + N_GAMMA; ++i)
         {
-            if (!isnan(ph_user->optical_depths[i]))
+            if (!isnan(ph_user->scattering_opacity[i]))
             {
                 fprintf(fPtr, "The user cannot redefine the injected photon's optical depth array.\n");
                 fflush(fPtr);

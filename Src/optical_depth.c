@@ -66,21 +66,21 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
     #if NONTHERMAL_E_DIST == OFF
         getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index], &norm_cross_section,  rand, fPtr);
         #if SCATTERING_BIAS_SWITCH == OFF
-            (ph->total_optical_depth) = (thermal_n_dens_lab)*(THOM_X_SECT*norm_cross_section)*fluid_factor;
+            (ph->total_scattering_opacity) = (thermal_n_dens_lab)*(THOM_X_SECT*norm_cross_section)*fluid_factor;
         #else
-            (ph->optical_depths)[0] = (thermal_n_dens_lab)*(THOM_X_SECT*norm_cross_section)*fluid_factor;
+            (ph->scattering_opacity)[0] = (thermal_n_dens_lab)*(THOM_X_SECT*norm_cross_section)*fluid_factor;
             //fprintf(fPtr, "thermal tau: %e\n", (ph->optical_depths)[0] );
             
             //set to 1 for now, this is most likely the best value for us
             //we calculate the max optical depth as the optical depth until the next simulation frame is loaded (so multiply by c*dt)
-            thermal_bias= calculateThermalScatteringBias(SCATTERING_BIAS_SCALING, hydro_data->average_dimless_theta, (hydro_data->temp)[ph_block_index], (ph->optical_depths)[0]*C_LIGHT/hydro_data->fps);
+            thermal_bias= calculateThermalScatteringBias(SCATTERING_BIAS_SCALING, hydro_data->average_dimless_theta, (hydro_data->temp)[ph_block_index], (ph->scattering_opacity)[0]*C_LIGHT/hydro_data->fps);
             (ph->scattering_bias)[0]=thermal_bias;
             
-            ph->total_optical_depth=(ph->scattering_bias)[0]*(ph->optical_depths)[0];
+            ph->total_scattering_opacity=(ph->scattering_bias)[0]*(ph->scattering_opacity)[0];
             
         #endif
         
-        tau = (ph->total_optical_depth);
+        tau = (ph->total_scattering_opacity);
     #else
         getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index], norm_cross_section,  rand, fPtr);
         
@@ -94,12 +94,12 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
         if (thermal_n_dens_lab != 0)
         {
             //calculate the thermal tau
-            (ph->optical_depths)[0] = (thermal_n_dens_lab)*(THOM_X_SECT*(*(norm_cross_section+0)))*fluid_factor;
-            norm_optical_depth = (ph->optical_depths)[0];
+            (ph->scattering_opacity)[0] = (thermal_n_dens_lab)*(THOM_X_SECT*(*(norm_cross_section+0)))*fluid_factor;
+            norm_optical_depth = (ph->scattering_opacity)[0];
             //fprintf(fPtr, "thermal tau: %e\n", (ph->optical_depths)[0] );
             
             //set to 1 for now, this is most likely the best value for us
-            thermal_bias= calculateThermalScatteringBias(SCATTERING_BIAS_SCALING, hydro_data->average_dimless_theta, (hydro_data->temp)[ph_block_index], (ph->optical_depths)[0]*C_LIGHT/hydro_data->fps);
+            thermal_bias= calculateThermalScatteringBias(SCATTERING_BIAS_SCALING, hydro_data->average_dimless_theta, (hydro_data->temp)[ph_block_index], (ph->scattering_opacity)[0]*C_LIGHT/hydro_data->fps);
             (ph->scattering_bias)[0]=thermal_bias;
             i_start=0;
         }
@@ -118,11 +118,11 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
             //fprintf(fPtr, "nonthermal scatterig bias: %e\n", thermal_bias);
             
             (ph->scattering_bias)[1] = thermal_bias;
-            (ph->optical_depths)[1] = (nonthermal_n_dens_lab)*(THOM_X_SECT*(*(norm_cross_section+(1))))*fluid_factor;
+            (ph->scattering_opacity)[1] = (nonthermal_n_dens_lab)*(THOM_X_SECT*(*(norm_cross_section+(1))))*fluid_factor;
             
             
             //make sure we set the thermal values to be 0
-            (ph->optical_depths)[0] = 0;
+            (ph->scattering_opacity)[0] = 0;
             (ph->scattering_bias)[0] = 0;
         }
         
@@ -130,10 +130,10 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
         //calculate the nonthermal tau
         for (i=i_start;i<N_GAMMA;i++)
         {
-            (ph->optical_depths)[i+1] = (nonthermal_n_dens_lab)*(THOM_X_SECT*(*(norm_cross_section+(i+1))))*fluid_factor;
+            (ph->scattering_opacity)[i+1] = (nonthermal_n_dens_lab)*(THOM_X_SECT*(*(norm_cross_section+(i+1))))*fluid_factor;
             
             //we dont include the c*dt factor for calculating the scattering biases since the saved optical depths exclude this factor (and we calculate the ratio of optical depths in the function), while the thermal bias that is calculated explicitly includes the optical depth unil the next time step and the subseqeunt biases will consider the scattering until the next time step since its based on the previously calculated thermal bias
-            (ph->scattering_bias)[i+1]=calculateNonthermalScatteringBias(thermal_bias, norm_optical_depth,(ph->optical_depths)[i+1]) ;
+            (ph->scattering_bias)[i+1]=calculateNonthermalScatteringBias(thermal_bias, norm_optical_depth,(ph->scattering_opacity)[i+1]) ;
             //fprintf(fPtr, "nonthermal_n_dens_lab_i: %e, subgroup_dens: %e, norm_cross_section: %e ith tau: %e, ith bias: %e\n", nonthermal_n_dens_lab_i, (hydro_data->electron_dens_subgroup)[i], *(norm_cross_section+(i+1)), (ph->optical_depths)[i+1], (ph->scattering_bias)[i+1] );
             //fflush(fPtr);
         }
@@ -141,9 +141,9 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
         tau=0;
         for (i=0;i<N_GAMMA+1;i++)
         {
-            tau += ((ph->scattering_bias)[i]*(ph->optical_depths)[i]);
+            tau += ((ph->scattering_bias)[i]*(ph->scattering_opacity)[i]);
         }
-        (ph->total_optical_depth) = tau;
+        (ph->total_scattering_opacity) = tau;
         
         //fprintf(fPtr, "total tau: %e\n", (ph->total_optical_depth) );
         //fflush(fPtr);

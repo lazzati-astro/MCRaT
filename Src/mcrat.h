@@ -209,13 +209,13 @@ struct photon
     int nearest_block_index; //index that  allows for extraction of information of the hydro grid block that the photon si located within
     double time_to_scatter; //the sampled mean free path of the photon divided by C_LIGHT
     #if SCATTERING_BIAS_SWITCH != OFF
-        double optical_depths[1+N_GAMMA]; //the scattering optical depths that are calculated for thermal + non-thermal electrons with the nonthermal electron subgroups
+        double scattering_opacity[1+N_GAMMA]; //the scattering opacities that are calculated for thermal + non-thermal electrons with the nonthermal electron subgroups
         double scattering_bias[1+N_GAMMA];
     #endif
     //save the total calculated scattering optical depth, if we only have thermal electrons this optical depth is that calcualted value otherwise it includes thermal-non-thermal electrons and the biases
-    double total_optical_depth;
+    double total_scattering_opacity;
     #if SYNCHROTRON_SWITCH == ON
-        double abs_optical_depth; //this holds the opacity for synchrotron absorption (multiply by path length to get optical depth when modifying the weight correspondent with synchrotron self absorption
+        double absorption_opacity; //this holds the opacity for synchrotron absorption (multiply by path length to get optical depth when modifying the weight correspondent with synchrotron self absorption
     #endif
 
 } ; //structure to hold photon information
