@@ -13,7 +13,7 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
     #else
         //determine if we need a thermal or nonthermal electron and if nonthermal from which subgroup
         int i=0;
-        double cumulative_tau=(ph->scattering_bias)[i]*(ph->optical_depths)[i], random_num=gsl_rng_uniform_pos(rand);
+        double cumulative_tau=(ph->scattering_bias)[i]*(ph->scattering_opacity)[i], random_num=gsl_rng_uniform_pos(rand);
         double subgroup_tau_1=0, subgroup_tau_2=0;
         //double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
         double gamma_min, gamma_max;
@@ -22,7 +22,7 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
         fprintf(fPtr, "testing with random_num %g\n",random_num);
 
 
-        if (cumulative_tau/(ph->total_optical_depth) >= random_num)
+        if (cumulative_tau/(ph->total_scattering_opacity) >= random_num)
         {
             //generate a thermal electron
             singleThermalElectron(el_p, temp, ph_p, rand, fPtr);
@@ -35,10 +35,10 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photo
             cumulative_tau=0;
             for (i=1;i<N_GAMMA+1;i++)
             {
-                subgroup_tau_1=cumulative_tau+(ph->scattering_bias)[i-1]*(ph->optical_depths)[i-1];
-                subgroup_tau_2=subgroup_tau_1+(ph->scattering_bias)[i]*(ph->optical_depths)[i];
-                fprintf(fPtr, "iteration %d: %e %e\n",i, subgroup_tau_1/(ph->total_optical_depth), subgroup_tau_2/(ph->total_optical_depth));
-                if ((subgroup_tau_1/(ph->total_optical_depth) < random_num) && (random_num <= subgroup_tau_2/(ph->total_optical_depth)))
+                subgroup_tau_1=cumulative_tau+(ph->scattering_bias)[i-1]*(ph->scattering_opacity)[i-1];
+                subgroup_tau_2=subgroup_tau_1+(ph->scattering_bias)[i]*(ph->scattering_opacity)[i];
+                fprintf(fPtr, "iteration %d: %e %e\n",i, subgroup_tau_1/(ph->total_scattering_opacity), subgroup_tau_2/(ph->total_scattering_opacity));
+                if ((subgroup_tau_1/(ph->total_scattering_opacity) < random_num) && (random_num <= subgroup_tau_2/(ph->total_scattering_opacity)))
                 {
                     fprintf(fPtr, "in if\n");
                     result=i;
