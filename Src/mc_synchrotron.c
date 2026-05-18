@@ -1250,10 +1250,12 @@ void applyAbsorption(struct photon *ph, double dl)
         double tau = ph->absorption_opacity * dl;
 
         /* Guard against exp underflow for very large optical depths */
-        //set to DBL_MIN so these photons can potentially be written out instead of causing garbage data being written out in the printPhotons function. Also applyRussianRoulette, recongnises these as needing to be removed. 
+        //set to DBL_MIN so these photons can potentially be written out instead of causing garbage data being written out in the printPhotons function. Also applyRussianRoulette, recongnises these as needing to be removed.
+        //set the nearest_block_index=-1 so these photons dont scatter as we dont really care about them anymore
         if (tau > 700.0)
         {
             ph->weight = DBL_MIN;
+            ph->nearest_block_index=-1;
             return;
         }
 
