@@ -1903,7 +1903,7 @@ int photonEmitSynch(struct photonList          *photon_list,
     const SynchUniversalTables *tables = getSynchTables(fPtr);
 
     double K_phys = (sqrt(3.0) * CHARGE_EL * CHARGE_EL * CHARGE_EL)
-                  / (4.0 * M_PI * M_EL * C_LIGHT * C_LIGHT * PL_CONST)
+                  / (2.0 * M_EL * C_LIGHT * C_LIGHT * PL_CONST)
                   * A_norm
                   * log(10.0) * log(10.0)
                   * tables->nu_cdf_norm
