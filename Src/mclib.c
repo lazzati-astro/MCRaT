@@ -673,6 +673,7 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
         else
         {
             //later on we want to make sure that this photon gets assigned a large mfp so it doesnt erroneously scatter
+            //also want to make sure that the absorption optical depth is set to 0
             ph->nearest_block_index=-1;
             //fprintf(fPtr,"Photon %d In ELSE\n", i);
             //exit(0);
@@ -702,7 +703,7 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
 void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hydro_data, gsl_rng * rand, FILE *fPtr)
 {
     int i=0, ph_block_index=0, num_thread=1, thread_id=0;
-    double mfp=0, default_mfp=1e12;
+    double mfp=0, default_mfp=FLT_MAX;
     double rnd_tracker=0;
     double *all_time_steps=malloc((photon_list->list_capacity)*sizeof(double));
     struct photon *ph=NULL;
@@ -770,6 +771,8 @@ void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hy
         else
         {
             mfp=default_mfp;
+            //set this to 0 so the continuous absorption doesnt occur as time steps/path lengths are traversed
+            ph->absorption_opacity = 0.0;
         }
         
         //save values to use in qsort and to the photon struct itself
