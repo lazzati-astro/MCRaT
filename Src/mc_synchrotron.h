@@ -300,7 +300,7 @@ void calculateOpticalDepthSSA(struct photon          *ph,
                                double                  fluid_factor,
                               FILE                   *fPtr);
 
-void applyabsorption(struct photon *ph, double dl);
+void applyAbsorption(struct photon *ph, double dl);
 
 
 /* ── Main emission function ─────────────────────────────────────────────────

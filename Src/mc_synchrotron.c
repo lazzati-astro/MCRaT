@@ -1240,7 +1240,7 @@ double synchAlphaNu(double nu_f,
  * ph : photon packet (modified in-place)
  * dl : lab-frame step length [cm]; must be >= 0
  */
-void applyabsorption(struct photon *ph, double dl)
+void applyAbsorption(struct photon *ph, double dl)
 {
     #if SYNCHROTRON_SWITCH == ON
         if (ph == NULL)                       return;
@@ -1250,9 +1250,10 @@ void applyabsorption(struct photon *ph, double dl)
         double tau = ph->absorption_opacity * dl;
 
         /* Guard against exp underflow for very large optical depths */
+        //set to DBL_MIN so these photons can potentially be written out instead of causing garbage data being written out in the printPhotons function. Also applyRussianRoulette, recongnises these as needing to be removed. 
         if (tau > 700.0)
         {
-            ph->weight = 0.0;
+            ph->weight = DBL_MIN;
             return;
         }
 

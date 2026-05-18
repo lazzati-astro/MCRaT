@@ -1177,7 +1177,7 @@ void updatePhotonPosition(struct photonList *photon_list, double t, FILE *fPtr)
             
             //printf("In update  function: %e, %e, %e, %e, %e, %e, %e\n",(ph->r0), (ph->r1), (ph->r2), t, (ph->p1)/(ph->p0), (ph->p2)/(ph->p0), (ph->p3)/(ph->p0) );
             #if SYNCHROTRON_SWITCH == ON
-                applyabsorption(ph, dl);
+                applyAbsorption(ph, dl);
             #endif
         }
     }
@@ -1799,7 +1799,9 @@ int applyRussianRoulette(struct photonList *photon_list,
 
         struct photon *ph = getPhoton(photon_list, i);
 
-        if (ph->type == SYNCH_PHOTON)
+        //if (ph->type == SYNCH_PHOTON) commented this out since when we have large absorption optical depths, we set the photon weight to be DBL_MIN in applyAbsorption, we definitely want these photons to be removed.
+        //We set ph->weight = DBL_MIN instead of 0 also so these photons can potentially be written out instead of causing garbage data being written out in the printPhotons function
+        if (ph->type == SYNCH_PHOTON && ph->weight > DBL_MIN)
         {
             int local_idx = thread_n_synch[thread_id];
             thread_weights[thread_id][local_idx] = ph->weight;
