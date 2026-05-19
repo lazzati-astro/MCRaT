@@ -771,8 +771,11 @@ void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hy
         else
         {
             mfp=default_mfp;
-            //set this to 0 so the continuous absorption doesnt occur as time steps/path lengths are traversed
-            ph->absorption_opacity = 0.0;
+            
+            #if SYNCHROTRON_SWITCH == ON
+                //set this to 0 so the continuous absorption doesnt occur as time steps/path lengths are traversed
+                ph->absorption_opacity = 0.0;
+            #endif
         }
         
         //save values to use in qsort and to the photon struct itself
