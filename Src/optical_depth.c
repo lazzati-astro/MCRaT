@@ -100,7 +100,7 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
             
             //set to 1 for now, this is most likely the best value for us
             reference_bias= calculateThermalScatteringBias(SCATTERING_BIAS_SCALING, hydro_data->average_dimless_theta, (hydro_data->temp)[ph_block_index], (ph->scattering_opacity)[0]*C_LIGHT/hydro_data->fps);
-            (ph->scattering_bias)[0]=thermal_bias;
+            (ph->scattering_bias)[0]=reference_bias;
             i_start=0;
         }
         else
