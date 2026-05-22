@@ -116,9 +116,11 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
             // the first temp that gets passed in is assumed to be the dimless temp already while the second temp that is passed in, will be passed to calcDimlessTheta within the function. We want these to cancel out in the calulation of the bias parameter.
             reference_bias=calculateThermalScatteringBias(SCATTERING_BIAS_SCALING, calcDimlessTheta(1.0), 1.0, reference_opacity*C_LIGHT/hydro_data->fps);
             //fprintf(fPtr, "nonthermal scatterig bias: %e\n", thermal_bias);
+            //divide by N_GAMMA so the subgroups that are considered don't add up to more than the reference optical depth
+            reference_opacity /= N_GAMMA;
             
-            (ph->scattering_bias)[1] = reference_bias;
-            (ph->scattering_opacity)[1] = (nonthermal_n_dens_lab)*(THOM_X_SECT*(*(norm_cross_section+(1))))*fluid_factor;
+            //(ph->scattering_bias)[1] = reference_bias;
+            //(ph->scattering_opacity)[1] = (nonthermal_n_dens_lab)*(THOM_X_SECT*(*(norm_cross_section+(1))))*fluid_factor;
             
             
             //make sure we set the thermal values to be 0
@@ -233,5 +235,5 @@ double calculateNonthermalScatteringBias(double initial_scatt_bias, double initi
     //initial_scatt_bias is typically the thermal electron scattering bias and initial_tau is typically the optical depth
     // of scattering with thermal electrons. If we have no thermal electrons, these get replaced with the bias/tau of
     //interacting with electrons in the first subgroup
-    return initial_scatt_bias*initial_tau/nonthermal_tau;
+    return fmax(1.0, initial_scatt_bias*initial_tau/nonthermal_tau);
 }
