@@ -416,16 +416,26 @@ static void buildUniversalNuCDF(FILE *fPtr)
     fflush(fPtr);
 
     /* ── (1) Evaluate pdf on log-nu_tilde grid ────────────────────────────── */
-    double log_nt_min = log10(SYNCH_X_MIN * GAMMA_MIN * GAMMA_MIN);
-    double log_nt_max = log10(SYNCH_X_MAX * GAMMA_MAX * GAMMA_MAX);
-    double dlog_nt    = (log_nt_max - log_nt_min) / (SYNCH_N_NU - 1);
+    double log_nt_min = 0;
+    double log_nt_max = 0;
+    double dlog_nt    = 0;
 
     double log_nt_arr[SYNCH_N_NU];
     double pdf_arr   [SYNCH_N_NU];
 
-    double log_g_min = log10(GAMMA_MIN);
-    double log_g_max = log10(GAMMA_MAX);
-    double dlog_g    = (log_g_max - log_g_min) / (SYNCH_N_GAMMA_INT - 1);
+    double log_g_min = 0;
+    double log_g_max = 0;
+    double dlog_g    = 0;
+    
+    #if NONTHERMAL_E_DIST != OFF
+        log_nt_min = log10(SYNCH_X_MIN * GAMMA_MIN * GAMMA_MIN);
+        log_nt_max = log10(SYNCH_X_MAX * GAMMA_MAX * GAMMA_MAX);
+        dlog_nt    = (log_nt_max - log_nt_min) / (SYNCH_N_NU - 1);
+        
+        log_g_min = log10(GAMMA_MIN);
+        log_g_max = log10(GAMMA_MAX);
+        dlog_g    = (log_g_max - log_g_min) / (SYNCH_N_GAMMA_INT - 1);
+    #endif
 
     #if NONTHERMAL_E_DIST == POWERLAW
 
@@ -1740,6 +1750,7 @@ int photonEmitSynch(struct photonList          *photon_list,
     double r_grid_outercorner     = 0.0;
     double theta_grid_innercorner = 0.0;
     double theta_grid_outercorner = 0.0;
+    double nonthermal_n_dens      = 0.0;
 
     /* ── Step 1: Shell boundaries ─────────────────────────────────────────── */
     double rmin = calcCyclosynchRLimits(hydro_data->scatt_frame_number,
@@ -1763,7 +1774,11 @@ int photonEmitSynch(struct photonList          *photon_list,
     /* ── Step 2: First pass — count active cells ──────────────────────────── */
     for (i = 0; i < hydro_data->num_elements; i++)
     {
-        if ((hydro_data->nonthermal_dens)[i] > 0.0)
+        #if NONTHERMAL_E_DIST != OFF
+            nonthermal_n_dens = (hydro_data->nonthermal_dens)[i];
+        #endif
+        
+        if (nonthermal_n_dens > 0.0)
         {
             #if DIMENSIONS == THREE
                 hydroCoordinateToSpherical(&r_grid_innercorner,
@@ -1928,7 +1943,11 @@ int photonEmitSynch(struct photonList          *photon_list,
     j = 0;
     for (i = 0; i < hydro_data->num_elements; i++)
     {
-        if ((hydro_data->nonthermal_dens)[i] > 0.0)
+        #if NONTHERMAL_E_DIST != OFF
+            nonthermal_n_dens = (hydro_data->nonthermal_dens)[i];
+        #endif
+
+        if (nonthermal_n_dens > 0.0)
         {
             #if DIMENSIONS == THREE
                 hydroCoordinateToSpherical(&r_grid_innercorner,
@@ -1981,7 +2000,7 @@ int photonEmitSynch(struct photonList          *photon_list,
                  * = K_phys * n_e_nth * B * V
                  */
                 W_cell[j] = K_phys
-                           * (hydro_data->nonthermal_dens)[i]
+                           * nonthermal_n_dens
                            * B
                            * V;
                 j++;
