@@ -4,71 +4,52 @@
 
 #include "mcrat.h"
 
-int generateSingleElectron(double *el_p, double temp, double *ph_p, struct photon *ph, gsl_rng * rand, FILE *fPtr)
+
+int generateSingleElectron(double *el_p, double temp, double *ph_p,
+                            struct photon *ph, gsl_rng *rand, FILE *fPtr)
 {
-    int result=-1;
+    int result = -1;
+
     #if NONTHERMAL_E_DIST == OFF
         singleThermalElectron(el_p, temp, ph_p, rand, fPtr);
-        result=0; //se tthis to be 0 to be consistent with the nonthermal electron dist case below
+        result = 0;
     #else
-        //determine if we need a thermal or nonthermal electron and if nonthermal from which subgroup
-        int i=0;
-        double cumulative_tau=(ph->scattering_bias)[i]*(ph->scattering_opacity)[i], random_num=gsl_rng_uniform_pos(rand);
-        double subgroup_tau_1=0, subgroup_tau_2=0;
-        //double dgamma = (log10(GAMMA_MAX) - log10(GAMMA_MIN)) / N_GAMMA;
         double gamma_min, gamma_max;
+        double random_num = gsl_rng_uniform_pos(rand);
+        
+        //random_num=0.0; //for testing
+        //fprintf(fPtr, "testing with random_num %g\n",random_num);
 
-        random_num=0.0; //for testing
-        fprintf(fPtr, "testing with random_num %g\n",random_num);
 
-
-        if (cumulative_tau/(ph->total_scattering_opacity) >= random_num)
+        /* Walk the CDF: find which subgroup the random number falls in.
+         * We stop advancing once result has been assigned (i.e. stays != -1). */
+        double cumulative = 0.0;
+        for (int i = 0; i < N_GAMMA + 1; i++)
         {
-            //generate a thermal electron
+            cumulative += (ph->scattering_bias)[i] * (ph->scattering_opacity)[i];
+            if ((result == -1) && (random_num <= cumulative / total_tau))
+                result = i;
+        }
+
+        /* Fallback: floating-point rounding may leave random_num just above 1 */
+        if (result == -1)
+            result = N_GAMMA;
+
+        /* Generate the electron from the chosen subgroup */
+        if (result == 0)
+        {
             singleThermalElectron(el_p, temp, ph_p, rand, fPtr);
-            //set the subgroup to be 0, for thermal electrons we will need the scatter biasing after the scattering
-            result=0;
         }
         else
         {
-            //need to keep adding the nonthermal eelctorn subgroup taus to see which subgroup we will choose
-            cumulative_tau=0;
-            for (i=1;i<N_GAMMA+1;i++)
-            {
-                subgroup_tau_1=cumulative_tau+(ph->scattering_bias)[i-1]*(ph->scattering_opacity)[i-1];
-                subgroup_tau_2=subgroup_tau_1+(ph->scattering_bias)[i]*(ph->scattering_opacity)[i];
-                fprintf(fPtr, "iteration %d: %e %e\n",i, subgroup_tau_1/(ph->total_scattering_opacity), subgroup_tau_2/(ph->total_scattering_opacity));
-                if ((subgroup_tau_1/(ph->total_scattering_opacity) < random_num) && (random_num <= subgroup_tau_2/(ph->total_scattering_opacity)))
-                {
-                    fprintf(fPtr, "in if\n");
-                    result=i;
-                    //i=N_GAMMA; //set this so we can exit the loop
-                }
-                cumulative_tau=subgroup_tau_1;
-            }
-
-            if ((i==N_GAMMA-1) && (result==-1))
-            {
-                //none of the subgroups were chosen, so we know the last electron dist subgroup has to be used
-                fprintf(fPtr, "Choosing max gamma\n");
-                result=N_GAMMA; //the index of the last interval of our electron distribution subgroup is N_GAMMA-1
-            }
-
-            //result-1 because we start iterating at i=1 instead of 0. This gives result as the index in the
-            //photon struct and we need to subtract -1 to get the index for calcualting the gammamin/max interval of the subgroup from the
-            //hot cross section calculations
-            //gamma_min = log10(GAMMA_MIN) + (result-1) * dgamma;
-            //gamma_max = gamma_min + dgamma;
-            calculateGammaSubgroup(result-1, &gamma_min, &gamma_max);
-            fprintf(fPtr, "chosen gamma range of %d: %e %e\n",result, gamma_min, gamma_max);
-
+            calculateGammaSubgroup(result - 1, &gamma_min, &gamma_max);
             singleNonThermalElectron(el_p, ph_p, gamma_min, gamma_max, rand, fPtr);
         }
-
     #endif
 
     return result;
 }
+
 
 void singleThermalElectron(double *el_p, double temp, double *ph_p, gsl_rng * rand, FILE *fPtr)
 {
