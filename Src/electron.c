@@ -19,6 +19,8 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p,
         
         //random_num=0.0; //for testing
         //fprintf(fPtr, "testing with random_num %g\n",random_num);
+    
+        double total_tau = (ph->total_scattering_opacity);
 
 
         /* Walk the CDF: find which subgroup the random number falls in.
