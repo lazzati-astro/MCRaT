@@ -1398,32 +1398,40 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
                     
                     //fprintf(fPtr,"Within the if!\n");
                     //fflush(fPtr);
-#if SCATTERING_BIAS_SWITCH == ON
-                    // if the scattering bias is 1, we already know that the weight of the nonscattered photon is 0 so can
-                    // ignore all of these steps
-                    if (ph->scattering_bias[scattering_subgroup] != 1)
-                    {
-                        double scattered_photon_weight = scatteredPhotonWeight(ph->weight, ph-> scattering_opacity[scattering_subgroup]*(scatt_time-old_scatt_time)*C_LIGHT, ph->total_scattering_opacity * (scatt_time-old_scatt_time) * C_LIGHT);
-                        double unscattered_photon_weight = ph->weight - scattered_photon_weight;
+                    #if SCATTERING_BIAS_SWITCH == ON
+                        // if the scattering bias is 1, we already know that the weight of the nonscattered photon is 0 so can
+                        // ignore all of these steps
+                        if (ph->scattering_bias[scattering_subgroup] != 1)
+                        {
+                            double scattered_photon_weight = scatteredPhotonWeight(ph->weight, ph-> scattering_opacity[scattering_subgroup]*(scatt_time-old_scatt_time)*C_LIGHT, ph-> scattering_opacity[scattering_subgroup]*(ph->scattering_bias)[scattering_subgroup] * (scatt_time-old_scatt_time) * C_LIGHT);
+                            double unscattered_photon_weight = ph->weight - scattered_photon_weight;
+                            
+                            if (unscattered_photon_weight<0)
+                            {
+                                fprintf(fPtr,"The unscattered photon weight is negative!!! \n");
+                                fflush(fPtr);
+                                exit(1);
+                            }
+
+                            
+                            //first we set the weight of the scattered photon to be the unscattered weight and then copy it into a new element of the photon_list. This works since none of the fields of the photon struct have been updated based on teh actual scattering yet. That occurs below.
+                            ph->weight = unscattered_photon_weight;
+                            
+                            //add the original to our photon list struct, which does a memcpy into a NULL photon's index
+                            //if the photon list has to be expanded, the ph pointer may no longer be valid.
+                            //try to get aroudn this by copying the contents of ph pointer to a new photon struct and then pass that in
+                            struct photon temp_ph;
+                            memcpy(&temp_ph, ph, sizeof(struct photon));
+                            addToPhotonList(photon_list, &temp_ph, 1);
+                            
+                            //now get the address of the scattered photon again incase the photon list was expanded and the original address is no longer valid
+                            ph=getPhoton(photon_list, ph_index);
+                            
+                            //now set the scattered photon weight field  to the correct value
+                            ph->weight = scattered_photon_weight;
+                        }
                         
-                        //first we set the weight of the scattered photon to be the unscattered weight and then copy it into a new element of the photon_list. This works since none of the fields of the photon struct have been updated based on teh actual scattering yet. That occurs below.
-                        ph->weight = unscattered_photon_weight;
-                        
-                        //add the original to our photon list struct, which does a memcpy into a NULL photon's index
-                        //if the photon list has to be expanded, the ph pointer may no longer be valid.
-                        //try to get aroudn this by copying the contents of ph pointer to a new photon struct and then pass that in
-                        struct photon temp_ph;
-                        memcpy(&temp_ph, ph, sizeof(struct photon));
-                        addToPhotonList(photon_list, &temp_ph, 1);
-                        
-                        //now get the address of the scattered photon again incase the photon list was expanded and the original address is no longer valid
-                        ph=getPhoton(photon_list, ph_index);
-                        
-                        //now set the scattered photon weight field  to the correct value
-                        ph->weight = scattered_photon_weight;
-                    }
-                    
-#endif
+                    #endif
                     
                     //if the scattering occured have to uodate the phtoon 4 momentum. if photon didnt scatter nothing changes
                     //fourth we bring the photon back to the lab frame
@@ -1443,20 +1451,20 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
                     
                     
                     
-#if STOKES_SWITCH == ON
-                    
-                    if (do_rotation)
-                    {
-                        stokesRotation(negative_fluid_beta, (ph_p_comov+1), (ph_p+1), s, fPtr); //rotate to boost back to lab frame
-                    }
-                    
-                    //save stokes parameters
-                    (ph->s0)= *(s+0); //I ==1
-                    (ph->s1)= *(s+1);
-                    (ph->s2)= *(s+2);
-                    (ph->s3)= *(s+3);
-                    
-#endif
+                    #if STOKES_SWITCH == ON
+                        
+                        if (do_rotation)
+                        {
+                            stokesRotation(negative_fluid_beta, (ph_p_comov+1), (ph_p+1), s, fPtr); //rotate to boost back to lab frame
+                        }
+                        
+                        //save stokes parameters
+                        (ph->s0)= *(s+0); //I ==1
+                        (ph->s1)= *(s+1);
+                        (ph->s2)= *(s+2);
+                        (ph->s3)= *(s+3);
+                        
+                    #endif
                     
                     
                     if (((*(ph_p+0))*ENERGY_TO_KEV) > 1e4)
