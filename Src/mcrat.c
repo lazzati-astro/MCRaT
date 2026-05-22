@@ -664,6 +664,9 @@ int main(int argc, char **argv)
             
             photonInjection(&photon_list, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, theta_jmin_thread, theta_jmax_thread, &hydrodata,rng, fPtr );
             
+            //TODO: remove after testing or figure out if we want to enable the user to inject synch photons intially
+            //photonEmitSynch(&photon_list, inj_radius, ph_weight_suggest, min_photons, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, fPtr);
+            
             if (angle_id==0)
             {
                 printPhotons(&photon_list, frame_abs_cnt, num_cyclosynch_ph_emit, scatt_cyclosynch_num_ph, scatt_frame , 0, last_frm, mc_dir, angle_id, fPtr);
