@@ -727,7 +727,10 @@ void initSynchTables(FILE *fPtr)
 
         /* p1/p2 arrays unused for single power law — zero-fill */
         for (i = 0; i < SYNCH_N_X; i++)
-            synch_tables.Ga_arr_p1[i] = synch_tables.Ga_arr_p2[i] = 0.0;
+        {
+            synch_tables.Ga_arr_p1[i] = 0.0;
+            synch_tables.Ga_arr_p2[i] = 0.0;
+        }
 
     #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
 
@@ -1745,6 +1748,11 @@ int photonEmitSynch(struct photonList          *photon_list,
     double rmax = calcCyclosynchRLimits(hydro_data->scatt_frame_number,
                                          hydro_data->inj_frame_number,
                                          hydro_data->fps, r_inj, "max");
+    
+    //TODO: think about changing after testing, especially for emitting synchrotron photons to start off
+    //rmin=r_inj - 0.5*C_LIGHT/hydro_data->fps;
+    //rmax=r_inj + 0.5*C_LIGHT/hydro_data->fps;
+
 
     fprintf(fPtr,
             ">> [photonEmitSynch] Shell: rmin=%.3e cm, rmax=%.3e cm, "
@@ -1980,6 +1988,14 @@ int photonEmitSynch(struct photonList          *photon_list,
             }
         }
     }
+    
+    //TODO: remove after testing
+    fprintf(fPtr,
+            ">> [photonEmitSynch] Total: "
+            "V=%.4e\n",
+            tot_v);
+    fflush(fPtr);
+
 
     /* ── Step 5: Weight-tuning loop ──────────────────────────────────────────
      *
@@ -2103,6 +2119,94 @@ int photonEmitSynch(struct photonList          *photon_list,
             weight_expected, weight_sum, weight_rel_err, weight_tol,
             weight_rel_err < weight_tol ? "PASS" : "FAIL");
     fflush(fPtr);
+    
+    /* ── Energy conservation diagnostic  ─────────────
+     *
+     * Sum the total emitted energy:
+     *   E_emitted = sum_i  weight_i * (comv_p0_i * C_LIGHT)   [erg]
+     *
+     * comv_p0 = E_photon / C_LIGHT  [erg/cm * s/cm ... i.e. g cm/s]
+     * so  E_photon = comv_p0 * C_LIGHT  [erg]
+     *
+     * Divide by the total cell volume and dt = 1/fps to get the
+     * volumetric power [erg/s/cm^3] and compare to the analytic P_tot.
+     */
+    double E_emitted  = 0.0;
+    double V_total    = 0.0;
+    
+    for (i = 0; i < ph_tot; i++)
+        E_emitted += ph_emit[i].weight * ph_emit[i].comv_p0 * C_LIGHT;
+    
+    for (j = 0; j < block_cnt; j++)
+        V_total += hydroElementVolume(hydro_data, cell_index[j]);
+    
+    double dt           = 1.0 / hydro_data->fps;
+    double P_code       = E_emitted / (V_total * dt);   /* erg/s/cm^3 */
+    
+    /* Analytic total power per unit volume [erg/s/cm^3]:
+     *   P_analytic = 4*pi * integral_0^inf j_nu dnu
+     * For a single power-law this has the known closed form
+     * (R&L79 Eq. 6.38, pitch-angle averaged):
+     *
+     *   P = (4/3) * sigma_T * c * U_B * <gamma^2>_emission
+     *
+     * where U_B = B^2/(8*pi) and <gamma^2>_emission is the
+     * emission-weighted mean gamma^2 integrated over N(gamma)*gamma^2.
+     *
+     * We compute it here from the prefactor of RAIKOU B11 integrated
+     * analytically over the power-law distribution:
+     *
+     *   integral_0^inf j_nu dnu
+     *     = (sqrt(3) e^3 B) / (2 me c^2)
+     *       * A_norm * n_e_nth
+     *       * integral_{gmin}^{gmax} gamma^{-p} * gamma^2 * nu_c dgamma
+     *       * [dimensionless Bessel integral = 8*pi/(9*sqrt(3))]
+     *
+     * The simplest self-consistent check is to use the same nu_cdf_norm
+     * integral that K_phys uses, but now weighted by h*nu to get energy
+     * rather than photon count.  This gives:
+     *
+     *   P_analytic = K_phys * <h*nu>_emission * n_e_nth_mean * B_mean / dt
+     *              = (W_cell_total / dt) * <h*nu>_emission / V_total
+     *
+     * where <h*nu>_emission is the emission-weighted mean photon energy.
+     */
+    
+    /* Compute emission-weighted mean photon energy from ph_emit */
+    double E_mean_numerator   = 0.0;
+    double E_mean_denominator = 0.0;
+    for (i = 0; i < ph_tot; i++)
+    {
+        double E_ph = ph_emit[i].comv_p0 * C_LIGHT;   /* erg */
+        E_mean_numerator   += ph_emit[i].weight * E_ph;
+        E_mean_denominator += ph_emit[i].weight;
+    }
+    double h_nu_mean = (E_mean_denominator > 0.0)
+                     ? E_mean_numerator / E_mean_denominator : 0.0;
+    
+    /* Analytic power using W_cell (already computed, units: photons/frame) */
+    double lambda_total_phys = 0.0;   /* total photons/frame from all cells */
+    for (j = 0; j < block_cnt; j++)
+        lambda_total_phys += W_cell[j];
+    
+    /* P_analytic = (photons/frame) * (erg/photon) / (dt * V_total) */
+    double P_analytic = lambda_total_phys * h_nu_mean / (dt * V_total);
+    
+    fprintf(fPtr,
+            ">> [photonEmitSynch] Energy diagnostic:\n"
+            ">>   E_emitted         = %.4e erg  (this frame)\n"
+            ">>   V_total           = %.4e cm^3\n"
+            ">>   dt                = %.4e s\n"
+            ">>   P_code            = %.4e erg/s/cm^3\n"
+            ">>   P_analytic        = %.4e erg/s/cm^3\n"
+            ">>   ratio P_code/P_analytic = %.4f  (expect ~1)\n"
+            ">>   h_nu_mean         = %.4e erg  (%.4e keV)\n",
+            E_emitted, V_total, dt,
+            P_code, P_analytic,
+            (P_analytic > 0.0) ? P_code / P_analytic : 0.0,
+            h_nu_mean, h_nu_mean / 1.602e-9);
+    fflush(fPtr);
+
 
     /* ── Step 9: Add emitted photons to the photon list ──────────────────── */
     if (ph_tot > 0)
