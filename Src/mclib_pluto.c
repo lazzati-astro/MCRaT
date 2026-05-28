@@ -76,6 +76,9 @@ void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro
     attr = H5Aopen (file, "num_levels", H5P_DEFAULT);
     status = H5Aread (attr, H5T_NATIVE_INT, &num_levels);
     
+    //adjust the levels here to adjust which level of refinement to start reading from
+    //num_levels=num_levels-1;
+    
     status = H5Aclose (attr);
     //printf("readPlutoChombo num_levels: %d\n", num_levels);
     
@@ -790,7 +793,6 @@ void readPlutoChombo( char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro
     }
     
     //fprintf(fPtr, "number: %d\n", r_count);
-    
 
    hydro_data->num_elements=r_count;
     
@@ -1071,6 +1073,7 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
     double *all_data=NULL, *x1_buffer=NULL, *x2_buffer=NULL, *x3_buffer=NULL, *dx1_buffer=NULL, *dx2_buffer=NULL, *dx3_buffer=NULL;
     double *dens_buffer=NULL, *pres_buffer=NULL, *vel_x2_buffer=NULL, *vel_x1_buffer=NULL, *vel_x3_buffer=NULL;
     double *B_x2_buffer=NULL, *B_x1_buffer=NULL, *B_x3_buffer=NULL;
+	int grid_size_reduced, grid_size_full;
  
     
     if (ph_inj_switch==0)
@@ -1091,29 +1094,57 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
     //get the number of variables and their order
     snprintf(out_file,sizeof(out_file),"%sdbl.out",FILEPATH );
     readDblOutFile(out_file, &num_vars, &var_strings, fPtr);
-    
+   
+    int first_index = 0;
+    int first_index_buff = 0;
+    int last_index = 0;
+    int last_index_buff = 0;
+	int nx_reduced = 0;
+
+
+    for (i=0; i<=array_size[0]; i++) {
+
+	    first_index_buff = i;
+	    last_index_buff = i;
+
+		if ( (*grid_x1+i)*HYDRO_L_SCALE >= ph_rmin && (*grid_x1+first_index)*HYDRO_L_SCALE < ph_rmin && (*grid_x1+first_index_buff)*HYDRO_L_SCALE >= ph_rmin) {
+			first_index = i;
+		}
+
+		if ( (*grid_x1+i)*HYDRO_L_SCALE >= ph_rmax && (*grid_x1+last_index)*HYDRO_L_SCALE < ph_rmax && (*grid_x1+last_index_buff)*HYDRO_L_SCALE >= ph_rmax) {
+			last_index = i;
+		} //loop to find index boundaries for x1 region specified by min_r_init and max_r_init in mcrat.c
+
+    }
+ 
+	grid_size_reduced = (last_index - first_index+1)*array_size[1];
     //allocate space for buffer arrays
     #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
-        grid_size=array_size[0]*array_size[1];
+		nx=array_size[0];
+		nx_reduced = last_index-first_index+1;
+		ny=array_size[1];
+        grid_size_full=nx*ny;
+		grid_size = grid_size_reduced;
     #else
         grid_size=array_size[0]*array_size[1]*array_size[2];
     #endif
-    
     //num_vars=2;// for testing
-    size_t total_size=(size_t)num_vars*(size_t)grid_size; //set as size_t to handle large data sets
+    size_t total_size=(size_t)num_vars*(size_t)nx_reduced*ny; //set as size_t to handle large data sets
     //fprintf(fPtr,"Total:%zd Numvar:%d grid_size:%d\n", total_size, num_vars, grid_size);
-    //fflush(fPtr);
+    fflush(fPtr);
+    fflush(fPtr);
     all_data=malloc(total_size*sizeof (double));
     x1_buffer=malloc((grid_size)*sizeof (double));
     x2_buffer=malloc((grid_size)*sizeof (double));
     dx1_buffer=malloc((grid_size)*sizeof (double));
     dx2_buffer=malloc((grid_size)*sizeof (double));
-
+    fflush(fPtr);
+    double* data_buffer;
     vel_x1_buffer= malloc ((grid_size) * sizeof (double));
     vel_x2_buffer=malloc ((grid_size) * sizeof (double));
     dens_buffer= malloc ((grid_size) * sizeof (double));
     pres_buffer=malloc ((grid_size) * sizeof (double));
-    
+	fflush(fPtr);
     #if B_FIELD_CALC == SIMULATION
         B_x1_buffer= malloc ((grid_size) * sizeof (double));
         B_x2_buffer=malloc ((grid_size) * sizeof (double));
@@ -1131,19 +1162,54 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
             B_x3_buffer= malloc ((grid_size) * sizeof (double));
         #endif
     #endif
-
-    //open the .dbl file and read the whole dataset and save to the buffer pointers
+	//fflush(fPtr);
     fileptr = fopen(pluto_file, "rb" );
-    fread(all_data, (num_vars*grid_size)*sizeof (double), 1, fileptr);
+	//fflush(fPtr);
+	int data_counter=0;
+	int file_counter=0;
+	int grid_index=0;
+	double r_keep=0.0;
+
+	data_buffer = malloc(sizeof (double));
+
+	nz=1;
+
+	fflush(fPtr);
+	for (i=0;i<num_vars;i++) {
+		
+		for (j=0;j<nz;j++) { 
+
+			for (k=0;k<ny;k++) {
+
+				for (l=0;l<nx;l++) {
+
+					if ( l >= first_index && l <= last_index ) {
+
+						fread(all_data+data_counter, sizeof (double), 1, fileptr);
+						data_counter+=1;
+					} else {
+
+						fread(data_buffer, sizeof(double), 1, fileptr);
+					}
+				}
+			}
+		}
+	}
+	nx=last_index-first_index+1;
+	
+	
+	fflush(fPtr);
+    //open the .dbl file and read the whole dataset and save to the buffer pointers
+   // fread(all_data, (num_vars*grid_size)*sizeof (double), 1, fileptr);
     fclose(fileptr);
-    
-//    fprintf(fPtr,"%e %e %e %e %e\n", *(all_data+0), *(all_data+1), *(all_data+2),*(all_data+3), *(all_data+4));
-//    fprintf(fPtr,"%e %e %e %e %e\n", *(all_data+(total_size)-5), *(all_data+(total_size)-4), *(all_data+(total_size)-3),*(all_data+(total_size)-2), *(all_data+(total_size)-1));
+     
+    //fprintf(fPtr,"%e %e %e %e %e\n", *(all_data+0), *(all_data+1), *(all_data+2),*(all_data+3), *(all_data+4));
+    //fprintf(fPtr,"%e %e %e %e %e\n", *(all_data+(total_size)-5), *(all_data+(total_size)-4), *(all_data+(total_size)-3),*(all_data+(total_size)-2), *(all_data+(total_size)-1));
 //    fflush(fPtr);
     
     //iterate through variables
-    nx=array_size[0];
-    ny=array_size[1];
+    //nx=array_size[0];
+    //ny=array_size[1];
     #if DIMENSIONS == THREE
         nz=array_size[2];
     #else
@@ -1166,7 +1232,7 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
             {
                 for (l=0;l<nx;l++)
                 {
-                    size_t idx=i*(size_t)grid_size+j*(size_t)nx*(size_t)ny+k*(size_t)nx+l;
+                    size_t idx=i*(size_t)grid_size+j*(size_t)nz*(size_t)ny+k*(size_t)nx+l;
                     //fprintf(fPtr,"%e ", *(all_data+i*(size_t)grid_size+j*(size_t)array_size[0]*(size_t)array_size[1]+k*(size_t)array_size[0]+l));
                     
                     if (strcmp(var_strings[i], "rho") == 0)
@@ -1174,9 +1240,10 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
                         *(dens_buffer+count)=(*(all_data+idx))*HYDRO_D_SCALE;
                         
                         //also save the coordinate/grid data
-                        *(x1_buffer+count)= (*(grid_x1+l));
+                        *(x1_buffer+count)= (*(grid_x1+l+first_index)); //offset x1 grid by first_index
+						//fflush(fPtr);
+                        *(dx1_buffer+count)=(*(grid_dx1+l+first_index)); //offset dx1 by first_index
                         *(x2_buffer+count)=(*(grid_x2+k));
-                        *(dx1_buffer+count)=(*(grid_dx1+l));
                         *(dx2_buffer+count)=(*(grid_dx2+k));
                         #if DIMENSIONS == THREE
                             *(x3_buffer+count)=(*(grid_x3+j));
@@ -1298,7 +1365,7 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
                         hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (*(x1_buffer+i)), (*(x2_buffer+i)), 0);
                     #endif
 
-                    if ( r_grid_innercorner > (0.95*r_inj) )
+                    if ( r_grid_innercorner > (0.95*r_inj) ) 
                     {
                         r_count++;
                     }
@@ -1310,38 +1377,8 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
         fflush(fPtr);
     
         //allocate memory to hold processed data
-       (hydro_data->pres)=malloc (r_count * sizeof (double ));
-       (hydro_data->v0)=malloc (r_count * sizeof (double ));
-       (hydro_data->v1)=malloc (r_count * sizeof (double ));
-       (hydro_data->dens)=malloc (r_count * sizeof (double ));
-       (hydro_data->r0)=malloc (r_count * sizeof (double ));
-       (hydro_data->r1)=malloc (r_count * sizeof (double ));
-       (hydro_data->r)=malloc (r_count * sizeof (double ));
-       (hydro_data->theta)=malloc (r_count * sizeof (double ));
-       (hydro_data->gamma)=malloc (r_count * sizeof (double ));
-       (hydro_data->dens_lab)=malloc (r_count * sizeof (double ));
-       (hydro_data->r0_size)=malloc (r_count * sizeof (double ));
-       (hydro_data->r1_size)=malloc (r_count * sizeof (double ));
-       (hydro_data->temp)=malloc (r_count * sizeof (double ));
+        allocateHydroDataFrameMemory(hydro_data, r_count);
     
-        #if B_FIELD_CALC == SIMULATION
-           (hydro_data->B0)= malloc (r_count * sizeof (double));
-           (hydro_data->B1)= malloc (r_count * sizeof (double));
-        #endif
-
-
-        #if DIMENSIONS == THREE
-           (hydro_data->r2)=malloc(r_count*sizeof (double));
-           (hydro_data->r2_size)=malloc(r_count*sizeof (double));
-        #endif
-                                                   
-        #if DIMENSIONS == THREE || DIMENSIONS == TWO_POINT_FIVE
-           (hydro_data->v2)=malloc (r_count * sizeof (double));
-            #if B_FIELD_CALC==SIMULATION
-               (hydro_data->B2)= malloc (r_count * sizeof (double));
-            #endif
-        #endif
-
 
         
         fprintf(fPtr, ">> MCRaT is saving the necessary data to memory.\n");

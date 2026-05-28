@@ -602,7 +602,14 @@ int main(int argc, char **argv)
     fprintf(fPtr, "TAU_CALCULATION is set to DIRECT\n");
     fflush(fPtr);
     #endif
-
+    
+    /* Initialize thread-local resources */
+    int num_threads = 1;
+    #if defined(_OPENMP)
+        num_threads = omp_get_max_threads();
+    #endif
+      
+    initGlobalThreadRNG(rng, num_threads);
     
     //for a checkpoint implementation, start from the last saved "frame" value and go to the saved "frm2" value
 
@@ -631,11 +638,18 @@ int main(int argc, char **argv)
         printHydroGeometry(fPtr);
         fprintf(fPtr,">> Im Proc: %d with angles %0.1lf - %0.1lf Working on Frame: %d\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, frame);
         fflush(fPtr);
-        
+        double fudge_factor = 10;
         if (restrt==INITALIZE)
         {
             //can read FLASH 2D (no B field) and plutochombo and pluto dbl files in 2/2.5/3D with B field
-            getHydroData(&hydrodata, frame, inj_radius, 1, min_r, max_r, min_theta, max_theta, fPtr);
+            //getHydroData(&hydrodata, frame, inj_radius, 1, min_r, max_r, min_theta, max_theta, fPtr);
+            //try to read in less of a hydro frame for photon injection to minimize memory usage
+			double min_r_init, max_r_init;
+            min_r_init = 0.8*inj_radius; //- fudge_factor*C_LIGHT/fps;
+            max_r_init = inj_radius + 50.0*fudge_factor*C_LIGHT/fps;
+            min_theta=theta_jmin_thread - 2*M_PI/180;
+            max_theta=theta_jmax_thread + 2*M_PI/180;
+            getHydroData(&hydrodata, frame, inj_radius, 0, min_r_init, max_r_init, min_theta, max_theta, fPtr);
                 
             //determine where to place photons and how many should go in a given place
             //for a checkpoint implmentation, dont need to inject photons, need to load photons' last saved data
@@ -643,6 +657,14 @@ int main(int argc, char **argv)
             fflush(fPtr);
             
             photonInjection(&photon_list, inj_radius, ph_weight_suggest, min_photons, max_photons,spect, theta_jmin_thread, theta_jmax_thread, &hydrodata,rng, fPtr );
+			fflush(fPtr);
+            
+            if (angle_id==0)
+            {
+                printPhotons(&photon_list, frame_abs_cnt, num_cyclosynch_ph_emit, scatt_cyclosynch_num_ph, scatt_frame , 0, last_frm, mc_dir, angle_id, fPtr);
+                
+                dirFileMerge(mc_dir, 0, 1, 1, angle_id, fPtr);
+            }
             
             //printf("This many Photons: %d\n",photon_list.num_photons);
             
@@ -692,6 +714,8 @@ int main(int argc, char **argv)
                 fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Cylindrical Outflow - Working on scattering photons in frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
             #elif SIMULATION_TYPE == STRUCTURED_SPHERICAL_OUTFLOW
                 fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Structured Spherical Outflow - Working on scattering photons in frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
+            #elif SIMULATION_TYPE == CUSTOM_OUTFLOW
+                fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Simulation type Custom Outflow - Working on scattering photons in frame %d\n",angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI, scatt_frame);
             #endif
             
             //fprintf(fPtr,">> Proc %d with angles %0.1lf-%0.1lf: Opening file...\n", angle_id, theta_jmin_thread*180/M_PI, theta_jmax_thread*180/M_PI);
@@ -701,6 +725,10 @@ int main(int argc, char **argv)
             gsl_rng_set(rng, gsl_rng_get(rng));
             
             //calc min and max positions of photons
+			double min_r_init, max_r_init;
+			//double fudge_factor = 10;
+            min_r_init = 0.8*inj_radius; //- fudge_factor*C_LIGHT/fps;
+            max_r_init = inj_radius + 50.0*fudge_factor*C_LIGHT/fps;
             phMinMax(&photon_list, &min_r, &max_r, &min_theta, &max_theta, fPtr);
             #if CYCLOSYNCHROTRON_SWITCH == ON
                 if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE))
@@ -718,7 +746,7 @@ int main(int argc, char **argv)
                 }
             #endif
 
-            getHydroData(&hydrodata, scatt_frame, inj_radius, 0, min_r, max_r, min_theta, max_theta, fPtr);
+            getHydroData(&hydrodata, scatt_frame, inj_radius, 0, min_r_init, max_r_init, min_theta, max_theta, fPtr);
             
             //emit synchrotron photons here
             num_cyclosynch_ph_emit=0;
@@ -930,6 +958,8 @@ int main(int argc, char **argv)
     #if TAU_CALCULATION == TABLE
         cleanupInterpolationData();
     #endif
+    
+    freeGlobalThreadRNG();
                 
     MPI_Barrier(angle_comm);
         
