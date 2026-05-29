@@ -12,10 +12,30 @@ OBJ_MERGE = merge.o mclib.o mclib_riken.o mclib_pluto.o mc_cyclosynch.o geometry
 
 INCLUDE   = -I$(HDF_INSTALL)/include -I/opt/local/include/ -I/usr/include/ -I/opt/local/include/openmpi-gcc11/
 
-LIBSHDF   = $(EXTLIB) $(HDF_INSTALL)/lib/libhdf5.a 
+LIBSHDF   = $(EXTLIB) $(HDF_INSTALL)/lib/libhdf5.a
+
+# ── Files that must not be compiled with -ffast-math ─────────────────────────
+#
+# mc_synchrotron.c: uses GSL adaptive quadrature (gsl_integration_qagiu /
+#   qags). The subdivision convergence loop tests for inf/NaN internally.
+#   -ffinite-math-only (part of -ffast-math) causes an infinite loop.
+#
+# photons.c: uses NAN as a sentinel value for unset photon fields, and
+#   tests them with isnan(). -ffinite-math-only folds isnan() to 0
+#   (always false), silently disabling all field-validation guards in
+#   saveUserDefinePhoton / initializePhoton.
+#
+SAFE_CFLAGS = $(filter-out -ffast-math, $(CFLAGS)) -fno-finite-math-only
+
 
 MCRAT: $(OBJ)
 	$(CC) $(CFLAGS)  -o $@ $^ $(INCLUDE) $(LIBSHDF) $(LIB)
+
+mc_synchrotron.o: mc_synchrotron.c
+       $(CC) $(SAFE_CFLAGS) -c $< -o $@ $(INCLUDE) $(LIBSHDF) $(LIB)
+
+photons.o: photons.c
+       $(CC) $(SAFE_CFLAGS) -c $< -o $@ $(INCLUDE) $(LIBSHDF) $(LIB)
 
 %.o: %.c $(DEPS)
 	$(CC) $(CFLAGS)  -c -o $@ $< $(INCLUDE) $(LIBSHDF) $(LIB)
