@@ -112,7 +112,7 @@ void addToPhotonList(struct photonList *photon_list, struct photon *ph, size_t n
     
     //add a photon to the photonList photons array
     // If list is full, and we have no null photons to fill in then double capacity
-    if ((photon_list->num_photons >= photon_list->list_capacity) && (photon_list->num_null_photons <= num_photons))
+    if ((photon_list->num_photons >= photon_list->list_capacity) || (photon_list->num_null_photons <= num_photons))
     {
         if (photon_list->list_capacity * 2 > photon_list->list_capacity + num_photons)
         {
