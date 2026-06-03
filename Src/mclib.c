@@ -2040,9 +2040,13 @@ int applyRussianRoulette(struct photonList *photon_list,
         int n_killed=0;
 
         n_killed = applyRussianRouletteByType(photon_list, epsilon_rr, SYNCH_PHOTON, fPtr);
+    
+        //injected photons can scatter with power law electrons and get very small weights
+        n_killed = applyRussianRouletteByType(photon_list, epsilon_rr, INJECTED_PHOTON, fPtr);
 
         //want to get rid of the SSC photons that have extremely low weights b/c the synch photons with low weights got scattered before they were removed. If we use the same epsilon_rr then it will be hard to capture the high energy portion of the SSC spectrum therefore reduce the epsilon_rr by some other factor of 1e8. This number was tested based on the broken powerlaw SSC test in the RAIKOU paper (Figure 11 of Kawashima et al 2023 ApJ 949 101)
-        n_killed += applyRussianRouletteByType(photon_list, 1e-8*epsilon_rr, COMPTONIZED_PHOTON, fPtr);
+        //also put this last so it actually returns the number of comptonized photons that have been absorbed so we can know when to rebin
+        n_killed = applyRussianRouletteByType(photon_list, 1e-8*epsilon_rr, COMPTONIZED_PHOTON, fPtr);
 
         return n_killed;
 

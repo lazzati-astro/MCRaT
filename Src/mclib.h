@@ -37,6 +37,11 @@ void logspace(double start, double stop, int num, double *array);
 void calculateAverageDimlessTheta(struct hydro_dataframe *hydro_data, FILE *fPtr);
 #endif
 
+int applyRussianRouletteByType(struct photonList *photon_list,
+                         double             epsilon_rr,
+                         char               photon_type,
+                               FILE              *fPtr);
+
 int applyRussianRoulette(struct photonList *photon_list,
                          double             epsilon_rr,
                          FILE              *fPtr);
