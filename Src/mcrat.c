@@ -691,6 +691,12 @@ int main(int argc, char **argv)
         }
         
         hydrodata.increment_scatt_frame=1;
+        
+        #if SYNCHROTRON_SWITCH == ON
+            //for synchrotron we emit them each frame and have to keep track of them across frames
+            num_cyclosynch_ph_emit=0;
+        #endif
+
         for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame=scatt_frame+hydrodata.increment_scatt_frame)
         {
             hydrodata.scatt_frame_number=scatt_frame;
@@ -752,8 +758,10 @@ int main(int argc, char **argv)
 
             getHydroData(&hydrodata, scatt_frame, inj_radius, 0, min_r, max_r, min_theta, max_theta, fPtr);
             
-            //emit synchrotron photons here
-            num_cyclosynch_ph_emit=0;
+            #if SYNCHROTRON_SWITCH == OFF
+                //emit cyclosynchrotron photons here and keep track of them within a frame, for synchrotron we emit them each frame and have to keep track of them across frames
+                num_cyclosynch_ph_emit=0;
+            #endif
                         
             #if CYCLOSYNCHROTRON_SWITCH == ON || SYNCHROTRON_SWITCH == ON
                 if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //remember to revert back to !=
@@ -782,7 +790,7 @@ int main(int argc, char **argv)
                         num_cyclosynch_ph_emit=photonEmitCyclosynch(&photon_list, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 0, 0, fPtr);
                     #else
                         //num_cyclosynch_ph_emit = photonEmitSynch(&photon_list, inj_radius, ph_weight_suggest, 1, CYCLOSYNCHROTRON_REBIN_E_PERC*max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, fPtr);
-                        num_cyclosynch_ph_emit = photonEmitSynch(&photon_list, inj_radius, ph_weight_suggest, min_photons, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, fPtr);
+                        num_cyclosynch_ph_emit += photonEmitSynch(&photon_list, inj_radius, ph_weight_suggest, min_photons, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, fPtr);
                     #endif
                 }
             #endif

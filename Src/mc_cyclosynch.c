@@ -7,9 +7,9 @@ This file is for the different functions for emitting and absorbing synchrotron 
 //define rebinning helper functions here as static
 static void calculate_photon_position(const struct photon *ph, double *r, double *theta, double *phi);
 
-static int collect_photon_statistics(const struct photonList *photon_list, struct PhotonRangeInfo *info, FILE *fPtr);
+static int collect_photon_statistics(const struct photonList *photon_list, struct PhotonRangeInfo *info, char photon_type, FILE *fPtr);
 
-static struct BinningParams calculate_binning_params(const struct PhotonRangeInfo *info, int max_photons);
+static struct BinningParams calculate_binning_params(const struct PhotonRangeInfo *info, int num_bins_energy);
 
 
 static int allocate_histograms(gsl_histogram2d **h_energy_theta, gsl_histogram2d **h_energy_phi, gsl_histogram2d **h_theta_phi, const struct BinningParams *params, const struct PhotonRangeInfo *info, FILE *fPtr);
@@ -22,9 +22,9 @@ static void free_bin_stats(struct BinStats *stats);
 
 static int calculate_bin_index(int count_x, int count_y, int count_z, const struct BinningParams *params);
 
-static int accumulate_bin_statistics(const struct photonList *photon_list, struct BinStats *stats, gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_energy_phi, gsl_histogram2d *h_theta_phi, const struct BinningParams *params, FILE *fPtr);
+static int accumulate_bin_statistics(const struct photonList *photon_list, struct BinStats *stats, gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_energy_phi, gsl_histogram2d *h_theta_phi, const struct BinningParams *params, char photon_type, FILE *fPtr);
 
-static int create_rebinned_photons(struct photonList *photon_list, const struct BinStats *stats, const struct BinningParams *params, int synch_photon_count, FILE *fPtr);
+static int create_rebinned_photons(struct photonList *photon_list, const struct BinStats *stats, const struct BinningParams *params, int synch_photon_count, char photon_type, FILE *fPtr);
 
 
 double calcCyclotronFreq(double magnetic_field)
@@ -270,7 +270,7 @@ static void calculate_photon_position(const struct photon *ph, double *r, double
 }
 
 /* Helper: Collect photon statistics and determine ranges */
-static int collect_photon_statistics(const struct photonList *photon_list, struct PhotonRangeInfo *info, FILE *fPtr)
+static int collect_photon_statistics(const struct photonList *photon_list, struct PhotonRangeInfo *info, char photon_type, FILE *fPtr)
 {
     *info = (struct PhotonRangeInfo){
         .p0_min = DBL_MAX,
@@ -286,7 +286,7 @@ static int collect_photon_statistics(const struct photonList *photon_list, struc
         const struct photon *ph = getPhoton(photon_list, i);
                 
         
-        if ((ph->type != NULL_PHOTON) && (ph->type != CS_POOL_PHOTON) && (ph->type != INJECTED_PHOTON))
+        if (ph->type == photon_type)
         {
             
             if (ph->p0 > 0)
@@ -321,10 +321,10 @@ static int collect_photon_statistics(const struct photonList *photon_list, struc
 }
 
 /* Helper: Calculate binning parameters based on photon ranges */
-static struct BinningParams calculate_binning_params(const struct PhotonRangeInfo *info, int max_photons)
+static struct BinningParams calculate_binning_params(const struct PhotonRangeInfo *info, int num_bins_energy)
 {
     struct BinningParams params = {0};
-    params.num_bins = (int)(CYCLOSYNCHROTRON_REBIN_E_PERC * max_photons);
+    params.num_bins = num_bins_energy;
     
     //the size of the bin that we want to produce for spatial binning in theta
     params.num_bins_theta = ceil((info->theta_max - info->theta_min) / (CYCLOSYNCHROTRON_REBIN_ANG * DEG_TO_RAD));
@@ -445,13 +445,13 @@ static int calculate_bin_index(int x, int y, int z, const struct BinningParams *
 }
 
 /* Helper: Accumulate weighted statistics for each bin */
-static int accumulate_bin_statistics(const struct photonList *photon_list, struct BinStats *stats, gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_energy_phi, gsl_histogram2d *h_theta_phi, const struct BinningParams *params, FILE *fPtr)
+static int accumulate_bin_statistics(const struct photonList *photon_list, struct BinStats *stats, gsl_histogram2d *h_energy_theta, gsl_histogram2d *h_energy_phi, gsl_histogram2d *h_theta_phi, const struct BinningParams *params, char photon_type, FILE *fPtr)
 {
     for (int i = 0; i < photon_list->list_capacity; i++)
     {
         const struct photon *ph = getPhoton(photon_list, i);
                 
-        if ((ph->type != NULL_PHOTON) && (ph->type != CS_POOL_PHOTON) && (ph->type != INJECTED_PHOTON))
+        if (ph->type = photon_type)
         {
             double r, theta, phi = 0.0;
             calculate_photon_position(ph, &r, &theta, &phi);
@@ -501,7 +501,7 @@ static int accumulate_bin_statistics(const struct photonList *photon_list, struc
 }
 
 /* Helper: Create rebinned photons from accumulated statistics */
-static int create_rebinned_photons(struct photonList *photon_list, const struct BinStats *stats, const struct BinningParams *params, int synch_photon_count, FILE *fPtr)
+static int create_rebinned_photons(struct photonList *photon_list, const struct BinStats *stats, const struct BinningParams *params, int synch_photon_count, char photon_type, FILE *fPtr)
 {
     struct photon *rebin_ph = calloc(params->total_bins, sizeof(struct photon));
     if (!rebin_ph)
@@ -527,7 +527,7 @@ static int create_rebinned_photons(struct photonList *photon_list, const struct 
         }
         else
         {
-            new_ph->type = COMPTONIZED_PHOTON;
+            new_ph->type = photon_type;
             new_ph->weight = s->total_weight;
             
             /* Calculate average values from weighted sums */
@@ -581,11 +581,11 @@ static int create_rebinned_photons(struct photonList *photon_list, const struct 
         }
     }
     
-    /* First, nullify existing Comptonized and Unabsorbed CS photons */
+    /* First, nullify photons */
     for (int i = 0; i < photon_list->list_capacity; i++)
     {
         struct photon *ph = getPhoton(photon_list, i);
-        if (ph && (ph->type == UNABSORBED_CS_PHOTON || ph->type == COMPTONIZED_PHOTON))
+        if (ph && (ph->type == photon_type))
         {
             setNullPhoton(photon_list, i);
         }
@@ -607,7 +607,7 @@ static int create_rebinned_photons(struct photonList *photon_list, const struct 
     return num_null_rebin_ph;
 }
 
-int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int max_photons, double thread_theta_min, double thread_theta_max, gsl_rng *rand, FILE *fPtr)
+int rebinCyclosynchCompPhotonsByType(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int num_bins_energy, int max_photons, double thread_theta_min, double thread_theta_max, char photon_type, gsl_rng *rand, FILE *fPtr)
 {
     int ret_val = 0;
     struct PhotonRangeInfo range_info = {0};
@@ -616,11 +616,11 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosyn
     gsl_histogram2d *h_energy_theta = NULL, *h_energy_phi = NULL, *h_theta_phi = NULL;
     int null_count = 0;
 
-    fprintf(fPtr, "Starting photon rebinning process...\n");
+    fprintf(fPtr, "Starting photon rebinning process for photons of type %c...\n", photon_type);
     fflush(fPtr);
 
     /* Phase 1: Analyze photon distribution and determine ranges */
-    if (!collect_photon_statistics(photon_list, &range_info, fPtr))
+    if (!collect_photon_statistics(photon_list, &range_info, photon_type, fPtr))
     {
         fprintf(fPtr, "ERROR: No valid photons found for rebinning\n");
         ret_val = -1;
@@ -672,7 +672,7 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosyn
     /* Phase 4: Populate histograms and accumulate statistics */
     if (ret_val == 0)
     {
-        if(!accumulate_bin_statistics(photon_list, bin_stats, h_energy_theta, h_energy_phi, h_theta_phi, &params, fPtr))
+        if(!accumulate_bin_statistics(photon_list, bin_stats, h_energy_theta, h_energy_phi, h_theta_phi, &params, photon_type, fPtr))
         {
             ret_val = -1;
         }
@@ -681,7 +681,7 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosyn
     /* Phase 5: Create rebinned photons from statistics */
     if (ret_val == 0)
     {
-        null_count = create_rebinned_photons(photon_list, bin_stats, &params, range_info.synch_photon_count, fPtr);
+        null_count = create_rebinned_photons(photon_list, bin_stats, &params, range_info.synch_photon_count, photon_type, fPtr);
         if (null_count < 0)
         {
             ret_val = -1;
@@ -709,6 +709,33 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list, int *num_cyclosyn
     return (ret_val == 0) ? null_count : ret_val;
 }
 
+int rebinCyclosynchCompPhotons(struct photonList *photon_list,
+                                int *num_cyclosynch_ph_emit,
+                                int *scatt_cyclosynch_num_ph,
+                                int max_photons,
+                                double thread_theta_min,
+                                double thread_theta_max,
+                                gsl_rng *rand,
+                                FILE *fPtr)
+{
+    int ret=0;
+    
+    // Comptonized photons use CYCLOSYNCHROTRON_REBIN_E_PERC of max_photons. this handles cyclosynch photons and any other scattered photons
+    int cs_bins = (int)(CYCLOSYNCHROTRON_REBIN_E_PERC * max_photons);
+    ret = rebinCyclosynchCompPhotonsByType(photon_list, num_cyclosynch_ph_emit, scatt_cyclosynch_num_ph, cs_bins, max_photons, thread_theta_min, thread_theta_max, COMPTONIZED_PHOTON, rand, fPtr);
+    
+    //rebin the synchrotron photons, this shouldnt do anything besides reduce number of synch photons
+    #if SYNCHROTRON_SWITCH == ON
+        if (*num_cyclosynch_ph_emit > max_photons)
+        {
+            rebinCyclosynchCompPhotonsByType(photon_list, num_cyclosynch_ph_emit, scatt_cyclosynch_num_ph, cs_bins, max_photons, thread_theta_min, thread_theta_max, SYNCH_PHOTON, rand, fPtr);
+        }
+        //set this back to zero since we just rebinned everything
+        *scatt_cyclosynch_num_ph=0;
+    #endif
+
+    return ret;
+}
 
 
 int rebinCyclosynchCompPhotons_old(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
