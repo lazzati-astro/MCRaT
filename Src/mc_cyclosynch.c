@@ -544,10 +544,10 @@ static int create_rebinned_photons(struct photonList *photon_list, const struct 
             new_ph->p3 = avg_energy * cos(avg_theta_dir * DEG_TO_RAD);
             
             /* Initialize comoving frame momenta to zero */
-            new_ph->comv_p0 = 0;
-            new_ph->comv_p1 = 0;
-            new_ph->comv_p2 = 0;
-            new_ph->comv_p3 = 0;
+            new_ph->comv_p0 = -1;
+            new_ph->comv_p1 = -1;
+            new_ph->comv_p2 = -1;
+            new_ph->comv_p3 = -1;
             
             /* Calculate position phi based on dimensionality */
             double pos_phi;
