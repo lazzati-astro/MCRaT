@@ -543,7 +543,7 @@ static int create_rebinned_photons(struct photonList *photon_list, const struct 
             new_ph->p2 = avg_energy * sin(avg_theta_dir * DEG_TO_RAD) * sin(avg_phi_dir * DEG_TO_RAD);
             new_ph->p3 = avg_energy * cos(avg_theta_dir * DEG_TO_RAD);
             
-            /* Initialize comoving frame momenta to zero */
+            /* Initialize comoving frame momenta to -1, seemed to cause infinities with biasing  */
             new_ph->comv_p0 = -1;
             new_ph->comv_p1 = -1;
             new_ph->comv_p2 = -1;
