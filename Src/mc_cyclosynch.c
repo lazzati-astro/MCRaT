@@ -644,7 +644,7 @@ int rebinCyclosynchCompPhotonsByType(struct photonList *photon_list, int *num_cy
     /* Phase 2: Calculate binning parameters */
     if (ret_val == 0)
     {
-        params = calculate_binning_params(&range_info, max_photons);
+        params = calculate_binning_params(&range_info, num_bins_energy);
         
         fprintf(fPtr, "  Energy bins: %d, Theta bins: %d", params.num_bins, params.num_bins_theta);
         #if DIMENSIONS == THREE
