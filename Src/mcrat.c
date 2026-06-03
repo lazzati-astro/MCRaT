@@ -781,7 +781,8 @@ int main(int argc, char **argv)
                     #if CYCLOSYNCHROTRON_SWITCH == ON
                         num_cyclosynch_ph_emit=photonEmitCyclosynch(&photon_list, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 0, 0, fPtr);
                     #else
-                        num_cyclosynch_ph_emit = photonEmitSynch(&photon_list, inj_radius, ph_weight_suggest, 1, CYCLOSYNCHROTRON_REBIN_E_PERC*max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, fPtr);
+                        //num_cyclosynch_ph_emit = photonEmitSynch(&photon_list, inj_radius, ph_weight_suggest, 1, CYCLOSYNCHROTRON_REBIN_E_PERC*max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, fPtr);
+                        num_cyclosynch_ph_emit = photonEmitSynch(&photon_list, inj_radius, ph_weight_suggest, min_photons, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, fPtr);
                     #endif
                 }
             #endif
