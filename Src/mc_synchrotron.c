@@ -1317,8 +1317,8 @@ void calculateOpticalDepthSSA(struct photon          *ph,
 
         int    cell_idx  = ph->nearest_block_index;
         double B         = getMagneticFieldMagnitude(hydro_data, cell_idx);
-        double n_e_nth   = (hydro_data->nonthermal_dens)[cell_idx]
-                         * (hydro_data->gamma)[cell_idx];   /* lab-frame density */
+        double n_e_nth   = (hydro_data->nonthermal_dens)[cell_idx];
+        double gamma     = (hydro_data->gamma)[cell_idx];
         double nu_f      = ph->comv_p0 * C_LIGHT / PL_CONST;
 
         double alpha = synchAlphaNu(nu_f, B, n_e_nth, fPtr);
@@ -1328,7 +1328,9 @@ void calculateOpticalDepthSSA(struct photon          *ph,
          * applyabsorption requires no additional frame arithmetic.
          * [RAIKOU Eq. 31]
          */
-        ph->absorption_opacity = fluid_factor * alpha;
+        //working thorugh Abramowicz 1991, find that gamma shouldnt be applied to number density but should be multiplied to the absorption opacity, which is determined from the fluid frame nonthermal electron density
+        //put this here to be explicit rather than multiplying nonthermal electron density by gamma to get lab frame density like we do elsewhere
+        ph->absorption_opacity = gamma * fluid_factor * alpha;
 
     #else
         (void)ph;
