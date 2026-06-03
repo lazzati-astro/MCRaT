@@ -286,7 +286,12 @@ static int collect_photon_statistics(const struct photonList *photon_list, struc
         const struct photon *ph = getPhoton(photon_list, i);
                 
         
-        if (ph->type == photon_type)
+        #if CYCLOSYNCHROTRON_SWITCH == ON
+            //with cyclosynch, most CS photons get absorbed so this is a bit moot but keep it here just in case
+            if (ph && ((ph->type == photon_type) || (tmp_ph->type == UNABSORBED_CS_PHOTON)))
+        #else
+            if (ph && (ph->type == photon_type))
+        #endif
         {
             
             if (ph->p0 > 0)
@@ -451,7 +456,12 @@ static int accumulate_bin_statistics(const struct photonList *photon_list, struc
     {
         const struct photon *ph = getPhoton(photon_list, i);
                 
-        if (ph->type = photon_type)
+        #if CYCLOSYNCHROTRON_SWITCH == ON
+            //with cyclosynch, most CS photons get absorbed so this is a bit moot but keep it here just in case
+            if (ph && ((ph->type == photon_type) || (tmp_ph->type == UNABSORBED_CS_PHOTON)))
+        #else
+            if (ph && (ph->type == photon_type))
+        #endif
         {
             double r, theta, phi = 0.0;
             calculate_photon_position(ph, &r, &theta, &phi);
@@ -585,7 +595,12 @@ static int create_rebinned_photons(struct photonList *photon_list, const struct 
     for (int i = 0; i < photon_list->list_capacity; i++)
     {
         struct photon *ph = getPhoton(photon_list, i);
-        if (ph && (ph->type == photon_type))
+        #if CYCLOSYNCHROTRON_SWITCH == ON
+            //with cyclosynch, most CS photons get absorbed so this is a bit moot but keep it here just in case
+            if (ph && ((ph->type == photon_type) || (tmp_ph->type == UNABSORBED_CS_PHOTON)))
+        #else
+            if (ph && (ph->type == photon_type))
+        #endif
         {
             setNullPhoton(photon_list, i);
         }
