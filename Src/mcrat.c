@@ -848,7 +848,7 @@ int main(int argc, char **argv)
                     #endif
                     
                     #if SYNCHROTRON_SWITCH == ON
-                    if (scattered_photon->type == SYNCH_PHOTON)
+                    if (scattered_photon->type == SYNCH_PHOTON || scattered_photon->type == COMPTONIZED_PHOTON)
                     {
                         scatt_cyclosynch_num_ph++;//keep track of the number of synch photons that have scattered for later in checking of we need to rebin them
                     }
