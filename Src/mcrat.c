@@ -884,8 +884,12 @@ int main(int argc, char **argv)
                             //if the number of synch photons that have been scattered is too high rebin them
                             
                             //printf("num_cyclosynch_ph_emit: %d\n", num_cyclosynch_ph_emit);
-                            rebinCyclosynchCompPhotons(&photon_list, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
-
+                            //rebinCyclosynchCompPhotons(&photon_list, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
+                            
+                            // we only want to rebin the COMPTONIZED_PHOTON within a frame and then between frames we rebin the synchrotron
+                            int test=0, cs_bins = (int)(CYCLOSYNCHROTRON_REBIN_E_PERC * max_photons);
+                            rebinCyclosynchCompPhotonsByType(&photon_list, &test, &scatt_cyclosynch_num_ph, cs_bins, max_photons, theta_jmin_thread, theta_jmax_thread, COMPTONIZED_PHOTON, rand, fPtr);
+                            
                             //fprintf(fPtr, "rebinSynchCompPhotons: scatt_cyclosynch_num_ph: %d\n", scatt_cyclosynch_num_ph);
                             //exit(0);
                         }
@@ -913,7 +917,7 @@ int main(int argc, char **argv)
             }
             
             #if CYCLOSYNCHROTRON_SWITCH == ON || SYNCHROTRON_SWITCH == ON
-            if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE)) //rememebr to change to != also at the other place in the code
+            if ((scatt_frame != scatt_framestart && scatt_frame != last_frm) || (restrt==CONTINUE))  //add last_frm part since the rebinning sets comv to -1, which if we are saving the rebinned phtoons in the last frame then the user doesnt see any photons b/c processMCRaT excludes comv p0=-1
             //if ((scatt_frame == scatt_framestart) || (restrt==CONTINUE)) //for testing
             {
                 #if SYNCHROTRON_SWITCH == ON
@@ -929,9 +933,24 @@ int main(int argc, char **argv)
                     fprintf(fPtr,"Before Rebin: The average number of scatterings thus far is: %lf\nThe average position of photons is %e\n", avg_scatt, avg_r);
                     fflush(fPtr);
                     */
-                    rebinCyclosynchCompPhotons(&photon_list, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
-                  //exit(0);
+                    //rebinCyclosynchCompPhotons(&photon_list, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
+                    int test=0, cs_bins = (int)(CYCLOSYNCHROTRON_REBIN_E_PERC * max_photons);
+                    rebinCyclosynchCompPhotonsByType(&photon_list, &test, &scatt_cyclosynch_num_ph, cs_bins, max_photons, theta_jmin_thread, theta_jmax_thread, COMPTONIZED_PHOTON, rand, fPtr);
+                    //exit(0);
+
                }
+                
+                #if SYNCHROTRON_SWITCH == ON
+                    if (num_cyclosynch_ph_emit > max_photons)
+                    {
+                        rebinCyclosynchCompPhotonsByType(&photon_list, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, (int)(CYCLOSYNCHROTRON_REBIN_E_PERC * max_photons), max_photons, theta_jmin_thread, theta_jmax_thread, SYNCH_PHOTON, rand, fPtr);
+                        
+                        //set this back to zero since we just rebinned everything
+                        scatt_cyclosynch_num_ph=0;
+
+                    }
+                #endif
+
                                         
 
                 
