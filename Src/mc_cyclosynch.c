@@ -734,6 +734,7 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list,
                                 FILE *fPtr)
 {
     int ret=0;
+    int original_num_cyclosynch_ph_emit=(*num_cyclosynch_ph_emit);
     
     // Comptonized photons use CYCLOSYNCHROTRON_REBIN_E_PERC of max_photons. this handles cyclosynch photons and any other scattered photons
     int cs_bins = (int)(CYCLOSYNCHROTRON_REBIN_E_PERC * max_photons);
@@ -741,9 +742,9 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list,
     
     //rebin the synchrotron photons, this shouldnt do anything besides reduce number of synch photons
     #if SYNCHROTRON_SWITCH == ON
-        if (*num_cyclosynch_ph_emit > max_photons)
+        if (original_num_cyclosynch_ph_emit > max_photons)
         {
-            rebinCyclosynchCompPhotonsByType(photon_list, num_cyclosynch_ph_emit, scatt_cyclosynch_num_ph, cs_bins, max_photons, thread_theta_min, thread_theta_max, SYNCH_PHOTON, rand, fPtr);
+            rebinCyclosynchCompPhotonsByType(photon_list, num_cyclosynch_ph_emit, scatt_cyclosynch_num_ph, max_photons, 10*max_photons, thread_theta_min, thread_theta_max, SYNCH_PHOTON, rand, fPtr);
         }
         //set this back to zero since we just rebinned everything
         *scatt_cyclosynch_num_ph=0;
