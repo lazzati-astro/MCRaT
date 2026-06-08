@@ -1286,7 +1286,7 @@ void applyAbsorption(struct photon *ph, double dl)
  * ------------------------
  * Compute the frame-corrected SSA absorption coefficient
  *
- *   ph->abs_optical_depth = fluid_factor * alpha_{nu_f}^(f)   [cm^{-1}]
+ *   ph->abs_optical_depth = gamma * fluid_factor * alpha_{nu_f}^(f)   [cm^{-1}]
  *
  * where fluid_factor = (1 - beta * cos(theta)) = nu_f / nu_z is the
  * Doppler frame correction already computed in calculateOpticalDepth and
@@ -1313,9 +1313,10 @@ void calculateOpticalDepthSSA(struct photon          *ph,
     #if SYNCHROTRON_SWITCH == ON
 
         ph->absorption_opacity = 0.0;
-
-        if (ph->type != SYNCH_PHOTON)
-            return;
+    
+        //this can operate on all photon types
+        //if (ph->type != SYNCH_PHOTON)
+        //    return;
 
         int    cell_idx  = ph->nearest_block_index;
         double B         = getMagneticFieldMagnitude(hydro_data, cell_idx);
