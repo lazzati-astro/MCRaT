@@ -1271,13 +1271,15 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
                     (photon_hydro_coord[2] < (hydro_data->r2_domain)[1]) &&
                     (photon_hydro_coord[2] > (hydro_data->r2_domain)[0]);
             #endif
-
-            if (ph_still_in_domain)
+            
+            //TODO: if we have biasing then we can force scattering in low optical depth regions, so need to make sure we properly capture the properties where the scattering occurs
+            //the sorted_indexes gives index of photon with smallest time to potentially scatter then extract the index of the block closest to that photon
+            //index can be -1 if the photon has been determined to be absorbed via updatephoton loop above
+            index=ph->nearest_block_index;
+            
+            if (ph_still_in_domain && (index>=0))
             {
-                
-                //TODO: if we have biasing then we can force scattering in low optical depth regions, so need to make sure we properly capture the properties where the scattering occurs
-                index=ph->nearest_block_index; //the sorted_indexes gives index of photon with smallest time to potentially scatter then extract the index of the block closest to that photon
-                
+                                
                 fluid_temp=(hydro_data->temp)[index];
                 //if (strcmp(DIM_SWITCH, dim_3d_str)==0)
                 
