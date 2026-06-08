@@ -1433,12 +1433,10 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
                             ph->weight = scattered_photon_weight;
                             
                             //this will help with SSC not being removed by russian roulette
-                            //TODO: figure out if the rebinning should/shouldnt operate on the synch photons
-                            // or if there is something in that function that changes the photon type
-                            if (ph->type == SYNCH_PHOTON)
-                            {
-                                ph->type = COMPTONIZED_PHOTON;
-                            }
+                            //rebinning should operate on the synch photons and any comptonized photons
+                            
+                            ph->type = COMPTONIZED_PHOTON;
+                            
 
                         }
                         
