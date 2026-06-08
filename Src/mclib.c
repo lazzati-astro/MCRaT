@@ -1475,13 +1475,14 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
                         
                     #endif
                     
-                    
+                    /*
                     if (((*(ph_p+0))*ENERGY_TO_KEV) > 1e4)
                     {
                         //energy greater than 1e4 keV
                         fprintf(fPtr,"Extremely High Photon Energy!!!!!!!!\n");
                         fflush(fPtr);
                     }
+                     */
                     
                     //fprintf(fPtr,"Old: %e, %e, %e,%e\n", ph->p0, ph->p1, ph->p2, ph->p3);
                     //fprintf(fPtr, "Old: %e, %e, %e,%e\n", *(ph_p_comov+0), *(ph_p_comov+1), *(ph_p_comov+2), *(ph_p_comov+3));
