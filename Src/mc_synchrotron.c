@@ -1766,6 +1766,7 @@ int photonEmitSynch(struct photonList          *photon_list,
                                          hydro_data->fps, r_inj, "max");
     
     //TODO: think about changing after testing, especially for emitting synchrotron photons to start off
+    //the above should simplify to this but when injecting photons the scatt frame number isnt defined, if only emitting photons after the first frame then above is ok
     //rmin=r_inj - 0.5*C_LIGHT/hydro_data->fps;
     //rmax=r_inj + 0.5*C_LIGHT/hydro_data->fps;
 
