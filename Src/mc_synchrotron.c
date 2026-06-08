@@ -1268,7 +1268,9 @@ void applyAbsorption(struct photon *ph, double dl)
         if (tau > 200.0)
         {
             ph->weight = DBL_MIN;
-            ph->nearest_block_index=-1;
+            ph->nearest_block_index = -1;
+            ph->time_to_scatter     = FLT_MAX / C_LIGHT;
+            ph->recalc_properties   = 1;
             return;
         }
 
