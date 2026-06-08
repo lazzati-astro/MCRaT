@@ -2014,12 +2014,6 @@ int photonEmitSynch(struct photonList          *photon_list,
         }
     }
     
-    //TODO: remove after testing
-    fprintf(fPtr,
-            ">> [photonEmitSynch] Total: "
-            "V=%.4e\n",
-            tot_v);
-    fflush(fPtr);
 
 
     /* ── Step 5: Weight-tuning loop ──────────────────────────────────────────
