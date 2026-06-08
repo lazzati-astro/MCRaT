@@ -166,6 +166,7 @@ void rotateElectron(double *el_p, double *ph_p, FILE *fPtr)
 double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr)
 {
     double theta=0, random_num=0;
+    int nan_count=0;
 
     /*this loop is inefficient
     double y_dum=0, f_x_dum=0, x_dum=0, beta_x_dum=0,
@@ -190,6 +191,15 @@ double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr)
         if (isnan(theta))
         {
             fprintf(fPtr, "Sampling the Electron theta produced a nan value. beta is %e, the generated random value is %e\nTrying again.\n\n", beta, random_num);
+            nan_count++;
+            
+            if (nan_count > 1000)
+            {
+                fprintf(fPtr, "Sampling the Electron theta produced a nan value >1000 times. exiting process\n\n");
+                fflush(fPtr);
+                exit(1);
+            }
+            
         }
     } while (isnan(theta));
 
