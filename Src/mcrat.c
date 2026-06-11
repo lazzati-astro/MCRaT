@@ -917,7 +917,7 @@ int main(int argc, char **argv)
             }
             
             #if CYCLOSYNCHROTRON_SWITCH == ON || SYNCHROTRON_SWITCH == ON
-            if ((scatt_frame != scatt_framestart && scatt_frame != last_frm) || (restrt==CONTINUE))  //add last_frm part since the rebinning sets comv to -1, which if we are saving the rebinned phtoons in the last frame then the user doesnt see any photons b/c processMCRaT excludes comv p0=-1
+            if ((scatt_frame != scatt_framestart && scatt_frame != last_frm))  //add last_frm part since the rebinning sets comv to -1, which if we are saving the rebinned phtoons in the last frame then the user doesnt see any photons b/c processMCRaT excludes comv p0=-1
             //if ((scatt_frame == scatt_framestart) || (restrt==CONTINUE)) //for testing
             {
                 #if SYNCHROTRON_SWITCH == ON
