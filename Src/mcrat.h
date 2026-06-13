@@ -406,6 +406,12 @@ struct hydro_dataframe
     #endif
 #endif
 
+//throw an error if the user wants both cyclosynch and synch
+#if CYCLOSYNCHROTRON_SWITCH == ON && SYNCHROTRON_SWITCH == ON
+    #error Both synchrotron and cyclosynchrotron cannot be enabled at this time
+#endif
+
+
 #if NONTHERMAL_E_DIST != OFF
     //if the user is specifying one of the 2 on-thermal distributions to use need to do error checking
     #if NONTHERMAL_E_DIST == POWERLAW
