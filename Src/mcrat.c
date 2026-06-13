@@ -771,7 +771,9 @@ int main(int argc, char **argv)
                     //if necessary, then add memory to then arrays allocated directly above
                     #if CYCLOSYNCHROTRON_SWITCH == ON
                         fprintf(fPtr, "Emitting Cyclosynchrotron Photons in frame %d\n", scatt_frame);
-                    #else
+                    #endif
+                    
+                    #if SYNCHROTRON_SWITCH == ON
                         fprintf(fPtr, "Emitting Synchrotron Photons in frame %d\n", scatt_frame);
                     #endif
                     
@@ -788,7 +790,9 @@ int main(int argc, char **argv)
                     phScattStats(&photon_list, &max_scatt, &min_scatt, &avg_scatt, &avg_r, fPtr); //for testing synch photons being emitted where 'i' photons are
                     #if CYCLOSYNCHROTRON_SWITCH == ON
                         num_cyclosynch_ph_emit=photonEmitCyclosynch(&photon_list, inj_radius, ph_weight_suggest, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, 0, 0, fPtr);
-                    #else
+                    #endif
+
+                    #if SYNCHROTRON_SWITCH == ON
                         //num_cyclosynch_ph_emit = photonEmitSynch(&photon_list, inj_radius, ph_weight_suggest, 1, CYCLOSYNCHROTRON_REBIN_E_PERC*max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, fPtr);
                         num_cyclosynch_ph_emit += photonEmitSynch(&photon_list, inj_radius, ph_weight_suggest, min_photons, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, fPtr);
                     #endif
