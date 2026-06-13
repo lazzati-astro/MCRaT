@@ -63,12 +63,12 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
     //define the number density coeficient, integrate the number density spectrum from 0 to infinity to get this value
     //used to calculate the number density of photons as num_dens_coeff*T_comv^3
     // how should this be defined for the custom spectrum case? -> made it be an input that the user sets
-    if (spect=='w') //from MCRAT paper, w for wien spectrum 
+    if (spect == WIEN ) //from MCRAT paper, w for wien spectrum
     {
         num_dens_coeff=8.44;
         //printf("in wien spectrum\n");
     }
-    else if (spect=='b')
+    else if (spect == BLACKBODY)
     {
         num_dens_coeff=20.29; //this is for black body spectrum
         //printf("in BB spectrum");
@@ -225,7 +225,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
             for(j=0;j<( *(ph_dens+k) ); j++ )
             {
                 //have to get random frequency for the photon comoving frequency
-                if (spect=='w')
+                if (spect == WIEN)
                 {
                     /* old way which also seemed to  be wrong in many ways
                     y_dum=1; //initalize loop
@@ -247,7 +247,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                     fr_dum*=K_B*((hydro_data->temp)[i])/PL_CONST;
                     
                 }
-                else if (spect=='b')
+                else if (spect == BLACKBODY)
                 {
                     fr_max=(3.31e10)*((hydro_data->temp)[i]);//max frequency of bb photon density spectrum
                     bb_norm=( pow((fr_max),2.0))/gsl_expm1(PL_CONST*fr_max/(K_B*((hydro_data->temp)[i]))); //(exp(PL_CONST*fr_max/(K_B*bb_temp))-1); //find value of bb at fr_max
@@ -365,7 +365,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                 ph[ph_tot].recalc_properties=1; //set to 1 so we are sure that we calculate tau values later on
                 //printf("%d\n",ph_tot);
                 
-                if ((spect!='w') && (spect!='b'))
+                if ((spect != WIEN) && (spect != BLACKBODY))
                 {
                     saveUserDefinePhoton((ph+ph_tot), &initialized_photon, hydro_data, i, rand, fPtr);
                 }
