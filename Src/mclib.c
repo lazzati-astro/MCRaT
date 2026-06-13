@@ -75,6 +75,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
     }
     else
     {
+        //this is for te custom outflow
         num_dens_coeff=PHOTON_DENSITY_COEFF;
     }
     

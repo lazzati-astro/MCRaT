@@ -13,6 +13,15 @@
 #define INITALIZE 'i'
 #define CONTINUE  'c'
 
+//define types of spectra that users can inject into the initial frame
+#define WIEN 'w'
+#define BLACKBODY 'b'
+#define CUSTOM 'c'
+#define SYNCHROTRON 's'
+#define WIEN_AND_SYNCH 'x'
+#define BLACKBODY_AND_SYNCH 'y'
+#define CUSTOM_AND_SYNCH 'z'
+
 //define the codes for the different types of hydro simulations that we can use
 #define FLASH           0
 #define PLUTO_CHOMBO    1
