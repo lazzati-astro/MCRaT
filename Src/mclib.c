@@ -59,25 +59,11 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
     double r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
     double position_rand=0, position2_rand=0, position3_rand=0, cartesian_position_rand_array[3];
     struct photon *ph=NULL, initialized_photon;
+    char spect_non_synch='';
     
-    //define the number density coeficient, integrate the number density spectrum from 0 to infinity to get this value
-    //used to calculate the number density of photons as num_dens_coeff*T_comv^3
-    // how should this be defined for the custom spectrum case? -> made it be an input that the user sets
-    if (spect == WIEN ) //from MCRAT paper, w for wien spectrum
-    {
-        num_dens_coeff=8.44;
-        //printf("in wien spectrum\n");
-    }
-    else if (spect == BLACKBODY)
-    {
-        num_dens_coeff=20.29; //this is for black body spectrum
-        //printf("in BB spectrum");
-    }
-    else
-    {
-        //this is for te custom outflow
-        num_dens_coeff=PHOTON_DENSITY_COEFF;
-    }
+    //first we define spect1 and spec2 depending on the value read in from mc.par
+    //need to determine if we need to inject just wien, just bb, just custom, just synch or combo of
+    
     
     //find how many blocks are near the injection radius within the angles defined in mc.par, get temperatures and calculate number of photons to allocate memory for 
     //and then rcord which blocks have to have "x" amount of photons injected there
@@ -85,302 +71,364 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
     rmin=r_inj - 0.5*C_LIGHT/hydro_data->fps;
     rmax=r_inj + 0.5*C_LIGHT/hydro_data->fps;
     
-    for(i=0; i<hydro_data->num_elements; i++)
+    //identify if we need to also inject synchrotron photons
+    if ((spect == SYNCHROTRON ) || (spect == WIEN_AND_SYNCH ) || (spect == BLACKBODY_AND_SYNCH ) || (spect == CUSTOM_AND_SYNCH ))
     {
-        #if DIMENSIONS == THREE
-            //want inner corner to be close to origin, therfore ned to have abs for 3D cartesian with negative coordinates, shouldnt affect the other geometry systems since theyre all defined from r=0, theta=0, phi=0
+        photonEmitSynch(&photon_list, inj_radius, ph_weight_suggest, min_photons, max_photons, theta_jmin_thread, theta_jmax_thread, &hydrodata, rng, fPtr);
         
-            //hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
-            //hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
-        
-            //therefore do whats below
-            hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, fabs((hydro_data->r0)[i])-0.5*(hydro_data->r0_size)[i], fabs((hydro_data->r1)[i])-0.5*(hydro_data->r1_size)[i], fabs((hydro_data->r2)[i])-0.5*(hydro_data->r2_size)[i]);
-            hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, fabs((hydro_data->r0)[i])+0.5*(hydro_data->r0_size)[i], fabs((hydro_data->r1)[i])+0.5*(hydro_data->r1_size)[i], fabs((hydro_data->r2)[i])+0.5*(hydro_data->r2_size)[i]);
-        #else
-            hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], 0);
-            hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], 0);
-        #endif
-        
-        //look at all boxes in width delta r=c/fps and within angles we are interested in 
-        //if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max) && ((hydro_data->r0_size)[i]<1e11) && ((hydro_data->r1_size)[i]<0.09))
-        if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
+        if (spect == WIEN_AND_SYNCH )
         {
-            //&& ((hydro_data->r0_size)[i]<1e11) && ((hydro_data->r1)[i]<3.0*3.14/180) is just for testing sph_3d mcrat sim to see if block_cnt is the issue for the 200x normalization issue -> this fixed norm issue, not N_scatt issue when start at frame 0
-            // also try injecting photons in frame 1 without above conditions -> didnt fix normalization issue not N_scatt issue
-            // also try inj at frame 1 with scale 1e11 -> didnt fixed normalization issue not N_scatt issue
-            // also try inj at frame 0 (orig) to see what gets printed for diagnosing CHOMBO refinement levels being an issue
-            // try inj at frame 0 with modified if statement and L scale 1e11
-            block_cnt++;
-            //#if DIMENSIONS == THREE
-            //fprintf(fPtr,"rmin %e rmax %e thetamin %e thetamax %e hydro: r0 %e r1 %e r2 %e r0_size %e r1_size %e r2_size %e r_inner %e theta_inner %e r_outer %e theta_outer %e\n", rmin, rmax, theta_min, theta_max, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i], (hydro_data->r0_size)[i], (hydro_data->r1_size)[i], (hydro_data->r2_size)[i], r_grid_innercorner, theta_grid_innercorner, r_grid_outercorner, theta_grid_outercorner);
-            //#else
-            //fprintf(fPtr,"rmin %e rmax %e thetamin %e thetamax %e hydro: r0 %e r1 %e r0_size %e r1_size %e r_inner %e theta_inner %e r_outer %e theta_outer %e dens %e\n", rmin, rmax, theta_min, theta_max, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r0_size)[i], (hydro_data->r1_size)[i], r_grid_innercorner, theta_grid_innercorner, r_grid_outercorner, theta_grid_outercorner, (hydro_data->dens)[i]);
-            //#endif
-            //fflush(fPtr);
+            spect_non_synch=WIEN;
+        }
+        else if (spect == BLACKBODY_AND_SYNCH )
+        {
+            spect_non_synch=BLACKBODY;
+        }
+        else if (spect == CUSTOM_AND_SYNCH )
+        {
+            spect_non_synch=CUSTOM;
+        }
+        else
+        {
+            spect_non_synch='';
         }
     }
-    //printf("Blocks: %d\n", block_cnt);
-    
-    //allocate memory to record density of photons for each block
-    ph_dens=malloc(block_cnt * sizeof(int));
-    
-    //calculate the photon density for each block and save it to the array
-    j=0;
-    ph_tot=0;
-    ph_weight_adjusted=ph_weight;
-    //printf("%d %d\n", max_photons, min_photons);
-    while ((ph_tot>max_photons) || (ph_tot<min_photons) )
+    else
     {
-        j=0;
-        ph_tot=0;
-        
-        for (i=0;i<hydro_data->num_elements;i++)
+        spect_non_synch = spect;
+    }
+    
+    if (spect_non_synch != '')
+    {
+        //define the number density coeficient, integrate the number density spectrum from 0 to infinity to get this value
+        //used to calculate the number density of photons as num_dens_coeff*T_comv^3
+        // how should this be defined for the custom spectrum case? -> made it be an input that the user sets
+        if (spect_non_synch == WIEN ) //from MCRAT paper, w for wien spectrum
         {
-            //printf("%d\n",i);
-            //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
+            num_dens_coeff=8.44;
+            //printf("in wien spectrum\n");
+        }
+        else if (spect_non_synch == BLACKBODY)
+        {
+            num_dens_coeff=20.29; //this is for black body spectrum
+            //printf("in BB spectrum");
+        }
+        else
+        {
+            //this is for te custom outflow
+            num_dens_coeff=PHOTON_DENSITY_COEFF;
+        }
+        
+        
+        
+        
+        for(i=0; i<hydro_data->num_elements; i++)
+        {
             #if DIMENSIONS == THREE
                 //want inner corner to be close to origin, therfore ned to have abs for 3D cartesian with negative coordinates, shouldnt affect the other geometry systems since theyre all defined from r=0, theta=0, phi=0
-            
+                
                 //hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
                 //hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
-            
+                
                 //therefore do whats below
                 hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, fabs((hydro_data->r0)[i])-0.5*(hydro_data->r0_size)[i], fabs((hydro_data->r1)[i])-0.5*(hydro_data->r1_size)[i], fabs((hydro_data->r2)[i])-0.5*(hydro_data->r2_size)[i]);
                 hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, fabs((hydro_data->r0)[i])+0.5*(hydro_data->r0_size)[i], fabs((hydro_data->r1)[i])+0.5*(hydro_data->r1_size)[i], fabs((hydro_data->r2)[i])+0.5*(hydro_data->r2_size)[i]);
-
             #else
                 hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], 0);
                 hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], 0);
             #endif
-
+            
+            //look at all boxes in width delta r=c/fps and within angles we are interested in
             //if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max) && ((hydro_data->r0_size)[i]<1e11) && ((hydro_data->r1_size)[i]<0.09))
             if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
             {
-                ph_dens_calc=(4.0/3.0)*hydroElementVolume(hydro_data, i) *(((hydro_data->gamma)[i]*num_dens_coeff*(hydro_data->temp)[i]*(hydro_data->temp)[i]*(hydro_data->temp)[i])/ph_weight_adjusted/hydro_data->fps); //4 comes from L \propto 4p in the limit radiation pressure is greater than the matter energy density and 3 comes from p=u/3, where u is the energy density
-                
-                (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
-                 
-                //printf("%d, %lf \n",*(ph_dens+j), ph_dens_calc);
-                
-                //sum up all the densities to get total number of photons
-                ph_tot+=(*(ph_dens+j));
-                 
-                j++;
+                //&& ((hydro_data->r0_size)[i]<1e11) && ((hydro_data->r1)[i]<3.0*3.14/180) is just for testing sph_3d mcrat sim to see if block_cnt is the issue for the 200x normalization issue -> this fixed norm issue, not N_scatt issue when start at frame 0
+                // also try injecting photons in frame 1 without above conditions -> didnt fix normalization issue not N_scatt issue
+                // also try inj at frame 1 with scale 1e11 -> didnt fixed normalization issue not N_scatt issue
+                // also try inj at frame 0 (orig) to see what gets printed for diagnosing CHOMBO refinement levels being an issue
+                // try inj at frame 0 with modified if statement and L scale 1e11
+                block_cnt++;
+                //#if DIMENSIONS == THREE
+                //fprintf(fPtr,"rmin %e rmax %e thetamin %e thetamax %e hydro: r0 %e r1 %e r2 %e r0_size %e r1_size %e r2_size %e r_inner %e theta_inner %e r_outer %e theta_outer %e\n", rmin, rmax, theta_min, theta_max, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i], (hydro_data->r0_size)[i], (hydro_data->r1_size)[i], (hydro_data->r2_size)[i], r_grid_innercorner, theta_grid_innercorner, r_grid_outercorner, theta_grid_outercorner);
+                //#else
+                //fprintf(fPtr,"rmin %e rmax %e thetamin %e thetamax %e hydro: r0 %e r1 %e r0_size %e r1_size %e r_inner %e theta_inner %e r_outer %e theta_outer %e dens %e\n", rmin, rmax, theta_min, theta_max, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r0_size)[i], (hydro_data->r1_size)[i], r_grid_innercorner, theta_grid_innercorner, r_grid_outercorner, theta_grid_outercorner, (hydro_data->dens)[i]);
+                //#endif
+                //fflush(fPtr);
             }
         }
-    
-        if (ph_tot>max_photons)
+        //printf("Blocks: %d\n", block_cnt);
+        
+        //allocate memory to record density of photons for each block
+        ph_dens=malloc(block_cnt * sizeof(int));
+        
+        //calculate the photon density for each block and save it to the array
+        j=0;
+        ph_tot=0;
+        ph_weight_adjusted=ph_weight;
+        //printf("%d %d\n", max_photons, min_photons);
+        while ((ph_tot>max_photons) || (ph_tot<min_photons) )
         {
-            //if the number of photons is too big make ph_weight larger
-            ph_weight_adjusted*=10;
+            j=0;
+            ph_tot=0;
             
-        }
-        else if (ph_tot<min_photons)
-        {
-            ph_weight_adjusted*=0.5;
-            
-        }
-        
-        //printf("dens: %d, photons: %d\n", *(ph_dens+(j-1)), ph_tot);
-         
-    }
-        
-    //printf("%d\n", ph_tot);
-    
-    //allocate memory for that many photons and also allocate memory to hold comoving 4 momentum of each photon and the velocity of the fluid
-    ph=malloc (ph_tot * sizeof (struct photon ));
-    
-    p_comv=malloc(4*sizeof(double));
-    boost=malloc(3*sizeof(double));
-    l_boost=malloc(4*sizeof(double));
-    
-    
-    //go through blocks and assign random energies/locations to proper number of photons
-    ph_tot=0;
-    k=0;
-    //for blackbody injection sampling using Bjorkman and Wood 2001
-    double test=0, test_rand1=gsl_rng_uniform_pos(rand), test_rand2=gsl_rng_uniform_pos(rand), test_rand3=gsl_rng_uniform_pos(rand), test_rand4=gsl_rng_uniform_pos(rand), test_rand5=gsl_rng_uniform_pos(rand);
-    double test_cnt=0;
-
-    for (i=0;i<hydro_data->num_elements;i++)
-    {
-        #if DIMENSIONS == THREE
-            //want inner corner to be close to origin, therfore ned to have abs for 3D cartesian with negative coordinates, shouldnt affect the other geometry systems since theyre all defined from r=0, theta=0, phi=0
-        
-            //hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
-            //hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
-        
-            //therefore do whats below
-            hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, fabs((hydro_data->r0)[i])-0.5*(hydro_data->r0_size)[i], fabs((hydro_data->r1)[i])-0.5*(hydro_data->r1_size)[i], fabs((hydro_data->r2)[i])-0.5*(hydro_data->r2_size)[i]);
-            hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, fabs((hydro_data->r0)[i])+0.5*(hydro_data->r0_size)[i], fabs((hydro_data->r1)[i])+0.5*(hydro_data->r1_size)[i], fabs((hydro_data->r2)[i])+0.5*(hydro_data->r2_size)[i]);
-        #else
-            hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], 0);
-            hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], 0);
-        #endif
-
-        //if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max) && ((hydro_data->r0_size)[i]<1e11) && ((hydro_data->r1_size)[i]<0.09))
-        if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
-        {
-
-            for(j=0;j<( *(ph_dens+k) ); j++ )
+            for (i=0;i<hydro_data->num_elements;i++)
             {
-                //have to get random frequency for the photon comoving frequency
-                if (spect == WIEN)
+                //printf("%d\n",i);
+                //printf("%e, %e, %e, %e, %e, %e\n", *(r+i),(r_inj - C_LIGHT/fps), (r_inj + C_LIGHT/fps), *(theta+i) , theta_max, theta_min);
+                #if DIMENSIONS == THREE
+                    //want inner corner to be close to origin, therfore ned to have abs for 3D cartesian with negative coordinates, shouldnt affect the other geometry systems since theyre all defined from r=0, theta=0, phi=0
+                    
+                    //hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
+                    //hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
+                    
+                    //therefore do whats below
+                    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, fabs((hydro_data->r0)[i])-0.5*(hydro_data->r0_size)[i], fabs((hydro_data->r1)[i])-0.5*(hydro_data->r1_size)[i], fabs((hydro_data->r2)[i])-0.5*(hydro_data->r2_size)[i]);
+                    hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, fabs((hydro_data->r0)[i])+0.5*(hydro_data->r0_size)[i], fabs((hydro_data->r1)[i])+0.5*(hydro_data->r1_size)[i], fabs((hydro_data->r2)[i])+0.5*(hydro_data->r2_size)[i]);
+                    
+                #else
+                    hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], 0);
+                    hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], 0);
+                #endif
+                
+                //if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max) && ((hydro_data->r0_size)[i]<1e11) && ((hydro_data->r1_size)[i]<0.09))
+                if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
                 {
-                    /* old way which also seemed to  be wrong in many ways
-                    y_dum=1; //initalize loop
-                    yfr_dum=0;
-                    while (y_dum>yfr_dum)
-                    {
-                        fr_dum=gsl_rng_uniform_pos(rand)*6.3e11*((hydro_data->temp)[i]); //in Hz
-                        //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
-                        y_dum=gsl_rng_uniform_pos(rand);
-                        //printf("%lf ",fr_dum);
+                    ph_dens_calc=(4.0/3.0)*hydroElementVolume(hydro_data, i) *(((hydro_data->gamma)[i]*num_dens_coeff*(hydro_data->temp)[i]*(hydro_data->temp)[i]*(hydro_data->temp)[i])/ph_weight_adjusted/hydro_data->fps); //4 comes from L \propto 4p in the limit radiation pressure is greater than the matter energy density and 3 comes from p=u/3, where u is the energy density
                     
-                        yfr_dum=(1.0/(1.29e31))*pow((fr_dum/((hydro_data->temp)[i])),3.0)/(exp((PL_CONST*fr_dum)/(K_B*((hydro_data->temp)[i]) ))-1); //curve is normalized to maximum
-                    }
-                     */
-                    //now sample from a gamma distribution with a=2 and b=1 (x^2*e^-x) and then convert x=h \nu / k_B*T to frequency \nu
-                    //this is due to the fact that we are sampling from the wien photon density spectrum which is the wien spectrum divided by h \nu.
-                    //verified with simulations in python to verify this sampled function and transform does actually return a wien function for sufficiently large sample size (of 100000)
-                    fr_dum = gsl_ran_gamma(rand, 3.0, 1.0);
-                    fr_dum*=K_B*((hydro_data->temp)[i])/PL_CONST;
+                    (*(ph_dens+j))=gsl_ran_poisson(rand,ph_dens_calc) ; //choose from poission distribution with mean of ph_dens_calc
                     
+                    //printf("%d, %lf \n",*(ph_dens+j), ph_dens_calc);
+                    
+                    //sum up all the densities to get total number of photons
+                    ph_tot+=(*(ph_dens+j));
+                    
+                    j++;
                 }
-                else if (spect == BLACKBODY)
+            }
+            
+            if (ph_tot>max_photons)
+            {
+                //if the number of photons is too big make ph_weight larger
+                ph_weight_adjusted*=10;
+                
+            }
+            else if (ph_tot<min_photons)
+            {
+                ph_weight_adjusted*=0.5;
+                
+            }
+            
+            //printf("dens: %d, photons: %d\n", *(ph_dens+(j-1)), ph_tot);
+            
+        }
+        
+        //printf("%d\n", ph_tot);
+        
+        //allocate memory for that many photons and also allocate memory to hold comoving 4 momentum of each photon and the velocity of the fluid
+        ph=malloc (ph_tot * sizeof (struct photon ));
+        
+        p_comv=malloc(4*sizeof(double));
+        boost=malloc(3*sizeof(double));
+        l_boost=malloc(4*sizeof(double));
+        
+        
+        //go through blocks and assign random energies/locations to proper number of photons
+        ph_tot=0;
+        k=0;
+        //for blackbody injection sampling using Bjorkman and Wood 2001
+        double test=0, test_rand1=gsl_rng_uniform_pos(rand), test_rand2=gsl_rng_uniform_pos(rand), test_rand3=gsl_rng_uniform_pos(rand), test_rand4=gsl_rng_uniform_pos(rand), test_rand5=gsl_rng_uniform_pos(rand);
+        double test_cnt=0;
+        
+        for (i=0;i<hydro_data->num_elements;i++)
+        {
+            #if DIMENSIONS == THREE
+                //want inner corner to be close to origin, therfore ned to have abs for 3D cartesian with negative coordinates, shouldnt affect the other geometry systems since theyre all defined from r=0, theta=0, phi=0
+                
+                //hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]-0.5*(hydro_data->r2_size)[i]);
+                //hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], (hydro_data->r2)[i]+0.5*(hydro_data->r2_size)[i]);
+                
+                //therefore do whats below
+                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, fabs((hydro_data->r0)[i])-0.5*(hydro_data->r0_size)[i], fabs((hydro_data->r1)[i])-0.5*(hydro_data->r1_size)[i], fabs((hydro_data->r2)[i])-0.5*(hydro_data->r2_size)[i]);
+                hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, fabs((hydro_data->r0)[i])+0.5*(hydro_data->r0_size)[i], fabs((hydro_data->r1)[i])+0.5*(hydro_data->r1_size)[i], fabs((hydro_data->r2)[i])+0.5*(hydro_data->r2_size)[i]);
+            #else
+                hydroCoordinateToSpherical(&r_grid_innercorner, &theta_grid_innercorner, (hydro_data->r0)[i]-0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]-0.5*(hydro_data->r1_size)[i], 0);
+                hydroCoordinateToSpherical(&r_grid_outercorner, &theta_grid_outercorner, (hydro_data->r0)[i]+0.5*(hydro_data->r0_size)[i], (hydro_data->r1)[i]+0.5*(hydro_data->r1_size)[i], 0);
+            #endif
+            
+            //if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max) && ((hydro_data->r0_size)[i]<1e11) && ((hydro_data->r1_size)[i]<0.09))
+            if ((rmin <= r_grid_outercorner) && (r_grid_innercorner  <= rmax ) && (theta_grid_outercorner >= theta_min) && (theta_grid_innercorner <= theta_max))
+            {
+                
+                for(j=0;j<( *(ph_dens+k) ); j++ )
                 {
-                    fr_max=(3.31e10)*((hydro_data->temp)[i]);//max frequency of bb photon density spectrum
-                    bb_norm=( pow((fr_max),2.0))/gsl_expm1(PL_CONST*fr_max/(K_B*((hydro_data->temp)[i]))); //(exp(PL_CONST*fr_max/(K_B*bb_temp))-1); //find value of bb at fr_max
+                    //have to get random frequency for the photon comoving frequency
+                    if (spect_non_synch == WIEN)
+                    {
+                        /* old way which also seemed to  be wrong in many ways
+                         y_dum=1; //initalize loop
+                         yfr_dum=0;
+                         while (y_dum>yfr_dum)
+                         {
+                         fr_dum=gsl_rng_uniform_pos(rand)*6.3e11*((hydro_data->temp)[i]); //in Hz
+                         //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
+                         y_dum=gsl_rng_uniform_pos(rand);
+                         //printf("%lf ",fr_dum);
+                         
+                         yfr_dum=(1.0/(1.29e31))*pow((fr_dum/((hydro_data->temp)[i])),3.0)/(exp((PL_CONST*fr_dum)/(K_B*((hydro_data->temp)[i]) ))-1); //curve is normalized to maximum
+                         }
+                         */
+                        //now sample from a gamma distribution with a=2 and b=1 (x^2*e^-x) and then convert x=h \nu / k_B*T to frequency \nu
+                        //this is due to the fact that we are sampling from the wien photon density spectrum which is the wien spectrum divided by h \nu.
+                        //verified with simulations in python to verify this sampled function and transform does actually return a wien function for sufficiently large sample size (of 100000)
+                        fr_dum = gsl_ran_gamma(rand, 3.0, 1.0);
+                        fr_dum*=K_B*((hydro_data->temp)[i])/PL_CONST;
+                        
+                    }
+                    else if (spect_non_synch == BLACKBODY)
+                    {
+                        fr_max=(3.31e10)*((hydro_data->temp)[i]);//max frequency of bb photon density spectrum
+                        bb_norm=( pow((fr_max),2.0))/gsl_expm1(PL_CONST*fr_max/(K_B*((hydro_data->temp)[i]))); //(exp(PL_CONST*fr_max/(K_B*bb_temp))-1); //find value of bb at fr_max
+                        y_dum=1; //initalize loop
+                        yfr_dum=0;
+                        while (y_dum>yfr_dum)
+                        {
+                            fr_dum=gsl_rng_uniform_pos(rand)*6.3e11*((hydro_data->temp)[i]); //in Hz
+                            //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
+                            y_dum=gsl_rng_uniform_pos(rand);
+                            
+                            yfr_dum=((1.0/bb_norm)* pow((fr_dum),2.0))/gsl_expm1(PL_CONST*fr_dum/(K_B*((hydro_data->temp)[i]))); //(exp(PL_CONST*fr_dum/(K_B*bb_temp))-1); //curve is normalized to vaue of bb @ max frequency
+                        }
+                        
+                    }
+                    else
+                    {
+                        //this is for custom spectrum sampling
+                        initialized_photon = custom_photon_sampler(hydro_data, i, rand, fPtr);
+                        
+                    }
+                    //printf("%lf, %lf,%lf,%e \n",(hydro_data->temp)[i],fr_dum, y_dum, yfr_dum);
+                    
+                    
+                    //printf("i: %d freq:%lf\n ",ph_tot, fr_dum);
+                    #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
+                        position_phi=gsl_rng_uniform(rand)*2*M_PI;
+                    #else
+                        position_phi=0;//dont need this in 3D
+                    #endif
+                    com_v_phi=samplePhotonPhi(rand, fPtr); //gsl_rng_uniform(rand)*2*M_PI;
+                    //this seemed to produce lab frame spectra with significantly differnet temperatures/shapes than what was expected for wien/blackbody spectra. this is only valid when beta=0, which is limiting case of our anisotropic sampling below
+                    //com_v_theta=acos((gsl_rng_uniform(rand)*2)-1);
+                    
+                    //TODO:what is boost at the start of this loop? it seems undefined
+                    //trying to overwrite com_v_theta based on sampling of lab anisotropic angle distribution of photons
+                    //see eg Section 3.2.1 @ doi.org/10.1088/0004-637X/807/1/31 & Section 3.5 @ doi.org/10.3847/1538-4357/ac75cb
+                    // and section 6.2 here: Nordin Nobuoka, J. 2025, SPIRO: a code that couples Monte Carlo photons to relativistic hydrodynamics - Applications to hot astrophysical plasmas, https://urn.kb.se/resolve?urn=urn:nbn:se:kth:diva-368279
+                    gsl_vector_view b=gsl_vector_view_array(boost, 3);
+                    double beta=gsl_blas_dnrm2(&b.vector);
                     y_dum=1; //initalize loop
                     yfr_dum=0;
                     while (y_dum>yfr_dum)
                     {
-                        fr_dum=gsl_rng_uniform_pos(rand)*6.3e11*((hydro_data->temp)[i]); //in Hz
+                        com_v_theta=2*gsl_rng_uniform_pos(rand)-1; //cos(angle) is from -1 to 1
                         //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
                         y_dum=gsl_rng_uniform_pos(rand);
                         
-                        yfr_dum=((1.0/bb_norm)* pow((fr_dum),2.0))/gsl_expm1(PL_CONST*fr_dum/(K_B*((hydro_data->temp)[i]))); //(exp(PL_CONST*fr_dum/(K_B*bb_temp))-1); //curve is normalized to vaue of bb @ max frequency
+                        yfr_dum=0.5*(1+beta*com_v_theta); //propability density of angle of photon with respect to fluid motion (doppler boosting factor)
                     }
-
+                    com_v_theta=samplePhotonTheta(boost, rand, fPtr); //acos(com_v_theta);
+                    //trying to overwrite com_v_theta based on sampling of lab anisotropic angle distribution of photons
+                    
+                    
+                    //printf("%lf, %lf, %lf\n", position_phi, com_v_phi, com_v_theta);
+                    
+                    //populate 4 momentum comoving array
+                    *(p_comv+0)=PL_CONST*fr_dum/C_LIGHT;
+                    *(p_comv+1)=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*cos(com_v_phi);
+                    *(p_comv+2)=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*sin(com_v_phi);
+                    *(p_comv+3)=(PL_CONST*fr_dum/C_LIGHT)*cos(com_v_theta);
+                    
+                    
+                    //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
+                    #if DIMENSIONS == THREE
+                        hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
+                    #elif DIMENSIONS == TWO_POINT_FIVE
+                        hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
+                    #else
+                        //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
+                        hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], 0, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
+                    #endif
+                    (*(boost+0))*=-1;
+                    (*(boost+1))*=-1;
+                    (*(boost+2))*=-1;
+                    
+                    //boost to lab frame
+                    lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
+                    //printf("Assignemnt: %e, %e, %e, %e\n", *(l_boost+0), *(l_boost+1), *(l_boost+2),*(l_boost+3));
+                    
+                    ph[ph_tot].p0=(*(l_boost+0));
+                    ph[ph_tot].p1=(*(l_boost+1));
+                    ph[ph_tot].p2=(*(l_boost+2));
+                    ph[ph_tot].p3=(*(l_boost+3));
+                    ph[ph_tot].comv_p0=(*(p_comv+0));
+                    ph[ph_tot].comv_p1=(*(p_comv+1));
+                    ph[ph_tot].comv_p2=(*(p_comv+2));
+                    ph[ph_tot].comv_p3=(*(p_comv+3));
+                    
+                    //place photons in rand positions within fluid element
+                    position_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r0_size)[i])-0.5*((hydro_data->r0_size)[i]); //choose between -size/2 to size/2
+                    position2_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r1_size)[i])-0.5*((hydro_data->r1_size)[i]);
+                    #if DIMENSIONS == THREE
+                        position3_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r2_size)[i])-0.5*((hydro_data->r2_size)[i]);
+                        hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, (hydro_data->r2)[i]+position3_rand);
+                    #else
+                        hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, position_phi);
+                    #endif
+                    
+                    //assign random position
+                    ph[ph_tot].r0=cartesian_position_rand_array[0];
+                    ph[ph_tot].r1=cartesian_position_rand_array[1];
+                    ph[ph_tot].r2=cartesian_position_rand_array[2];
+                    
+                    //fprintf(fPtr,"%d %e %e %e\n", ph_tot, ph[ph_tot].r0, ph[ph_tot].r1, ph[ph_tot].r2);
+                    
+                    ph[ph_tot].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1
+                    ph[ph_tot].s1=0;
+                    ph[ph_tot].s2=0;
+                    ph[ph_tot].s3=0;
+                    ph[ph_tot].num_scatt=0;
+                    ph[ph_tot].weight=ph_weight_adjusted;
+                    ph[ph_tot].nearest_block_index=0;
+                    ph[ph_tot].type=INJECTED_PHOTON; //i for injected
+                    ph[ph_tot].recalc_properties=1; //set to 1 so we are sure that we calculate tau values later on
+                    //printf("%d\n",ph_tot);
+                    
+                    if ((spect_non_synch != WIEN) && (spect_non_synch != BLACKBODY))
+                    {
+                        saveUserDefinePhoton((ph+ph_tot), &initialized_photon, hydro_data, i, rand, fPtr);
+                    }
+                    
+                    ph_tot++;
                 }
-                else
-                {
-                    //this is for custom spectrum sampling
-                    initialized_photon = custom_photon_sampler(hydro_data, i, rand, fPtr);
-                    
-                }
-                //printf("%lf, %lf,%lf,%e \n",(hydro_data->temp)[i],fr_dum, y_dum, yfr_dum);
-                    
-                
-                //printf("i: %d freq:%lf\n ",ph_tot, fr_dum);
-                #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
-                    position_phi=gsl_rng_uniform(rand)*2*M_PI;
-                #else
-                    position_phi=0;//dont need this in 3D
-                #endif
-                com_v_phi=samplePhotonPhi(rand, fPtr); //gsl_rng_uniform(rand)*2*M_PI;
-               //this seemed to produce lab frame spectra with significantly differnet temperatures/shapes than what was expected for wien/blackbody spectra. this is only valid when beta=0, which is limiting case of our anisotropic sampling below
-               //com_v_theta=acos((gsl_rng_uniform(rand)*2)-1);
-                
-                //TODO:what is boost at the start of this loop? it seems undefined
-               //trying to overwrite com_v_theta based on sampling of lab anisotropic angle distribution of photons
-               //see eg Section 3.2.1 @ doi.org/10.1088/0004-637X/807/1/31 & Section 3.5 @ doi.org/10.3847/1538-4357/ac75cb
-               // and section 6.2 here: Nordin Nobuoka, J. 2025, SPIRO: a code that couples Monte Carlo photons to relativistic hydrodynamics - Applications to hot astrophysical plasmas, https://urn.kb.se/resolve?urn=urn:nbn:se:kth:diva-368279
-               gsl_vector_view b=gsl_vector_view_array(boost, 3);
-               double beta=gsl_blas_dnrm2(&b.vector);
-               y_dum=1; //initalize loop
-               yfr_dum=0;
-               while (y_dum>yfr_dum)
-               {
-                   com_v_theta=2*gsl_rng_uniform_pos(rand)-1; //cos(angle) is from -1 to 1
-                   //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
-                   y_dum=gsl_rng_uniform_pos(rand);
-                    
-                   yfr_dum=0.5*(1+beta*com_v_theta); //propability density of angle of photon with respect to fluid motion (doppler boosting factor)
-               }
-                com_v_theta=samplePhotonTheta(boost, rand, fPtr); //acos(com_v_theta);
-               //trying to overwrite com_v_theta based on sampling of lab anisotropic angle distribution of photons
-
-                
-               //printf("%lf, %lf, %lf\n", position_phi, com_v_phi, com_v_theta);
-               
-               //populate 4 momentum comoving array
-               *(p_comv+0)=PL_CONST*fr_dum/C_LIGHT;
-               *(p_comv+1)=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*cos(com_v_phi);
-               *(p_comv+2)=(PL_CONST*fr_dum/C_LIGHT)*sin(com_v_theta)*sin(com_v_phi);
-               *(p_comv+3)=(PL_CONST*fr_dum/C_LIGHT)*cos(com_v_theta);
-                
-               
-                //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
-                #if DIMENSIONS == THREE
-                    hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
-                #elif DIMENSIONS == TWO_POINT_FIVE
-                    hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
-                #else
-                    //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
-                    hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], 0, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
-                #endif
-                (*(boost+0))*=-1;
-                (*(boost+1))*=-1;
-                (*(boost+2))*=-1;
-                    
-                //boost to lab frame
-                lorentzBoost(boost, p_comv, l_boost, 'p', fPtr);
-                //printf("Assignemnt: %e, %e, %e, %e\n", *(l_boost+0), *(l_boost+1), *(l_boost+2),*(l_boost+3));
-               
-                ph[ph_tot].p0=(*(l_boost+0));
-                ph[ph_tot].p1=(*(l_boost+1));
-                ph[ph_tot].p2=(*(l_boost+2));
-                ph[ph_tot].p3=(*(l_boost+3));
-                ph[ph_tot].comv_p0=(*(p_comv+0));
-                ph[ph_tot].comv_p1=(*(p_comv+1));
-                ph[ph_tot].comv_p2=(*(p_comv+2));
-                ph[ph_tot].comv_p3=(*(p_comv+3));
-                
-                //place photons in rand positions within fluid element
-                position_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r0_size)[i])-0.5*((hydro_data->r0_size)[i]); //choose between -size/2 to size/2
-                position2_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r1_size)[i])-0.5*((hydro_data->r1_size)[i]);
-                #if DIMENSIONS == THREE
-                    position3_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r2_size)[i])-0.5*((hydro_data->r2_size)[i]);
-                    hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, (hydro_data->r2)[i]+position3_rand);
-                #else
-                    hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, position_phi);
-                #endif
-                
-                //assign random position
-                ph[ph_tot].r0=cartesian_position_rand_array[0];
-                ph[ph_tot].r1=cartesian_position_rand_array[1];
-                ph[ph_tot].r2=cartesian_position_rand_array[2];
-                
-                //fprintf(fPtr,"%d %e %e %e\n", ph_tot, ph[ph_tot].r0, ph[ph_tot].r1, ph[ph_tot].r2);
-                
-                ph[ph_tot].s0=1; //initalize stokes parameters as non polarized photon, stokes parameterized are normalized such that I always =1 
-                ph[ph_tot].s1=0;
-                ph[ph_tot].s2=0;
-                ph[ph_tot].s3=0;
-                ph[ph_tot].num_scatt=0;
-                ph[ph_tot].weight=ph_weight_adjusted;
-                ph[ph_tot].nearest_block_index=0;
-                ph[ph_tot].type=INJECTED_PHOTON; //i for injected
-                ph[ph_tot].recalc_properties=1; //set to 1 so we are sure that we calculate tau values later on
-                //printf("%d\n",ph_tot);
-                
-                if ((spect != WIEN) && (spect != BLACKBODY))
-                {
-                    saveUserDefinePhoton((ph+ph_tot), &initialized_photon, hydro_data, i, rand, fPtr);
-                }
-
-                ph_tot++;
+                k++;
             }
-            k++;
+        }
+        
+        //save the whole array to our photon list struct
+        //if we have at least 1 photon in the photon_list then we just add the emitted photons, otherwise we have to set the photons in the photon list, this take care of whether synchrotron phtoons have been emitted or not
+        if (photon_list->list_capacity >0)
+        {
+            addToPhotonList(photon_list, ph, ph_tot);
+        }
+        else
+        {
+            setPhotonList(photon_list, ph, ph_tot);
         }
     }
-    
-    //save the whole array to our photon list struct
-    setPhotonList(photon_list, ph, ph_tot);
     //printf(" %d: %d\n", *(ph_dens+(k-1)), *ph_num);
     free(ph_dens); free(p_comv);free(boost); free(l_boost); free(ph);
     //exit(0);
+    
+    
 }
 
 void lorentzBoost(double *boost, double *p_ph, double *result, char object,  FILE *fPtr)
