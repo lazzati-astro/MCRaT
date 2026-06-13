@@ -740,7 +740,7 @@ int main(int argc, char **argv)
             
             //calc min and max positions of photons
             phMinMax(&photon_list, &min_r, &max_r, &min_theta, &max_theta, fPtr);
-            #if CYCLOSYNCHROTRON_SWITCH == ON
+            #if CYCLOSYNCHROTRON_SWITCH == ON || SYNCHROTRON_SWITCH == ON
                 if ((scatt_frame != scatt_framestart) || (restrt==CONTINUE))
                 //if ((scatt_frame == scatt_framestart) || (restrt==CONTINUE))//for testing
                 {
