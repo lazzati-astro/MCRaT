@@ -74,7 +74,8 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
     //identify if we need to also inject synchrotron photons
     if ((spect == SYNCHROTRON ) || (spect == WIEN_AND_SYNCH ) || (spect == BLACKBODY_AND_SYNCH ) || (spect == CUSTOM_AND_SYNCH ))
     {
-        photonEmitSynch(photon_list, rmin, ph_weight, min_photons, max_photons, theta_min, theta_max, hydro_data, rand, fPtr);
+        //injecting the synchrotron photons, so pass in 1 for ph_inj_switch
+        photonEmitSynch(photon_list, rmin, ph_weight, min_photons, max_photons, 1, theta_min, theta_max, hydro_data, rand, fPtr);
         
         if (spect == WIEN_AND_SYNCH )
         {
