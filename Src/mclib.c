@@ -59,7 +59,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
     double r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
     double position_rand=0, position2_rand=0, position3_rand=0, cartesian_position_rand_array[3];
     struct photon *ph=NULL, initialized_photon;
-    char spect_non_synch='';
+    char spect_non_synch='\0';
     
     //first we define spect1 and spec2 depending on the value read in from mc.par
     //need to determine if we need to inject just wien, just bb, just custom, just synch or combo of
@@ -91,7 +91,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
         }
         else
         {
-            spect_non_synch='';
+            spect_non_synch='\0';
         }
     }
     else
@@ -99,7 +99,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
         spect_non_synch = spect;
     }
     
-    if (spect_non_synch != '')
+    if (spect_non_synch != '\0')
     {
         //define the number density coeficient, integrate the number density spectrum from 0 to infinity to get this value
         //used to calculate the number density of photons as num_dens_coeff*T_comv^3
