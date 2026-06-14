@@ -1741,6 +1741,7 @@ int photonEmitSynch(struct photonList          *photon_list,
                     double                      ph_weight,
                     int                         min_photons,
                     int                         max_photons,
+                    int                         ph_inj_switch,
                     double                      theta_min,
                     double                      theta_max,
                     struct hydro_dataframe     *hydro_data,
@@ -1756,19 +1757,25 @@ int photonEmitSynch(struct photonList          *photon_list,
     double theta_grid_innercorner = 0.0;
     double theta_grid_outercorner = 0.0;
     double nonthermal_n_dens      = 0.0;
+    double rmin= 0.0, rmax=0.0;
 
     /* ── Step 1: Shell boundaries ─────────────────────────────────────────── */
-    double rmin = calcCyclosynchRLimits(hydro_data->scatt_frame_number,
-                                         hydro_data->inj_frame_number,
-                                         hydro_data->fps, r_inj, "min");
-    double rmax = calcCyclosynchRLimits(hydro_data->scatt_frame_number,
-                                         hydro_data->inj_frame_number,
-                                         hydro_data->fps, r_inj, "max");
-    
-    //TODO: think about changing after testing, especially for emitting synchrotron photons to start off
-    //the above should simplify to this but when injecting photons the scatt frame number isnt defined, if only emitting photons after the first frame then above is ok
-    //rmin=r_inj - 0.5*C_LIGHT/hydro_data->fps;
-    //rmax=r_inj + 0.5*C_LIGHT/hydro_data->fps;
+    if (ph_inj_switch == 0)
+    {
+        // emitting the photons within the shell that the process is in charge of
+        rmin = calcCyclosynchRLimits(hydro_data->scatt_frame_number,
+                                            hydro_data->inj_frame_number,
+                                            hydro_data->fps, r_inj, "min");
+        rmax = calcCyclosynchRLimits(hydro_data->scatt_frame_number,
+                                            hydro_data->inj_frame_number,
+                                            hydro_data->fps, r_inj, "max");
+    }
+    else
+    {
+        //the above should simplify to this but when injecting photons the scatt frame number isnt defined, if only emitting photons after the first frame then above is ok
+        rmin=r_inj - 0.5*C_LIGHT/hydro_data->fps;
+        rmax=r_inj + 0.5*C_LIGHT/hydro_data->fps;
+    }
 
 
     fprintf(fPtr,
