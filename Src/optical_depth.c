@@ -215,7 +215,7 @@ double getThermalCrossSection(double photon_comv_e, double fluid_temp, gsl_rng *
 
         //the interpolated results are returned as log(cross section/thompson cross section) so we want to raise to
         //power 10 to get back to the ratio  cross section/thompson cross section that we expect from this function
-        for (i=0;i<N_GAMMA+1;i++)
+        for (i=0;i<N_GAMMA;i++)
         {
             *(subgroup_interpolated_results+i) = pow(10, *(subgroup_interpolated_results+i));
         }
