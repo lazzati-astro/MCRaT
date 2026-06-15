@@ -231,6 +231,7 @@ void setNullPhoton(struct photonList *photon_list, int index)
     photon_list->photons[index].s3=0;
     photon_list->photons[index].num_scatt=0;
     photon_list->photons[index].total_scattering_opacity=0;
+    photon_list->photons[index].time_to_scatter = FLT_MAX / C_LIGHT;
     
     #if NONTHERMAL_E_DIST != OFF
         for (i=0;i<(1+N_GAMMA);i++)
