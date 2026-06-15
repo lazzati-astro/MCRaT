@@ -1268,12 +1268,22 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
     int scattering_subgroup=0; //this is meant for when we have nonthermal electrons to identify which subgroup of electrons we may scatter with
     double scatt_time=0, old_scatt_time=0; //keep track of new time to scatter vs old time to scatter to know how much to incrementally propagate the photons if necessary
     double ph_phi=0, fluid_temp=0;
+    /*
     double *ph_p=malloc(4*sizeof(double)); //pointer to hold only photon 4 momentum @ start
     double *el_p_comov=malloc(4*sizeof(double));//pointer to hold the electron 4 momenta in comoving frame
     double *ph_p_comov=malloc(4*sizeof(double));//pointer to hold the comoving photon 4 momenta
     double *fluid_beta=malloc(3*sizeof(double));//pointer to hold fluid velocity vector
     double *negative_fluid_beta=malloc(3*sizeof(double));//pointer to hold negative fluid velocity vector
     double *s=malloc(4*sizeof(double)); //vector to hold the stokes parameters for a given photon
+     */ //tried to make this stack allocated
+    double ph_p[4];
+    double el_p_comov[4];
+    double ph_p_comov[4];
+    double fluid_beta[3];
+    double negative_fluid_beta[3];
+    double s[4];
+
+    
     struct photon *ph=NULL; //pointer to a photon struct
     bool do_rotation=false; //boolean to help us determine if the stokes parameter needs to be rotated going from lab to fluid frame. We dont need to do this if the fluid is stationary, and if we do then we get a bunch of nans so avoid by setting to false
     
@@ -1560,14 +1570,20 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
             }
             else
             {
-                // Photon crossed out of the domain during this position update.
-                // Invalidate its state so it sorts to the back on the next
-                // outer iteration and is not picked for scattering.
-                ph->nearest_block_index = -1;
-                ph->time_to_scatter     = FLT_MAX / C_LIGHT;
-                ph->recalc_properties   = 1;
-                event_did_occur=1;
-            }
+                if (index<0)
+                {
+                    setNullPhoton(photon_list, ph_index);
+                }
+                else
+                {
+                    // Photon crossed out of the domain during this position update.
+                    // Invalidate its state so it sorts to the back on the next
+                    // outer iteration and is not picked for scattering.
+                    ph->nearest_block_index = -1;
+                    ph->time_to_scatter     = FLT_MAX / C_LIGHT;
+                    ph->recalc_properties   = 1;
+                }
+           }
 
         }
         else
@@ -1589,14 +1605,15 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
     //fprintf(fPtr,"scattered_ph_index: %d %d\n", *scattered_ph_index, (*(sorted_indexes+i-1)));
     //fflush(fPtr);
     
-    free(el_p_comov); 
+    /*
+    free(el_p_comov);
     free(ph_p_comov);
     free(fluid_beta); 
     free(negative_fluid_beta);
     free(ph_p);
     free(s);
     ph_p=NULL;negative_fluid_beta=NULL;ph_p_comov=NULL; el_p_comov=NULL;
-    
+    */ //not needed if we create the variables without mallocs
     //retrun total time elapsed to scatter a photon
     return scatt_time;
 }
