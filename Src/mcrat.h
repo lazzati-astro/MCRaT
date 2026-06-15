@@ -191,9 +191,7 @@ extern const double R_EL;
 //then include this file also in prep for the photon struct optical depth array being defined
 #include "hot_x_section.h"
 
-
-
-
+/*
 struct photon
 {
     char type; //was the photon injected as blackbody or wien, 'i', or was it emitted as cyclo-synchrotron or was it a cyclo-synchrotron photon that was compton scattered
@@ -228,6 +226,58 @@ struct photon
     #endif
 
 } ; //structure to hold photon information
+*/
+struct photon
+{
+    /* ── Cache line 0 (bytes 0–63): MFP loop hot fields ─────────────────
+     * Accessed together in calcMeanFreePath for every photon every frame.
+     * Putting recalc_properties and nearest_block_index first (as ints)
+     * and padding them to 8 bytes each eliminates all implicit padding.   */
+    int    recalc_properties;        /* 0:  4 bytes */
+    int    nearest_block_index;      /* 4:  4 bytes — paired int, no padding */
+    double time_to_scatter;          /* 8:  8 bytes */
+    double total_scattering_opacity; /* 16: 8 bytes */
+    double comv_p0;                  /* 24: 8 bytes */
+    double comv_p1;                  /* 32: 8 bytes */
+    double comv_p2;                  /* 40: 8 bytes */
+    double comv_p3;                  /* 48: 8 bytes */
+    double weight;                   /* 56: 8 bytes */
+    /* 64 bytes used — exactly one cache line ──────────────────────────── */
+
+    /* ── Cache line 1 (bytes 64–127): position update hot fields ─────────
+     * Accessed together in updatePhotonPosition for every photon.         */
+    double p0;                       /* 64: 8 bytes */
+    double p1;                       /* 72: 8 bytes */
+    double p2;                       /* 80: 8 bytes */
+    double p3;                       /* 88: 8 bytes */
+    double r0;                       /* 96: 8 bytes */
+    double r1;                       /* 104: 8 bytes */
+    double r2;                       /* 112: 8 bytes */
+    double num_scatt;                /* 120: 8 bytes */
+    /* 128 bytes used — exactly two cache lines ─────────────────────────── */
+
+    /* ── Cache line 2 (bytes 128): less-frequently accessed fields ─────
+     * Stokes parameters accessed only during scattering events,
+     * type accessed in most loops but as a quick branch predicate.
+     * Placing type here last eliminates the 7-byte padding waste.         */
+    double s0;                       /* 128: 8 bytes */
+    double s1;                       /* 136: 8 bytes */
+    double s2;                       /* 144: 8 bytes */
+    double s3;                       /* 152: 8 bytes */
+    char   type;                     /* 160: 1 byte  */
+    char   _pad[7];                  /* 161: 7 bytes — explicit pad         */
+
+    /* ── Conditional fields ─────────────────────────────────────────────── */
+    #if SCATTERING_BIAS_SWITCH != OFF
+        double scattering_opacity[1  N_GAMMA];
+        double scattering_bias[1  N_GAMMA];
+    #endif
+    #if SYNCHROTRON_SWITCH == ON
+        double absorption_opacity;
+    #endif
+
+} __attribute__((aligned(64)));
+
 
 struct photonList
 {
@@ -248,6 +298,9 @@ struct SpatialGrid
     double grid_max[3];
     double cell_size[3];   /* grid cell size in each dimension */
     int    dims[3];        /* number of grid cells along each dimension */
+    int    use_log_r0;     /* 1 = r0 dimension bucketed in log10 space        *
+                            * (SPHERICAL and POLAR geometries);               *
+                            * 0 = linear bucketing (CARTESIAN, CYLINDRICAL)   */
 };
 
 struct hydro_dataframe
