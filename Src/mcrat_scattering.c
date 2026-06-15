@@ -6,7 +6,7 @@
 //
 
 #include "mcrat.h"
-
+/*
 void mullerMatrixRotation(double theta, double *s, FILE *fPtr)
 {
     //makes a CCW rotation od the stokes parameters when the photon velocity vector is pointed towards the observer, follows Lundman
@@ -37,6 +37,30 @@ void mullerMatrixRotation(double theta, double *s, FILE *fPtr)
     gsl_matrix_free (M);
     
 }
+Changed to below function
+ */
+void mullerMatrixRotation(double phi, double *s, FILE *fPtr)
+{
+    double c2 = cos(2.0 * phi);
+    double s2 = sin(2.0 * phi);
+    
+    /* Apply the 4x4 Mueller rotation matrix analytically.
+     * M * [I, Q, U, V]^T with M as defined above.
+     * Save s[1] before overwriting it since s[2] depends on it. */
+    double Q_in = s[1];
+    double U_in = s[2];
+    
+    /* s[0] (I) and s[3] (V) are unchanged by rotation */
+    s[1] =  c2 * Q_in - s2 * U_in;
+    s[2] =  s2 * Q_in + c2 * U_in;
+    
+    //if ( isnan(*(s+0)) || isnan(*(s+1)) || isnan(*(s+2)) || isnan(*(s+3)) )
+    //{
+    //    printf("A plane coordinate value is nan\n\n");
+    //}
+    
+}
+
 
 void findXY(double *v_ph, double *vector, double *x, double *y)
 {
