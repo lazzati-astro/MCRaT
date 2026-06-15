@@ -1224,7 +1224,7 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
     double r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
     double params[3];
     double fr_dum=0.0, com_v_phi=0, com_v_theta=0, position_rand=0, position2_rand=0, position3_rand=0, cartesian_position_rand_array[3];
-    double *p_comv=NULL, *boost=NULL, *l_boost=NULL; //pointers to hold comov 4 monetum, the fluid vlocity, and the photon 4 momentum in the lab frame
+    //double *p_comv=NULL, *boost=NULL, *l_boost=NULL; //pointers to hold comov 4 monetum, the fluid vlocity, and the photon 4 momentum in the lab frame //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
     int status;
     int block_cnt=0, i=0, j=0, k=0, *ph_dens=NULL, ph_tot=0, net_ph=0, min_photons=1;
     int *null_ph_indexes=NULL;
@@ -1234,6 +1234,13 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
     int idx=0;
     struct photon *ph_emit=NULL; //pointer to array of structs that will hold emitted photon info
     struct photon *tmp=NULL;
+    /*
+    p_comv=malloc(4*sizeof(double));
+    boost=malloc(4*sizeof(double));
+    l_boost=malloc(4*sizeof(double));
+     */ //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
+    double p_comv[4], boost[4], l_boost[4];
+
     
     //fprintf(fPtr, "IN EMIT SYNCH FUNCTION; num_threads %d\n", num_thread);
     //fprintf(fPtr, "BEFORE Original number of photons: %d Null photons %d\n", (*num_ph), null_ph_count, ph_tot);
@@ -1384,10 +1391,6 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
     
     //allocate memory for that many photons and also allocate memory to hold comoving 4 momentum of each photon and the velocity of the fluid
     ph_emit=malloc (ph_tot * sizeof (struct photon ));
-    p_comv=malloc(4*sizeof(double));
-    boost=malloc(4*sizeof(double));
-    l_boost=malloc(4*sizeof(double));
-    
     
     
     //allocate memory for that many photons and also allocate memory to hold comoving 4 momentum of each photon and the velocity of the fluid
@@ -1603,7 +1606,8 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
     addToPhotonList(photon_list, ph_emit, ph_tot);
 
     free(null_ph_indexes);
-    free(ph_dens); free(p_comv); free(boost); free(l_boost);
+    free(ph_dens);
+    //free(p_comv); free(boost); free(l_boost); //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
     free(ph_emit);
     
     gsl_integration_workspace_free (w);
