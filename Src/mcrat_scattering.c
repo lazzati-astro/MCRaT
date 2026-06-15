@@ -276,7 +276,7 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
 void stokesScatter(double *s,  gsl_vector *ph_p_orig, double *ph_p_scattered, FILE *fPtr)
 {
     double dot_prod_result=0, theta=0, phi=0;
-    double *z_axis_electron_rest_frame=malloc(3*sizeof(double)); //basis vector of the z axis in the elctron rest frame
+    //double *z_axis_electron_rest_frame=malloc(3*sizeof(double)); //basis vector of the z axis in the elctron rest frame //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
     double x_tilde[3]={0,0,0}, y_tilde[3]={0,0,0}, x_tilde_new[3]={0,0,0}, y_tilde_new[3]={0,0,0};//initalize arrays to hold stokes coordinate system
     gsl_matrix *scatt= gsl_matrix_calloc (4, 4); //fano's matrix for scattering stokes parameters
     gsl_vector *scatt_result=gsl_vector_calloc (4);
@@ -288,6 +288,7 @@ void stokesScatter(double *s,  gsl_vector *ph_p_orig, double *ph_p_scattered, FI
 
     
     //fill in z-axis basis vector
+    double z_axis_electron_rest_frame[3];
     *(z_axis_electron_rest_frame+0)=0;
     *(z_axis_electron_rest_frame+1)=0;
     *(z_axis_electron_rest_frame+2)=1;
@@ -358,7 +359,7 @@ void stokesScatter(double *s,  gsl_vector *ph_p_orig, double *ph_p_scattered, FI
         mullerMatrixRotation(phi, s, fPtr);
     }
     
-    free(z_axis_electron_rest_frame);
+    //free(z_axis_electron_rest_frame); //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
     gsl_matrix_free(scatt);
     gsl_vector_free(scatt_result);
 }
@@ -369,11 +370,15 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     //This routine performs a scattering between a photon and a moving electron.
     int scattering_occured=0;
     double dotprod_1; //to test orthogonality
+    /*
     double *z_axis_electron_rest_frame=malloc(3*sizeof(double)); //basis vector of the z axis in the elctron rest frame
     double *el_v=malloc(3*sizeof(double));
     double *negative_el_v=malloc(3*sizeof(double));
     double *ph_p_prime=malloc(4*sizeof(double));//use this to keep track of how the ph 4 momentum changes with each rotation
     double *el_p_prime=malloc(4*sizeof(double));
+     */ //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
+    double z_axis_electron_rest_frame[3],el_v[3],negative_el_v[3],ph_p_prime[4],el_p_prime[4];
+    
     double phi0=0, phi1=0, phi=0, theta=0;
     double x_tilde[3]={0,0,0}, y_tilde[3]={0,0,0}, x_tilde_new[3]={0,0,0}, y_tilde_new[3]={0,0,0};//initalize arrays to hold stokes coordinate system
     gsl_matrix *rot0= gsl_matrix_calloc (3, 3); //create matricies thats 3x3 to do rotations
@@ -647,7 +652,8 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     
     gsl_matrix_free(rot0); gsl_matrix_free(rot1);gsl_vector_free(result0);gsl_vector_free(result1);gsl_vector_free(result);
     gsl_vector_free(ph_p_orig);
-    gsl_vector_free(whole_ph_p);free(ph_p_prime);free(el_p_prime);free(el_v); free(negative_el_v); free(z_axis_electron_rest_frame);
+    gsl_vector_free(whole_ph_p);
+    //free(ph_p_prime);free(el_p_prime);free(el_v); free(negative_el_v); free(z_axis_electron_rest_frame); //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
     
     return scattering_occured;
 }
