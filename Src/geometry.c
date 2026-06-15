@@ -679,6 +679,7 @@ struct SpatialGrid *buildSpatialGrid(struct hydro_dataframe *hydro_data, FILE *f
     {
         double raw_r0 = hydro_data->r0[i];
         double x = g->use_log_r0 ? log10(raw_r0) : raw_r0;
+        double y = hydro_data->r1[i];
         #if DIMENSIONS == THREE
             double z = hydro_data->r2[i];
         #else
