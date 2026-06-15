@@ -1583,6 +1583,8 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
                     ph->time_to_scatter     = FLT_MAX / C_LIGHT;
                     ph->recalc_properties   = 1;
                 }
+                
+                event_did_occur=1;
            }
 
         }
