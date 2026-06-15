@@ -53,8 +53,10 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
 {
     int i=0, block_cnt=0, *ph_dens=NULL, ph_tot=0, j=0,k=0;
     double ph_dens_calc=0.0, fr_dum=1.0, y_dum=0.0, yfr_dum=0.0, fr_max=0, bb_norm=0, position_phi, ph_weight_adjusted, rmin, rmax;
-    double com_v_phi, com_v_theta, *p_comv=NULL, *boost=NULL; //comoving phi, theta, comoving 4 momentum for a photon, and boost for photon(to go to lab frame)
-    double *l_boost=NULL; //pointer to hold array of lorentz boost, to lab frame, values
+    double com_v_phi, com_v_theta; //comoving phi, theta,
+    double *p_comv=NULL, *boost=NULL, *l_boost=NULL; // comoving 4 momentum for a photon, and boost for photon(to go to lab frame)and pointer to hold array of lorentz boost, to lab frame values //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
+    double p_comv[4], boost[3], l_boost[4]; //
+    
     float num_dens_coeff;
     double r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
     double position_rand=0, position2_rand=0, position3_rand=0, cartesian_position_rand_array[3];
@@ -227,11 +229,11 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
         
         //allocate memory for that many photons and also allocate memory to hold comoving 4 momentum of each photon and the velocity of the fluid
         ph=malloc (ph_tot * sizeof (struct photon ));
-        
+        /*
         p_comv=malloc(4*sizeof(double));
         boost=malloc(3*sizeof(double));
         l_boost=malloc(4*sizeof(double));
-        
+        */ //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
         
         //go through blocks and assign random energies/locations to proper number of photons
         ph_tot=0;
@@ -426,7 +428,9 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
         }
     }
     //printf(" %d: %d\n", *(ph_dens+(k-1)), *ph_num);
-    free(ph_dens); free(p_comv);free(boost); free(l_boost); free(ph);
+    free(ph_dens);
+    //free(p_comv);free(boost); free(l_boost); //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
+    free(ph);
     //exit(0);
     
     

@@ -1239,7 +1239,7 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
     boost=malloc(4*sizeof(double));
     l_boost=malloc(4*sizeof(double));
      */ //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
-    double p_comv[4], boost[4], l_boost[4];
+    double p_comv[4], boost[3], l_boost[4];
 
     
     //fprintf(fPtr, "IN EMIT SYNCH FUNCTION; num_threads %d\n", num_thread);
