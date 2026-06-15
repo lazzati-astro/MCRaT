@@ -49,6 +49,20 @@ static int num_threads_allocated = 0;
 /* Initialize thread-local accelerators - call once after loading interpolation data */
 void initThreadLocalAccelerators(int num_threads)
 {
+    #if defined(_OPENMP)
+    {
+        int max_threads = omp_get_max_threads();
+        if (num_threads < max_threads)
+        {
+            fprintf(stderr,
+                "WARNING [initThreadLocalAccelerators]: initialized with "
+                "%d threads but omp_get_max_threads() = %d. "
+                "Threads %d..%d will use the slower safe fallback path.\n",
+                num_threads, max_threads, num_threads, max_threads - 1);
+        }
+    }
+    #endif
+
     int i;
     
     /* Free existing accelerators if any */
@@ -697,12 +711,14 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
             else
             {
                 // Access global_interp_data fields
+                gsl_interp_accel *tmp_xacc = gsl_interp_accel_alloc();
+                gsl_interp_accel *tmp_yacc = gsl_interp_accel_alloc();
                 status = gsl_spline2d_eval_e(global_interp_thermal_data.spline,
                                              log_ph_comv_e, log_theta,
-                                             global_interp_thermal_data.xacc,
-                                             global_interp_thermal_data.yacc,
-                                             &result);
+                                             tmp_xacc, tmp_yacc, &result);
                 //fprintf(fPtr, "Thermal: %g %g %g\n", log_ph_comv_e, log_theta, result);
+                gsl_interp_accel_free(tmp_xacc);
+                gsl_interp_accel_free(tmp_yacc);
             }
         #else
             status = gsl_spline2d_eval_e(global_interp_thermal_data.spline,
@@ -804,12 +820,17 @@ double interpolateThermalHotCrossSection(double log_ph_comv_e, double log_theta,
                     }
                     else
                     {
+                        gsl_interp_accel *tmp_xacc = gsl_interp_accel_alloc();
+                        gsl_interp_accel *tmp_yacc = gsl_interp_accel_alloc();
+
                         status = gsl_spline2d_eval_e(global_interp_nonthermal_data.spline,
                                                      log_ph_comv_e,
                                                      global_interp_nonthermal_data.ya[i],
-                                                     global_interp_nonthermal_data.xacc,
-                                                     global_interp_nonthermal_data.yacc,
+                                                     tmp_xacc,
+                                                     tmp_yacc,
                                                      &result);
+                        gsl_interp_accel_free(tmp_xacc);
+                        gsl_interp_accel_free(tmp_yacc);
                     }
                 #else
                     status = gsl_spline2d_eval_e(global_interp_nonthermal_data.spline,
