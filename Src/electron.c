@@ -694,6 +694,8 @@ double calculateNormBrokenPowerLawEnergyDens(double p1, double p2, double gamma_
 
             subgroup_dens[i] = result;
         }
+        
+        gsl_integration_workspace_free(w);
     }
 
     void calculateNonthermalElectronDens(struct hydro_dataframe *hydro_data, FILE *fPtr)
