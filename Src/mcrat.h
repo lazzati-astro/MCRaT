@@ -269,8 +269,8 @@ struct photon
 
     /* ── Conditional fields ─────────────────────────────────────────────── */
     #if SCATTERING_BIAS_SWITCH != OFF
-        double scattering_opacity[1  N_GAMMA];
-        double scattering_bias[1  N_GAMMA];
+        double scattering_opacity[1 + N_GAMMA];
+        double scattering_bias[1 + N_GAMMA];
     #endif
     #if SYNCHROTRON_SWITCH == ON
         double absorption_opacity;
