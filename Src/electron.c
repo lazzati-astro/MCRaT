@@ -124,8 +124,8 @@ void rotateElectron(double *el_p, double *ph_p, FILE *fPtr)
 
     //find angles of photon NOT SURE WHY WERE CHANGING REFERENCE FRAMES HERE???!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ph_phi=atan2(*(ph_p+2), *(ph_p+3)); //Double Check
-    ph_theta=atan2(sqrt( pow(*(ph_p+2),2)+  pow(*(ph_p+3),2)) , (*(ph_p+1)) );
-
+    ph_theta=atan2(sqrt( (*(ph_p+2))*(*(ph_p+2)) +  (*(ph_p+3))*(*(ph_p+3)) ) , (*(ph_p+1)) );
+    
     //printf("Calculated Photon phi and theta in singleElectron:%e, %e\n", ph_phi, ph_theta);
 
     //fill in rotation matrix to rotate around x axis to get rid of phi angle
@@ -209,7 +209,7 @@ double sampleElectronTheta(double beta, gsl_rng * rand, FILE *fPtr)
 
 double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr)
 {
-    double gamma=1, factor=0, x_dum=0, y_dum=0, f_x_dum=0, beta_x_dum=0;
+    double gamma=1, factor=0, x_dum=0, y_dum=0, f_x_dum=0, beta_x_dum=0, K2_inv=0;
 
     //fprintf(fPtr, "Temp in singleElectron: %e\n", temp);
     if (temp>= 1e7)
@@ -217,6 +217,7 @@ double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr)
         // see also rejection sampling method here: https://arxiv.org/pdf/2408.09105
         //printf("In if\n");
         factor=K_B*temp/(M_EL*C_LIGHT*C_LIGHT);
+        K2_inv = 1.0 / gsl_sf_bessel_Kn(2, 1.0 / factor);
         y_dum=1; //initalize loop to get a random gamma from the distribution of electron velocities
         f_x_dum=0;
         while ((isnan(f_x_dum) !=0) || (y_dum>f_x_dum) )
@@ -225,7 +226,7 @@ double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr)
             beta_x_dum=sqrt(1-(1/(x_dum*x_dum)));
             y_dum=gsl_rng_uniform(rand)/2.0;
 
-            f_x_dum=x_dum*x_dum*(beta_x_dum/gsl_sf_bessel_Kn (2, 1.0/factor))*exp(-1*x_dum/factor); //
+            f_x_dum=x_dum*x_dum*beta_x_dum * K2_inv*exp(-x_dum/factor); //
             //fprintf(fPtr,"Choosing a Gamma: xdum: %e, f_x_dum: %e, y_dum: %e, new f_x_dum %e\n", x_dum, f_x_dum, y_dum, singleMaxwellJuttner(x_dum, factor));
         }
         gamma=x_dum;
@@ -233,11 +234,14 @@ double sampleThermalElectron(double temp, gsl_rng * rand, FILE *fPtr)
     }
     else
     {
-
+        
         //printf("In else\n");
         factor=sqrt(K_B*temp/M_EL);
         //calculate a random gamma from 3 random velocities drawn from a gaussian distribution with std deviation of "factor"
-        gamma=1.0/sqrt( 1- (pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)+ pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)+pow(gsl_ran_gaussian(rand, factor)/C_LIGHT, 2)  )); //each vel direction is normal distribution -> maxwellian when multiplied
+        double vx = gsl_ran_gaussian(rand, factor) / C_LIGHT;
+        double vy = gsl_ran_gaussian(rand, factor) / C_LIGHT;
+        double vz = gsl_ran_gaussian(rand, factor) / C_LIGHT;
+        gamma = 1.0 / sqrt(1.0 - (vx*vx + vy*vy + vz*vz));
     }
 
     return gamma;
