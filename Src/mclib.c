@@ -54,7 +54,7 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
     int i=0, block_cnt=0, *ph_dens=NULL, ph_tot=0, j=0,k=0;
     double ph_dens_calc=0.0, fr_dum=1.0, y_dum=0.0, yfr_dum=0.0, fr_max=0, bb_norm=0, position_phi, ph_weight_adjusted, rmin, rmax;
     double com_v_phi, com_v_theta; //comoving phi, theta,
-    double *p_comv=NULL, *boost=NULL, *l_boost=NULL; // comoving 4 momentum for a photon, and boost for photon(to go to lab frame)and pointer to hold array of lorentz boost, to lab frame values //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
+    //double *p_comv=NULL, *boost=NULL, *l_boost=NULL; // comoving 4 momentum for a photon, and boost for photon(to go to lab frame)and pointer to hold array of lorentz boost, to lab frame values //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
     double p_comv[4], boost[3], l_boost[4]; //
     
     float num_dens_coeff;
