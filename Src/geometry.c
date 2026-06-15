@@ -429,8 +429,8 @@ int findContainingBlock_grid(double ph_hydro_r0, double ph_hydro_r1, double ph_h
         return findContainingBlock(ph_hydro_r0, ph_hydro_r1, ph_hydro_r2, hydro_data, fPtr);
     }
 
-    /* Map photon position to grid indices */
-    double x = ph_hydro_r0;
+    /* Map photon position to grid indices — REVISED */
+    double x = g->use_log_r0 ? log10(ph_hydro_r0) : ph_hydro_r0;
     double y = ph_hydro_r1;
     #if DIMENSIONS == THREE
         double z = ph_hydro_r2;
@@ -522,7 +522,23 @@ static inline int grid_flat_index(const struct SpatialGrid *g, int ix, int iy, i
     return (iz * g->dims[1] + iy) * g->dims[0] + ix;
 }
 
-/* Build spatial grid once per hydro frame; call before photon loop */
+/* Build spatial grid once per hydro frame; call before photon loop.
+ *
+ * The grid is a uniform lookup structure built in the native hydro coordinate
+ * space (i.e. after mcratCoordinateToHydroCoordinate has been applied).
+ * It maps each hydro cell to one or more grid buckets so that
+ * findContainingBlock_grid can reduce the O(N_cells) linear scan in
+ * findContainingBlock down to an O(1) bucket lookup + small neighbor search.
+ *
+ * Geometry-aware bucketing:
+ *   SPHERICAL / POLAR  — r0 is a radial coordinate spanning many decades.
+ *                        Bucketing in log10(r0) produces uniform occupancy.
+ *   CARTESIAN / CYLINDRICAL — linear bucketing in all dimensions.
+ *
+ * Dimension-aware grid resolution:
+ *   2D / 2.5D — square grid (dims[2] = 1), resolution = sqrt(N/target).
+ *   3D        — cubic grid,                resolution = cbrt(N/target).
+ */
 struct SpatialGrid *buildSpatialGrid(struct hydro_dataframe *hydro_data, FILE *fPtr)
 {
     int n = hydro_data->num_elements;
@@ -532,39 +548,69 @@ struct SpatialGrid *buildSpatialGrid(struct hydro_dataframe *hydro_data, FILE *f
     if (!g)
     {
         fprintf(fPtr, "ERROR: Failed to allocate SpatialGrid\n");
+        fflush(fPtr);
         return NULL;
     }
 
-    /* 1. Compute global bounding box of all hydro cells */
-    double min_c[3] = { DBL_MAX, DBL_MAX, DBL_MAX };
+    /* ── Step 1: Determine bucketing mode and compute bounding box ──────── *
+     *                                                                        *
+     * For SPHERICAL and POLAR geometries r0 is always a positive radial     *
+     * coordinate. Storing log10(r0) in grid_min/max/cell_size gives uniform  *
+     * bucket occupancy across the many decades that a jet simulation spans.  *
+     * For CARTESIAN and CYLINDRICAL we use linear spacing in all dimensions. *
+     * ─────────────────────────────────────────────────────────────────────  */
+    #if (GEOMETRY == SPHERICAL || GEOMETRY == POLAR)
+        g->use_log_r0 = 1;
+    #else
+        g->use_log_r0 = 0;
+    #endif
+    
+    double min_c[3] = { DBL_MAX,  DBL_MAX,  DBL_MAX  };
+
     double max_c[3] = { -DBL_MAX, -DBL_MAX, -DBL_MAX };
 
     for (int i = 0; i < n; i++)
     {
         double half0 = 0.5 * hydro_data->r0_size[i];
         double half1 = 0.5 * hydro_data->r1_size[i];
-        #if DIMENSIONS == 3
-            double half2 = 0.5 * hydro_data->r2_size[i];
+        #if DIMENSIONS == THREE
+                double half2 = 0.5 * hydro_data->r2_size[i];
         #else
-            double half2 = 0.0;
+                double half2 = 0.0;
         #endif
+        
+        /* r0 dimension: apply log10 transform for SPHERICAL/POLAR */
+        double cmin0, cmax0;
+        if (g->use_log_r0)
+        {
+            double r0_inner = hydro_data->r0[i] - half0;
+            double r0_outer = hydro_data->r0[i] + half0;
+            /* Guard against non-positive radius (should never occur
+             * physically, but protect against edge cells at r=0) */
+            cmin0 = (r0_inner > 0.0) ? log10(r0_inner) : log10(half0 * 0.01);
+            cmax0 = log10(r0_outer);
+        }
+        else
+        {
+            cmin0 = hydro_data->r0[i] - half0;
+            cmax0 = hydro_data->r0[i] + half0;
+        }
 
-        double cmin0 = hydro_data->r0[i] - half0;
-        double cmax0 = hydro_data->r0[i] + half0;
         double cmin1 = hydro_data->r1[i] - half1;
         double cmax1 = hydro_data->r1[i] + half1;
-        #if DIMENSIONS == 3
-            double cmin2 = hydro_data->r2[i] - half2;
-            double cmax2 = hydro_data->r2[i] + half2;
+        
+        #if DIMENSIONS == THREE
+                double cmin2 = hydro_data->r2[i] - half2;
+                double cmax2 = hydro_data->r2[i] + half2;
         #else
-            double cmin2 = 0.0, cmax2 = 0.0;
+                double cmin2 = 0.0, cmax2 = 0.0;
         #endif
-
+        
         if (cmin0 < min_c[0]) min_c[0] = cmin0;
         if (cmax0 > max_c[0]) max_c[0] = cmax0;
         if (cmin1 < min_c[1]) min_c[1] = cmin1;
         if (cmax1 > max_c[1]) max_c[1] = cmax1;
-        #if DIMENSIONS == 3
+        #if DIMENSIONS == THREE
             if (cmin2 < min_c[2]) min_c[2] = cmin2;
             if (cmax2 > max_c[2]) max_c[2] = cmax2;
         #endif
@@ -576,18 +622,33 @@ struct SpatialGrid *buildSpatialGrid(struct hydro_dataframe *hydro_data, FILE *f
         g->grid_max[d] = max_c[d];
     }
 
-    /* 2. Choose grid resolution: aim ~20 hydro cells per grid cell */
+    /* ── Step 2: Choose grid resolution ────────────────────────────────── *
+     *                                                                       *
+     * Target ~20 hydro cells per grid bucket.                              *
+     *                                                                       *
+     * 2D / 2.5D: the z dimension has no extent so use a square grid.       *
+     *   The old cbrt() formula gave only ~14 buckets for a 50 000-cell     *
+     *   2D sim; sqrt() gives ~1600, reducing the per-bucket candidate       *
+     *   list by ~100x.                                                      *
+     *                                                                       *
+     * 3D: retain the cubic grid as before.                                 *
+     * ─────────────────────────────────────────────────────────────────── */
     int target_cells_per_grid = 20;
     int total_grid_cells_target = n / target_cells_per_grid;
     if (total_grid_cells_target < 1) total_grid_cells_target = 1;
 
-    /* Simple cubic grid: same number of cells along each dimension */
-    int dim = (int)ceil(pow((double)total_grid_cells_target, 1.0 / 3.0));
-    if (dim < 1) dim = 1;
-
-    g->dims[0] = dim;
-    g->dims[1] = (DIMENSIONS >= 2) ? dim : 1;
-    g->dims[2] = (DIMENSIONS == 3) ? dim : 1;
+    #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
+        int dim = (int)ceil(sqrt((double)total_grid_cells_target));
+        if (dim < 1) dim = 1;
+        g->dims[1] = dim;
+        g->dims[2] = 1;
+    #else
+        int dim = (int)ceil(cbrt((double)total_grid_cells_target));
+        if (dim < 1) dim = 1;
+        g->dims[0] = dim;
+        g->dims[1] = dim;
+        g->dims[2] = dim;
+    #endif
 
     for (int d = 0; d < 3; d++)
     {
@@ -605,6 +666,7 @@ struct SpatialGrid *buildSpatialGrid(struct hydro_dataframe *hydro_data, FILE *f
     if (!g->grid_counts || !g->grid_offsets || !g->cell_indices)
     {
         fprintf(fPtr, "ERROR: Failed to allocate spatial grid arrays\n");
+        fflush(fPtr);
         free(g->grid_counts);
         free(g->grid_offsets);
         free(g->cell_indices);
@@ -615,9 +677,9 @@ struct SpatialGrid *buildSpatialGrid(struct hydro_dataframe *hydro_data, FILE *f
     /* 3. Count how many hydro cells fall into each grid cell */
     for (int i = 0; i < n; i++)
     {
-        double x = hydro_data->r0[i];
-        double y = hydro_data->r1[i];
-        #if DIMENSIONS == 3
+        double raw_r0 = hydro_data->r0[i];
+        double x = g->use_log_r0 ? log10(raw_r0) : raw_r0;
+        #if DIMENSIONS == THREE
             double z = hydro_data->r2[i];
         #else
             double z = 0.0;
@@ -646,9 +708,10 @@ struct SpatialGrid *buildSpatialGrid(struct hydro_dataframe *hydro_data, FILE *f
     /* 5. Fill cell_indices array */
     for (int i = 0; i < n; i++)
     {
-        double x = hydro_data->r0[i];
+        double raw_r0 = hydro_data->r0[i];
+        double x = g->use_log_r0 ? log10(raw_r0) : raw_r0;
         double y = hydro_data->r1[i];
-        #if DIMENSIONS == 3
+        #if DIMENSIONS == THREE
             double z = hydro_data->r2[i];
         #else
             double z = 0.0;
@@ -668,8 +731,18 @@ struct SpatialGrid *buildSpatialGrid(struct hydro_dataframe *hydro_data, FILE *f
     }
 
     fprintf(fPtr,
-            "Spatial grid built: dims=(%d,%d,%d), total_cells=%d\n",
-            g->dims[0], g->dims[1], g->dims[2], g->total_grid_cells);
+            "Spatial grid built: geometry=%s dims=(%d,%d,%d) "
+            "total_buckets=%d use_log_r0=%d\n"
+            "  r0 range: [%g, %g]%s\n"
+            "  r1 range: [%g, %g]\n",
+            (g->use_log_r0 ? "log-r0" : "linear"),
+            g->dims[0], g->dims[1], g->dims[2],
+            g->total_grid_cells,
+            g->use_log_r0,
+            g->use_log_r0 ? pow(10.0, g->grid_min[0]) : g->grid_min[0],
+            g->use_log_r0 ? pow(10.0, g->grid_max[0]) : g->grid_max[0],
+            g->use_log_r0 ? " (stored as log10)" : "",
+            g->grid_min[1], g->grid_max[1]);
     fflush(fPtr);
 
     return g;
