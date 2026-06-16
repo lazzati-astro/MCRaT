@@ -1016,54 +1016,6 @@ static PhotonTimePair *radixSortPairs(PhotonTimePair *pairs, int n, PhotonTimePa
 }
 
 
-void reverseSortIndexes(void *sorted_indexes, int num_elements, size_t element_size, void *context_array)
-{
-    /*
-    Here, we get the proper call to reverse qsort based on the operating system that we are compiling/running code on
-    */
-    //printf("before QSORT\n");
-    #if (defined _GNU_SOURCE || defined __GNU__ || defined __linux__)
-        qsort_r(sorted_indexes, num_elements, element_size,  compare2, context_array);
-    #elif (defined __APPLE__ || defined __MACH__ || defined __DARWIN__ || defined __FREEBSD__ || defined __BSD__ || defined OpenBSD3_1 || defined OpenBSD3_9)
-        qsort_r(sorted_indexes, num_elements, element_size, context_array, compare1);
-    #else
-        #error Cannot detect operating system
-    #endif
-}
-
-int compare1(void *ar, const void *a, const void *b)
-{
-    //from https://phoxis.org/2012/07/12/get-sorted-index-orderting-of-an-array/
-  int aa = *(int *) a;
-  int bb = *(int *) b;
-  double *arr=NULL;
-  arr=ar;
-  
-  //printf("%d, %d\n", aa, bb);
-  //printf("%e, %e\n", arr[aa] , arr[bb]);
-  //return (aa - bb);
-  /*
- if (arr[aa] < arr[bb])
-    return -1; 
-  if (arr[aa] == arr[bb])
-    return 0;
-  if (arr[aa] > arr[bb])
-    return 1;
-    */
-    return ((arr[aa] > arr[bb]) - (arr[aa] < arr[bb]));
-}
-
-int compare2(const void *a, const void *b, void *ar)
-{
-    //have 2 compare funcions b/c of changes in qsort_r between BSD and GNU
-    //from https://phoxis.org/2012/07/12/get-sorted-index-orderting-of-an-array/
-  int aa = *(int *) a;
-  int bb = *(int *) b;
-  double *arr=NULL;
-  arr=ar;
-  
-return ((arr[aa] > arr[bb]) - (arr[aa] < arr[bb]));
-}
 
 int interpolatePropertiesAndMinMFP( struct photon *ph, int num_ph, int array_num, double *time_step, double *x, double  *y, double *z, double *szx, double *szy, double *velx,  double *vely, double *velz, double *dens_lab,\
                                    double *temp, double *n_dens_lab, double *n_vx, double *n_vy, double *n_vz, double *n_temp, gsl_rng * rand, int find_nearest_block_switch, FILE *fPtr)
