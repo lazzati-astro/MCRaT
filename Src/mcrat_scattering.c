@@ -147,7 +147,7 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
     double phi=0;
     
     //find stokes coordinate sys in orig frame with respect to z axis
-    findXY(v_ph, &z_hat, &x, &y);
+    findXY(v_ph, z_hat, x, y);
     
     if ( isnan(*(y+0)) || isnan(*(y+1)) || isnan(*(y+2)))
     {
@@ -168,7 +168,7 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
 
     
     //find stokes coordinate sys in orig frame with respect to boost vector
-    findXY(v_ph, v, &x_new, &y_new);
+    findXY(v_ph, v, x_new, y_new);
     if ( isnan(*(y_new+0)) || isnan(*(y_new+1)) || isnan(*(y_new+2)))
     {
         printf("A plane coordinate value is nan\n\n");
@@ -196,7 +196,7 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
             helper_vector[0]=1;
         }
         
-        findXY(v_ph, helper_vector, &x_new, &y_new);
+        findXY(v_ph, helper_vector, x_new, y_new);
         
         if ( isnan(*(y_new+0)) || isnan(*(y_new+1)) || isnan(*(y_new+2)))
         {
@@ -224,7 +224,7 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
      
     
     //find the new coordinates of the rotated stokes vector with the boosted photon and the boost vector
-    findXY(v_ph_boosted, v, &x, &y);
+    findXY(v_ph_boosted, v, x, y);
     
     if ( isnan(*(y+0)) || isnan(*(y+1)) || isnan(*(y+2)))
     {
@@ -239,7 +239,7 @@ void stokesRotation(double *v, double *v_ph, double *v_ph_boosted, double *s, FI
 
     
     //find stokes coordinate sys in orig frame with respect to z axis
-    findXY(v_ph_boosted, &z_hat, &x_new, &y_new);
+    findXY(v_ph_boosted, z_hat, x_new, y_new);
     
     if ( isnan(*(y_new+0)) || isnan(*(y_new+1)) || isnan(*(y_new+2)))
     {
