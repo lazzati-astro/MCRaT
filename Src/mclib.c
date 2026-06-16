@@ -55,7 +55,9 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
     double ph_dens_calc=0.0, fr_dum=1.0, y_dum=0.0, yfr_dum=0.0, fr_max=0, bb_norm=0, position_phi, ph_weight_adjusted, rmin, rmax;
     double com_v_phi, com_v_theta; //comoving phi, theta,
     //double *p_comv=NULL, *boost=NULL, *l_boost=NULL; // comoving 4 momentum for a photon, and boost for photon(to go to lab frame)and pointer to hold array of lorentz boost, to lab frame values //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
-    double p_comv[4], boost[3], l_boost[4]; //
+    double p_comv[4] SIMD_ALIGN;
+    double boost[4] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
+    double l_boost[4] SIMD_ALIGN;
     
     float num_dens_coeff;
     double r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
@@ -575,7 +577,12 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
     int i=0, min_index=0, ph_block_index=0, num_thread=1, thread_id=0, num_photons_find_new_element=0;
     bool is_in_block=0; //boolean to determine if the photon is outside of its previously noted block
     double ph_phi=0;
-    double ph_p_comv[4], ph_p[4], fluid_beta[3], photon_hydro_coord[3];
+    //double ph_p_comv[4], ph_p[4], fluid_beta[3], photon_hydro_coord[3];
+    double ph_p_comv[4] SIMD_ALIGN;
+    double ph_p[4] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
+    double fluid_beta[4] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
+    double photon_hydro_coord[4] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
+
     struct photon *ph=NULL;
 
     #if defined(_OPENMP)
@@ -1280,12 +1287,12 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
     double *negative_fluid_beta=malloc(3*sizeof(double));//pointer to hold negative fluid velocity vector
     double *s=malloc(4*sizeof(double)); //vector to hold the stokes parameters for a given photon
      */ //tried to make this stack allocated
-    double ph_p[4];
-    double el_p_comov[4];
-    double ph_p_comov[4];
-    double fluid_beta[3];
-    double negative_fluid_beta[3];
-    double s[4];
+    double ph_p[4] SIMD_ALIGN;
+    double el_p_comov[4] SIMD_ALIGN;
+    double ph_p_comov[4] SIMD_ALIGN;
+    double fluid_beta[4] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
+    double negative_fluid_beta[4] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
+    double s[4] SIMD_ALIGN;
 
     
     struct photon *ph=NULL; //pointer to a photon struct
@@ -1317,7 +1324,7 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
             //it mostly happens at low optical depth, near the photosphere so we would have a large mfp anyways so we probably wouldn't be in this function in that case
             //can also occur for a static fluid with a hard boundary so we account for that here
             // Re-validate position after the move — all photons were advanced
-            double photon_hydro_coord[3];
+            double photon_hydro_coord[4] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
             mcratCoordinateToHydroCoordinate(&photon_hydro_coord, ph->r0, ph->r1, ph->r2);
             
             #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE

@@ -567,3 +567,10 @@ struct hydro_dataframe
     #define PHOTON_DENSITY_COEFF  1
 #endif
 
+
+#if defined(__GNUC__) || defined(__clang__)
+    #define SIMD_ALIGN __attribute__((aligned(64)))
+#else
+    #define SIMD_ALIGN   // fallback for non-GCC/Clang compilers
+#endif
+

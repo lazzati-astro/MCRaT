@@ -288,7 +288,7 @@ void stokesScatter(double *s,  gsl_vector *ph_p_orig, double *ph_p_scattered, FI
 
     
     //fill in z-axis basis vector
-    double z_axis_electron_rest_frame[3];
+    double z_axis_electron_rest_frame[4] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
     *(z_axis_electron_rest_frame+0)=0;
     *(z_axis_electron_rest_frame+1)=0;
     *(z_axis_electron_rest_frame+2)=1;
@@ -377,7 +377,11 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     double *ph_p_prime=malloc(4*sizeof(double));//use this to keep track of how the ph 4 momentum changes with each rotation
     double *el_p_prime=malloc(4*sizeof(double));
      */ //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
-    double z_axis_electron_rest_frame[3],el_v[3],negative_el_v[3],ph_p_prime[4],el_p_prime[4];
+    double z_axis_electron_rest_frame[3] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
+    double el_v[3] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
+    double negative_el_v[3] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
+    double ph_p_prime[4] SIMD_ALIGN;
+    double el_p_prime[4] SIMD_ALIGN;
     
     double phi0=0, phi1=0, phi=0, theta=0;
     double x_tilde[3]={0,0,0}, y_tilde[3]={0,0,0}, x_tilde_new[3]={0,0,0}, y_tilde_new[3]={0,0,0};//initalize arrays to hold stokes coordinate system

@@ -382,7 +382,9 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
     double *boost = NULL;
     double *l_boost = NULL;
      */ //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
-    double p[4], boost[3], l_boost[4];
+    double p[4] SIMD_ALIGN;
+    double boost[4] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
+    double l_boost[4] SIMD_ALIGN;
     bool recalc_lab_momentum = false, recalc_fluid_momentum = false;
     
     //right now we dont allow the user to redefine the number of scatterings, the weights, the position, the nearest_block_index, the recalc_properties, or any optical depth properties. If they do try to do that print out an error and exit

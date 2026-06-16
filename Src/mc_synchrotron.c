@@ -1444,10 +1444,11 @@ static void synchFillPhoton(struct photon          *ph,
                               gsl_rng                *rand,
                               FILE                   *fPtr)
 {
-    double p_comv[4], p_lab[4];
-    double boost[3];
+    double p_comv[4] SIMD_ALIGN;
+    double p_lab[4] SIMD_ALIGN;
+    double boost[4] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
     double position_phi;
-    double cartesian_pos[3];
+    double cartesian_pos[4] SIMD_ALIGN;//this should be 3, but we pad it for memory alignment
 
     /* ── (1) Isotropic comoving 4-momentum ───────────────────────────────── */
     double com_v_phi   = samplePhotonPhi(rand, fPtr);

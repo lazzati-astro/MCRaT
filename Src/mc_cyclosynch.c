@@ -1222,7 +1222,7 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
     double ph_weight_adjusted=0, position_phi=0;
     double dimlesstheta=0, nu_c=0, el_dens=0, error=0, ph_dens_calc=0, b_field=0;
     double r_grid_innercorner=0, r_grid_outercorner=0, theta_grid_innercorner=0, theta_grid_outercorner=0;
-    double params[3];
+    double params[4] SIMD_ALIGN; //this should be 3 but we pad it for alignment reasons
     double fr_dum=0.0, com_v_phi=0, com_v_theta=0, position_rand=0, position2_rand=0, position3_rand=0, cartesian_position_rand_array[3];
     //double *p_comv=NULL, *boost=NULL, *l_boost=NULL; //pointers to hold comov 4 monetum, the fluid vlocity, and the photon 4 momentum in the lab frame //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
     int status;
@@ -1239,7 +1239,9 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
     boost=malloc(4*sizeof(double));
     l_boost=malloc(4*sizeof(double));
      */ //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
-    double p_comv[4], boost[3], l_boost[4];
+    double p_comv[4] SIMD_ALIGN;
+    double boost[4] SIMD_ALIGN; //boost should be 3 elements but we purposefully set it to 4 for this alignment
+    double l_boost[4] SIMD_ALIGN;
 
     
     //fprintf(fPtr, "IN EMIT SYNCH FUNCTION; num_threads %d\n", num_thread);
