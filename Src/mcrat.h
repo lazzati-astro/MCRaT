@@ -276,7 +276,7 @@ struct photon
         double absorption_opacity;
     #endif
 
-} __attribute__((aligned(64)));
+};// __attribute__((aligned(64)));
 
 
 struct photonList
