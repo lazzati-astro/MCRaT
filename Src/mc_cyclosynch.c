@@ -756,7 +756,8 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list,
 
 int rebinCyclosynchCompPhotons_old(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
 {
-    int i=0, j=0, k=0, count=0, count_x=0, count_y=0, count_z=0, count_c_ph=0, end_count=(*scatt_cyclosynch_num_ph), idx=0, num_thread=1;
+    int i=0, j=0, k=0, count=0, count_z=0, count_c_ph=0, end_count=(*scatt_cyclosynch_num_ph), idx=0, num_thread=1;
+    size_t count_x=0, count_y=0;
     #if defined(_OPENMP)
     num_thread=omp_get_num_threads();
     #endif
