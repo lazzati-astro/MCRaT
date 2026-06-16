@@ -1231,7 +1231,7 @@ void readMcPar(struct hydro_dataframe *hydro_data, double *theta_jmin, double *t
     {
         strcpy(copied_str, value);
         //printf("i %d Read token: %s\n", i, value);
-        (*frm0)[i]=strtol(copied_str, buf2, 10);
+        (*frm0)[i]=strtol(copied_str, NULL, 10);
         value = strtok_r(NULL, " ", &context);
     }
     
@@ -1241,7 +1241,7 @@ void readMcPar(struct hydro_dataframe *hydro_data, double *theta_jmin, double *t
     {
         strcpy(copied_str, value);
         //printf("i %d Read token: %s\n", i, value);
-        (*frm2)[i]=strtol(copied_str, buf2, 10)+(*frm0)[i];
+        (*frm2)[i]=strtol(copied_str, NULL, 10)+(*frm0)[i];
         value = strtok_r(NULL, " ", &context);
     }
     
