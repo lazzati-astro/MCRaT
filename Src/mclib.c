@@ -8,6 +8,9 @@ const double K_B=1.380658e-16, M_P=1.6726231e-24, THOM_X_SECT=6.65246e-25, M_EL=
 static gsl_rng **global_thread_rng = NULL;
 static int global_num_threads = 0;
 
+static int compare_pairs(const void *a, const void *b);
+static PhotonTimePair *radixSortPairs(PhotonTimePair *pairs, int n, PhotonTimePair *tmp);
+
 void initGlobalThreadRNG(gsl_rng *master_rng, int num_threads)
 {
     if (global_thread_rng)
@@ -773,8 +776,10 @@ void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hy
     int i=0, ph_block_index=0, num_thread=1, thread_id=0;
     double mfp=0, default_mfp=FLT_MAX;
     double rnd_tracker=0;
-    double *all_time_steps=malloc((photon_list->list_capacity)*sizeof(double));
     struct photon *ph=NULL;
+    PhotonTimePair *pairs = photon_list->sort_pairs; //malloc(photon_list->list_capacity * sizeof(PhotonTimePair));
+    PhotonTimePair *tmp   = photon_list->sort_tmp; //malloc(photon_list->list_capacity * sizeof(PhotonTimePair));
+
 
     #if defined(_OPENMP)
         num_thread = omp_get_max_threads();
@@ -855,8 +860,8 @@ void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hy
         
         //save values to use in qsort and to the photon struct itself
         (ph->time_to_scatter)=mfp/C_LIGHT;
-        *(all_time_steps+i)=(ph->time_to_scatter);
-
+        pairs[i].time  = ph->time_to_scatter;
+        pairs[i].index = i;
         //fprintf(fPtr,"Photon %d has time %e\n", i, *(all_time_steps+i));
         //fflush(fPtr);
 
@@ -871,11 +876,145 @@ void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hy
     free(rng);
      */
 
-    reverseSortIndexes(photon_list->sorted_indexes, photon_list->list_capacity, sizeof (int),  all_time_steps);
-
-    free(all_time_steps);
+    /* Sort pairs ascending by time — O(N) radix sort */
+    PhotonTimePair *sorted_pairs = radixSortPairs(pairs, photon_list->list_capacity, tmp);
+    
+    /* Extract sorted indices */
+    for (i = 0; i < photon_list->list_capacity; i++)
+        photon_list->sorted_indexes[i] = sorted_pairs[i].index;
 
 }
+
+static int compare_pairs(const void *a, const void *b)
+{
+    const PhotonTimePair *pa = (const PhotonTimePair *)a;
+    const PhotonTimePair *pb = (const PhotonTimePair *)b;
+    return (pa->time > pb->time) - (pa->time < pb->time);
+}
+
+/*
+ * radixSortPairs
+ * --------------
+ * Sort an array of PhotonTimePair in ascending order by the time field
+ * using an LSD radix sort on the IEEE 754 bit representation of the
+ * double time value.
+ *
+ * Correctness relies on two properties of the time_to_scatter values:
+ *   1. Always positive — the sentinel value (FLT_MAX/C_LIGHT) is positive,
+ *      and all physical MFP values are positive. For positive doubles,
+ *      reinterpreting the bit pattern as uint64_t preserves numerical
+ *      order exactly (IEEE 754 guarantee).
+ *   2. Always finite — NaN/Inf are excluded by the calcMeanFreePath logic.
+ *
+ * Algorithm
+ * ---------
+ * Improvement 1 — Fused histogram:
+ *   A single O(N) pass over the input fills all 8 byte-histograms at once,
+ *   loading each element's time field from memory exactly once instead of
+ *   once per pass (8x reduction in histogram-phase memory traffic).
+ *
+ * Improvement 2 — Trivial-pass skipping:
+ *   After the fused histogram is built, any pass whose histogram has all N
+ *   elements in a single bucket is skipped entirely. This is common for the
+ *   high bytes of time_to_scatter when all photons share the same dynamical
+ *   range (e.g. all times ~ 1e-8 to 1e-5 s). In practice 2-4 of the 8
+ *   passes are typically skipped for free.
+ *
+ * Improvement 3 — Return result pointer:
+ *   The function returns a pointer to whichever of the two buffers (pairs
+ *   or tmp) holds the sorted result. This is safe regardless of how many
+ *   passes were skipped (i.e. regardless of whether the flip count is odd
+ *   or even), removing the fragile reliance on exactly 8 passes being even.
+ *
+ * Parameters
+ * ----------
+ * pairs : array of PhotonTimePair to sort; may or may not hold the result
+ *         on return — use the returned pointer, not this one
+ * n     : number of elements
+ * tmp   : caller-provided scratch buffer of length >= n
+ *
+ * Returns
+ * -------
+ * Pointer to the buffer (either pairs or tmp) that holds the sorted output.
+ * The caller must use this pointer, not the original pairs pointer, to read
+ * the sorted data.
+ */
+static PhotonTimePair *radixSortPairs(PhotonTimePair *pairs, int n, PhotonTimePair *tmp)
+{
+    if (n <= 1) return pairs;
+
+    /* ── Improvement 1: fused histogram ─────────────────────────────────
+     * One pass over the input fills all 8 byte-histograms simultaneously.
+     * counts[p][b] = number of elements whose byte p equals b.
+     * The 8x256 table is 8 KB and fits entirely in L1 cache.            */
+    int counts[8][256];
+    memset(counts, 0, sizeof(counts));
+
+    for (int i = 0; i < n; i++)
+    {
+        uint64_t key;
+        memcpy(&key, &pairs[i].time, sizeof(uint64_t));
+
+        counts[0][ key        & 0xFF]++;
+        counts[1][(key >>  8) & 0xFF]++;
+        counts[2][(key >> 16) & 0xFF]++;
+        counts[3][(key >> 24) & 0xFF]++;
+        counts[4][(key >> 32) & 0xFF]++;
+        counts[5][(key >> 40) & 0xFF]++;
+        counts[6][(key >> 48) & 0xFF]++;
+        counts[7][(key >> 56) & 0xFF]++;
+    }
+
+    /* ── Improvements 2 & 3: skip trivial passes, track result buffer ───
+     * src always points to the buffer we read from in each scatter pass.
+     * dst always points to the buffer we write into.
+     * After a real scatter pass the two pointers are swapped.
+     * After a trivial (skipped) pass they are NOT swapped, so src stays
+     * correct automatically.  The final result is wherever src points.  */
+    PhotonTimePair *src = pairs;
+    PhotonTimePair *dst = tmp;
+
+    for (int pass = 0; pass < 8; pass++)
+    {
+        /* ── Improvement 2: check if this pass is trivial ───────────────
+         * A pass is trivial when one bucket holds all n elements, meaning
+         * every element has the same byte value at this digit position.
+         * Sorting them changes nothing, so we skip the scatter entirely.  */
+        bool trivial = false;
+        for (int b = 0; b < 256; b++)
+        {
+            if (counts[pass][b] == n) { trivial = true; break; }
+        }
+        if (trivial) continue;
+
+        /* ── Convert counts to prefix-sum output offsets ─────────────── */
+        int offsets[256];
+        offsets[0] = 0;
+        for (int b = 1; b < 256; b++)
+            offsets[b] = offsets[b-1] + counts[pass][b-1];
+
+        /* ── Scatter: read from src, write sorted output to dst ─────── */
+        int shift = pass * 8;
+        for (int i = 0; i < n; i++)
+        {
+            uint64_t key;
+            memcpy(&key, &src[i].time, sizeof(uint64_t));
+            uint8_t byte = (uint8_t)((key >> shift) & 0xFF);
+            dst[offsets[byte]++] = src[i];
+        }
+
+        /* ── Improvement 3: swap src/dst; result tracks automatically ── */
+        PhotonTimePair *swap = src;
+        src = dst;
+        dst = swap;
+    }
+
+    /* src now points to whichever buffer holds the fully sorted result.
+     * Return it so the caller reads from the right place regardless of
+     * how many passes were skipped.                                      */
+    return src;
+}
+
 
 void reverseSortIndexes(void *sorted_indexes, int num_elements, size_t element_size, void *context_array)
 {

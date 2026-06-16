@@ -278,6 +278,7 @@ struct photon
 
 };// __attribute__((aligned(64)));
 
+typedef struct { double time; int index; } PhotonTimePair;
 
 struct photonList
 {
@@ -286,6 +287,12 @@ struct photonList
     int num_photons; //number of real, non-null photons in the array
     int num_null_photons; //number of null photons in the full array
     int list_capacity; //number of photons that were malloc-ed /realloc-ed
+    /* Persistent sort buffers — allocated once, reused every call to
+     * calcMeanFreePath. Eliminates repeated malloc/free overhead.
+     * Both have length list_capacity.                                  */
+    PhotonTimePair   *sort_pairs;
+    PhotonTimePair   *sort_tmp;
+
 };
 
 struct SpatialGrid
