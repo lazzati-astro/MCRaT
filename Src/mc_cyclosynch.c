@@ -1474,9 +1474,9 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
                     ph_emit[idx].comv_p3=(*(p_comv+3));
                     
                     #if DIMENSIONS == THREE
-                        hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
+                        hydroCoordinateToMcratCoordinate(cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
                     #else
-                        hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
+                        hydroCoordinateToMcratCoordinate(cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
                     #endif
                     ph_emit[idx].r0= cartesian_position_rand_array[0]; //put photons @center of the box with random phi
                     ph_emit[idx].r1= cartesian_position_rand_array[1] ;
@@ -1566,9 +1566,9 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
         ph_emit[idx].comv_p3=(*(p_comv+3));
 
         #if DIMENSIONS == THREE
-            hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
+            hydroCoordinateToMcratCoordinate(cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
         #else
-            hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
+            hydroCoordinateToMcratCoordinate(cartesian_position_rand_array, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
         #endif
         ph_emit[idx].r0= cartesian_position_rand_array[0]; //put photons @center of the box with random phi
         ph_emit[idx].r1= cartesian_position_rand_array[1] ;
@@ -1590,9 +1590,9 @@ int photonEmitCyclosynch(struct photonList *photon_list, double r_inj, double ph
         position2_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r1_size)[i])-((hydro_data->r1_size)[i])/2.0;
         #if DIMENSIONS == THREE
             position3_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r2_size)[i])-((hydro_data->r2_size)[i])/2.0;
-            hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, (hydro_data->r2)[i]+position3_rand);
+            hydroCoordinateToMcratCoordinate(cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, (hydro_data->r2)[i]+position3_rand);
         #else
-            hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, position_phi);
+            hydroCoordinateToMcratCoordinate(cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, position_phi);
         #endif
 
         //assign random position

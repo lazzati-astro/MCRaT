@@ -387,9 +387,9 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                     position2_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r1_size)[i])-0.5*((hydro_data->r1_size)[i]);
                     #if DIMENSIONS == THREE
                         position3_rand=gsl_rng_uniform_pos(rand)*((hydro_data->r2_size)[i])-0.5*((hydro_data->r2_size)[i]);
-                        hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, (hydro_data->r2)[i]+position3_rand);
+                        hydroCoordinateToMcratCoordinate(cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, (hydro_data->r2)[i]+position3_rand);
                     #else
-                        hydroCoordinateToMcratCoordinate(&cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, position_phi);
+                        hydroCoordinateToMcratCoordinate(cartesian_position_rand_array, (hydro_data->r0)[i]+position_rand, (hydro_data->r1)[i]+position2_rand, position_phi);
                     #endif
                     
                     //assign random position
@@ -630,7 +630,7 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
             ph_block_index=0; // therefore if starting a new frame set index=0 to avoid this issue
         }
         
-        mcratCoordinateToHydroCoordinate(&photon_hydro_coord, ph->r0, ph->r1, ph->r2);//convert the photons coordinate to the hydro sim coordinate system
+        mcratCoordinateToHydroCoordinate(photon_hydro_coord, ph->r0, ph->r1, ph->r2);//convert the photons coordinate to the hydro sim coordinate system
         
         //printf("ph_x:%e, ph_y:%e\n", ph_x, ph_y);
         
@@ -692,18 +692,18 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
                     ph_p[3]=(ph->p3);
                     
                     #if DIMENSIONS == THREE
-                        hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], (hydro_data->v2)[min_index], (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], (hydro_data->r2)[min_index]);
+                        hydroVectorToCartesian(fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], (hydro_data->v2)[min_index], (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], (hydro_data->r2)[min_index]);
                     #elif DIMENSIONS == TWO_POINT_FIVE
                         ph_phi=atan2((ph->r1), (ph->r0));
-                        hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], (hydro_data->v2)[min_index], (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], ph_phi);
+                        hydroVectorToCartesian(fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], (hydro_data->v2)[min_index], (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], ph_phi);
                     #else
                         ph_phi=atan2((ph->r1), (ph->r0));
                         //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
-                        hydroVectorToCartesian(&fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], 0, (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], ph_phi);
+                        hydroVectorToCartesian(fluid_beta, (hydro_data->v0)[min_index], (hydro_data->v1)[min_index], 0, (hydro_data->r0)[min_index], (hydro_data->r1)[min_index], ph_phi);
                     #endif
 
                     
-                    lorentzBoost(&fluid_beta, &ph_p, &ph_p_comv, 'p', fPtr);
+                    lorentzBoost(fluid_beta, ph_p, ph_p_comv, 'p', fPtr);
                     
                     (ph->comv_p0)=ph_p_comv[0];
                     (ph->comv_p1)=ph_p_comv[1];
@@ -1464,7 +1464,7 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
             //can also occur for a static fluid with a hard boundary so we account for that here
             // Re-validate position after the move — all photons were advanced
             double photon_hydro_coord[4] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
-            mcratCoordinateToHydroCoordinate(&photon_hydro_coord, ph->r0, ph->r1, ph->r2);
+            mcratCoordinateToHydroCoordinate(photon_hydro_coord, ph->r0, ph->r1, ph->r2);
             
             #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
                 bool ph_still_in_domain =
