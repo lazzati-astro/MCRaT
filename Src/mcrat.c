@@ -888,7 +888,7 @@ int main(int argc, char **argv)
                             
                             // we only want to rebin the COMPTONIZED_PHOTON within a frame and then between frames we rebin the synchrotron
                             int test=0, cs_bins = (int)(CYCLOSYNCHROTRON_REBIN_E_PERC * max_photons);
-                            rebinCyclosynchCompPhotonsByType(&photon_list, &test, &scatt_cyclosynch_num_ph, cs_bins, max_photons, theta_jmin_thread, theta_jmax_thread, COMPTONIZED_PHOTON, rand, fPtr);
+                            rebinCyclosynchCompPhotonsByType(&photon_list, &test, &scatt_cyclosynch_num_ph, cs_bins, max_photons, theta_jmin_thread, theta_jmax_thread, COMPTONIZED_PHOTON, rng, fPtr);
                             
                             //fprintf(fPtr, "rebinSynchCompPhotons: scatt_cyclosynch_num_ph: %d\n", scatt_cyclosynch_num_ph);
                             //exit(0);
@@ -935,7 +935,7 @@ int main(int argc, char **argv)
                     */
                     //rebinCyclosynchCompPhotons(&photon_list, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, max_photons, theta_jmin_thread, theta_jmax_thread, rng, fPtr);
                     int test=0, cs_bins = (int)(CYCLOSYNCHROTRON_REBIN_E_PERC * max_photons);
-                    rebinCyclosynchCompPhotonsByType(&photon_list, &test, &scatt_cyclosynch_num_ph, cs_bins, max_photons, theta_jmin_thread, theta_jmax_thread, COMPTONIZED_PHOTON, rand, fPtr);
+                    rebinCyclosynchCompPhotonsByType(&photon_list, &test, &scatt_cyclosynch_num_ph, cs_bins, max_photons, theta_jmin_thread, theta_jmax_thread, COMPTONIZED_PHOTON, rng, fPtr);
                     //exit(0);
 
                }
@@ -943,7 +943,7 @@ int main(int argc, char **argv)
                 #if SYNCHROTRON_SWITCH == ON
                     if (num_cyclosynch_ph_emit > max_photons)
                     {
-                        rebinCyclosynchCompPhotonsByType(&photon_list, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, (int)(CYCLOSYNCHROTRON_REBIN_E_PERC * max_photons), max_photons, theta_jmin_thread, theta_jmax_thread, SYNCH_PHOTON, rand, fPtr);
+                        rebinCyclosynchCompPhotonsByType(&photon_list, &num_cyclosynch_ph_emit, &scatt_cyclosynch_num_ph, (int)(CYCLOSYNCHROTRON_REBIN_E_PERC * max_photons), max_photons, theta_jmin_thread, theta_jmax_thread, SYNCH_PHOTON, rng, fPtr);
                         
                         //set this back to zero since we just rebinned everything
                         scatt_cyclosynch_num_ph=0;
