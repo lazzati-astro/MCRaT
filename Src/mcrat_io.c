@@ -7,6 +7,13 @@
 
 #include "mcrat.h"
 
+// Assumes HDF5 >= 1.8.0 — H5Eset_auto2 is always available
+#define HDF5_ERROR_OFF \
+    H5Eset_auto2(H5E_DEFAULT, NULL, NULL)
+
+#define HDF5_ERROR_ON  \
+    H5Eset_auto2(H5E_DEFAULT, (H5E_auto2_t)H5Eprint2, stderr)
+
 int getOrigNumProcesses(int *counted_cont_procs,  int **proc_array, char dir[STR_BUFFER], int angle_rank,  int angle_procs, int last_frame)
 {
     int i=0, j=0, val=0, original_num_procs=-1, rand_num=0;
@@ -225,10 +232,10 @@ void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclos
     snprintf(group,sizeof(group),"%d",frame );
     
     //see if file exists, if not create it, if it does just open it
-    status = H5Eset_auto(NULL, NULL, NULL); //turn off automatic error printing
+    HDF5_ERROR_OFF; //turn off automatic error printing
     file_init=H5Fcreate(mc_file, H5F_ACC_EXCL, H5P_DEFAULT, H5P_DEFAULT); //see if the file initially does/doesnt exist
     file=file_init;
-    status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr); //turn on auto error printing
+    HDF5_ERROR_ON; //turn on auto error printing
 
     
     if (file_init<0)
@@ -238,9 +245,9 @@ void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclos
         //fprintf(fPtr,"In IF\n");
         
         //see if the group exists
-        status = H5Eset_auto(NULL, NULL, NULL);
+        HDF5_ERROR_OFF;
         status_group = H5Gget_objinfo (file, group, 0, NULL);
-        status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+        HDF5_ERROR_ON;
         
         
         
@@ -264,9 +271,9 @@ void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclos
         //printf("In IF\n");
         //if the file exists, see if the weight exists
         //snprintf(group_weight,sizeof(group_weight),"/PW",i );
-        status = H5Eset_auto(NULL, NULL, NULL);
+        HDF5_ERROR_OFF;
         status_weight = H5Gget_objinfo (file, "/PW", 0, NULL);
-        status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+        HDF5_ERROR_ON;
         
         fprintf(fPtr,"Status of /PW %d\n", status_weight);
         
@@ -732,9 +739,9 @@ void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclos
         
         //see if the weights group exists, if it does then we can extend it, otherwise we need to create it and write the new values to it
         snprintf(group_weight,sizeof(group_weight),"PW",i );
-        status = H5Eset_auto(NULL, NULL, NULL);
+        HDF5_ERROR_OFF;
         status_weight = H5Gget_objinfo (group_id, "PW", 0, NULL);
-        status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+        HDF5_ERROR_ON;
         
         fprintf(fPtr,"Status of /frame/PW %d\n", status_weight);
         
@@ -746,9 +753,9 @@ void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclos
         {
             //will have to create the weight dataset for the new set of phtons that have been injected, although it may already be created since emitting photons now
             //see if the group exists
-            status = H5Eset_auto(NULL, NULL, NULL);
+            HDF5_ERROR_OFF;
             status_weight_2 = H5Gget_objinfo (group_id, "PW", 0, NULL);
-            status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+            HDF5_ERROR_ON;
             
             if (status_weight_2 < 0)
             {
@@ -1340,9 +1347,9 @@ void dirFileMerge(char dir[STR_BUFFER], int start_frame, int last_frame, int num
             
             //see if the frame exists
             snprintf(group,sizeof(group),"%d",i );
-            status = H5Eset_auto(NULL, NULL, NULL);
+            HDF5_ERROR_OFF;
             status_group = H5Gget_objinfo (file, group, 0, NULL);
-            status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+            HDF5_ERROR_ON;
             
             //if it does open it and read in the size
             if (status_group == 0)
@@ -1366,10 +1373,10 @@ void dirFileMerge(char dir[STR_BUFFER], int start_frame, int last_frame, int num
         //for continuing if the simulation gets stopped, check to see if the new file exists and if the information is correct
         //if the information is incorrect, create file by overwriting it, otherwise dont need to do anything
         snprintf(file_no_thread_num,sizeof(file_no_thread_num),"%s%s%d%s",dir,"mcdata_", i, ".h5" );
-        status = H5Eset_auto(NULL, NULL, NULL); //turn off automatic error printing
+        HDF5_ERROR_OFF; //turn off automatic error printing
         file_new=H5Fcreate(file_no_thread_num, H5F_ACC_EXCL, H5P_DEFAULT, H5P_DEFAULT); //see if the file initially does/doesnt exist
         
-        status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr); //turn on auto error printing
+        HDF5_ERROR_ON; //turn on auto error printing
 
     
         if (file_new<0)
@@ -1532,9 +1539,9 @@ void dirFileMerge(char dir[STR_BUFFER], int start_frame, int last_frame, int num
                 file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
             
                 snprintf(group,sizeof(group),"%d",i );
-                status = H5Eset_auto(NULL, NULL, NULL);
+                HDF5_ERROR_OFF;
                 status_group = H5Gget_objinfo (file, group, 0, NULL);
-                status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                HDF5_ERROR_ON;
             
                 if (status_group == 0)
                 {
