@@ -878,7 +878,7 @@ void readGridFile(char gridfile[STR_BUFFER], double **grid_x1, double **grid_x2,
         if (i==2)
         {
             //printf("i %d Read token: %s\n", i, value);
-            array_size[0]=strtol(copied_str, buf2, 10);
+            array_size[0]=strtol(copied_str, NULL, 10);
         }
         value = strtok_r(NULL, ",", &context);
 //        fprintf(fPtr, "strtok: %s\n", buf2 );
@@ -900,7 +900,7 @@ void readGridFile(char gridfile[STR_BUFFER], double **grid_x1, double **grid_x2,
         if (i==2)
         {
             //printf("i %d Read token: %s\n", i, value);
-            array_size[1]=strtol(copied_str, buf2, 10);
+            array_size[1]=strtol(copied_str, NULL, 10);
         }
         value = strtok_r(NULL, ",", &context);
 //        fprintf(fPtr, "strtok: %s\n", context );
@@ -923,7 +923,7 @@ void readGridFile(char gridfile[STR_BUFFER], double **grid_x1, double **grid_x2,
             if (i==2)
             {
                 //printf("i %d Read token: %s\n", i, value);
-                array_size[2]=strtol(copied_str, buf2, 10);
+                array_size[2]=strtol(copied_str, NULL, 10);
             }
             value = strtok_r(NULL, ",", &context);
             //fprintf(fPtr, "strtok: %s\n", context );
@@ -1085,7 +1085,7 @@ void readPluto(char pluto_file[STR_BUFFER], struct hydro_dataframe *hydro_data, 
     
     //still need to read the grid.out file to get the size of the grid
     snprintf(out_file,sizeof(out_file),"%sgrid.out",FILEPATH );
-    readGridFile( out_file, &grid_x1, &grid_x2, &grid_x3, &grid_dx1, &grid_dx2, &grid_dx3, &array_size, fPtr);
+    readGridFile( out_file, &grid_x1, &grid_x2, &grid_x3, &grid_dx1, &grid_dx2, &grid_dx3, array_size, fPtr);
     //fprintf(fPtr,"%d %d %lf %lf %e %e\n", array_size[0], array_size[1], *(grid_x1+0), *(grid_x2+0),*(grid_x3+0), *(grid_dx3+0));
     //fprintf(fPtr,"%d %d %lf %lf\n", array_size[0], array_size[1], *(grid_x1+0), *(grid_x2+0));
     //fflush(fPtr);
