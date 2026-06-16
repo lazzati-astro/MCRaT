@@ -6,6 +6,9 @@ void initalizePhotonList(struct photonList *photon_list)
     photon_list->photons=NULL;
     photon_list->sorted_indexes=NULL;
     
+    photon_list->sort_pairs = NULL;
+    photon_list->sort_tmp   = NULL;
+    
     //initalize the number of photons, number of null photons, and the list capacity to 0
     photon_list->num_photons=0;
     photon_list->num_null_photons=0;
@@ -17,8 +20,14 @@ void freePhotonList(struct photonList *photon_list)
 {
     free(photon_list->photons);
     free(photon_list->sorted_indexes);
+    free(photon_list->sort_pairs);
+    free(photon_list->sort_tmp);
+    
     photon_list->photons=NULL;
     photon_list->sorted_indexes=NULL;
+    photon_list->sort_pairs = NULL;
+    photon_list->sort_tmp   = NULL;
+
     photon_list->num_photons=0;
     photon_list->list_capacity=0;
     photon_list->num_null_photons=0;
@@ -29,6 +38,9 @@ void allocatePhotonListMemory(struct photonList *photon_list, int n_photons)
 {
     photon_list->photons = malloc (n_photons * sizeof (struct photon ));
     photon_list->sorted_indexes = malloc(n_photons*sizeof(int));
+    photon_list->sort_pairs = malloc(n_photons * sizeof(PhotonTimePair));
+    photon_list->sort_tmp   = malloc(n_photons * sizeof(PhotonTimePair));
+
     
     photon_list->list_capacity=n_photons;
     
@@ -65,6 +77,18 @@ void reallocatePhotonListMemory(struct photonList *photon_list, int new_capacity
         printf("Error with reserving space to hold new sorted index array\n");
         exit(1);
     }
+    
+    PhotonTimePair *new_sort_pairs =
+        realloc(photon_list->sort_pairs, new_capacity * sizeof(PhotonTimePair));
+    PhotonTimePair *new_sort_tmp =
+        realloc(photon_list->sort_tmp, new_capacity * sizeof(PhotonTimePair));
+    
+    if (new_sort_pairs) photon_list->sort_pairs = new_sort_pairs;
+    else { printf("Error reallocating sort_pairs\n"); exit(1); }
+    
+    if (new_sort_tmp) photon_list->sort_tmp = new_sort_tmp;
+    else { printf("Error reallocating sort_tmp\n"); exit(1); }
+    
     photon_list->list_capacity=new_capacity;
     
     /*
