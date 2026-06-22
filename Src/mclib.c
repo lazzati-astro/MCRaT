@@ -876,12 +876,63 @@ void calcMeanFreePath(struct photonList *photon_list, struct hydro_dataframe *hy
     free(rng);
      */
 
-    /* Sort pairs ascending by time — O(N) radix sort */
-    PhotonTimePair *sorted_pairs = radixSortPairs(pairs, photon_list->list_capacity, tmp);
     
-    /* Extract sorted indices */
-    for (i = 0; i < photon_list->list_capacity; i++)
-        photon_list->sorted_indexes[i] = sorted_pairs[i].index;
+    /* ── Phase 2 (serial): compact — split live and sentinel entries ─────
+      * Partition pairs[] in-place into two contiguous groups:
+      *   [0,      n_live)  — live photons (ph_block_index != -1)
+      *   [n_live, list_capacity) — sentinel photons (ph_block_index == -1)
+      *
+      * We use a two-pointer swap: left pointer advances through live photons,
+      * right pointer retreats from the end. When left finds a sentinel and
+      * right finds a live entry, they are swapped.
+      *
+      * This is O(N) with zero extra memory and preserves all indices.     */
+     int left  = 0;
+     int right = photon_list->list_capacity - 1;
+     while (left < right)
+     {
+         /* advance left past live entries */
+         while (left < right &&
+                getPhoton(photon_list, pairs[left].index)->nearest_block_index != -1)
+             left++;
+
+         /* retreat right past sentinel entries */
+         while (left < right &&
+                getPhoton(photon_list, pairs[right].index)->nearest_block_index == -1)
+             right--;
+
+         if (left < right)
+         {
+             PhotonTimePair swap = pairs[left];
+             pairs[left]        = pairs[right];
+             pairs[right]       = swap;
+             left++;
+             right--;
+         }
+     }
+
+     /* Count live photons — everything before the first sentinel entry */
+     int n_live = 0;
+     while (n_live < photon_list->list_capacity &&
+            getPhoton(photon_list, pairs[n_live].index)->nearest_block_index != -1)
+         n_live++;
+
+     /* ── Phase 3: sort only the n_live live entries ──────────────────── */
+     PhotonTimePair *sorted_pairs = radixSortPairs(pairs, n_live, tmp);
+
+     /* ── Phase 4: write sorted_indexes ───────────────────────────────── *
+      * First n_live entries come from the sorted live photons.
+      * Remaining (list_capacity - n_live) entries are the sentinel photons,
+      * already sitting at pairs[n_live..list_capacity-1] in any order —
+      * photonEvent will never reach them since their time_to_scatter is
+      * FLT_MAX/C_LIGHT and scatt_time < dt_max will be false long before. */
+     for (i = 0; i < n_live; i++)
+         photon_list->sorted_indexes[i] = sorted_pairs[i].index;
+
+     for (i = n_live; i < photon_list->list_capacity; i++)
+         photon_list->sorted_indexes[i] = pairs[i].index;
+    
+
 
 }
 
