@@ -27,7 +27,7 @@ void initGlobalThreadRNG(gsl_rng *master_rng, int num_threads)
     global_thread_rng = malloc(num_threads * sizeof(gsl_rng *));
     global_thread_rng[0] = master_rng;
     
-    const gsl_rng_type *rng_t = gsl_rng_ranlxs0;
+    const gsl_rng_type *rng_t = gsl_rng_mt19937; //gsl_rng_ranlxs0;
     for (int i = 1; i < num_threads; i++)
     {
         global_thread_rng[i] = gsl_rng_alloc(rng_t);

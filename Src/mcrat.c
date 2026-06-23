@@ -99,7 +99,7 @@ int main(int argc, char **argv)
     const gsl_rng_type *rng_t;
     gsl_rng *rng;
     gsl_rng_env_setup();
-    rng_t = gsl_rng_ranlxs0;
+    rng_t =  gsl_rng_mt19937; //gsl_rng_ranlxs0;
     rng = gsl_rng_alloc (rng_t); //initalize random number generator to seed the others with random numbers
 
     
