@@ -723,9 +723,24 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
             
         }
         *theta=acos(cos_theta_dum);
-        mu=1+energy_ratio*(1-cos(*theta));
-        f_theta_dum=(pow(mu, -1.0) + pow(mu, -3.0) - pow(mu, -2.0)*sin(*theta)*sin(*theta))*sin(*theta);
+        double cos_theta = cos_theta_dum;
+        double sin_theta = sqrt(1.0 - cos_theta * cos_theta);  /* always >= 0 since theta in [0,pi] */
         
+        mu=1+energy_ratio*(1-cos_theta);//1+energy_ratio*(1-cos(*theta));
+        //f_theta_dum=(pow(mu, -1.0) + pow(mu, -3.0) - pow(mu, -2.0)*sin(*theta)*sin(*theta))*sin(*theta);
+        
+        double mu_inv  = 1.0 / mu;
+        double mu_inv2 = mu_inv * mu_inv;    /* replaces pow(mu, -2.0) */
+        double mu_inv3 = mu_inv2 * mu_inv;   /* replaces pow(mu, -3.0) */
+        
+        f_theta_dum=(mu_inv + mu_inv3 - mu_inv2*sin_theta*sin_theta)*sin_theta;
+        
+        #if STOKES_SWITCH == ON
+            double sin_theta_cubed=sin_theta*sin_theta*sin_theta;
+            phi_max=0.5*fabs(atan2(-u,q));
+            norm=(f_theta_dum + mu_inv2*sin_theta_cubed * (q*cos(2*phi_max)-u*sin(2*phi_max)));
+        #endif
+
         while ((phi_y_dum>f_phi_dum) )
         {
             
@@ -750,14 +765,15 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
                 else
                 {
                     //if we are considering polarization calulate the norm for the distributiion to be between 1 and 0
-                    phi_max=fabs(atan2(-u,q))/2.0;
-                    norm=(f_theta_dum + pow(mu, -2.0)*sin(*theta)*sin(*theta)*sin(*theta) * (q*cos(2*phi_max)-u*sin(2*phi_max)));
+                    //moved this outside for efficiency
+                    //phi_max=fabs(atan2(-u,q))/2.0;
+                    //norm=(f_theta_dum + pow(mu, -2.0)*sin(*theta)*sin(*theta)*sin(*theta) * (q*cos(2*phi_max)-u*sin(2*phi_max)));
                     //fprintf(fPtr,"norm: %e\n", norm);
                     //fflush(fPtr);
                     
                     phi_y_dum=gsl_rng_uniform(rand);
                     phi_dum=gsl_rng_uniform(rand)*2*M_PI;
-                    f_phi_dum=(f_theta_dum + pow(mu, -2.0)*sin(*theta)*sin(*theta)*sin(*theta) * (q*cos(2*phi_dum)-u*sin(2*phi_dum)))/norm; //signs on q and u based on Lundman/ McMaster
+                    f_phi_dum=(f_theta_dum + mu_inv2*sin_theta_cubed * (q*cos(2*phi_dum)-u*sin(2*phi_dum)))/norm; //signs on q and u based on Lundman/ McMaster
                     
                     //fprintf(fPtr,"phi_y_dum: %e, theta_dum: %e, mu: %e, f_theta_dum: %e, phi_dum: %e, f_phi_dum: %e, u: %e, q: %e\n", phi_y_dum, theta_dum, mu, f_theta_dum, phi_dum, f_phi_dum, u, q);
                     //fflush(fPtr);
