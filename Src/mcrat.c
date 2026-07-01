@@ -622,6 +622,7 @@ int main(int argc, char **argv)
 
     for (frame=framestart;frame<=frm2;frame=frame+hydrodata.increment_inj_frame)
     {
+        
         hydrodata.inj_frame_number=frame;
         #if SIM_SWITCH == RIKEN && DIMENSIONS == THREE
         if (frame>=3000)
@@ -696,6 +697,10 @@ int main(int argc, char **argv)
 
         for (scatt_frame=scatt_framestart;scatt_frame<=last_frm;scatt_frame=scatt_frame+hydrodata.increment_scatt_frame)
         {
+            //if we have the rebinning occuring, then we dont want rebinning to just occur right before the photons get saved
+            // since this can cause the comoving momenta to just be set to -1, as we usually expect findContainingHydroCell to do the lorentz boost and properly set the comoving 4 momentum
+            bool was_rebinned=false;
+
             hydrodata.scatt_frame_number=scatt_frame;
             #if SIM_SWITCH == RIKEN && DIMENSIONS == THREE
             if (scatt_frame>=3000)
@@ -937,6 +942,9 @@ int main(int argc, char **argv)
                     int test=0, cs_bins = (int)(CYCLOSYNCHROTRON_REBIN_E_PERC * max_photons);
                     rebinCyclosynchCompPhotonsByType(&photon_list, &test, &scatt_cyclosynch_num_ph, cs_bins, max_photons, theta_jmin_thread, theta_jmax_thread, COMPTONIZED_PHOTON, rng, fPtr);
                     //exit(0);
+                    
+                    //set this to true so if we execute this and then save the photons the comoving 4 moemnta are properly set and arent -1
+                    was_rebinned=true;
 
                }
                 
@@ -947,6 +955,9 @@ int main(int argc, char **argv)
                         
                         //set this back to zero since we just rebinned everything
                         scatt_cyclosynch_num_ph=0;
+                        
+                        //set this to true so if we execute this and then save the photons the comoving 4 moemnta are properly set and arent -1
+                        was_rebinned=true;
 
                     }
                 #endif
@@ -987,6 +998,13 @@ int main(int argc, char **argv)
             
             //fprintf(fPtr,"n_comptonized in this frame is: %e\n ", n_comptonized);
             //fflush(fPtr);
+            
+            if (was_rebinned)
+            {
+                //want to recalc all comov 4 momenta before saving if we just did rebinning so the vlaues arent just -1
+                findContainingHydroCell(&photon_list, &hydrodata, find_nearest_grid_switch, rng, fPtr);
+            }
+
             
             save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, time_now, &photon_list, last_frm, angle_id, old_num_angle_procs);
             
