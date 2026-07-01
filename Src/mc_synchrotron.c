@@ -1171,6 +1171,17 @@ double synchAlphaNu(double nu_f,
          */
         double x_min = nu_f / (gmax * gmax * nu_c);
         double x_max = nu_f / (gmin * gmin * nu_c);
+    
+        //if the phton is well below the lower bound of the table, we are in the deep SSA regime and we want to return a high alpha value to get this photon absorbed quickly
+        if (x_min<1e-2*SYNCH_X_MIN)
+        {
+            fprintf(fPtr,
+                    ">> [synchAlphaNu] WARNING: x_min %e < 0.01*SYNCH_X_MIN %e \n", x_min, 1e-2*SYNCH_X_MIN);
+            fflush(fPtr);
+        
+            return DBL_MAX / 2.0;
+        
+        }
 
         double delta_Ga = evalGa(x_min, tables->Ga_spline)
                     - evalGa(x_max, tables->Ga_spline);
@@ -1198,6 +1209,18 @@ double synchAlphaNu(double nu_f,
         double x_max = nu_f / (gmin * gmin * nu_c);
         double x_br  = nu_f / (gbr  * gbr  * nu_c);
         double x_min = nu_f / (gmax * gmax * nu_c);
+    
+        //if the phton is well below the lower bound of the table, we are in the deep SSA regime and we want to return a high alpha value to get this photon absorbed quickly
+        if (x_min<1e-2*SYNCH_X_MIN)
+        {
+            fprintf(fPtr,
+                    ">> [synchAlphaNu] WARNING: x_min %e < 0.01*SYNCH_X_MIN %e \n", x_min, 1e-2*SYNCH_X_MIN);
+            fflush(fPtr);
+        
+            return DBL_MAX / 2.0;
+        
+        }
+
 
         double delta_Ga_p1 = evalGa(x_br,  tables->Ga_spline_p1)
                        - evalGa(x_max, tables->Ga_spline_p1);
