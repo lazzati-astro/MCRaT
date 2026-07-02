@@ -655,8 +655,8 @@ int findContainingHydroCell( struct photonList *photon_list, struct hydro_datafr
             is_in_block=checkInBlock(photon_hydro_coord[0], photon_hydro_coord[1], photon_hydro_coord[2], hydro_data, ph_block_index);
             
             //when rebinning photons can have comoving 4 momenta=0 and nearest_block_index=0 (and block 0 be the actual block the photon is in making it not refind the proper index and reclaulate the comoving 4 momenta) which can make counting synch scattered photons be thrown off, thus take care of this case by forcing the function to recalc things
-            #if CYCLOSYNCHROTRON_SWITCH == ON
-                if ((ph_block_index==0) && ( (ph->comv_p0)+(ph->comv_p1)+(ph->comv_p2)+(ph->comv_p3) == 0 ) )
+            #if CYCLOSYNCHROTRON_SWITCH == ON || SYNCHROTRON_SWITCH == ON
+                if ((ph_block_index==0) && ( (ph->comv_p0)+(ph->comv_p1)+(ph->comv_p2)+(ph->comv_p3) <= 0 ) )
                 {
                     is_in_block=0; //say that photon is not in the block, force it to recompute things
                 }
