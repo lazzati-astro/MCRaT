@@ -1316,7 +1316,9 @@ double synchAlphaNu(double nu_f,
 
         return common * (term1 + term2);
     #else
-        #error synchAlphaNu: NONTHERMAL_E_DIST must be POWERLAW or BROKENPOWERLAW
+        #if SYNCHROTRON_SWITCH == ON
+            #error synchAlphaNu: NONTHERMAL_E_DIST must be POWERLAW or BROKENPOWERLAW
+        #endif
     #endif
 }
 
