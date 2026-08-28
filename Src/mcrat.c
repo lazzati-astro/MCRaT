@@ -812,6 +812,8 @@ int main(int argc, char **argv)
             n_comptonized=0;
             while (remaining_time>0)
             {
+                was_rebinned=false;
+                
                 //if simulation time is less than the simulation time of the next frame, keep scattering in this frame
                 //for RIKEN hydro data, theres still 10 fps but after frame 3000, file increment is 10 not 1, therefore modify dt_max not fps
                 
@@ -897,6 +899,8 @@ int main(int argc, char **argv)
                             
                             //fprintf(fPtr, "rebinSynchCompPhotons: scatt_cyclosynch_num_ph: %d\n", scatt_cyclosynch_num_ph);
                             //exit(0);
+                            
+                            //can set was_rebinned true here but dont explicitly do it since we will go back to start of while loop and run findContainingHydroCell, which propoerly initalizes the comv 4 momenta
                         }
                         #endif
                    }
