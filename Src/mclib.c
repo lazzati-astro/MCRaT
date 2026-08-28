@@ -1765,9 +1765,11 @@ double photonEvent(struct photonList *photon_list, double dt_max, struct hydro_d
                     ph->recalc_properties   = 1;
                 }
                 
-                event_did_occur=1;
+                #if TAU_CALCULATION == TABLE
+                    //may need to do this since we only find the min photon time to scatter when we have TAU_CALCULATION = TABLE in calcMFP function
+                    event_did_occur=1;
+                #endif
            }
-
         }
         else
         {
