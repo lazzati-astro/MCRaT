@@ -16,10 +16,7 @@ int generateSingleElectron(double *el_p, double temp, double *ph_p,
     #else
         double gamma_min, gamma_max;
         double random_num = gsl_rng_uniform_pos(rand);
-        
-        //random_num=0.0; //for testing
-        //fprintf(fPtr, "testing with random_num %g\n",random_num);
-    
+            
         double total_tau = (ph->total_scattering_opacity);
 
 

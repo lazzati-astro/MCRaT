@@ -219,24 +219,32 @@ return x * result;
 /*
 * evalF
 * -----
-* Evaluate F(x) from the file-scope precomputed spline, clamping x to the
-* table range. Uses the calling thread's accelerator via getSynchAccel().
+* Evaluate F(x) from the file-scope precomputed spline. Uses the calling thread's accelerator via getSynchAccel().
 *
 * Called from buildUniversalNuCDF and synchAlphaNu (indirectly via evalGa).
 * Thread-safe provided initSynchThreadAccels has been called first.
 */
 static double evalF(double x)
 {
-SynchThreadAccel *ta = getSynchAccel();
+    SynchThreadAccel *ta = getSynchAccel();
 
-if (x >= SYNCH_X_MAX)
-    return 0.0;
-if (x <= synch_tables.x_arr[0])
-    return gsl_spline_eval(synch_tables.F_spline,
-                           synch_tables.x_arr[0],
-                           ta->F_acc);
-return gsl_spline_eval(synch_tables.F_spline, x, ta->F_acc);
+    if (x >= SYNCH_X_MAX)
+        return 0.0;
+
+    if (x <= synch_tables.x_arr[0])
+    {
+        /* Physical low-frequency asymptote F(x) ~ x^{1/3}  [R&L79 Eq. 6.31b].
+         * Continue the power law below the table rather than clamping flat,
+         * otherwise the pdf integral over gamma picks up a spurious constant
+         * floor for the many (nu_tilde, gamma) pairs with x << SYNCH_X_MIN. */
+        double x0 = synch_tables.x_arr[0];
+        double F0 = gsl_spline_eval(synch_tables.F_spline, x0, ta->F_acc);
+        return F0 * cbrt(x / x0);          /* (x/x0)^{1/3} */
+    }
+
+    return gsl_spline_eval(synch_tables.F_spline, x, ta->F_acc);
 }
+
 
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -342,6 +350,81 @@ if (x >= SYNCH_X_MAX)
     return 0.0;
 return gsl_spline_eval(spl, x, ta->Ga_acc);
 }
+
+/*
+ * evalGa_p
+ * --------
+ * Evaluate G_a(x; p) = integral_x^inf z^{(p-2)/2} F(z) dz   [RAIKOU Eq. C3]
+ * from a supplied spline, continuing ANALYTICALLY below the table rather
+ * than clamping.  This is the G_a analogue of the x^{1/3} continuation
+ * already used in evalF, and it removes the need to tabulate F(x)/G_a(x)
+ * into the singular small-x regime of K_{5/3}.
+ *
+ * Low-x continuation (x < x0 = SYNCH_X_MIN)
+ * -----------------------------------------
+ *   G_a(x) = G_a(x0) + integral_x^{x0} z^{(p-2)/2} F(z) dz
+ *
+ * Using the physical low-frequency asymptote  F(z) ~ F(x0) (z/x0)^{1/3}
+ * [R&L79 Eq. 6.31b], the integrand becomes
+ *
+ *   z^{(p-2)/2} F(z) ~ F(x0) x0^{-1/3} z^{(p-2)/2 + 1/3}
+ *
+ * Integrating from x to x0 (exponent q = (p-2)/2 + 1/3 + 1 = (p-1)/2 + 1/3):
+ *
+ *   integral_x^{x0} = [ F(x0) x0^{-1/3} / q ] ( x0^q - x^q )       (q != 0)
+ *
+ * Since q = (p-1)/2 + 1/3 > 0 for all physical p > 1, x^q -> 0 as x -> 0,
+ * so the extra contribution is finite and bounded by G_a(x0)-independent
+ * terms; G_a therefore grows smoothly (never diverges) toward small x,
+ * yielding the correct soft SSA turnover instead of a hard cutoff.
+ *
+ * Parameters
+ * ----------
+ * x   : lower integration limit (dimensionless frequency ratio)
+ * spl : one of Ga_spline / Ga_spline_p1 / Ga_spline_p2
+ * p   : power-law index matching that spline
+ *
+ * Returns G_a(x; p) >= 0.
+ */
+static double evalGa_p(double x, gsl_spline *spl, double p)
+{
+    SynchThreadAccel *ta = getSynchAccel();
+
+    /* Above the table F(z) ~ 0 (exponential cutoff): no absorption support. */
+    if (x >= SYNCH_X_MAX)
+        return 0.0;
+
+    double x0 = synch_tables.x_arr[0];   /* == SYNCH_X_MIN */
+
+    if (x <= x0)
+    {
+        double Ga_x0 = gsl_spline_eval(spl, x0, ta->Ga_acc);
+        double F_x0  = gsl_spline_eval(synch_tables.F_spline, x0, ta->F_acc);
+
+        double q = 0.5 * (p - 1.0) + (1.0 / 3.0);   /* > 0 for physical p > 1 */
+
+        double add;
+        if (fabs(q) < 1e-12)
+        {
+            /* Degenerate q ~ 0 (only if p ~ 1/3, non-physical here):
+               integral of z^{-1} dz = ln(x0/x). Guard for completeness. */
+            add = F_x0 * log(x0 / x) / cbrt(x0); //was F_x0 * pow(x0, -1.0 / 3.0) * log(x0 / x)
+        }
+        else
+        {
+            add = (F_x0 / cbrt(x0) / q)
+                * (pow(x0, q) - pow(x, q)); //was (F_x0 * pow(x0, -1.0 / 3.0) / q) * (pow(x0, q) - pow(x, q));
+        }
+
+        double val = Ga_x0 + add;
+        return (val > 0.0) ? val : 0.0;
+    }
+
+    /* In-table: direct spline evaluation. */
+    double val = gsl_spline_eval(spl, x, ta->Ga_acc);
+    return (val > 0.0) ? val : 0.0;
+}
+
 
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -1115,20 +1198,17 @@ double synchSampleGammaEmission(gsl_rng *rand)
 /*
  * synchAlphaNu
  * ------------
- * Compute the SSA absorption coefficient alpha_{nu_f}^(f) [cm^-1] in the
+ * Synchrotron self-absorption coefficient alpha_{nu_f}^(f) [cm^-1] in the
  * fluid rest frame at comoving frequency nu_f [Hz].
  *
- * Single power law  [RAIKOU Eq. C2]:
- *   alpha = (p-1)(p+2) n_e e^2 nu_c
- *           / (4 sqrt(3) me c (gmin^{1-p} - gmax^{1-p}))
- *           * (nu_f/nu_c)^{-(p+4)/2}
- *           * [G_a(x_max) - G_a(x_min)]
+ *   POWERLAW       -> RAIKOU Eq. C2
+ *   BROKENPOWERLAW -> RAIKOU Eq. C4
  *
- * Broken power law  [RAIKOU Eq. C4]:
- *   two-segment sum with indices p1/p2 and continuity factor C_cont.
- *
- * The G_a table handles all x-dependence; B and n_e enter analytically
- * through the prefactor. Returns 0 for degenerate inputs.
+ * The former DBL_MAX/2 deep-SSA guard has been removed: evalGa_p continues
+ * G_a(x) analytically below the table (F ~ x^{1/3}), so alpha grows smoothly
+ * as nu_f decreases and tau = alpha * R passes through unity at the correct
+ * physical turnover frequency (~1e9 Hz for the RAIKOU Fig. 10 setup) rather
+ * than being hard-cut at the table boundary.
  */
 double synchAlphaNu(double nu_f,
                     double B,
@@ -1136,7 +1216,8 @@ double synchAlphaNu(double nu_f,
                     FILE  *fPtr)
 {
     const SynchUniversalTables *tables = getSynchTables(fPtr);
-
+    
+    /* No field or no non-thermal electrons -> no synchrotron absorption. */
     if (nu_f <= 0.0 || B <= 0.0 || n_e_nth <= 0.0) return 0.0;
 
     /*
@@ -1172,21 +1253,13 @@ double synchAlphaNu(double nu_f,
         double x_min = nu_f / (gmax * gmax * nu_c);
         double x_max = nu_f / (gmin * gmin * nu_c);
     
-        //if the phton is well below the lower bound of the table, we are in the deep SSA regime and we want to return a high alpha value to get this photon absorbed quickly
-        if (x_min<1e-2*SYNCH_X_MIN)
-        {
-            fprintf(fPtr,
-                    ">> [synchAlphaNu] WARNING: x_min %e < 0.01*SYNCH_X_MIN %e \n", x_min, 1e-2*SYNCH_X_MIN);
-            fflush(fPtr);
+        /* Analytic continuation handles x below the table; no guard/cutoff. */
+        double delta_Ga = evalGa_p(x_min, tables->Ga_spline, p)
+                         - evalGa_p(x_max, tables->Ga_spline, p);
+        if (delta_Ga <= 0.0)
+            return 0.0;
         
-            return DBL_MAX / 2.0;
-        
-        }
-
-        double delta_Ga = evalGa(x_min, tables->Ga_spline)
-                    - evalGa(x_max, tables->Ga_spline);
-        if (delta_Ga <= 0.0) return 0.0;
-
+        /* RAIKOU Eq. C2 prefactor. */
         double prefactor = (p - 1.0) * (p + 2.0)
                          * n_e_nth * CHARGE_EL * CHARGE_EL
                          / (4.0 * sqrt(3.0) * M_EL * C_LIGHT * nu_c * denom);
@@ -1205,33 +1278,31 @@ double synchAlphaNu(double nu_f,
         if (A <= 0.0) return 0.0;
 
         double C_cont = pow(gbr, p2 - p1);
-
+        
+        /* x boundaries for each segment:
+        *   x_max <- gamma_min      (largest x)
+        *   x_br  <- gamma_break    (segment boundary)
+        *   x_min <- gamma_max      (smallest x)
+         */
         double x_max = nu_f / (gmin * gmin * nu_c);
         double x_br  = nu_f / (gbr  * gbr  * nu_c);
         double x_min = nu_f / (gmax * gmax * nu_c);
     
-        //if the phton is well below the lower bound of the table, we are in the deep SSA regime and we want to return a high alpha value to get this photon absorbed quickly
-        if (x_min<1e-2*SYNCH_X_MIN)
-        {
-            fprintf(fPtr,
-                    ">> [synchAlphaNu] WARNING: x_min %e < 0.01*SYNCH_X_MIN %e \n", x_min, 1e-2*SYNCH_X_MIN);
-            fflush(fPtr);
-        
-            return DBL_MAX / 2.0;
-        
-        }
-
-
-        double delta_Ga_p1 = evalGa(x_br,  tables->Ga_spline_p1)
-                       - evalGa(x_max, tables->Ga_spline_p1);
+        /* Low-gamma (p1) segment spans [x_br, x_max]; analytic continuation
+         * below table handled inside evalGa_p.
+         */
+        double delta_Ga_p1 = evalGa_p(x_br,  tables->Ga_spline_p1, p1)
+                            - evalGa_p(x_max, tables->Ga_spline_p1, p1);
         if (delta_Ga_p1 < 0.0) delta_Ga_p1 = 0.0;
 
-        double delta_Ga_p2 = evalGa(x_min, tables->Ga_spline_p2)
-                       - evalGa(x_br,  tables->Ga_spline_p2);
+        /* High-gamma (p2) segment spans [x_min, x_br]. */
+        double delta_Ga_p2 = evalGa_p(x_min, tables->Ga_spline_p2, p2)
+                            - evalGa_p(x_br,  tables->Ga_spline_p2, p2);
         if (delta_Ga_p2 < 0.0) delta_Ga_p2 = 0.0;
 
         if (delta_Ga_p1 == 0.0 && delta_Ga_p2 == 0.0) return 0.0;
-
+        
+        /* RAIKOU Eq. C4 common prefactor. */
         double common = (A * n_e_nth * CHARGE_EL * CHARGE_EL)
                       / (4.0 * sqrt(3.0) * M_EL * C_LIGHT * nu_c);
 
@@ -1244,7 +1315,8 @@ double synchAlphaNu(double nu_f,
                      * delta_Ga_p2;
 
         return common * (term1 + term2);
-
+    #else
+        #error synchAlphaNu: NONTHERMAL_E_DIST must be POWERLAW or BROKENPOWERLAW
     #endif
 }
 
