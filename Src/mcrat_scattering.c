@@ -6,6 +6,16 @@
 //
 
 #include "mcrat.h"
+
+
+/* Photon energy (in electron rest frame, normalised to m_e c^2) below which
+ * the Thomson limit is used for BOTH the total cross section
+ * (kleinNishinaCrossSection) AND the differential/angular sampling
+ * (fast path in kleinNishinaScatter). Keeping a single definition guarantees
+ * the two approximations switch at the same energy. */
+#define THOMSON_LIMIT_ENERGY_RATIO 1e-3
+
+
 /*
 void mullerMatrixRotation(double theta, double *s, FILE *fPtr)
 {
@@ -691,6 +701,7 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
     double mu=0, phi_max=0, norm=0;
     int will_scatter=0;
     double energy_ratio=  p0/(M_EL*C_LIGHT ); //h*nu / mc^2 , units of p0 is erg/c
+    double inverse_sq=0;
         
     #if TAU_CALCULATION == DIRECT
         //determine the KN cross section over the thomson cross section
@@ -719,8 +730,8 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
             //do phi and theta seperately, sample theta using:  https://doi.org/10.13182/NSE11-57
             cos_theta_y_dum=gsl_rng_uniform(rand)*2;
             cos_theta_dum=gsl_rng_uniform(rand)*2-1;
-            f_cos_theta_dum=pow((1+energy_ratio*(1-cos_theta_dum)),-2)*(energy_ratio*(1-cos_theta_dum)+(1/(1+energy_ratio*(1-cos_theta_dum))) + cos_theta_dum*cos_theta_dum);
-            
+            inverse_sq=1/((1+energy_ratio*(1-cos_theta_dum))*(1+energy_ratio*(1-cos_theta_dum)));
+            f_cos_theta_dum=inverse_sq*(energy_ratio*(1-cos_theta_dum)+(1/(1+energy_ratio*(1-cos_theta_dum))) + cos_theta_dum*cos_theta_dum);
         }
         *theta=acos(cos_theta_dum);
         double cos_theta = cos_theta_dum;
@@ -737,7 +748,7 @@ int kleinNishinaScatter(double *theta, double *phi, double p0, double q, double 
         
         #if STOKES_SWITCH == ON
             double sin_theta_cubed=sin_theta*sin_theta*sin_theta;
-            phi_max=0.5*fabs(atan2(-u,q));
+            phi_max=0.5*atan2(-u,q); //before had fabs applied to atan which didnt calculate the corect value of phi where the function peaks leads to slightly biasing the sampling
             norm=(f_theta_dum + mu_inv2*sin_theta_cubed * (q*cos(2*phi_max)-u*sin(2*phi_max)));
         #endif
 
@@ -806,7 +817,7 @@ double kleinNishinaCrossSection(double energy_ratio)
     */
     double result=0;
 
-    if (energy_ratio >= 1e-3)
+    if (energy_ratio >= THOMSON_LIMIT_ENERGY_RATIO)
     {
         result=(3. / 4.) * (2. / (energy_ratio * energy_ratio) +
                  (1. / (2. * energy_ratio) -
