@@ -105,7 +105,7 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
         }
         else
         {
-            i_start=0;
+            i_start=1;
             reference_opacity = 0;
             for (i=0;i<N_GAMMA;i++)
             {
@@ -119,8 +119,8 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
             //divide by N_GAMMA so the subgroups that are considered don't add up to more than the reference optical depth
             reference_opacity /= N_GAMMA;
             
-            //(ph->scattering_bias)[1] = reference_bias;
-            //(ph->scattering_opacity)[1] = (nonthermal_n_dens_lab)*(THOM_X_SECT*(*(norm_cross_section+(1))))*fluid_factor;
+            (ph->scattering_bias)[1] = reference_bias;
+            (ph->scattering_opacity)[1] = (nonthermal_n_dens_lab)*THOM_X_SECT*(*(norm_cross_section+1))*fluid_factor;
             
             
             //make sure we set the thermal values to be 0
@@ -235,5 +235,6 @@ double calculateNonthermalScatteringBias(double initial_scatt_bias, double initi
     //initial_scatt_bias is typically the thermal electron scattering bias and initial_tau is typically the optical depth
     // of scattering with thermal electrons. If we have no thermal electrons, these get replaced with the bias/tau of
     //interacting with electrons in the first subgroup
-    return fmax(1.0, initial_scatt_bias*initial_tau/nonthermal_tau);
+    //return fmax(1.0, initial_scatt_bias*initial_tau/nonthermal_tau);
+    return initial_scatt_bias*initial_tau/nonthermal_tau;
 }
