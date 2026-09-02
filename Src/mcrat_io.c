@@ -1410,7 +1410,7 @@ void dirFileMerge(char dir[STR_BUFFER], int start_frame, int last_frame, int num
                         case 14: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
                         case 15: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                         case 16: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
-                        #if SAVE_TYPES == ON
+                        #if SAVE_TYPE == ON
                         {
                             case 17: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PT"); break;
                         }
@@ -1434,7 +1434,7 @@ void dirFileMerge(char dir[STR_BUFFER], int start_frame, int last_frame, int num
                         case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "S3"); break;
                         case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                         case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
-                        #if SAVE_TYPES == ON
+                        #if SAVE_TYPE == ON
                         {
                             case 13: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PT"); break;
                         }
@@ -1458,7 +1458,7 @@ void dirFileMerge(char dir[STR_BUFFER], int start_frame, int last_frame, int num
                         case 10: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
                         case 11: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                         case 12: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
-                        #if SAVE_TYPES == ON
+                        #if SAVE_TYPE == ON
                         {
                             case 13: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PT"); break;
                         }
@@ -1478,7 +1478,7 @@ void dirFileMerge(char dir[STR_BUFFER], int start_frame, int last_frame, int num
                         case 6: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "R2"); break;
                         case 7: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "NS"); break;
                         case 8: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PW"); break;
-                        #if SAVE_TYPES == ON
+                        #if SAVE_TYPE == ON
                         {
                             case 9: snprintf(mcdata_type,sizeof(mcdata_type), "%s", "PT"); break;
                         }
