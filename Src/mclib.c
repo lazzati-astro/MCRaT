@@ -323,26 +323,22 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                     #else
                         position_phi=0;//dont need this in 3D
                     #endif
+                    
+                    //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
+                    #if DIMENSIONS == THREE
+                        hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
+                    #elif DIMENSIONS == TWO_POINT_FIVE
+                        hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
+                    #else
+                        //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
+                        hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], 0, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
+                    #endif
+
+                    
                     com_v_phi=samplePhotonPhi(rand, fPtr); //gsl_rng_uniform(rand)*2*M_PI;
                     //this seemed to produce lab frame spectra with significantly differnet temperatures/shapes than what was expected for wien/blackbody spectra. this is only valid when beta=0, which is limiting case of our anisotropic sampling below
                     //com_v_theta=acos((gsl_rng_uniform(rand)*2)-1);
                     
-                    //TODO:what is boost at the start of this loop? it seems undefined
-                    //trying to overwrite com_v_theta based on sampling of lab anisotropic angle distribution of photons
-                    //see eg Section 3.2.1 @ doi.org/10.1088/0004-637X/807/1/31 & Section 3.5 @ doi.org/10.3847/1538-4357/ac75cb
-                    // and section 6.2 here: Nordin Nobuoka, J. 2025, SPIRO: a code that couples Monte Carlo photons to relativistic hydrodynamics - Applications to hot astrophysical plasmas, https://urn.kb.se/resolve?urn=urn:nbn:se:kth:diva-368279
-                    gsl_vector_view b=gsl_vector_view_array(boost, 3);
-                    double beta=gsl_blas_dnrm2(&b.vector);
-                    y_dum=1; //initalize loop
-                    yfr_dum=0;
-                    while (y_dum>yfr_dum)
-                    {
-                        com_v_theta=2*gsl_rng_uniform_pos(rand)-1; //cos(angle) is from -1 to 1
-                        //printf("%lf, %lf ",gsl_rng_uniform_pos(rand), (*(temps+i)));
-                        y_dum=gsl_rng_uniform_pos(rand);
-                        
-                        yfr_dum=0.5*(1+beta*com_v_theta); //propability density of angle of photon with respect to fluid motion (doppler boosting factor)
-                    }
                     com_v_theta=samplePhotonTheta(boost, rand, fPtr); //acos(com_v_theta);
                     //trying to overwrite com_v_theta based on sampling of lab anisotropic angle distribution of photons
                     
@@ -356,15 +352,6 @@ void photonInjection(struct photonList *photon_list, double r_inj, double ph_wei
                     *(p_comv+3)=(PL_CONST*fr_dum/C_LIGHT)*cos(com_v_theta);
                     
                     
-                    //populate boost matrix, not sure why multiplying by -1, seems to give correct answer in old python code...
-                    #if DIMENSIONS == THREE
-                        hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], (hydro_data->r2)[i]);
-                    #elif DIMENSIONS == TWO_POINT_FIVE
-                        hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], (hydro_data->v2)[i], (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
-                    #else
-                        //this may have to change if PLUTO can save vectors in 3D when conidering 2D sim
-                        hydroVectorToCartesian(boost, (hydro_data->v0)[i], (hydro_data->v1)[i], 0, (hydro_data->r0)[i], (hydro_data->r1)[i], position_phi);
-                    #endif
                     (*(boost+0))*=-1;
                     (*(boost+1))*=-1;
                     (*(boost+2))*=-1;

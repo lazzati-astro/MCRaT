@@ -1546,6 +1546,32 @@ static void synchFillPhoton(struct photon          *ph,
     double boost[4] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
     double position_phi;
     double cartesian_pos[4] SIMD_ALIGN;//this should be 3, but we pad it for memory alignment
+    
+    #if DIMENSIONS == THREE
+        hydroVectorToCartesian(boost,
+                                (hydro_data->v0)[cell_idx],
+                                (hydro_data->v1)[cell_idx],
+                                (hydro_data->v2)[cell_idx],
+                                (hydro_data->r0)[cell_idx],
+                                (hydro_data->r1)[cell_idx],
+                                (hydro_data->r2)[cell_idx]);
+    #elif DIMENSIONS == TWO_POINT_FIVE
+        hydroVectorToCartesian(boost,
+                                (hydro_data->v0)[cell_idx],
+                                (hydro_data->v1)[cell_idx],
+                                (hydro_data->v2)[cell_idx],
+                                (hydro_data->r0)[cell_idx],
+                                (hydro_data->r1)[cell_idx],
+                                position_phi);
+    #else
+        hydroVectorToCartesian(boost,
+                                (hydro_data->v0)[cell_idx],
+                                (hydro_data->v1)[cell_idx],
+                                0,
+                                (hydro_data->r0)[cell_idx],
+                                (hydro_data->r1)[cell_idx],
+                                position_phi);
+    #endif
 
     /* ── (1) Isotropic comoving 4-momentum ───────────────────────────────── */
     double com_v_phi   = samplePhotonPhi(rand, fPtr);
@@ -1573,31 +1599,6 @@ static void synchFillPhoton(struct photon          *ph,
         position_phi = 0.0;
     #endif
 
-    #if DIMENSIONS == THREE
-        hydroVectorToCartesian(boost,
-                                (hydro_data->v0)[cell_idx],
-                                (hydro_data->v1)[cell_idx],
-                                (hydro_data->v2)[cell_idx],
-                                (hydro_data->r0)[cell_idx],
-                                (hydro_data->r1)[cell_idx],
-                                (hydro_data->r2)[cell_idx]);
-    #elif DIMENSIONS == TWO_POINT_FIVE
-        hydroVectorToCartesian(boost,
-                                (hydro_data->v0)[cell_idx],
-                                (hydro_data->v1)[cell_idx],
-                                (hydro_data->v2)[cell_idx],
-                                (hydro_data->r0)[cell_idx],
-                                (hydro_data->r1)[cell_idx],
-                                position_phi);
-    #else
-        hydroVectorToCartesian(boost,
-                                (hydro_data->v0)[cell_idx],
-                                (hydro_data->v1)[cell_idx],
-                                0,
-                                (hydro_data->r0)[cell_idx],
-                                (hydro_data->r1)[cell_idx],
-                                position_phi);
-    #endif
 
     /* Negate fluid velocity: boost from fluid frame to lab frame */
     boost[0] *= -1.0;
