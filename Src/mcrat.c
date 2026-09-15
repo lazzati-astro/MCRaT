@@ -1033,9 +1033,6 @@ int main(int argc, char **argv)
         freePhotonList(&photon_list);
     }
     save_chkpt_success=saveCheckpoint(mc_dir, frame, frm2, scatt_frame, time_now, &photon_list, last_frm, angle_id, old_num_angle_procs); //this is for processes using the old code that didnt restart efficiently
-
-    fprintf(fPtr, "Process %d has completed the MC calculation.\n", angle_id);
-    fflush(fPtr);
     
     //exit(0);
     #if TAU_CALCULATION == TABLE
@@ -1048,6 +1045,10 @@ int main(int argc, char **argv)
     #if SYNCHROTRON_SWITCH == ON
         freeSynchTables(fPtr);
     #endif
+    
+    fprintf(fPtr, "Process %d has completed the MC calculation.\n", angle_id);
+    fflush(fPtr);
+
                 
     MPI_Barrier(angle_comm);
         
