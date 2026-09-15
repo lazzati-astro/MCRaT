@@ -401,7 +401,7 @@ static double evalGa_p(double x, gsl_spline *spl, double p)
         double Ga_x0 = gsl_spline_eval(spl, x0, ta->Ga_acc);
         double F_x0  = gsl_spline_eval(synch_tables.F_spline, x0, ta->F_acc);
 
-        double q = 0.5 * (p - 1.0) + (1.0 / 3.0);   /* > 0 for physical p > 1 */
+        double q = 0.5 * p + (1.0 / 3.0);   /* > 0 for physical p > 1 */
 
         double add;
         if (fabs(q) < 1e-12)
