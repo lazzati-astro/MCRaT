@@ -506,6 +506,42 @@ struct hydro_dataframe
         #endif
     #endif
 
+    //place checks on the users powerlaw input parameters
+    #if NONTHERMAL_E_DIST == POWERLAW
+        #if POWERLAW_INDEX < 1
+            #error The POWERLAW_INDEX needs to be greater than 1.
+        #endif
+
+    #endif
+
+    #if NONTHERMAL_E_DIST == POWERLAW || NONTHERMAL_E_DIST == BROKENPOWERLAW
+        #if GAMMA_MIN > GAMMA_MAX
+            #error The value of GAMMA_MIN needs to be less than the value of GAMMA_MAX.
+        #endif
+
+        #if GAMMA_MIN < 1
+            #error GAMMA_MIN needs to be greater than 1.
+        #endif
+
+        #if GAMMA_MAX < 1
+            #error GAMMA_MAX needs to be greater than 1.
+        #endif
+    #endif
+
+    #if NONTHERMAL_E_DIST == BROKENPOWERLAW
+        #if GAMMA_BREAK < GAMMA_MIN || GAMMA_BREAK > GAMMA_MAX
+            #error The value of GAMMA_BREAK needs to be between GAMMA_MIN and GAMMA_MAX
+        #endif
+
+        #if POWERLAW_INDEX_1 < 0
+            #error The POWERLAW_INDEX_1 value needs to be a positive number
+        #endif
+
+        #if POWERLAW_INDEX_2 < 0
+            #error The POWERLAW_INDEX_2 value needs to be a positive number
+        #endif
+    #endif
+
     //if the user hasnt defined anything for how to calculate the B field, assume that they want it calculated from the total energy
     #ifndef B_FIELD_CALC
         #warning B_FIELD_CALC needs to be defined with NONTHERMAL_E_DIST. Specify B_FIELD_CALC in mcrat_input.h file using B_FIELD_CALC. This can be ignored if the user is using the custom outflow capability.
