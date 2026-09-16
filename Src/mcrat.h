@@ -508,38 +508,44 @@ struct hydro_dataframe
 
     //place checks on the users powerlaw input parameters
     #if NONTHERMAL_E_DIST == POWERLAW
-        #if POWERLAW_INDEX < 1
-            #error The POWERLAW_INDEX needs to be greater than 1.
-        #endif
+//        #if POWERLAW_INDEX < 1
+//            #error The POWERLAW_INDEX needs to be greater than 1.
+//        #endif
+
+        static_assert(POWERLAW_INDEX > 1, "Error: The POWERLAW_INDEX needs to be greater than 1");
 
     #endif
 
     #if NONTHERMAL_E_DIST == POWERLAW || NONTHERMAL_E_DIST == BROKENPOWERLAW
-        #if GAMMA_MIN > GAMMA_MAX
-            #error The value of GAMMA_MIN needs to be less than the value of GAMMA_MAX.
-        #endif
-
-        #if GAMMA_MIN < 1
-            #error GAMMA_MIN needs to be greater than 1.
-        #endif
-
-        #if GAMMA_MAX < 1
-            #error GAMMA_MAX needs to be greater than 1.
-        #endif
+//        #if GAMMA_MIN > GAMMA_MAX
+//            #error The value of GAMMA_MIN needs to be less than the value of GAMMA_MAX.
+//        #endif
+            static_assert(GAMMA_MAX > GAMMA_MIN, "Error: The value of GAMMA_MIN needs to be less than the value of GAMMA_MAX");
+//        #if GAMMA_MIN < 1
+//            #error GAMMA_MIN needs to be greater than 1.
+//        #endif
+            static_assert(GAMMA_MIN > 1, "Error: GAMMA_MIN needs to be greater than 1");
+//        #if GAMMA_MAX < 1
+//            #error GAMMA_MAX needs to be greater than 1.
+//        #endif
+            static_assert(GAMMA_MAX > 1, "Error: GAMMA_MAX needs to be greater than 1");
     #endif
 
     #if NONTHERMAL_E_DIST == BROKENPOWERLAW
-        #if GAMMA_BREAK < GAMMA_MIN || GAMMA_BREAK > GAMMA_MAX
-            #error The value of GAMMA_BREAK needs to be between GAMMA_MIN and GAMMA_MAX
-        #endif
+//        #if GAMMA_BREAK < GAMMA_MIN || GAMMA_BREAK > GAMMA_MAX
+//            #error The value of GAMMA_BREAK needs to be between GAMMA_MIN and GAMMA_MAX
+//        #endif
+            static_assert(GAMMA_BREAK > GAMMA_MIN, "Error: GAMMA_BREAK needs to be greater than GAMMA_MIN");
+            static_assert(GAMMA_BREAK < GAMMA_MAX, "Error: GAMMA_BREAK needs to be less than GAMMA_MAX");
 
-        #if POWERLAW_INDEX_1 < 0
-            #error The POWERLAW_INDEX_1 value needs to be a positive number
-        #endif
-
-        #if POWERLAW_INDEX_2 < 0
-            #error The POWERLAW_INDEX_2 value needs to be a positive number
-        #endif
+//        #if POWERLAW_INDEX_1 < 0
+//            #error The POWERLAW_INDEX_1 value needs to be a positive number
+//        #endif
+            static_assert(POWERLAW_INDEX_1 > 0, "Error: POWERLAW_INDEX_1 value needs to be a positive number");
+//        #if POWERLAW_INDEX_2 < 0
+//            #error The POWERLAW_INDEX_2 value needs to be a positive number
+//        #endif
+            static_assert(POWERLAW_INDEX_2 > 0, "Error: POWERLAW_INDEX_2 value needs to be a positive number");
     #endif
 
     //if the user hasnt defined anything for how to calculate the B field, assume that they want it calculated from the total energy
