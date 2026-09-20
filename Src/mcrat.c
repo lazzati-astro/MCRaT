@@ -441,7 +441,8 @@ int main(int argc, char **argv)
             MPI_Comm_split(MPI_COMM_WORLD, myid/procs_per_angle , myid, &angle_comm);
             MPI_Comm_rank(angle_comm, &angle_id);
             MPI_Comm_size(angle_comm, &angle_procs);
-            frm0=(*(frm0_input+0));
+            frm2=(*(frm2_input+(myid/procs_per_angle)));
+            frm0=(*(frm0_input+(myid/procs_per_angle)));
         }
         free(all_cont_process_idPtr);
         free(each_num_to_restart_per_anglePtr);
