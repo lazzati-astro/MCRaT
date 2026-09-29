@@ -1547,6 +1547,17 @@ static void synchFillPhoton(struct photon          *ph,
     double position_phi;
     double cartesian_pos[4] SIMD_ALIGN;//this should be 3, but we pad it for memory alignment
     
+    /*
+     * Assign a random azimuthal angle in 2D/2.5D (needed for coordinate
+     * conversion); unused in 3D where the full vector is available.
+     */
+    #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
+        position_phi = gsl_rng_uniform(rand) * 2.0 * M_PI;
+    #else
+        position_phi = 0.0;
+    #endif
+
+    
     #if DIMENSIONS == THREE
         hydroVectorToCartesian(boost,
                                 (hydro_data->v0)[cell_idx],
@@ -1589,16 +1600,6 @@ static void synchFillPhoton(struct photon          *ph,
     ph->comv_p3 = p_comv[3];
 
     /* ── (2) Lorentz boost to lab frame ──────────────────────────────────── */
-    /*
-     * Assign a random azimuthal angle in 2D/2.5D (needed for coordinate
-     * conversion); unused in 3D where the full vector is available.
-     */
-    #if DIMENSIONS == TWO || DIMENSIONS == TWO_POINT_FIVE
-        position_phi = gsl_rng_uniform(rand) * 2.0 * M_PI;
-    #else
-        position_phi = 0.0;
-    #endif
-
 
     /* Negate fluid velocity: boost from fluid frame to lab frame */
     boost[0] *= -1.0;
