@@ -1247,15 +1247,15 @@ double synchAlphaNu(double nu_f,
 
         /*
          * x = nu_f / (gamma^2 nu_c):
-         *   x_min -> gamma_max (smallest x)
-         *   x_max -> gamma_min (largest  x)
+         *   x_max -> gamma_max (smallest x)
+         *   x_min -> gamma_min (largest  x)
          */
-        double x_min = nu_f / (gmax * gmax * nu_c);
-        double x_max = nu_f / (gmin * gmin * nu_c);
+        double x_max = nu_f / (gmax * gmax * nu_c);
+        double x_min = nu_f / (gmin * gmin * nu_c);
     
         /* Analytic continuation handles x below the table; no guard/cutoff. */
-        double delta_Ga = evalGa_p(x_min, tables->Ga_spline, p)
-                         - evalGa_p(x_max, tables->Ga_spline, p);
+        double delta_Ga = evalGa_p(x_max, tables->Ga_spline, p)
+                         - evalGa_p(x_min, tables->Ga_spline, p);
         if (delta_Ga <= 0.0)
             return 0.0;
         
@@ -1280,23 +1280,23 @@ double synchAlphaNu(double nu_f,
         double C_cont = pow(gbr, p2 - p1);
         
         /* x boundaries for each segment:
-        *   x_max <- gamma_min      (largest x)
+        *   x_min <- gamma_min      (largest x)
         *   x_br  <- gamma_break    (segment boundary)
-        *   x_min <- gamma_max      (smallest x)
+        *   x_max <- gamma_max      (smallest x)
          */
-        double x_max = nu_f / (gmin * gmin * nu_c);
+        double x_min = nu_f / (gmin * gmin * nu_c);
         double x_br  = nu_f / (gbr  * gbr  * nu_c);
-        double x_min = nu_f / (gmax * gmax * nu_c);
+        double x_max = nu_f / (gmax * gmax * nu_c);
     
         /* Low-gamma (p1) segment spans [x_br, x_max]; analytic continuation
          * below table handled inside evalGa_p.
          */
         double delta_Ga_p1 = evalGa_p(x_br,  tables->Ga_spline_p1, p1)
-                            - evalGa_p(x_max, tables->Ga_spline_p1, p1);
+                            - evalGa_p(x_min, tables->Ga_spline_p1, p1);
         if (delta_Ga_p1 < 0.0) delta_Ga_p1 = 0.0;
 
-        /* High-gamma (p2) segment spans [x_min, x_br]. */
-        double delta_Ga_p2 = evalGa_p(x_min, tables->Ga_spline_p2, p2)
+        /* High-gamma (p2) segment spans [x_max, x_br]. */
+        double delta_Ga_p2 = evalGa_p(x_max, tables->Ga_spline_p2, p2)
                             - evalGa_p(x_br,  tables->Ga_spline_p2, p2);
         if (delta_Ga_p2 < 0.0) delta_Ga_p2 = 0.0;
 
