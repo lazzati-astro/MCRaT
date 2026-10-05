@@ -31,16 +31,23 @@ struct BinningParams
 struct BinStats
 {
     double weighted_r;
-    double weighted_theta;
-    double weighted_phi_offset; // look at delta \phi between the 4 mometum and its location
+    double weighted_theta;          /* position polar angle: linear mean OK   */
     double weighted_stokes[4];
     double weighted_scatt_count;
     double total_weight;
-    double weighted_phi_dir;
-    double weighted_theta_dir;
+    double weighted_theta_dir;      /* momentum polar angle: linear mean OK   */
     double weighted_energy;
+
+    /* --- circular (vector) accumulators for azimuths; replace the old
+     *     linear weighted_phi_* sums. Store Sum(w*cos) and Sum(w*sin);
+     *     recover the circular mean via atan2(Ssin, Scos). --- */
+    double w_cos_phi_dir;           /* Σ w cos(phi_mom)                        */
+    double w_sin_phi_dir;           /* Σ w sin(phi_mom)                        */
+    double w_cos_phi_offset;        /* Σ w cos(phi_mom - phi_pos)  (offset)    */
+    double w_sin_phi_offset;        /* Σ w sin(phi_mom - phi_pos)              */
 #if DIMENSIONS == THREE
-    double weighted_phi_pos;
+    double w_cos_phi_pos;           /* Σ w cos(phi_pos)  (3D absolute pos azi) */
+    double w_sin_phi_pos;           /* Σ w sin(phi_pos)                        */
 #endif
 };
 

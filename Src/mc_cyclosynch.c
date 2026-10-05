@@ -288,7 +288,7 @@ static int collect_photon_statistics(const struct photonList *photon_list, struc
         
         #if CYCLOSYNCHROTRON_SWITCH == ON
             //with cyclosynch, most CS photons get absorbed so this is a bit moot but keep it here just in case
-            if (ph && ((ph->type == photon_type) || (tmp_ph->type == UNABSORBED_CS_PHOTON)))
+            if (ph && ((ph->type == photon_type) || (ph->type == UNABSORBED_CS_PHOTON)))
         #else
             if (ph && (ph->type == photon_type))
         #endif
@@ -455,58 +455,73 @@ static int accumulate_bin_statistics(const struct photonList *photon_list, struc
     for (int i = 0; i < photon_list->list_capacity; i++)
     {
         const struct photon *ph = getPhoton(photon_list, i);
-                
+
         #if CYCLOSYNCHROTRON_SWITCH == ON
-            //with cyclosynch, most CS photons get absorbed so this is a bit moot but keep it here just in case
-            if (ph && ((ph->type == photon_type) || (tmp_ph->type == UNABSORBED_CS_PHOTON)))
+            if (ph && ((ph->type == photon_type) || (ph->type == UNABSORBED_CS_PHOTON)))
         #else
             if (ph && (ph->type == photon_type))
         #endif
         {
             double r, theta, phi = 0.0;
             calculate_photon_position(ph, &r, &theta, &phi);
-            
+
             size_t idx_x = 0, idx_y = 0, idx_z = 0;
             gsl_histogram2d_find(h_energy_theta, log10(ph->p0), theta, &idx_x, &idx_y);
-            
+
             #if DIMENSIONS == THREE
                 gsl_histogram2d_find(h_energy_phi, log10(ph->p0), phi, &idx_x, &idx_z);
                 gsl_histogram2d_find(h_theta_phi, theta, phi, &idx_y, &idx_z);
             #endif
-            
+
             int bin_idx = calculate_bin_index(idx_x, idx_y, idx_z, params);
             if (bin_idx < 0 || bin_idx >= params->total_bins)
             {
                 fprintf(fPtr, "WARNING: Photon %d maps to invalid bin index %d\n", i, bin_idx);
                 exit(1);
             }
-            
+
             struct BinStats *s = &stats[bin_idx];
-            s->weighted_r += r * ph->weight;
-            s->weighted_theta += theta * ph->weight;
-            s->weighted_phi_offset += (atan2(ph->p2, ph->p1) - atan2(ph->r1, ph->r0)) * RAD_TO_DEG * ph->weight;
-            
-            s->weighted_stokes[0] += ph->s0 * ph->weight;
-            s->weighted_stokes[1] += ph->s1 * ph->weight;
-            s->weighted_stokes[2] += ph->s2 * ph->weight;
-            s->weighted_stokes[3] += ph->s3 * ph->weight;
-            
-            s->weighted_scatt_count += ph->num_scatt * ph->weight;
-            s->total_weight += ph->weight;
-            
-            double phi_dir = fmod(atan2(ph->p2, ph->p1) * RAD_TO_DEG + 360.0, 360.0);
+            double w = ph->weight;
+
+            s->weighted_r     += r * w;
+            s->weighted_theta += theta * w;
+
+            s->weighted_stokes[0] += ph->s0 * w;
+            s->weighted_stokes[1] += ph->s1 * w;
+            s->weighted_stokes[2] += ph->s2 * w;
+            s->weighted_stokes[3] += ph->s3 * w;
+
+            s->weighted_scatt_count += ph->num_scatt * w;
+            s->total_weight         += w;
+
+            /* --- Azimuths handled CIRCULARLY (radians) --- */
+            double phi_mom = atan2(ph->p2, ph->p1);     /* momentum azimuth   */
+            double phi_pos = atan2(ph->r1, ph->r0);     /* position azimuth   */
+            double phi_off = phi_mom - phi_pos;         /* physical offset    */
+
+            /* momentum azimuth circular accumulation */
+            s->w_cos_phi_dir += w * cos(phi_mom);
+            s->w_sin_phi_dir += w * sin(phi_mom);
+
+            /* position-vs-momentum offset circular accumulation (2D & 3D) */
+            s->w_cos_phi_offset += w * cos(phi_off);
+            s->w_sin_phi_offset += w * sin(phi_off);
+
+            /* momentum polar angle (degrees, as before) and energy: linear */
             double theta_dir = acos(ph->p3 / ph->p0) * RAD_TO_DEG;
-            
-            s->weighted_phi_dir += phi_dir * ph->weight;
-            s->weighted_theta_dir += theta_dir * ph->weight;
-            s->weighted_energy += ph->p0 * ph->weight;
-            
+            s->weighted_theta_dir += theta_dir * w;
+            s->weighted_energy    += ph->p0 * w;
+
             #if DIMENSIONS == THREE
-                s->weighted_phi_pos += phi * ph->weight;
+                /* absolute position azimuth circular accumulation (phi is in
+                 * DEGREES from calculate_photon_position; convert to rad) */
+                double phi_pos_abs = phi * DEG_TO_RAD;
+                s->w_cos_phi_pos += w * cos(phi_pos_abs);
+                s->w_sin_phi_pos += w * sin(phi_pos_abs);
             #endif
         }
     }
-    
+
     return 1;
 }
 
@@ -539,37 +554,46 @@ static int create_rebinned_photons(struct photonList *photon_list, const struct 
         {
             new_ph->type = photon_type;
             new_ph->weight = s->total_weight;
-            
-            /* Calculate average values from weighted sums */
-            double avg_energy = s->weighted_energy / s->total_weight;
-            double avg_phi_dir = s->weighted_phi_dir / s->total_weight;
-            double avg_theta_dir = s->weighted_theta_dir / s->total_weight;
-            double avg_r = s->weighted_r / s->total_weight;
-            double avg_theta_pos = s->weighted_theta / s->total_weight;
-            
-            /* Set photon momentum components */
+
+            double w_tot        = s->total_weight;
+            double avg_energy   = s->weighted_energy    / w_tot;
+            double avg_theta_dir = s->weighted_theta_dir / w_tot;  /* degrees */
+            double avg_theta_pos = s->weighted_theta     / w_tot;  /* radians */
+            double avg_r         = s->weighted_r         / w_tot;
+
+            /* --- Circular mean of the momentum azimuth (replaces the old
+             *     linear  weighted_phi_dir / total_weight). Radians. --- */
+            double phi_dir = atan2(s->w_sin_phi_dir, s->w_cos_phi_dir);
+
+            /* --- Position azimuth: same construction as the original code,
+             *     only the averages are now circular. --- */
+            double pos_phi;
+            #if DIMENSIONS == THREE
+                /* 3D: absolute position azimuth = circular mean (replaces the
+                 *     old linear weighted_phi_pos / total_weight). */
+                pos_phi = atan2(s->w_sin_phi_pos, s->w_cos_phi_pos);
+            #else
+                /* 2D: position azimuth measured relative to the momentum
+                 *     azimuth via the circular-mean offset, exactly as the
+                 *     original  pos_phi = phi_dir - phi_offset, but with a
+                 *     proper circular average of the offset. */
+                double phi_offset = atan2(s->w_sin_phi_offset, s->w_cos_phi_offset);
+                pos_phi = phi_dir - phi_offset;
+            #endif
+
+            /* --- Momentum (phi_dir now in radians; drop the old *DEG_TO_RAD
+             *     on phi since it is already radians, but keep it on theta) --- */
             new_ph->p0 = avg_energy;
-            new_ph->p1 = avg_energy * sin(avg_theta_dir * DEG_TO_RAD) * cos(avg_phi_dir * DEG_TO_RAD);
-            new_ph->p2 = avg_energy * sin(avg_theta_dir * DEG_TO_RAD) * sin(avg_phi_dir * DEG_TO_RAD);
+            new_ph->p1 = avg_energy * sin(avg_theta_dir * DEG_TO_RAD) * cos(phi_dir);
+            new_ph->p2 = avg_energy * sin(avg_theta_dir * DEG_TO_RAD) * sin(phi_dir);
             new_ph->p3 = avg_energy * cos(avg_theta_dir * DEG_TO_RAD);
-            
-            /* Initialize comoving frame momenta to -1, seemed to cause infinities with biasing  */
+
             new_ph->comv_p0 = -1;
             new_ph->comv_p1 = -1;
             new_ph->comv_p2 = -1;
             new_ph->comv_p3 = -1;
-            
-            /* Calculate position phi based on dimensionality */
-            double pos_phi;
-            #if DIMENSIONS == THREE
-                double avg_phi_pos = s->weighted_phi_pos / s->total_weight;
-                pos_phi = avg_phi_pos * DEG_TO_RAD;
-            #else
-                double avg_phi_offset = s->weighted_phi_offset / s->total_weight;
-                pos_phi = (avg_phi_dir - avg_phi_offset) * DEG_TO_RAD;
-            #endif
-            
-            /* Set photon position components */
+
+            /* --- Position (avg_theta_pos in radians; pos_phi in radians) --- */
             new_ph->r0 = avg_r * sin(avg_theta_pos) * cos(pos_phi);
             new_ph->r1 = avg_r * sin(avg_theta_pos) * sin(pos_phi);
             new_ph->r2 = avg_r * cos(avg_theta_pos);
@@ -597,7 +621,7 @@ static int create_rebinned_photons(struct photonList *photon_list, const struct 
         struct photon *ph = getPhoton(photon_list, i);
         #if CYCLOSYNCHROTRON_SWITCH == ON
             //with cyclosynch, most CS photons get absorbed so this is a bit moot but keep it here just in case
-            if (ph && ((ph->type == photon_type) || (tmp_ph->type == UNABSORBED_CS_PHOTON)))
+            if (ph && ((ph->type == photon_type) || (ph->type == UNABSORBED_CS_PHOTON)))
         #else
             if (ph && (ph->type == photon_type))
         #endif
