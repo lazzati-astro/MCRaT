@@ -486,10 +486,67 @@ static int accumulate_bin_statistics(const struct photonList *photon_list, struc
             s->weighted_theta += theta * ph->weight;
             s->weighted_phi_offset += (atan2(ph->p2, ph->p1) - atan2(ph->r1, ph->r0)) * RAD_TO_DEG * ph->weight;
             
-            s->weighted_stokes[0] += ph->s0 * ph->weight;
-            s->weighted_stokes[1] += ph->s1 * ph->weight;
-            s->weighted_stokes[2] += ph->s2 * ph->weight;
-            s->weighted_stokes[3] += ph->s3 * ph->weight;
+            /* --- Rotate (Q,U)=(s1,s2) into the bin's COMMON polarization frame
+             *     before accumulating. I (s0) and V (s3) are rotation-invariant.
+             *     The common reference axis is the projection of global z-hat onto
+             *     the plane perpendicular to this photon's propagation direction k,
+             *     identical for every photon in the bin, so the summed Q,U are
+             *     frame-consistent. Only s1,s2 are affected: geometry, momentum,
+             *     position, scattering and spectrum are untouched. --- */
+            double s_rot[4] = { ph->s0, ph->s1, ph->s2, ph->s3 };
+
+            /* propagation direction k (unit) */
+            double kx = ph->p1 / ph->p0;
+            double ky = ph->p2 / ph->p0;
+            double kz = ph->p3 / ph->p0;
+
+            /* common reference axis e_ref = (z_hat - (z_hat.k) k), projection of
+             * global z onto plane perp. to k; this is the same construction used
+             * for the observer-frame rotation in ProcessMCRaT (Lundman convention) */
+            double zdotk = kz;                      /* z_hat = (0,0,1) */
+            double ex = 0.0 - zdotk * kx;
+            double ey = 0.0 - zdotk * ky;
+            double ez = 1.0 - zdotk * kz;
+            double enorm = sqrt(ex*ex + ey*ey + ez*ez);
+
+            double delta = 0.0;
+            if (enorm > 1e-12)   /* if k is parallel to z, projection is degenerate: skip rotation (delta=0) */
+            {
+                ex /= enorm; ey /= enorm; ez /= enorm;
+
+                /* MCRaT's per-photon polarization reference axis is the projection
+                 * of global x-hat onto the plane perp. to k (same convention as the
+                 * stored s1,s2 basis). Build it the same way: */
+                double xdotk = kx;                  /* x_hat = (1,0,0) */
+                double fx = 1.0 - xdotk * kx;
+                double fy = 0.0 - xdotk * ky;
+                double fz = 0.0 - xdotk * kz;
+                double fnorm = sqrt(fx*fx + fy*fy + fz*fz);
+
+                if (fnorm > 1e-12)
+                {
+                    fx /= fnorm; fy /= fnorm; fz /= fnorm;
+
+                    /* signed angle delta from the photon's own basis axis f to the
+                     * common axis e, measured about k:
+                     *   cos(delta) = e . f
+                     *   sin(delta) = (f x e) . k                                   */
+                    double cosd = ex*fx + ey*fy + ez*fz;
+                    double crossx = fy*ez - fz*ey;
+                    double crossy = fz*ex - fx*ez;
+                    double crossz = fx*ey - fy*ex;
+                    double sind = crossx*kx + crossy*ky + crossz*kz;
+                    delta = atan2(sind, cosd);
+                }
+            }
+
+            /* apply the existing Mueller rotation by delta to the local copy */
+            mullerMatrixRotation(delta, s_rot, fPtr);
+
+            s->weighted_stokes[0] += s_rot[0] * ph->weight;
+            s->weighted_stokes[1] += s_rot[1] * ph->weight;
+            s->weighted_stokes[2] += s_rot[2] * ph->weight;
+            s->weighted_stokes[3] += s_rot[3] * ph->weight;
             
             s->weighted_scatt_count += ph->num_scatt * ph->weight;
             s->total_weight += ph->weight;
