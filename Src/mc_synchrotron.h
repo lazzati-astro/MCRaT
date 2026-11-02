@@ -22,8 +22,13 @@
  *
  * where
  *   G(x)  = integral_x^inf z^{(p-3)/2} F(z) dz   [RAIKOU Eq. B12]
+ *      NOTE: the closed-form G(x) emissivity above is retained for reference/
+ *      comparison with RAIKOU only. The emission path does NOT evaluate it:
+ *      buildUniversalNuCDF integrates F(x) directly to form the photon-number
+ *      CDF. The absorption path uses G_a(x) = integral z^{(p-2)/2} F(z) dz
+ *      (note the (p-2)/2 weight, distinct from this G's (p-3)/2), via evalGa_p.
  *   F(z)  = z * integral_z^inf K_{5/3}(xi) dxi    [RAIKOU Eq. B13]
- *   nu_c  = 3 e B / (4 pi me c)  (pitch-angle averaged)  [RAIKOU Eq. B7]
+ *   nu_c  = 3 e B / (4 pi me c)  (pitch-angle averaged)  [R&L79 Eq. 6.17c]
  *   x     = nu_f / (gamma_e^2 nu_c)
  *
  * FREQUENCY SAMPLING — UNIVERSAL CDF
@@ -284,16 +289,15 @@ double synchAlphaNu(double nu_f,
                     double n_e_nth,
                     FILE  *fPtr);
 
-/* ── SSA weight modification  [RAIKOU Eqs. 31, 40] ─────────────────────────
- *
+/* ── SSA weight modification  [RAIKOU Eqs. 31, 40] ───────────────
  * calculateOpticalDepthSSA
- *   Store alpha_{nu_f}^(f) in ph->abs_optical_depth for later use by
- *   applyabsorption during photon transport. Called once per cell crossing.
- *
- * applyabsorption
- *   Attenuate ph->weight by exp(-abs_optical_depth * dl) over a lab-frame
- *   step of length dl [cm]. Called at each transport sub-step.
- *
+ *   Store the frame-corrected SSA coefficient
+ *   (gamma * fluid_factor * alpha_{nu_f}^(f)) in ph->absorption_opacity
+ *   for later use by applyAbsorption during photon transport. Called
+ *   once per cell crossing. Operates on ALL photon types.
+ * applyAbsorption
+ *   Attenuate ph->weight by exp(-ph->absorption_opacity * dl) over a
+ *   lab-frame step of length dl [cm]. Called at each transport sub-step.
  */
 void calculateOpticalDepthSSA(struct photon          *ph,
                                struct hydro_dataframe *hydro_data,
