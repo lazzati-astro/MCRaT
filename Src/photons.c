@@ -260,7 +260,7 @@ void setNullPhoton(struct photonList *photon_list, int index)
     #if NONTHERMAL_E_DIST != OFF
         for (i=0;i<(1+N_GAMMA);i++)
         {
-            photon_list->photons[index].scattering_opacity[i]=0; //the optical depths that are calculated for thermal + non-thermal electrons with the nonthermal electron subgroups
+            photon_list->photons[index].scattering_opacity[i]=0; //the oopacities that are calculated for thermal + non-thermal electrons with the nonthermal electron subgroups
             photon_list->photons[index].scattering_bias[i]=0;
         }
     #endif
@@ -361,7 +361,7 @@ void initializePhoton(struct photon *ph)
     ph->total_scattering_opacity = NAN;
     
     #if SYNCHROTRON_SWITCH == ON
-        ph->absorption_opacity=NAN; //this holds the opacity for synchrotron absorption (multiply by path length to get optical depth when modifying the weight correspondent with synchrotron self absorption
+        ph->absorption_opacity=NAN; //this holds the opacity for synchrotron absorption (multiply by path length to get opacities when modifying the weight correspondent with synchrotron self absorption
     #endif
 
 }
@@ -398,7 +398,7 @@ double samplePhotonTheta(double *velocity, gsl_rng * rand, FILE *fPtr)
 void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct hydro_dataframe *hydro_data, int hydro_index, gsl_rng * rand, FILE *fPtr)
 {
     //here we go through each member of the photon struct and see if the user has filled it in with non-NAN value. If so, assign it to the original photon which will be saved to the photonList that is used in MCRaT
-    //curently we dont let the photon weight, the position, num_scatt, nearest_block_index, recalc_properties, photon_type, and optical depth related stuff be changed by the user
+    //curently we dont let the photon weight, the position, num_scatt, nearest_block_index, recalc_properties, photon_type, and opacity related stuff be changed by the user
     
     double orig_energy = 0, position_phi=NAN;
     /*
@@ -411,7 +411,7 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
     double l_boost[4] SIMD_ALIGN;
     bool recalc_lab_momentum = false, recalc_fluid_momentum = false;
     
-    //right now we dont allow the user to redefine the number of scatterings, the weights, the position, the nearest_block_index, the recalc_properties, or any optical depth properties. If they do try to do that print out an error and exit
+    //right now we dont allow the user to redefine the number of scatterings, the weights, the position, the nearest_block_index, the recalc_properties, or any opacity properties. If they do try to do that print out an error and exit
     if (ph_user->type != '\0')
     {
         fprintf(fPtr, "The user cannot redefine the injected photon type.\n");
@@ -452,7 +452,7 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
     
     if (!isnan(ph_user->total_scattering_opacity))
     {
-        fprintf(fPtr, "The user cannot redefine the injected photon's total optical depth field.\n");
+        fprintf(fPtr, "The user cannot redefine the injected photon's total scattering opacity field.\n");
         fflush(fPtr);
         exit(1);
 
@@ -479,7 +479,7 @@ void saveUserDefinePhoton(struct photon *ph_orig, struct photon *ph_user, struct
         {
             if (!isnan(ph_user->scattering_opacity[i]))
             {
-                fprintf(fPtr, "The user cannot redefine the injected photon's optical depth array.\n");
+                fprintf(fPtr, "The user cannot redefine the injected photon's scattering opacity array.\n");
                 fflush(fPtr);
                 exit(1);
 
