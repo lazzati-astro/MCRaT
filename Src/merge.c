@@ -20,6 +20,13 @@
 #include "mcrat.h"
 #include "mpi.h"
 
+// Assumes HDF5 >= 1.8.0 — H5Eset_auto2 is always available
+#define HDF5_ERROR_OFF \
+    H5Eset_auto2(H5E_DEFAULT, NULL, NULL)
+
+#define HDF5_ERROR_ON  \
+    H5Eset_auto2(H5E_DEFAULT, (H5E_auto2_t)H5Eprint2, stderr)
+
 int main(int argc, char **argv)
 {
     double *p0=NULL, *p1=NULL, *p2=NULL, *p3=NULL, *comv_p0=NULL, *comv_p1=NULL, *comv_p2=NULL, *comv_p3=NULL, *r0=NULL, *r1=NULL, *r2=NULL, *s0=NULL, *s1=NULL, *s2=NULL, *s3=NULL, *num_scatt=NULL, *weight=NULL;
@@ -284,9 +291,9 @@ int main(int argc, char **argv)
             
             //see if the frame exists
             snprintf(group,sizeof(group),"%d",i );
-            status = H5Eset_auto(NULL, NULL, NULL);
+            HDF5_ERROR_OFF;
             status_group = H5Gget_objinfo (file, group, 0, NULL);
-            status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+            HDF5_ERROR_ON;
             
             //if it does open it and read in the size
             if (status_group == 0)
@@ -332,9 +339,9 @@ int main(int argc, char **argv)
         H5Pset_fapl_mpio(plist_id_file, frames_to_merge_comm, info);
         
         snprintf(merged_filename,sizeof(merged_filename),"%smcdata_%d.h5",dir, i );
-        status = H5Eset_auto(NULL, NULL, NULL); //turn off automatic error printing
+        HDF5_ERROR_OFF; //turn off automatic error printing
         file_id = H5Fcreate(merged_filename, H5F_ACC_EXCL, H5P_DEFAULT, plist_id_file);
-        status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr); //turn on auto error printing
+        HDF5_ERROR_ON; //turn on auto error printing
         
         //if the file exists we have to check it to ensure its not corrupted
         
@@ -502,9 +509,9 @@ int main(int argc, char **argv)
                     {
                         //we know that the process exists and the file should exist
                         //open the file
-                        status = H5Eset_auto(NULL, NULL, NULL); //turn of error printing if the file doesnt exist, if the process number doesnt exist
+                        HDF5_ERROR_OFF; //turn of error printing if the file doesnt exist, if the process number doesnt exist
                         file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
-                        status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                        HDF5_ERROR_ON;
                     }
                     else
                     {
@@ -519,14 +526,14 @@ int main(int argc, char **argv)
                             //see if the frame exists
                             /*
                             snprintf(group,sizeof(group),"%d",i );
-                            status = H5Eset_auto(NULL, NULL, NULL);
+                            HDF5_ERROR_OFF;
                             status_group = H5Gget_objinfo (file, group, 0, NULL);
-                            status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                            HDF5_ERROR_ON;
                             */
                             snprintf(group,sizeof(group),"%d/PW",l );
-                            status = H5Eset_auto(NULL, NULL, NULL);
+                            HDF5_ERROR_OFF;
                             status_group = H5Gget_objinfo (file, group, 0, NULL);
-                            status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                            HDF5_ERROR_ON;
                         }
 
                     }
@@ -1482,17 +1489,17 @@ int main(int argc, char **argv)
                 //printf("Dir: %s\n",filename_k );
             
                 //open the file and see if t exists
-                status = H5Eset_auto(NULL, NULL, NULL); //turn of error printing if the file doesnt exist, if the process number doesnt exist
+                HDF5_ERROR_OFF; //turn of error printing if the file doesnt exist, if the process number doesnt exist
                 file=H5Fopen(filename_k, H5F_ACC_RDONLY, H5P_DEFAULT);
-                status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                HDF5_ERROR_ON;
                 
                 if (file>=0)
                 {
                     //if the file exists, see if the frame exists
                     snprintf(group,sizeof(group),"%d/PW",i );
-                    status = H5Eset_auto(NULL, NULL, NULL);
+                    HDF5_ERROR_OFF;
                     status_group = H5Gget_objinfo (file, group, 0, NULL);
-                    status = H5Eset_auto(H5E_DEFAULT, H5Eprint2, stderr);
+                    HDF5_ERROR_ON;
                 }
                 
                 //printf("Proc %d has status_group %d\n", subdir_id, status_group);
