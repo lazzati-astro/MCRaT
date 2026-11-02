@@ -637,6 +637,160 @@ where $\theta$ and $\phi$ are the directional angles of the 4 momentum and the $
 \subsubsection{Absorption of CS Photons}
 At the end of each HD frame, MCRaT proceeds to absorb any photons that have a frequency  $\nu \le \nu_B$ of the HD cell that they are located within. As a result, all of the CS photons that were emitted and never upscattered become absorbed and any photons that have been scattered but still satisfy  $\nu \le \nu_B$ are also absorbed.
 
+\section{User-Defined Injection and Outflows}\label{custom}
+MCRaT provides two hooks that allow a user to override the default behaviour of the code without modifying the core radiation-transfer routines. The first, contained in \texttt{custom\_spectrum.c}, lets the user inject photons with an arbitrary spectrum, 4-momentum, and polarization state instead of the built-in Wien or Blackbody spectra. The second, contained in \texttt{custom\_outflow.c}, lets the user impose an arbitrary analytic outflow onto the fluid quantities of each hydro frame, in the same spirit as the spherical and cylindrical test outflows described in Section \ref{algorithm}. Both capabilities are production-ready and are enabled through the switches described below.
+
+\subsection{Custom Photon Injection (\texttt{custom\_spectrum.c})}\label{custom_spectrum}
+The \texttt{custom\_spectrum.c} file provides the hook that MCRaT uses when the user wishes to inject photons drawn from a spectrum other than the built-in Wien or Blackbody spectra. It contains two functions: \texttt{custom\_spectrum} and \texttt{custom\_photon\_sampler}.
+
+\subsubsection{How MCRaT Uses These Functions}
+During photon injection, MCRaT's \texttt{photonInjection} routine (in \texttt{mclib.c}) selects which spectrum to sample for each photon based on the spectrum type read from the \texttt{[MCRaT Photon Block]} of the \texttt{mc.par} file (see Section \ref{mc.par}). When the requested spectrum is neither Wien nor Blackbody, MCRaT falls through to the custom-spectrum branch and calls
+\begin{quotation}
+	\texttt{initialized\_photon = custom\_photon\_sampler(hydro\_data, i, rand, fPtr);}
+\end{quotation}
+for the $i^\mathrm{th}$ hydro element that photons are being injected into. The returned \texttt{photon} structure is then handed to the internal \texttt{saveUserDefinePhoton} routine, which performs all of the frame transformations, positioning, and bookkeeping that the user does \emph{not} need to supply. The number of photons to inject into each hydro element, and their positions, are still determined by MCRaT exactly as described in Section \ref{inj}; the custom sampler only governs the energy, direction, and polarization of each injected photon.
+
+\subsubsection{The \texttt{custom\_photon\_sampler} Function}
+The function has the signature
+\begin{quotation}
+	\texttt{struct photon custom\_photon\_sampler(struct hydro\_dataframe *hydro\_data, int hydro\_index, gsl\_rng *rand, FILE *fPtr);}
+\end{quotation}
+and its arguments are:
+\begin{itemize}
+	\item \texttt{hydro\_data} --- a pointer to the \texttt{hydro\_dataframe} structure for the current frame, giving the user access to all fluid quantities (temperature, density, velocity, pressure, magnetic field, coordinates, etc.) of every hydro element.
+	\item \texttt{hydro\_index} --- the index of the hydro element that the photon is being injected into. The user accesses a fluid quantity for this element as, for example, \texttt{(hydro\_data->temp)[hydro\_index]}.
+	\item \texttt{rand} --- the GSL random number generator that the user should use for any Monte Carlo sampling, so that the sampling is consistent with the rest of MCRaT's (thread-safe) random number generation.
+	\item \texttt{fPtr} --- the log file pointer for the calling MPI process, which the user may write diagnostics to.
+\end{itemize}
+
+The function must return a \texttt{struct photon}. The user should always begin by calling the provided helper
+\begin{quotation}
+	\texttt{struct photon custom\_photon = createPhoton();}
+\end{quotation}
+which returns a \texttt{photon} structure with every field initialized to \texttt{NaN} (with the exception of a few internal bookkeeping fields). Initializing every physical field to \texttt{NaN} is deliberate: it allows MCRaT to detect precisely which fields the user has overwritten and to fill in the remaining fields appropriately. The user then overwrites only the fields they wish to control, and returns the structure.
+
+\subsubsection{What the User May Set, and the Contract with MCRaT}
+The user may set \emph{any one} of the following, and MCRaT will consistently compute everything else:
+\begin{itemize}
+	\item \textbf{Energy only.} Setting only the comoving photon energy, \texttt{custom\_photon.comv\_p0}, (or the lab-frame energy, \texttt{custom\_photon.p0}) fixes the photon energy while allowing MCRaT to assign the angular direction of the 4-momentum using its default isotropic-in-the-comoving-frame prescription (Section \ref{inj}). This is the most common use case and is what the example implementation does.
+	\item \textbf{Full 4-momentum.} Setting either the full comoving 4-momentum (\texttt{comv\_p0}, \texttt{comv\_p1}, \texttt{comv\_p2}, \texttt{comv\_p3}) or the full lab-frame 4-momentum (\texttt{p0}, \texttt{p1}, \texttt{p2}, \texttt{p3}) fixes both the energy and direction of the photon.
+	\item \textbf{Polarization.} Setting the Stokes parameters (\texttt{s0}, \texttt{s1}, \texttt{s2}, \texttt{s3}) fixes the initial polarization state of the photon.
+\end{itemize}
+
+MCRaT honours the following contract when processing the returned photon:
+\begin{itemize}
+	\item If the user specifies the 4-momentum in \emph{either} the lab frame or the comoving (fluid) frame, MCRaT automatically computes the 4-momentum in the other frame by performing the appropriate Lorentz boost using the velocity of the fluid element indexed by \texttt{hydro\_index}. The user therefore only needs to supply the 4-momentum in whichever frame is most convenient.
+	\item The 4-momentum must use the normalizations and units expected by MCRaT, namely components of \texttt{p0}, \texttt{p1}, \texttt{p2}, and \texttt{p3} in units of erg/c, consistent with the saved quantities described in Section \ref{algorithm}.
+	\item For the Stokes parameters, MCRaT expects the normalized convention described in Section \ref{pol}, with $\mathtt{s0}=I/I=1$ and $\mathtt{s1}=q=Q/I$, $\mathtt{s2}=u=U/I$, $\mathtt{s3}=v=V/I$. MCRaT additionally validates that the supplied Stokes vector is physical by requiring
+	\[
+	\mathtt{s0}^2 \ge \mathtt{s1}^2 + \mathtt{s2}^2 + \mathtt{s3}^2.
+	\]
+	If the user does not set the Stokes parameters, the photon is injected unpolarized, with $s=(1,0,0,0)$, exactly as for the built-in spectra.
+\end{itemize}
+
+\subsubsection{The \texttt{custom\_spectrum} Helper Function}
+The \texttt{custom\_spectrum.c} file also provides a convenience function
+\begin{quotation}
+	\texttt{double custom\_spectrum(double frequency);}
+\end{quotation}
+that evaluates the \emph{shape} of a user-defined spectrum at a given frequency (in Hz). The example implementation provided in the file returns a Gaussian line profile centred at 6.4 keV, i.e.
+\[
+f(\nu) \propto \exp\!\left(-\frac{(\nu-\nu_0)^2}{2\sigma^2}\right),
+\]
+with the profile set to zero outside $\pm 6\sigma$ of the line centre $\nu_0$. The function returns the \emph{unnormalized} spectral shape (i.e.\ it omits the $1/(\sigma\sqrt{2\pi})$ prefactor), since only relative probabilities are required for sampling. The user is expected to replace the body of this function with their own desired spectral shape and to call it from within \texttt{custom\_photon\_sampler} using an acceptance--rejection Monte Carlo sampling scheme (as is used throughout MCRaT; see Section \ref{inj}) in order to draw a frequency, convert it to an energy via $E=h\nu$, and assign it to the returned photon.
+
+\subsubsection{A Minimal Example}
+The default implementation shipped with MCRaT samples a frequency from a fixed-temperature Blackbody photon-number spectrum by acceptance--rejection sampling and assigns only the comoving energy:
+\begin{quotation}
+	\texttt{custom\_photon.comv\_p0 = fr\_dum * PL\_CONST / C\_LIGHT;}
+\end{quotation}
+where \texttt{fr\_dum} is the sampled frequency in Hz. Because only \texttt{comv\_p0} is set, MCRaT assigns the photon's direction using its default prescription and computes the lab-frame 4-momentum by boosting with the fluid velocity of the element. A user wishing to inject, for instance, the 6.4 keV Gaussian line described above would instead sample \texttt{custom\_spectrum} within the acceptance--rejection loop and set \texttt{comv\_p0} to the corresponding energy.
+
+\subsubsection{Enabling Custom Photon Injection}
+To use the custom photon sampler, the user sets the spectrum type in the first line of the \texttt{[MCRaT Photon Block]} of the \texttt{mc.par} file to the custom option (rather than \texttt{w} for Wien or \texttt{b} for Blackbody). This causes \texttt{photonInjection} to route photon generation through \texttt{custom\_photon\_sampler}, as described above. The minimum and maximum numbers of photons and all other \texttt{mc.par} entries behave exactly as described in Section \ref{mc.par}.
+
+\subsection{Custom Analytic Outflows (\texttt{custom\_outflow.c})}\label{custom_outflow}
+The \texttt{custom\_outflow.c} file allows the user to impose an arbitrary analytic outflow onto the fluid quantities of each hydro frame. This mechanism is identical in spirit to the spherical and cylindrical outflow test problems described in Section \ref{algorithm}: MCRaT reads a hydro frame into memory and then overwrites the fluid quantities (in memory only, never in the hydro file on disk) with the values dictated by the user's analytic prescription. This lets the user explore idealized outflow structures, or impose a known analytic solution for validation, without needing a dedicated hydro simulation.\subsubsection{The \texttt{customOutflowPrep} Function}
+The file provides a single function with the signature
+\begin{quotation}
+	\texttt{void customOutflowPrep(struct hydro\_dataframe *hydro\_data, FILE *fPtr);}
+\end{quotation}
+whose arguments are:
+\begin{itemize}
+	\item \texttt{hydro\_data} --- a pointer to the \texttt{hydro\_dataframe} structure for the current frame. On entry, this structure has already been populated by MCRaT with the coordinates (\texttt{r0}, \texttt{r1}, \texttt{r2}), the spherical radius \texttt{r}, and the cell sizes of every hydro element, as read from the hydro file. The number of hydro elements is available as \texttt{hydro\_data->num\_elements}. On exit, the function is expected to have overwritten the fluid quantities of every element with the user's desired values.
+	\item \texttt{fPtr} --- the log file pointer for the calling MPI process, which the user may write diagnostics to.
+\end{itemize}The function loops over every hydro element, from \texttt{i=0} to \texttt{hydro\_data->num\_elements}, and, for each element, assigns the fluid quantities required by the rest of MCRaT. The fields that the user \emph{must} set for each element are:
+\begin{itemize}
+	\item \texttt{(hydro\_data->gamma)[i]} --- the bulk Lorentz factor of the fluid element.
+	\item \texttt{(hydro\_data->dens)[i]} --- the comoving (fluid-frame) mass density of the element, in g cm$^{-3}$.
+	\item \texttt{(hydro\_data->dens\_lab)[i]} --- the lab-frame mass density of the element. For a flow with bulk Lorentz factor $\Gamma$, this is $\rho\_\mathrm{lab}=\Gamma\rho$, where $\rho$ is the comoving density.
+	\item \texttt{(hydro\_data->pres)[i]} --- the comoving pressure of the element. Consistent with the assumptions described in Section \ref{algorithm}, the pressure is taken to be radiation dominated, so it is related to the comoving temperature $T'$ by $p=\frac{1}{3}aT'^4$, where $a$ is the radiation density constant.
+	\item \texttt{(hydro\_data->temp)[i]} --- the comoving temperature of the element, in Kelvin.
+	\item \textbf{The velocity components.} The user must set the fluid three-velocity, normalized by the speed of light, in the components \texttt{(hydro\_data->v0)[i]}, \texttt{(hydro\_data->v1)[i]}, and (in 2.5D and 3D) \texttt{(hydro\_data->v2)[i]}. The components correspond to the coordinate directions of the chosen \texttt{GEOMETRY} (see the coordinate table in Section \ref{mc.par}). In the 2.5D case, the third velocity component must be explicitly set to zero.
+\end{itemize}
+
+\subsubsection{Consistency Requirements}
+Because MCRaT builds the injected photon spectrum and the scattering physics directly from these fluid quantities, the user must ensure that the prescription is internally consistent:
+\begin{itemize}
+	\item The temperature and pressure must satisfy the radiation-dominated relation $p=\frac{1}{3}aT'^4$, since MCRaT assumes this throughout (Section \ref{algorithm}). The example implementation enforces this automatically by computing the pressure from the chosen comoving temperature.
+	\item The lab-frame density \texttt{dens\_lab} must be consistent with the comoving density \texttt{dens} and the bulk Lorentz factor \texttt{gamma} via $\rho\_\mathrm{lab}=\Gamma\rho$.
+	\item The velocity components, once normalized by $c$, must yield a speed $\beta<1$ that is consistent with the assigned \texttt{gamma}, i.e.\ $\Gamma=1/\sqrt{1-\beta^2}$.
+	\item All velocities are expressed in units of $c$, matching the first assumption MCRaT makes about the hydro simulation (Section \ref{algorithm}).
+\end{itemize}
+
+\subsubsection{Interaction with the Magnetic Field, Non-Thermal Electrons, and Scattering Bias}\label{custom_outflow_nonthermal}
+A critical intricacy arises when a custom outflow is combined with the non-thermal synchrotron/scattering machinery (i.e.\ when \texttt{NONTHERMAL\_E\_DIST} is set to a power-law or broken power-law distribution, and/or \texttt{SCATTERING\_BIAS\_SWITCH} is enabled). For every \emph{other} simulation type, MCRaT automatically derives the quantities needed by the non-thermal physics immediately after a hydro frame is read. For a custom outflow, however, part of this automatic derivation is deliberately \emph{skipped}, and the user's \texttt{customOutflowPrep} function becomes responsible for supplying the skipped quantities. Specifically, after reading (or, for a custom outflow, synthesizing) each frame, MCRaT executes the following logic in its \texttt{getHydroData} routine:
+\begin{quotation}
+	{\small
+		\begin{verbatim}
+			#if NONTHERMAL_E_DIST != OFF && SIMULATION_TYPE != CUSTOM_OUTFLOW
+			calculateElectronDistSubgroupDens(hydro_data->electron_dens_subgroup, fPtr);
+			calculateNonthermalElectronDens(hydro_data, fPtr);
+			#endif
+			#if SCATTERING_BIAS_SWITCH != OFF
+			calculateAverageDimlessTheta(hydro_data, fPtr);
+			#endif
+		\end{verbatim}
+	}
+\end{quotation}
+
+The key observation is that the first conditional block carries the additional guard \texttt{SIMULATION\_TYPE != CUSTOM\_OUTFLOW}, whereas the scattering-bias block does not. The consequences, which the user must account for, are as follows.
+
+\paragraph{Non-thermal electron density is \emph{not} auto-populated.}
+For all non-custom simulation types, \texttt{calculateNonthermalElectronDens} fills the per-cell non-thermal electron number density \texttt{hydro\_data->nonthermal\_dens} by equating a user-specified fraction (\texttt{NONTHERMAL\_CONVERSION\_FACTOR}) of the local magnetic energy density $B^2/8\pi$ to the rest-mass energy density of the non-thermal electron population; it also enforces a baryonic-loading sanity check that aborts the run if \texttt{NONTHERMAL\_CONVERSION\_FACTOR} is so large that the non-thermal electrons would carry more rest-mass energy than the magnetic field energy density. \textbf{For a custom outflow this routine is not called.} Therefore, if the user intends to use the non-thermal synchrotron emission or non-thermal scattering physics with a custom outflow, the user's \texttt{customOutflowPrep} function \emph{must itself} populate \texttt{hydro\_data->nonthermal\_dens[i]} for every hydro element \texttt{i}, in units of cm$^{-3}$ and in the comoving frame. If this field is left unset, it will retain whatever value it held previously (or its allocation default) and the non-thermal physics will produce meaningless results. The user is free to adopt the same prescription that MCRaT uses internally,
+\[
+n_{e,\mathrm{nth}}=f_e\,\frac{B^2/8\pi}{\langle\gamma\rangle m_e c^2},
+\]
+where $f_e$ is the fraction of magnetic energy density placed into the non-thermal electrons and $\langle\gamma\rangle$ is the mean Lorentz factor of the chosen distribution, or any other prescription appropriate to their problem.
+
+\paragraph{The magnetic field must be provided by the user.}
+Because the custom outflow bypasses the automatic non-thermal density calculation, and because that calculation is where MCRaT ordinarily evaluates the magnetic field via \texttt{getMagneticFieldMagnitude}, the user must ensure that whatever magnetic field their physics requires is consistent with how \texttt{B\_FIELD\_CALC} is set:
+\begin{itemize}
+	\item If \texttt{B\_FIELD\_CALC} is set to \texttt{INTERNAL\_E} or \texttt{TOTAL\_E}, MCRaT derives the magnetic field from the fluid internal/total energy density (see Section \ref{synch}). In this case the user only needs to ensure that the fluid quantities they set in \texttt{customOutflowPrep} (in particular \texttt{pres}, \texttt{dens}, and \texttt{gamma}) are physically consistent, since the field is computed from them together with \texttt{EPSILON\_B}.
+	\item If \texttt{B\_FIELD\_CALC} is set to \texttt{SIMULATION}, MCRaT expects the magnetic field components \texttt{hydro\_data->B0[i]}, \texttt{hydro\_data->B1[i]}, and (in 2.5D/3D) \texttt{hydro\_data->B2[i]} to be populated. Since a custom outflow has no underlying magnetohydrodynamic field to read, the user's \texttt{customOutflowPrep} function \emph{must} assign these components explicitly for every element, in Gaussian units, exactly as the PLUTO and FLASH readers do when \texttt{B\_FIELD\_CALC == SIMULATION}. The example \texttt{customOutflowPrep} shipped with MCRaT does \emph{not} set these components; this is a deliberate gap that the user must fill for their own outflow.
+\end{itemize}
+
+\paragraph{The non-thermal subgroup fractions are \emph{not} auto-populated.}
+The companion routine \texttt{calculateElectronDistSubgroupDens} computes the array \texttt{hydro\_data->electron\_dens\_subgroup}, which holds the \emph{fraction} of the non-thermal electron distribution that lies within each of the \texttt{N\_GAMMA} Lorentz-factor subgroups (these fractions are later multiplied by the per-cell \texttt{nonthermal\_dens} to obtain the physical subgroup densities used in the scattering cross sections). This routine depends only on the compile-time distribution parameters (\texttt{POWERLAW\_INDEX}, \texttt{GAMMA\_MIN}, \texttt{GAMMA\_MAX}, etc.) and not on the hydro frame, so it is computed once per frame alongside the density. Because it sits inside the same guarded block, it too is skipped for a custom outflow. A user who requires the non-thermal subgroup densities with a custom outflow must therefore also populate \texttt{hydro\_data->electron\_dens\_subgroup} themselves, most conveniently by calling \texttt{calculateElectronDistSubgroupDens(hydro\_data->electron\_dens\_subgroup, fPtr)} from within \texttt{customOutflowPrep}, which reproduces exactly the behaviour that MCRaT applies for the non-custom simulation types.
+
+\paragraph{The scattering-bias temperature average \emph{is} still computed.}
+By contrast, the volume-averaged dimensionless temperature $\bar{\Theta}$, stored in \texttt{hydro\_data->average\_dimless\_theta} and used in computing the thermal scattering bias (Section \ref{synch}), is computed by \texttt{calculateAverageDimlessTheta} under a guard that depends \emph{only} on \texttt{SCATTERING\_BIAS\_SWITCH} and carries \emph{no} custom-outflow exclusion. It is therefore evaluated normally for a custom outflow, using the temperatures that \texttt{customOutflowPrep} assigns. The user does not need to populate \texttt{average\_dimless\_theta} manually, but must ensure that the comoving temperatures they assign to \texttt{hydro\_data->temp} are physical, since the scattering bias (and hence the sampling of rare, high-energy scatterings) depends on them through $\bar{\Theta}$.
+
+\paragraph{Summary of the user's additional responsibilities for a custom outflow.}
+When using a custom outflow \emph{together with} the non-thermal and/or scattering-bias machinery, the user's \texttt{customOutflowPrep} function should, in addition to the standard fluid quantities listed above, set the following for every hydro element:
+\begin{itemize}
+	\item \texttt{hydro\_data->nonthermal\_dens[i]} --- the comoving non-thermal electron number density (never auto-populated for a custom outflow);
+	\item \texttt{hydro\_data->B0[i]}, \texttt{B1[i]}, and (in 2.5D/3D) \texttt{B2[i]} --- the magnetic field components, \emph{only} if \texttt{B\_FIELD\_CALC == SIMULATION};
+	\item \texttt{hydro\_data->electron\_dens\_subgroup} --- the per-subgroup distribution fractions, if the non-thermal scattering physics is used (most easily by calling \texttt{calculateElectronDistSubgroupDens} from within \texttt{customOutflowPrep}).
+\end{itemize}
+The quantity \texttt{hydro\_data->average\_dimless\_theta} is handled automatically and should \emph{not} be set by the user. Note also that, because \texttt{calculateNonthermalElectronDens} is skipped, the baryonic-loading sanity check on \texttt{NONTHERMAL\_CONVERSION\_FACTOR} that it performs is likewise skipped for a custom outflow; the user is responsible for ensuring that their chosen non-thermal electron density is physically sensible relative to the local magnetic energy density.
+
+\subsubsection{The Example Implementation}
+The implementation shipped with MCRaT provides a template analytic outflow and should be adapted by the user to their problem of interest. It defines a radial outflow characterized by a small number of parameters: an outflow slope parameter, a fixed comoving temperature corresponding to 3 keV, a mass-outflow normalization, an initial optical depth $\tau\_0$, and a base radius $r\_0$. From these it constructs, for each element, a radius-dependent velocity profile, a radius-dependent density profile, the corresponding bulk Lorentz factor $\Gamma=1/\sqrt{1-\beta^2}$, the radiation-dominated pressure from the fixed temperature, and the lab-frame density.\begin{quotation}
+	\noindent \emph{Note on the slope parameter.} In the example template, the parameter named \texttt{beta} in the source is the \emph{density/velocity profile exponent}, and is \emph{not} the relativistic $\beta=v/c$. The relativistic velocity is computed separately from the velocity profile. A user adapting this template should take care not to conflate the two.
+\end{quotation}The user is strongly encouraged to use this example as a starting point, replacing the analytic profiles with those appropriate to their science case, while retaining the overall structure of looping over every hydro element and assigning each of the required fluid quantities listed above.\subsubsection{Enabling the Custom Outflow}
+To use a custom outflow, the user sets the \texttt{SIMULATION\_TYPE} parameter in the \texttt{mcrat\_input.h} file to \texttt{CUSTOM\_OUTFLOW} and recompiles the code. When this simulation type is selected, MCRaT calls \texttt{customOutflowPrep} immediately after reading each hydro frame into memory, so that the user's analytic fluid quantities replace those read from the hydro file before any photon injection, propagation, or scattering takes place. Because the geometry and coordinates of the underlying hydro frame are preserved, any hydro simulation file (for example, the same files used for the spherical or cylindrical test outflows) may be used as the coordinate scaffold onto which the custom outflow is imposed. All other aspects of running MCRaT --- the \texttt{mc.par} file, the parallelism, the output files, and the post-processing --- behave exactly as described in the preceding sections.
+
 
 \bibliography{references}
 \end{document}

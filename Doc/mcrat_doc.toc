@@ -1,27 +1,46 @@
-\contentsline {section}{\numberline {1}Introduction}{3}{section.1}
-\contentsline {section}{\numberline {2}Getting Started}{3}{section.2}
-\contentsline {subsection}{\numberline {2.1}Required Libraries}{3}{subsection.2.1}
-\contentsline {subsection}{\numberline {2.2}Downloading and Compiling MCRaT}{4}{subsection.2.2}
-\contentsline {subsection}{\numberline {2.3}The mcrat\_input.h file}{4}{subsection.2.3}
-\contentsline {subsection}{\numberline {2.4}The MCRaT Parameter File}{6}{subsection.2.4}
-\contentsline {subsection}{\numberline {2.5}Understanding MCRaT's Parallelism}{8}{subsection.2.5}
-\contentsline {subsection}{\numberline {2.6}Running MCRaT}{9}{subsection.2.6}
-\contentsline {subsection}{\numberline {2.7}MCRaT Output Files}{9}{subsection.2.7}
-\contentsline {subsection}{\numberline {2.8}Restarting MCRaT}{10}{subsection.2.8}
-\contentsline {subsubsection}{\numberline {2.8.1}Using The mcrat\_msp.sh Shell Script}{11}{subsubsection.2.8.1}
-\contentsline {subsection}{\numberline {2.9}Using Hybrid-Parellelization}{11}{subsection.2.9}
-\contentsline {subsection}{\numberline {2.10}Post-Processing MCRaT Data}{12}{subsection.2.10}
-\contentsline {section}{\numberline {3}The MCRaT Code}{12}{section.3}
-\contentsline {subsection}{\numberline {3.1}Assumptions about the Hydro Simulation}{13}{subsection.3.1}
-\contentsline {subsection}{\numberline {3.2}Algorithm}{13}{subsection.3.2}
-\contentsline {subsection}{\numberline {3.3}Saved Quantities}{17}{subsection.3.3}
-\contentsline {subsection}{\numberline {3.4}Post-processing Algorithm}{19}{subsection.3.4}
-\contentsline {section}{\numberline {4}Physics Included in MCRaT}{20}{section.4}
-\contentsline {subsection}{\numberline {4.1}Injecting Photons}{20}{subsection.4.1}
-\contentsline {subsection}{\numberline {4.2}Scattering Photons}{21}{subsection.4.2}
-\contentsline {subsection}{\numberline {4.3}Polarization}{23}{subsection.4.3}
-\contentsline {subsection}{\numberline {4.4}Cyclo-synchrotron Radiation}{28}{subsection.4.4}
-\contentsline {subsubsection}{\numberline {4.4.1}Emitting Cyclo-synchrotron (CS) Photons}{28}{subsubsection.4.4.1}
-\contentsline {subsubsection}{\numberline {4.4.2}Calculating B}{29}{subsubsection.4.4.2}
-\contentsline {subsubsection}{\numberline {4.4.3}Rebinning The Scattered CS Photons}{29}{subsubsection.4.4.3}
-\contentsline {subsubsection}{\numberline {4.4.4}Absorption of CS Photons}{30}{subsubsection.4.4.4}
+\contentsline {section}{\numberline {1}Introduction}{3}{section.1}%
+\contentsline {section}{\numberline {2}Getting Started}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Required Libraries}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Downloading and Compiling MCRaT}{4}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}The mcrat\_input.h file}{4}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}The MCRaT Parameter File}{6}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}Understanding MCRaT's Parallelism}{8}{subsection.2.5}%
+\contentsline {subsection}{\numberline {2.6}Running MCRaT}{9}{subsection.2.6}%
+\contentsline {subsection}{\numberline {2.7}MCRaT Output Files}{9}{subsection.2.7}%
+\contentsline {subsection}{\numberline {2.8}Restarting MCRaT}{10}{subsection.2.8}%
+\contentsline {subsubsection}{\numberline {2.8.1}Using The mcrat\_msp.sh Shell Script}{11}{subsubsection.2.8.1}%
+\contentsline {subsection}{\numberline {2.9}Using Hybrid-Parellelization}{11}{subsection.2.9}%
+\contentsline {subsection}{\numberline {2.10}Post-Processing MCRaT Data}{12}{subsection.2.10}%
+\contentsline {section}{\numberline {3}The MCRaT Code}{12}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Assumptions about the Hydro Simulation}{13}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Algorithm}{13}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Saved Quantities}{17}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Post-processing Algorithm}{19}{subsection.3.4}%
+\contentsline {section}{\numberline {4}Physics Included in MCRaT}{20}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Injecting Photons}{20}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Scattering Photons}{21}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Polarization}{23}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Cyclo-synchrotron Radiation}{28}{subsection.4.4}%
+\contentsline {subsubsection}{\numberline {4.4.1}Emitting Cyclo-synchrotron (CS) Photons}{28}{subsubsection.4.4.1}%
+\contentsline {subsubsection}{\numberline {4.4.2}Calculating B}{29}{subsubsection.4.4.2}%
+\contentsline {subsubsection}{\numberline {4.4.3}Rebinning The Scattered CS Photons}{29}{subsubsection.4.4.3}%
+\contentsline {subsubsection}{\numberline {4.4.4}Absorption of CS Photons}{30}{subsubsection.4.4.4}%
+\contentsline {section}{\numberline {5}User-Defined Injection and Outflows}{31}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Custom Photon Injection (\texttt {custom\_spectrum.c})}{31}{subsection.5.1}%
+\contentsline {subsubsection}{\numberline {5.1.1}How MCRaT Uses These Functions}{31}{subsubsection.5.1.1}%
+\contentsline {subsubsection}{\numberline {5.1.2}The \texttt {custom\_photon\_sampler} Function}{31}{subsubsection.5.1.2}%
+\contentsline {subsubsection}{\numberline {5.1.3}What the User May Set, and the Contract with MCRaT}{32}{subsubsection.5.1.3}%
+\contentsline {subsubsection}{\numberline {5.1.4}The \texttt {custom\_spectrum} Helper Function}{33}{subsubsection.5.1.4}%
+\contentsline {subsubsection}{\numberline {5.1.5}A Minimal Example}{33}{subsubsection.5.1.5}%
+\contentsline {subsubsection}{\numberline {5.1.6}Enabling Custom Photon Injection}{33}{subsubsection.5.1.6}%
+\contentsline {subsection}{\numberline {5.2}Custom Analytic Outflows (\texttt {custom\_outflow.c})}{33}{subsection.5.2}%
+\contentsline {subsubsection}{\numberline {5.2.1}The \texttt {customOutflowPrep} Function}{34}{subsubsection.5.2.1}%
+\contentsline {subsubsection}{\numberline {5.2.2}Consistency Requirements}{34}{subsubsection.5.2.2}%
+\contentsline {subsubsection}{\numberline {5.2.3}Interaction with the Magnetic Field, Non-Thermal Electrons, and Scattering Bias}{35}{subsubsection.5.2.3}%
+\contentsline {paragraph}{Non-thermal electron density is \emph {not} auto-populated.}{35}{section*.11}%
+\contentsline {paragraph}{The magnetic field must be provided by the user.}{36}{section*.12}%
+\contentsline {paragraph}{The non-thermal subgroup fractions are \emph {not} auto-populated.}{36}{section*.13}%
+\contentsline {paragraph}{The scattering-bias temperature average \emph {is} still computed.}{36}{section*.14}%
+\contentsline {paragraph}{Summary of the user's additional responsibilities for a custom outflow.}{37}{section*.15}%
+\contentsline {subsubsection}{\numberline {5.2.4}The Example Implementation}{37}{subsubsection.5.2.4}%
+\contentsline {subsubsection}{\numberline {5.2.5}Enabling the Custom Outflow}{38}{subsubsection.5.2.5}%
