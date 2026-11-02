@@ -56,7 +56,7 @@
 //define the types of things that we can assume for the thermal synchrotron emission and how we calculate the B field
 #define INTERNAL_E  0
 #define TOTAL_E     1
-#define SIMULATION  2 //need to add this to statement below to take care of defaults
+#define SIMULATION  2 //read B directly from the hydro simulation (requires HYDRO_B_SCALE, defined below)
 
 //define photon types
 #define INJECTED_PHOTON 'i'
@@ -220,7 +220,7 @@ struct photon
         double scattering_opacity[1+N_GAMMA]; //the scattering opacities that are calculated for thermal + non-thermal electrons with the nonthermal electron subgroups
         double scattering_bias[1+N_GAMMA];
     #endif
-    //save the total calculated scattering optical depth, if we only have thermal electrons this optical depth is that calcualted value otherwise it includes thermal-non-thermal electrons and the biases
+    //save the total calculated scattering opacity, if we only have thermal electrons this opacity is that calcualted value otherwise it includes thermal & non-thermal electrons and the biases
     double total_scattering_opacity;
     #if SYNCHROTRON_SWITCH == ON
         double absorption_opacity; //this holds the opacity for synchrotron absorption (multiply by path length to get optical depth when modifying the weight correspondent with synchrotron self absorption
@@ -509,43 +509,24 @@ struct hydro_dataframe
 
     //place checks on the users powerlaw input parameters
     #if NONTHERMAL_E_DIST == POWERLAW
-//        #if POWERLAW_INDEX < 1
-//            #error The POWERLAW_INDEX needs to be greater than 1.
-//        #endif
-
         static_assert(POWERLAW_INDEX > 1, "Error: The POWERLAW_INDEX needs to be greater than 1");
 
     #endif
 
     #if NONTHERMAL_E_DIST == POWERLAW || NONTHERMAL_E_DIST == BROKENPOWERLAW
-//        #if GAMMA_MIN > GAMMA_MAX
-//            #error The value of GAMMA_MIN needs to be less than the value of GAMMA_MAX.
-//        #endif
             static_assert(GAMMA_MAX > GAMMA_MIN, "Error: The value of GAMMA_MIN needs to be less than the value of GAMMA_MAX");
-//        #if GAMMA_MIN < 1
-//            #error GAMMA_MIN needs to be greater than 1.
-//        #endif
+
             static_assert(GAMMA_MIN > 1, "Error: GAMMA_MIN needs to be greater than 1");
-//        #if GAMMA_MAX < 1
-//            #error GAMMA_MAX needs to be greater than 1.
-//        #endif
+
             static_assert(GAMMA_MAX > 1, "Error: GAMMA_MAX needs to be greater than 1");
     #endif
 
     #if NONTHERMAL_E_DIST == BROKENPOWERLAW
-//        #if GAMMA_BREAK < GAMMA_MIN || GAMMA_BREAK > GAMMA_MAX
-//            #error The value of GAMMA_BREAK needs to be between GAMMA_MIN and GAMMA_MAX
-//        #endif
             static_assert(GAMMA_BREAK > GAMMA_MIN, "Error: GAMMA_BREAK needs to be greater than GAMMA_MIN");
             static_assert(GAMMA_BREAK < GAMMA_MAX, "Error: GAMMA_BREAK needs to be less than GAMMA_MAX");
 
-//        #if POWERLAW_INDEX_1 < 0
-//            #error The POWERLAW_INDEX_1 value needs to be a positive number
-//        #endif
             static_assert(POWERLAW_INDEX_1 > 0, "Error: POWERLAW_INDEX_1 value needs to be a positive number");
-//        #if POWERLAW_INDEX_2 < 0
-//            #error The POWERLAW_INDEX_2 value needs to be a positive number
-//        #endif
+
             static_assert(POWERLAW_INDEX_2 > 0, "Error: POWERLAW_INDEX_2 value needs to be a positive number");
     #endif
 
