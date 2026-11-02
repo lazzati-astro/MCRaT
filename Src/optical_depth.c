@@ -62,7 +62,6 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
     //save values
     thermal_n_dens_lab = (hydro_data->dens_lab)[ph_block_index]/M_P;
     
-    //TODO: extend this to the non-thermal electron dist
     #if NONTHERMAL_E_DIST == OFF
         getCrossSection( ph->comv_p0,  (hydro_data->temp)[ph_block_index], &norm_cross_section,  rand, fPtr);
         #if SCATTERING_BIAS_SWITCH == OFF
@@ -162,8 +161,10 @@ void calculateOpticalDepth(struct photon *ph, struct hydro_dataframe *hydro_data
      * and with the same variable as for the scattering opacity, keeping all
      * frame-correction arithmetic in one location.
      *
-     * Only meaningful for SYNCH_PHOTON packets; for all other types
-     * abs_optical_depth is set to 0.0 so applyabsorption is a no-op.
+     * Computed for ALL photon types (the former SYNCH_PHOTON-only type
+     * check in calculateOpticalDepthSSA is disabled): any packet crossing
+     * a cell with B>0 and non-thermal electrons accrues SSA weight loss.
+     * The result is stored in ph->absorption_opacity for applyAbsorption.
      */
     #if SYNCHROTRON_SWITCH == ON
         calculateOpticalDepthSSA(ph, hydro_data, fluid_factor, fPtr);
@@ -227,7 +228,7 @@ double calculateThermalScatteringBias(double alpha_parameter, double average_dim
 {
     double result=0, cell_dimless_theta=calcDimlessTheta(cell_temp);
     result=fmax(1.0, alpha_parameter*cell_dimless_theta*cell_dimless_theta/(average_dimless_theta*average_dimless_theta*tau_max));
-    return result; //set to 1 for testing/may be the best value for us
+    return result;
 }
 
 double calculateNonthermalScatteringBias(double initial_scatt_bias, double initial_tau, double nonthermal_tau)
