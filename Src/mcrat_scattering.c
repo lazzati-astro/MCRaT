@@ -386,7 +386,7 @@ int singleScatter(double *el_comov, double *ph_comov, double *s, gsl_rng * rand,
     double *negative_el_v=malloc(3*sizeof(double));
     double *ph_p_prime=malloc(4*sizeof(double));//use this to keep track of how the ph 4 momentum changes with each rotation
     double *el_p_prime=malloc(4*sizeof(double));
-     */ //not needed if we are trying to align the memory for these for address contingency with new amd architecture optimization
+     */ // Scratch 4-vectors are stack-allocated with SIMD_ALIGN (was heap malloc).
     double z_axis_electron_rest_frame[3] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
     double el_v[3] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
     double negative_el_v[3] SIMD_ALIGN; //this should be 3, but we pad it for memory alignment
