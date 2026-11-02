@@ -1204,11 +1204,11 @@ double synchSampleGammaEmission(gsl_rng *rand)
  *   POWERLAW       -> RAIKOU Eq. C2
  *   BROKENPOWERLAW -> RAIKOU Eq. C4
  *
- * The former DBL_MAX/2 deep-SSA guard has been removed: evalGa_p continues
- * G_a(x) analytically below the table (F ~ x^{1/3}), so alpha grows smoothly
- * as nu_f decreases and tau = alpha * R passes through unity at the correct
- * physical turnover frequency (~1e9 Hz for the RAIKOU Fig. 10 setup) rather
- * than being hard-cut at the table boundary.
+ * The low-x behaviour relies on evalGa_p continuing G_a(x) analytically
+  * below the table (F ~ x^{1/3}), so alpha grows smoothly as nu_f
+  * decreases and tau = alpha * R passes through unity at the correct
+  * physical turnover frequency (~1e9 Hz for the RAIKOU Fig. 10 setup),
+  * rather than being hard-cut at the table boundary.
  */
 double synchAlphaNu(double nu_f,
                     double B,
@@ -1383,7 +1383,7 @@ void applyAbsorption(struct photon *ph, double dl)
  * ------------------------
  * Compute the frame-corrected SSA absorption coefficient
  *
- *   ph->abs_optical_depth = gamma * fluid_factor * alpha_{nu_f}^(f)   [cm^{-1}]
+ *   ph->absorption_opacity = gamma * fluid_factor * alpha_{nu_f}^(f)   [cm^{-1}]
  *
  * where fluid_factor = (1 - beta * cos(theta)) = nu_f / nu_z is the
  * Doppler frame correction already computed in calculateOpticalDepth and
@@ -1391,13 +1391,13 @@ void applyAbsorption(struct photon *ph, double dl)
  * keeps all frame-correction arithmetic in one place (calculateOpticalDepth)
  * so that applyabsorption can simply compute
  *
- *   w_new = w_old * exp(-ph->abs_optical_depth * dl)
+ *   w_new = w_old * exp(-ph->absorption_opacity * dl)
  *
  * with no additional factors.  [RAIKOU Eq. 31, 40]
  *
  * Parameters
  * ----------
- * ph           : photon packet (ph->abs_optical_depth modified in-place)
+ * ph           : photon packet (ph->absorption_opacity modified in-place)
  * hydro_data   : hydro frame (provides B and nonthermal_dens)
  * fluid_factor : (1 - beta*cos(theta)), computed in calculateOpticalDepth
  * fPtr         : log file
@@ -1522,8 +1522,14 @@ double sampleSynchFrequency(int k, double B_cell, gsl_rng *rand)
  *
  * Steps
  * -----
- * (1) Sample isotropic comoving direction (theta, phi); assemble comoving
- *     4-momentum p^mu_comv = (h nu/c) * (1, sin(theta)cos(phi),
+ * (1) Sample comoving direction (theta, phi):
+        phi uniform in [0,2pi);
+ *     mu = cos(theta) drawn from f(mu) ~ 1 + beta*mu (mild anisotropy,
+ *     NOT isotropic). See the known-issue note in the documentation:
+ *     the sampled direction is currently expressed about the Cartesian
+ *     z-axis, not about the local fluid-velocity direction.;
+ *     assemble comoving 4-momentum as
+ *     p^mu_comv = (h nu/c) * (1, sin(theta)cos(phi),
  *                                           sin(theta)sin(phi), cos(theta)).
  * (2) Lorentz boost to lab frame: negate the fluid 3-velocity and call
  *     lorentzBoost with flag 'p' (4-momentum transform).
