@@ -122,8 +122,11 @@ void printPhotons(struct photonList *photon_list, int num_ph_abs, int num_cyclos
 {
     //function to save the photons' positions and 4 momentum
     
-     //now using hdf5 file for each process w/ group structure /(weights or Hydro File #)/(p0,p1,p2,p3, r0, r1, r2, s0, s1, s2, or num_scatt)
-    
+    // HDF5 file per process, grouped by frame. Datasets written (subject to
+    // COMV_SWITCH / STOKES_SWITCH / SAVE_TYPE):
+    //   P0..P3, R0..R2, NS (num_scatt), PW (weight), and global weight;
+    //   COMV_P0..P3 if COMV_SWITCH==ON; S0..S3 if STOKES_SWITCH==ON;
+    //   PT (photon type) if SAVE_TYPE==ON.
      
      //open the file if it exists and see if the group exists for the given frame, if frame doesnt exist then write datasets for all photons as extendable
      //if the frame does exist then read information from the prewritten data and then add new data to it as extended chunk
@@ -1090,7 +1093,6 @@ int readCheckpoint(char dir[STR_BUFFER], struct photonList *photon_list, int *fr
         {
             fread(scatt_framestart, sizeof(int), 1, fPtr);
             
-            //if ((riken_switch==1) && (strcmp(DIM_SWITCH, dim_3d_str)==0) && ((*scatt_framestart)>=3000))
             #if SIM_SWITCH == RIKEN && DIMENSIONS == THREE
             if ((*scatt_framestart)>=3000)
             {
@@ -1860,7 +1862,8 @@ void freeHydroDataFrame(struct hydro_dataframe *hydro_data)
 {
     freeSpatialGrid(hydro_data->grid);
     
-    //free pointers in hydro dataframe to NULL for debugging
+    //free the hydro dataframe arrays, then NULL the pointers to guard against
+    //double-free / use-after-free on the next frame load
     free(hydro_data->r0);
     free(hydro_data->r1);
     free(hydro_data->r2);
