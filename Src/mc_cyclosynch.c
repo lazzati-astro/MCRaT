@@ -611,6 +611,7 @@ static int create_rebinned_photons(struct photonList *photon_list, const struct 
             new_ph->p3 = avg_energy * cos(avg_theta_dir * DEG_TO_RAD);
             
             /* Initialize comoving frame momenta to -1, seemed to cause infinities with biasing  */
+            //sentinel: comoving 4-momentum invalid after rebin; recomputed by findContainingHydroCell before output
             new_ph->comv_p0 = -1;
             new_ph->comv_p1 = -1;
             new_ph->comv_p2 = -1;
@@ -810,7 +811,7 @@ int rebinCyclosynchCompPhotons(struct photonList *photon_list,
     return ret;
 }
 
-
+// DEPRECATED: superseded by rebinCyclosynchCompPhotonsByType; retained for reference only, not called.
 int rebinCyclosynchCompPhotons_old(struct photonList *photon_list, int *num_cyclosynch_ph_emit, int *scatt_cyclosynch_num_ph, int max_photons, double thread_theta_min, double thread_theta_max , gsl_rng * rand, FILE *fPtr)
 {
     int i=0, j=0, k=0, count=0, count_z=0, count_c_ph=0, end_count=(*scatt_cyclosynch_num_ph), idx=0, num_thread=1;
