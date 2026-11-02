@@ -2029,8 +2029,9 @@ void logspace(double start, double stop, int num, double *array)
  *
  * Returns
  * -------
- * Number of packets killed (set to NULL_PHOTON).  Returns 0 if there
- * are no SYNCH_PHOTON packets or if no packet falls below w_thresh.
+ * Number of packets of the given photon_type killed (set to NULL_PHOTON).
+ * Returns 0 if there are no live packets of that type, or if none falls
+ * below w_thresh.
  */
 int applyRussianRouletteByType(struct photonList *photon_list,
                          double             epsilon_rr,
@@ -2052,14 +2053,14 @@ int applyRussianRouletteByType(struct photonList *photon_list,
         if (photon_list == NULL || photon_list->num_photons == 0)
             return 0;
 
-        /* ── Step 1: collect weights of all live SYNCH_PHOTON packets ───────────
+        /* ── Step 1: collect weights of all live photon_type packets ───────────
          *
          * Each thread fills its own local sub-array to avoid any shared-write
          * contention.  After the parallel region the sub-arrays are merged
          * serially into a single flat array for sorting.
          *
          * We allocate one sub-array of size list_capacity per thread — this
-         * is a safe upper bound on the number of SYNCH_PHOTONs any thread
+         * is a safe upper bound on the number of photon_type any thread
          * could encounter.  The actual count per thread is recorded in
          * thread_n_synch[t].
          */
