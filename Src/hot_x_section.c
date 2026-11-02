@@ -514,7 +514,7 @@ double nonThermalCrossSectionIntegrand(double x[], size_t dim, void * p)
         #elif NONTHERMAL_E_DIST == BROKENPOWERLAW
             result = singleElectronBrokenPowerLaw(gamma, POWERLAW_INDEX_1, POWERLAW_INDEX_2, GAMMA_MIN, GAMMA_MAX, GAMMA_BREAK);
         #else
-            #error Unnknown nonthermal electron distribution.
+            #error Unknown nonthermal electron distribution.
         #endif
     #endif
 

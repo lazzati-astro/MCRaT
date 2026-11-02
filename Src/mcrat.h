@@ -494,7 +494,7 @@ struct hydro_dataframe
         #endif
 
     #else
-        #error Unnknown nonthermal electron distribution.
+        #error Unknown nonthermal electron distribution.
     #endif
 
     #if NONTHERMAL_E_DIST == POWERLAW || NONTHERMAL_E_DIST == BROKENPOWERLAW
