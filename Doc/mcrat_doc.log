@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  2 NOV 2026 17:02
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  5 NOV 2026 14:37
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -27,10 +27,10 @@ File: size12.clo 2024/06/29 v1.4n Standard LaTeX file (size option)
 Package: inputenc 2024/02/08 v1.3d Input encoding file
 \inpenc@prehook=\toks17
 \inpenc@posthook=\toks18
-
-(/usr/local/texlive/2025/texmf-dist/tex/latex/base/latin1.def
-File: latin1.def 2024/02/08 v1.3d Input encoding file
-))
+)
+(/usr/local/texlive/2025/texmf-dist/tex/latex/base/fontenc.sty
+Package: fontenc 2021/04/29 v2.0v Standard LaTeX package
+)
 (/usr/local/texlive/2025/texmf-dist/tex/latex/amsmath/amsmath.sty
 Package: amsmath 2024/11/05 v2.17t AMS math features
 \@mathmargin=\skip51
@@ -425,50 +425,148 @@ Package: soul-ori 2023-06-14 v3.1 letterspacing/underlining (mf)
 (/usr/local/texlive/2025/texmf-dist/tex/generic/etexcmds/etexcmds.sty
 Package: etexcmds 2019/12/15 v1.7 Avoid name clashes with e-TeX commands (HO)
 ))
+(/usr/local/texlive/2025/texmf-dist/tex/latex/booktabs/booktabs.sty
+Package: booktabs 2020/01/12 v1.61803398 Publication quality tables
+\heavyrulewidth=\dimen256
+\lightrulewidth=\dimen257
+\cmidrulewidth=\dimen258
+\belowrulesep=\dimen259
+\belowbottomsep=\dimen260
+\aboverulesep=\dimen261
+\abovetopsep=\dimen262
+\cmidrulesep=\dimen263
+\cmidrulekern=\dimen264
+\defaultaddspace=\dimen265
+\@cmidla=\count316
+\@cmidlb=\count317
+\@aboverulesep=\dimen266
+\@belowrulesep=\dimen267
+\@thisruleclass=\count318
+\@lastruleclass=\count319
+\@thisrulewidth=\dimen268
+)
+(/usr/local/texlive/2025/texmf-dist/tex/latex/enumitem/enumitem.sty
+Package: enumitem 2025/02/06 v3.11 Customized lists
+\labelindent=\skip65
+\enit@outerparindent=\dimen269
+\enit@toks=\toks34
+\enit@inbox=\box56
+\enit@count@id=\count320
+\enitdp@description=\count321
+)
+(/usr/local/texlive/2025/texmf-dist/tex/latex/microtype/microtype.sty
+Package: microtype 2025/02/11 v3.2a Micro-typographical refinements (RS)
+\MT@toks=\toks35
+\MT@tempbox=\box57
+\MT@count=\count322
+LaTeX Info: Redefining \noprotrusionifhmode on input line 1087.
+LaTeX Info: Redefining \leftprotrusion on input line 1088.
+\MT@prot@toks=\toks36
+LaTeX Info: Redefining \rightprotrusion on input line 1107.
+LaTeX Info: Redefining \textls on input line 1449.
+\MT@outer@kern=\dimen270
+LaTeX Info: Redefining \microtypecontext on input line 2053.
+LaTeX Info: Redefining \textmicrotypecontext on input line 2070.
+\MT@listname@count=\count323
+
+(/usr/local/texlive/2025/texmf-dist/tex/latex/microtype/microtype-pdftex.def
+File: microtype-pdftex.def 2025/02/11 v3.2a Definitions specific to pdftex (RS)
+
+LaTeX Info: Redefining \lsstyle on input line 944.
+LaTeX Info: Redefining \lslig on input line 944.
+\MT@outer@space=\skip66
+)
+Package microtype Info: Loading configuration file microtype.cfg.
+
+(/usr/local/texlive/2025/texmf-dist/tex/latex/microtype/microtype.cfg
+File: microtype.cfg 2025/02/11 v3.2a microtype main configuration file (RS)
+)
+LaTeX Info: Redefining \microtypesetup on input line 3065.
+)
+(/usr/local/texlive/2025/texmf-dist/tex/latex/framed/framed.sty
+Package: framed 2011/10/22 v 0.96: framed or shaded text with page breaks
+\OuterFrameSep=\skip67
+\fb@frw=\dimen271
+\fb@frh=\dimen272
+\FrameRule=\dimen273
+\FrameSep=\dimen274
+)
+(/usr/local/texlive/2025/texmf-dist/tex/latex/tools/longtable.sty
+Package: longtable 2024-10-27 v4.22 Multi-page Table package (DPC)
+\LTleft=\skip68
+\LTright=\skip69
+\LTpre=\skip70
+\LTpost=\skip71
+\LTchunksize=\count324
+\LTcapwidth=\dimen275
+\LT@head=\box58
+\LT@firsthead=\box59
+\LT@foot=\box60
+\LT@lastfoot=\box61
+\LT@gbox=\box62
+\LT@cols=\count325
+\LT@rows=\count326
+\c@LT@tables=\count327
+\c@LT@chunks=\count328
+\LT@p@ftn=\toks37
+)
+(/usr/local/texlive/2025/texmf-dist/tex/latex/hyphenat/hyphenat.sty
+Package: hyphenat 2009/09/02 v2.3c hyphenation utilities
+\langwohyphens=\language90
+LaTeX Info: Redefining \_ on input line 43.
+)
 (/usr/local/texlive/2025/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 File: l3backend-pdftex.def 2024-05-08 L3 backend support: PDF output (pdfTeX)
-\l__color_backend_stack_int=\count316
-\l__pdf_internal_box=\box56
+\l__color_backend_stack_int=\count329
+\l__pdf_internal_box=\box63
 )
 (./mcrat_doc.aux)
 \openout1 = `mcrat_doc.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 20.
-LaTeX Font Info:    ... okay on input line 20.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 62.
+LaTeX Font Info:    ... okay on input line 62.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 62.
+LaTeX Font Info:    ... okay on input line 62.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 62.
+LaTeX Font Info:    ... okay on input line 62.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 62.
+LaTeX Font Info:    ... okay on input line 62.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 62.
+LaTeX Font Info:    ... okay on input line 62.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 62.
+LaTeX Font Info:    ... okay on input line 62.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 62.
+LaTeX Font Info:    ... okay on input line 62.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 62.
+LaTeX Font Info:    ... okay on input line 62.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 62.
+LaTeX Font Info:    ... okay on input line 62.
 
 (/usr/local/texlive/2025/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count317
-\scratchdimen=\dimen256
-\scratchbox=\box57
-\nofMPsegments=\count318
-\nofMParguments=\count319
-\everyMPshowfont=\toks34
-\MPscratchCnt=\count320
-\MPscratchDim=\dimen257
-\MPnumerator=\count321
-\makeMPintoPDFobject=\count322
-\everyMPtoPDFconversion=\toks35
+\scratchcounter=\count330
+\scratchdimen=\dimen276
+\scratchbox=\box64
+\nofMPsegments=\count331
+\nofMParguments=\count332
+\everyMPshowfont=\toks38
+\MPscratchCnt=\count333
+\MPscratchDim=\dimen277
+\MPnumerator=\count334
+\makeMPintoPDFobject=\count335
+\everyMPtoPDFconversion=\toks39
 ) (/usr/local/texlive/2025/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
+
+(/usr/local/texlive/2025/texmf-dist/tex/latex/grfext/grfext.sty
+Package: grfext 2019/12/03 v1.3 Manage graphics extensions (HO)
+)
 Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
 85.
+Package grfext Info: Graphics extension search list:
+(grfext)             [.pdf,.png,.jpg,.mps,.jpeg,.jbig2,.jb2,.PDF,.PNG,.JPG,.JPE
+G,.JBIG2,.JB2,.eps]
+(grfext)             \AppendGraphicsExtensions on input line 504.
 
 (/usr/local/texlive/2025/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
@@ -508,101 +606,182 @@ e
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-Package hyperref Info: Link coloring OFF on input line 20.
+Package hyperref Info: Link coloring OFF on input line 62.
 (./mcrat_doc.out) (./mcrat_doc.out)
 \@outlinefile=\write3
 \openout3 = `mcrat_doc.out'.
 
 Package caption Info: Begin \AtBeginDocument code.
 Package caption Info: subfig package v1.3 is loaded.
+Package caption Info: longtable package is loaded.
+
+(/usr/local/texlive/2025/texmf-dist/tex/latex/caption/ltcaption.sty
+Package: ltcaption 2021/01/08 v1.4c longtable captions (AR)
+)
 Package caption Info: End \AtBeginDocument code.
-<MCRaT_Logo.jpg, id=168, 1559.8275pt x 768.8725pt>
+LaTeX Info: Redefining \microtypecontext on input line 62.
+Package microtype Info: Applying patch `item' on input line 62.
+Package microtype Info: Applying patch `toc' on input line 62.
+Package microtype Info: Applying patch `eqnum' on input line 62.
+Package microtype Info: Applying patch `footnote' on input line 62.
+Package microtype Info: Applying patch `verbatim' on input line 62.
+LaTeX Info: Redefining \microtypesetup on input line 62.
+Package microtype Info: Generating PDF output.
+Package microtype Info: Character protrusion enabled (level 2).
+Package microtype Info: Using default protrusion set `alltext'.
+Package microtype Info: Automatic font expansion enabled (level 2),
+(microtype)             stretch: 20, shrink: 20, step: 1, non-selected.
+Package microtype Info: Using default expansion set `alltext-nott'.
+LaTeX Info: Redefining \showhyphens on input line 62.
+Package microtype Info: No adjustment of tracking.
+Package microtype Info: No adjustment of interword spacing.
+Package microtype Info: No adjustment of character kerning.
+
+(/usr/local/texlive/2025/texmf-dist/tex/latex/microtype/mt-cmr.cfg
+File: mt-cmr.cfg 2013/05/19 v2.2 microtype config. file: Computer Modern Roman 
+(RS)
+)
+<MCRaT_Logo.jpg, id=229, 1559.8275pt x 768.8725pt>
 File: MCRaT_Logo.jpg Graphic file (type jpg)
 <use MCRaT_Logo.jpg>
-Package pdftex.def Info: MCRaT_Logo.jpg  used on input line 23.
+Package pdftex.def Info: MCRaT_Logo.jpg  used on input line 65.
 (pdftex.def)             Requested size: 452.9679pt x 223.27234pt.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 26.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 68.
 
 
 (/usr/local/texlive/2025/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 26.
+(/usr/local/texlive/2025/texmf-dist/tex/latex/microtype/mt-msa.cfg
+File: mt-msa.cfg 2006/02/04 v1.1 microtype config. file: AMS symbols (a) (RS)
+)
+LaTeX Font Info:    Trying to load font information for U+msb on input line 68.
 
 
 (/usr/local/texlive/2025/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
+(/usr/local/texlive/2025/texmf-dist/tex/latex/microtype/mt-msb.cfg
+File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
+)
 (./mcrat_doc.toc
 
 [1
 
-{/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map} <./MCRaT
-_Logo.jpg>])
+{/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/loc
+al/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc} <./MCRaT_L
+ogo.jpg>]
+Package microtype Info: Loading generic protrusion settings for font family
+(microtype)             `cmtt' (encoding: T1).
+(microtype)             For optimal results, create family-specific settings.
+(microtype)             See the microtype manual for details.
+)
 \tf@toc=\write4
 \openout4 = `mcrat_doc.toc'.
 
 
 
 [2]
+Overfull \hbox (0.41899pt too wide) in paragraph at lines 98--99
+\T1/cmr/m/n/12 (-20) Once the re-quired li-braries have been in-stalled, the cu
+r-rent MCRaT code can be down-loaded
+ []
+
+
 
 [3{/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc
 }]
-Overfull \hbox (245.15808pt too wide) in paragraph at lines 71--72
-\OT1/cmr/m/n/12 be set as \OT1/cmtt/m/n/12 SCIENCE\OT1/cmr/m/n/12 , if us-ing M
-CRaT for a pro-duc-tion run, or \OT1/cmtt/m/n/12 SPHERICAL[]OUTFLOW\OT1/cmr/m/n
-/12 /\OT1/cmtt/m/n/12 CYLINDRICAL[]OUTFLOW\OT1/cmr/m/n/12 /\OT1/cmtt/m/n/12 STR
-UCTURED[]SPHERICAL[]OUTFLOW
+Overfull \hbox (232.4605pt too wide) in paragraph at lines 113--114
+\T1/cmr/m/n/12 (-20) set as \T1/cmtt/m/n/12 SCIENCE\T1/cmr/m/n/12 (-20) , if us
+-ing MCRaT for a pro-duc-tion run, or \T1/cmtt/m/n/12 SPHERICAL_-OUTFLOW\T1/cmr
+/m/n/12 (-20) /\T1/cmtt/m/n/12 CYLINDRICAL_-OUTFLOW\T1/cmr/m/n/12 (-20) /\T1/cm
+tt/m/n/12 STRUCTURED_-SPHERICAL_-OUTFLOW
  []
 
 
 
 [4]
-Overfull \hbox (1.9659pt too wide) in paragraph at lines 73--74
-\OT1/cmr/m/n/12 to tell it whether they want to con-sider the ef-fects of po-la
-r-iza-tion, with the \OT1/cmtt/m/n/12 STOKES[]SWITCH\OT1/cmr/m/n/12 ,
- []
-
-
-Overfull \hbox (62.71672pt too wide) in paragraph at lines 86--134
- [][] 
- []
-
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-
 
 [5]
+Overfull \hbox (25.19998pt too wide) in alignment at lines 129--133
+ [] [] 
+ []
+
+
+Overfull \hbox (25.19998pt too wide) in alignment at lines 133--137
+ [] [] 
+ []
+
+
+Overfull \hbox (1.77896pt too wide) in paragraph at lines 138--139
+\T1/cmr/m/n/12 (-20) STRUCTURED_-SPHER-I-CAL_-OUT-FLOW| 
+ []
+
+
+Overfull \hbox (10.72633pt too wide) in paragraph at lines 171--171
+[]|\T1/cmr/m/n/12 (-20) CYCLOSYNCHROTRON_-RE-BIN_-E_-PERC| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 182--182
+[]|\T1/cmr/m/n/12 (+20) POWERLAW_-IN-DEX_-1,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 184--185
+[]|$\OT1/cmr/m/n/12 (+20) [1\OML/cmm/m/it/12 ; \OT1/cmr/m/n/12 (+20) +\OMS/cmsy
+/m/n/12 1\OT1/cmr/m/n/12 (+20) )$\T1/cmr/m/n/12 (+20) , with GAMMA_-MIN $\OML/c
+mm/m/it/12 <$
+ []
+
+
+Overfull \hbox (4.79118pt too wide) in paragraph at lines 194--194
+[]|\T1/cmr/m/n/12 (-20) NONTHERMAL_-CON-VER-SION_-FAC-TOR| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 201--201
+[]|\T1/cmr/m/n/12 (+20) B_-FIELD_-CALC (used by
+ []
+
+
+Underfull \hbox (badness 4060) in paragraph at lines 205--205
+[]|\T1/cmr/m/n/12 (+20) If B_-FIELD_-CALC is TO-TAL_-E or
+ []
+
+
+Overfull \hbox (25.19998pt too wide) in alignment at lines 137--209
+ [] [] 
+ []
 
 [6]
-Overfull \hbox (29.92188pt too wide) in paragraph at lines 171--171
-[]\OT1/cmtt/m/n/10.95 5.        # Number of frames per second of hydro simulati
-on (likely always the same)[] 
+Overfull \hbox (22.33527pt too wide) in paragraph at lines 248--248
+[]\T1/cmtt/m/n/10.95 5.        # Number of frames per second of hydro simulatio
+n (likely always the same)[] 
  []
 
 
-Overfull \hbox (70.16269pt too wide) in paragraph at lines 171--171
-[]\OT1/cmtt/m/n/10.95 3000   # Last available hydro simulation frame  (get from
- the last file in the data folder)[] 
+Overfull \hbox (61.94386pt too wide) in paragraph at lines 248--248
+[]\T1/cmtt/m/n/10.95 3000   # Last available hydro simulation frame  (get from 
+the last file in the data folder)[] 
  []
 
 
-Overfull \hbox (41.41925pt too wide) in paragraph at lines 171--171
-[]\OT1/cmtt/m/n/10.95 199 199 299       # Number of frames for which photons ar
-e injected for each angle bin[] 
+Overfull \hbox (33.65201pt too wide) in paragraph at lines 248--248
+[]\T1/cmtt/m/n/10.95 199 199 299       # Number of frames for which photons are
+ injected for each angle bin[] 
  []
 
 
-Overfull \hbox (24.17319pt too wide) in paragraph at lines 171--171
-[]\OT1/cmtt/m/n/10.95 1e11 1.5e12 2e12  # The radius at which the photons are i
-njected for each angle bin[] 
+Overfull \hbox (16.6769pt too wide) in paragraph at lines 248--248
+[]\T1/cmtt/m/n/10.95 1e11 1.5e12 2e12  # The radius at which the photons are in
+jected for each angle bin[] 
  []
 
 
-Overfull \hbox (24.17319pt too wide) in paragraph at lines 171--171
-[]\OT1/cmtt/m/n/10.95 i  # Initialize or continue simulation (i=initialize (del
-ete all files) c=continue)[] 
+Overfull \hbox (16.6769pt too wide) in paragraph at lines 248--248
+[]\T1/cmtt/m/n/10.95 i  # Initialize or continue simulation (i=initialize (dele
+te all files) c=continue)[] 
  []
 
 
@@ -610,23 +789,25 @@ ete all files) c=continue)[]
 [7]
 
 [8]
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-
-
-[9]
-Overfull \hbox (25.02849pt too wide) in paragraph at lines 261--262
-[]\OT1/cmtt/m/n/12 tail -n 1 dir[]with[]MCRaT[]parameter[]file/angle[]dir/mc[]o
-utput[]* |grep
+Overfull \hbox (10.2535pt too wide) in paragraph at lines 297--298
+\T1/cmr/m/n/12 (-20) con-trolled by set-ting the OpenMP en-vi-ron-ment vari-abl
+e \T1/cmtt/m/n/12 OMP_-NUM_-THREADS\T1/cmr/m/n/12 (-20) . We rec-om-mended
  []
 
 
 
+[9]
+
 [10]
+Overfull \hbox (37.02618pt too wide) in paragraph at lines 338--339
+[]\T1/cmtt/m/n/12 tail -n 1 dir_-with_-MCRaT_-parameter_-file/angle_-dir/mc_-ou
+tput_-* |grep
+ []
+
+
 
 [11]
-Underfull \hbox (badness 10000) in paragraph at lines 282--283
+Underfull \hbox (badness 10000) in paragraph at lines 359--360
 
  []
 
@@ -639,46 +820,22 @@ Underfull \hbox (badness 10000) in paragraph at lines 282--283
 [14]
 
 [15]
-Overfull \hbox (9.8347pt too wide) in paragraph at lines 352--353
-\OT1/cmr/m/n/12 lated as \OT1/cmtt/m/n/12 CYCLOSYNCHROTRON[]REBIN[]E[]PERC$\OMS
-/cmsy/m/n/12 ^^B\OML/cmm/m/it/12 N[]$\OT1/cmr/m/n/12 , where \OT1/cmtt/m/n/12 C
-YCLOSYNCHROTRON[]REBIN[]E[]PERC
- []
-
-
-Overfull \hbox (54.88034pt too wide) in paragraph at lines 352--353
-\OT1/cmr/m/n/12 in the \OT1/cmtt/m/n/12 MCPAR \OT1/cmr/m/n/12 file. The num-ber
- of spa-tial bins, $\OML/cmm/m/it/12 N[]$\OT1/cmr/m/n/12 , is cal-cu-lated as $
-^^A\OML/cmm/m/it/12 ^^R=$\OT1/cmtt/m/n/12 CYCLOSYNCHROTRON[]REBIN[]ANG\OT1/cmr/
-m/n/12 ,
- []
-
-
-Overfull \hbox (57.40384pt too wide) in paragraph at lines 352--353
-\OT1/cmr/m/n/12 pho-ton lo-ca-tion in theta and the small-est pho-ton lo-ca-tio
-n in theta and \OT1/cmtt/m/n/12 CYCLOSYNCHROTRON[]REBIN[]ANG
- []
-
-
-Overfull \hbox (13.96109pt too wide) in paragraph at lines 352--353
-\OT1/cmr/m/n/12 is is a switch that the user sets in the \OT1/cmtt/m/n/12 mcrat
-[]input.h \OT1/cmr/m/n/12 file. $^^A\OML/cmm/m/it/12 ^^R=$\OT1/cmtt/m/n/12 CYCL
-OSYNCHROTRON[]REBIN[]ANG
- []
-
-
 
 [16]
-Overfull \hbox (31.56396pt too wide) in paragraph at lines 358--359
-\OT1/cmr/m/n/12 Each MCRaT MPI pro-cess out-puts 3 files. These files are named
- \OT1/cmtt/m/n/12 mc[]proc[]$\OML/cmm/m/it/12 i$\OT1/cmtt/m/n/12 .h5\OT1/cmr/m/
-n/12 , \OT1/cmtt/m/n/12 mc[]chkpt[]$\OML/cmm/m/it/12 i$\OT1/cmtt/m/n/12 .dat\OT
-1/cmr/m/n/12 ,
+Overfull \hbox (16.53195pt too wide) in paragraph at lines 429--430
+\OT1/cmr/m/n/12 (-20) ^^A\OML/cmm/m/it/12 ^^R=$\T1/cmtt/m/n/12 CYCLOSYNCHROTRON
+_-REBIN_-ANG\T1/cmr/m/n/12 (-20) , where $\OT1/cmr/m/n/12 (-20) ^^A\OML/cmm/m/i
+t/12 ^^R=$\T1/cmtt/m/n/12 CYCLOSYNCHROTRON_-REBIN_-ANG \T1/cmr/m/n/12 (-20) is 
+the an-gu-lar
  []
 
 
 
 [17]
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+
 
 [18]
 
@@ -691,13 +848,17 @@ n/12 , \OT1/cmtt/m/n/12 mc[]chkpt[]$\OML/cmm/m/it/12 i$\OT1/cmtt/m/n/12 .dat\OT
 [22]
 
 [23]
-<phi_sampling_depaola.pdf, id=408, 462.52798pt x 346.89601pt>
+
+[24]
+
+[25]
+<phi_sampling_depaola.pdf, id=520, 462.52798pt x 346.89601pt>
 File: phi_sampling_depaola.pdf Graphic file (type pdf)
 <use phi_sampling_depaola.pdf>
-Package pdftex.def Info: phi_sampling_depaola.pdf  used on input line 533.
+Package pdftex.def Info: phi_sampling_depaola.pdf  used on input line 682.
 (pdftex.def)             Requested size: 462.52684pt x 346.89516pt.
 
-Overfull \hbox (9.55894pt too wide) in paragraph at lines 533--534
+Overfull \hbox (9.55894pt too wide) in paragraph at lines 682--683
  [][] 
  []
 
@@ -706,42 +867,41 @@ LaTeX Warning: `!h' float specifier changed to `!ht'.
 
 
 LaTeX Warning: No positions in optional float specifier.
-               Default added (so using `tbp') on input line 538.
+               Default added (so using `tbp') on input line 687.
 
-<kraw_test_i.pdf, id=413, 372.9132pt x 281.56392pt>
+<kraw_test_i.pdf, id=525, 372.9132pt x 281.56392pt>
 File: kraw_test_i.pdf Graphic file (type pdf)
 <use kraw_test_i.pdf>
-Package pdftex.def Info: kraw_test_i.pdf  used on input line 542.
+Package pdftex.def Info: kraw_test_i.pdf  used on input line 691.
 (pdftex.def)             Requested size: 226.48395pt x 171.00616pt.
-<kraw_test_q.pdf, id=414, 372.9132pt x 281.56392pt>
+<kraw_test_q.pdf, id=526, 372.9132pt x 281.56392pt>
 File: kraw_test_q.pdf Graphic file (type pdf)
 <use kraw_test_q.pdf>
-Package pdftex.def Info: kraw_test_q.pdf  used on input line 545.
+Package pdftex.def Info: kraw_test_q.pdf  used on input line 694.
 (pdftex.def)             Requested size: 226.48395pt x 171.00616pt.
 
-Overfull \hbox (15.6665pt too wide) in paragraph at lines 542--545
+Overfull \hbox (15.66284pt too wide) in paragraph at lines 691--694
  [][][][] 
  []
 
-<kraw_test_u.pdf, id=415, 372.9132pt x 281.56392pt>
+<kraw_test_u.pdf, id=527, 372.9132pt x 281.56392pt>
 File: kraw_test_u.pdf Graphic file (type pdf)
 <use kraw_test_u.pdf>
-Package pdftex.def Info: kraw_test_u.pdf  used on input line 548.
+Package pdftex.def Info: kraw_test_u.pdf  used on input line 697.
 (pdftex.def)             Requested size: 226.48395pt x 171.00616pt.
-
-
-[24]
-<comp_lundman_p_4_thetaj_1e-01.pdf, id=444, 418.30151pt x 318.3733pt>
+<comp_lundman_p_4_thetaj_1e-01.pdf, id=546, 418.30151pt x 318.3733pt>
 File: comp_lundman_p_4_thetaj_1e-01.pdf Graphic file (type pdf)
 <use comp_lundman_p_4_thetaj_1e-01.pdf>
 Package pdftex.def Info: comp_lundman_p_4_thetaj_1e-01.pdf  used on input line 
-557.
+706.
 (pdftex.def)             Requested size: 452.9679pt x 344.77077pt.
 
 
-[25 <./phi_sampling_depaola.pdf>]
+[26]
 
-[26 <./kraw_test_i.pdf> <./kraw_test_q.pdf
+[27 <./phi_sampling_depaola.pdf>]
+
+[28 <./kraw_test_i.pdf> <./kraw_test_q.pdf
 
 pdfTeX warning: /Library/TeX/texbin/pdflatex (file ./kraw_test_q.pdf): PDF incl
 usion: multiple pdfs with page group included in a single page
@@ -751,166 +911,873 @@ pdfTeX warning: /Library/TeX/texbin/pdflatex (file ./kraw_test_u.pdf): PDF incl
 usion: multiple pdfs with page group included in a single page
 >]
 
-[27 <./comp_lundman_p_4_thetaj_1e-01.pdf>]
-
-[28]
-
-[29]
-Overfull \hbox (5.00612pt too wide) in paragraph at lines 617--619
-\OT1/cmr/m/n/12 is the num-ber of en-ergy bins ac-quired by mul-ti-ply-ing the 
-\OT1/cmtt/m/n/12 CYCLOSYNCHROTRON[]REBIN[]E[]PERC
- []
-
-
+[29 <./comp_lundman_p_4_thetaj_1e-01.pdf>]
 
 [30]
-LaTeX Font Info:    Font shape `OT1/cmtt/bx/n' in size <14.4> not available
-(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 643.
-
-Overfull \hbox (5.51549pt too wide) in paragraph at lines 649--650
-[]\OT1/cmtt/m/n/12 initialized[]photon = custom[]photon[]sampler(hydro[]data, i
-, rand,
- []
-
-LaTeX Font Info:    Font shape `OT1/cmtt/bx/n' in size <12> not available
-(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 653.
-
-Overfull \hbox (54.91551pt too wide) in paragraph at lines 656--657
-[]\OT1/cmtt/m/n/12 struct photon custom[]photon[]sampler(struct hydro[]datafram
-e *hydro[]data,
- []
-
-
-Overfull \hbox (126.8141pt too wide) in paragraph at lines 661--662
-\OT1/cmr/m/n/12 into. The user ac-cesses a fluid quan-tity for this el-e-ment a
-s, for ex-am-ple, \OT1/cmtt/m/n/12 (hydro[]data->temp)[hydro[]index]\OT1/cmr/m/
-n/12 . 
- []
-
-
 
 [31]
+Overfull \hbox (2.01154pt too wide) in paragraph at lines 792--803
+\T1/cmr/m/n/12 (-20) which is en-abled by the \T1/cmtt/m/n/12 CYCLOSYNCHROTRON_
+-SWITCH \T1/cmr/m/n/12 (-20) and im-ple-mented in \T1/cmtt/m/n/12 mc_-cyclosync
+h.c\T1/cmr/m/n/12 (-20) ;
+ []
+
+
 
 [32]
 
 [33]
-Overfull \hbox (8.9735pt too wide) in paragraph at lines 716--717
-[]\OT1/cmtt/m/n/12 void customOutflowPrep(struct hydro[]dataframe *hydro[]data,
- FILE
- []
-
-
-Overfull \hbox (18.11755pt too wide) in paragraph at lines 729--730
-\OT1/cmr/m/n/12 by the speed of light, in the com-po-nents \OT1/cmtt/m/n/12 (hy
-dro[]data->v0)[i]\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 (hydro[]data->v1)[i]\OT1/cm
-r/m/n/12 ,
- []
-
-
 
 [34]
-Overfull \hbox (0.76964pt too wide) in paragraph at lines 741--741
-[]\OT1/cmr/bx/n/12 Interaction with the Mag-netic Field, Non-Thermal Elec-trons
-, and Scat-
- []
-
-
-Overfull \hbox (30.55313pt too wide) in paragraph at lines 753--753
- []   \OT1/cmtt/m/n/10.95 calculateElectronDistSubgroupDens(hydro_data->electro
-n_dens_subgroup, fPtr);[] 
- []
-
-
 
 [35]
-Overfull \hbox (18.58673pt too wide) in paragraph at lines 770--771
-\OT1/cmr/m/n/12 nents \OT1/cmtt/m/n/12 hydro[]data->B0[i]\OT1/cmr/m/n/12 , \OT1
-/cmtt/m/n/12 hydro[]data->B1[i]\OT1/cmr/m/n/12 , and (in 2.5D/3D) \OT1/cmtt/m/n
-/12 hydro[]data->B2[i]
- []
-
-
-Overfull \hbox (100.06116pt too wide) in paragraph at lines 774--775
-\OT1/cmr/m/n/12 rou-tine \OT1/cmtt/m/n/12 calculateElectronDistSubgroupDens \OT
-1/cmr/m/n/12 com-putes the ar-ray \OT1/cmtt/m/n/12 hydro[]data->electron[]dens[
-]subgroup\OT1/cmr/m/n/12 ,
- []
-
-
-Overfull \hbox (4.97032pt too wide) in paragraph at lines 774--775
-\OT1/cmtt/m/n/12 calculateElectronDistSubgroupDens(hydro[]data->electron[]dens[
-]subgroup, fPtr)
- []
-
-
-Overfull \hbox (32.70888pt too wide) in paragraph at lines 777--778
-\OT1/cmr/m/n/12 volume-averaged di-men-sion-less tem-per-a-ture $[]$, stored in
- \OT1/cmtt/m/n/12 hydro[]data->average[]dimless[]theta
- []
-
-
-Overfull \hbox (122.07176pt too wide) in paragraph at lines 777--778
-\OT1/cmr/m/n/12 and used in com-put-ing the ther-mal scat-ter-ing bias (Sec-tio
-n []4.4[]), is com-puted by \OT1/cmtt/m/n/12 calculateAverageDimlessTheta
+Overfull \hbox (9.42992pt too wide) in paragraph at lines 1083--1085
+[]\T1/cmr/m/n/12 (-20) The power-law in-dex $\OML/cmm/m/it/12 p > \OT1/cmr/m/n/
+12 (-20) 1$ \T1/cmr/m/n/12 (-20) is a compile-time con-stant set by the user vi
+a \T1/cmtt/m/n/12 POWERLAW_-INDEX\T1/cmr/m/n/12 (-20) . 
  []
 
 
 
 [36]
-Overfull \hbox (116.32632pt too wide) in paragraph at lines 784--785
-\OT1/cmr/m/n/12 if the non-thermal scat-ter-ing physics is used (most eas-ily b
-y call-ing \OT1/cmtt/m/n/12 calculateElectronDistSubgroupDens
+
+[37]
+Overfull \hbox (48.33652pt too wide) in paragraph at lines 1260--1269
+\T1/cmr/m/n/12 (-20) func-tion is tab-u-lated on a log-spaced grid of \T1/cmtt/
+m/n/12 SYNCH_-N_-X \T1/cmr/m/n/12 (-20) points over $\OML/cmm/m/it/12 x \OMS/cm
+sy/m/n/12 2 \OT1/cmr/m/n/12 (-20) [[]\OML/cmm/m/it/12 ; []\OT1/cmr/m/n/12 (-20)
+ ]$
  []
 
 
-Overfull \hbox (14.72395pt too wide) in paragraph at lines 792--793
-\OT1/cmr/m/n/12 To use a cus-tom out-flow, the user sets the \OT1/cmtt/m/n/12 S
-IMULATION[]TYPE \OT1/cmr/m/n/12 pa-ram-e-ter in the \OT1/cmtt/m/n/12 mcrat[]inp
-ut.h
+Overfull \hbox (59.76697pt too wide) detected at line 1317
+[][][]\OML/cmm/m/it/12 G[]\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 x\OT1/cmr/m/n/12 ; 
+\OML/cmm/m/it/12 p\OT1/cmr/m/n/12 ) \OMS/cmsy/m/n/12 ^^@ \OML/cmm/m/it/12 G[]\O
+T1/cmr/m/n/12 (\OML/cmm/m/it/12 x[]\OT1/cmr/m/n/12 ; \OML/cmm/m/it/12 p\OT1/cmr
+/m/n/12 ) \OMS/cmsy/m/n/12 ' [] [][] \OML/cmm/m/it/12 z[] dz \OT1/cmr/m/n/12 = 
+[][]\OML/cmm/m/it/12 x[] \OMS/cmsy/m/n/12 ^^@ \OML/cmm/m/it/12 x[][];  q \OMS/c
+msy/m/n/12 ^^Q [] \OT1/cmr/m/n/12 + [] + 1 = [] + []\OML/cmm/m/it/12 ;
  []
 
 
 
-[37] (./mcrat_doc.bbl)
+[38]
+LaTeX Font Info:    Font shape `T1/cmtt/bx/n' in size <12> not available
+(Font)              Font shape `T1/cmtt/m/n' tried instead on input line 1374.
 
-[38] (./mcrat_doc.aux)
+Overfull \hbox (3.20935pt too wide) in paragraph at lines 1374--1385
+\T1/cmr/m/n/12 (-20) com-plete set of \T1/cmtt/m/n/12 gsl_-interp_-accel \T1/cm
+r/m/n/12 (-20) point-ers for ev-ery \T1/cmr/m/it/12 (-20) spline-based \T1/cmr/
+m/n/12 (-20) lookup in the syn-chrotron
+ []
+
+
+
+[39]
+Overfull \hbox (16.59589pt too wide) in paragraph at lines 1400--1404
+[]\T1/cmr/m/n/12 (-20) One \T1/cmtt/m/n/12 SynchThreadAccel \T1/cmr/m/n/12 (-20
+) is al-lo-cated per thread in a file-scope ar-ray \T1/cmtt/m/n/12 synch_-threa
+d_-accels
+ []
+
+
+Overfull \hbox (89.2684pt too wide) in paragraph at lines 1423--1426
+ []\T1/cmr/bx/n/12 (-20) Hot cross-section ta-bles (\T1/cmtt/m/n/12 ThreadLocal
+Accel\T1/cmr/bx/n/12 (-20) ).[] \T1/cmr/m/n/12 (-20) On MPI rank zero, \T1/cmtt
+/m/n/12 initalizeHotCrossSectionInterp
+ []
+
+
+Overfull \hbox (35.1796pt too wide) in paragraph at lines 1423--1426
+\T1/cmr/m/n/12 (-20) con-structs the ther-mal and non-ther-mal in-ter-po-la-tio
+n splines and ini-tial-izes one \T1/cmtt/m/n/12 ThreadLocalAccel
+ []
+
+
+Overfull \hbox (35.82124pt too wide) in paragraph at lines 1427--1434
+[]\T1/cmr/m/n/12 (-20) Non-root MPI ranks re-con-struct the in-ter-po-la-tion s
+plines af-ter \T1/cmtt/m/n/12 broadcastInterpolationData\T1/cmr/m/n/12 (-20) .
+ []
+
+
+Overfull \hbox (106.2532pt too wide) in paragraph at lines 1435--1439
+[]\T1/cmr/m/n/12 (-20) For con-sis-tent per-for-mance on ev-ery MPI rank, \T1/c
+mtt/m/n/12 initThreadLocalAccelerators(omp_-get_-max_-threads())
+ []
+
+
+Overfull \hbox (98.8075pt too wide) in paragraph at lines 1441--1447
+\T1/cmr/m/n/12 (-20) in-side a par-al-lel re-gion re-trieve their thread-local 
+gen-er-a-tor via \T1/cmtt/m/n/12 global_-thread_-rng[omp_-get_-thread_-num()]\T
+1/cmr/m/n/12 (-20) ,
+ []
+
+
+
+[40]
+
+[41]
+Overfull \hbox (31.5352pt too wide) in paragraph at lines 1611--1618
+\T1/cmr/m/n/12 (-20) pro-por-tion-al-ity con-stant. Its nu-mer-i-cal value is d
+e-ter-mined by the adopted pitch-angle/solid-angle
+ []
+
+
+Overfull \hbox (0.46658pt too wide) in paragraph at lines 1611--1618
+\T1/cmr/m/n/12 (-20) Con-ver-gence should there-fore be checked with re-spect t
+o \T1/cmtt/m/n/12 SYNCH_-N_-NU\T1/cmr/m/n/12 (-20) , \T1/cmtt/m/n/12 SYNCH_-N_-
+GAMMA_-INT\T1/cmr/m/n/12 (-20) ,
+ []
+
+
+
+[42]
+Overfull \hbox (22.93031pt too wide) in paragraph at lines 1675--1678
+\T1/cmr/m/n/12 (-20) This con-ven-tion is the one used to con-struct the up-dat
+ed phys-i-cal pref-ac-tor in \T1/cmtt/m/n/12 photonEmitSynch\T1/cmr/m/n/12 (-20
+) . 
+ []
+
+
+
+[43]
+
+[44]
+Overfull \hbox (2.07253pt too wide) in paragraph at lines 1890--1895
+\OML/cmm/m/it/12 j[]=\OT1/cmr/m/n/12 (-20) (\OML/cmm/m/it/12 h^^W[]\OT1/cmr/m/n
+/12 (-20) )$\T1/cmr/m/n/12 (-20) , not to the en-ergy spec-trum $\OML/cmm/m/it/
+12 j[]$ \T1/cmr/m/n/12 (-20) alone. In log-frequency space this photon-number
+ []
+
+
+
+[45]
+Overfull \hbox (3.68065pt too wide) in paragraph at lines 1927--1930
+\T1/cmr/m/n/12 (-20) These $\OML/cmm/m/it/12 p[]$ \T1/cmr/m/n/12 (-20) are com-
+puted once from the uni-ver-sal CDF and stored in \T1/cmtt/m/n/12 tables->strat
+a_-p_-k[k]\T1/cmr/m/n/12 (-20) . 
+ []
+
+
+Overfull \hbox (91.6401pt too wide) in paragraph at lines 1945--1951
+[]\T1/cmr/m/n/12 (-20) Within each stra-tum, \T1/cmtt/m/n/12 sampleSynchFrequen
+cy \T1/cmr/m/n/12 (-20) draws a uni-form vari-ate $\OML/cmm/m/it/12 u \OMS/cmsy
+/m/n/12 ^^X U\OT1/cmr/m/n/12 (-20) ([]([])\OML/cmm/m/it/12 ; []\OT1/cmr/m/n/12 
+(-20) ([]))$\T1/cmr/m/n/12 (-20) ,
+ []
+
+
+Overfull \hbox (7.74998pt too wide) in paragraph at lines 2001--2008
+[]\T1/cmr/bx/n/12 (-20) Comoving 4-momentum. \T1/cmr/m/n/12 (-20) The comoving-
+frame pho-ton energy-momentum mag-ni-tude
+ []
+
+
+Overfull \hbox (13.57632pt too wide) in paragraph at lines 2001--2008
+\T1/cmr/m/n/12 (-20) is $\OMS/cmsy/m/n/12 j\OT1/cmr/bx/n/12 (-20) p\OMS/cmsy/m/
+n/12 j \OT1/cmr/m/n/12 (-20) = \OML/cmm/m/it/12 h^^W[]=c$\T1/cmr/m/n/12 (-20) .
+ An emis-sion di-rec-tion $\OT1/cmr/m/n/12 (-20) (\OML/cmm/m/it/12 ^^R[]; ^^^[]
+\OT1/cmr/m/n/12 (-20) )$ \T1/cmr/m/n/12 (-20) is sam-pled by call-ing \T1/cmtt/
+m/n/12 samplePhotonTheta
+ []
+
+
+
+[46]
+Overfull \hbox (55.66998pt too wide) in paragraph at lines 2026--2032
+\T1/cmr/m/n/12 (-20) emis-sion. It is there-fore im-por-tant to re-mem-ber that
+ while the \T1/cmr/m/it/12 (-20) mi-cro-physics \T1/cmr/m/n/12 (-20) (pitch-ang
+le?averaged
+ []
+
+
+
+[47]
+Underfull \hbox (badness 1122) in paragraph at lines 2149--2157
+\T1/cmr/bx/n/12 (+20) Key re-sult.  \T1/cmr/m/n/12 (+20) The syn-chrotron mi-cr
+o-physics in \T1/cmr/m/sc/12 (+20) MCRaT \T1/cmr/m/n/12 (+20) (emis-siv-ity and
+
+ []
+
+
+
+[48]
+Overfull \hbox (5.35019pt too wide) in paragraph at lines 2166--2171
+[]\T1/cmr/bx/n/12 (-20) Pitch-angle?averaged, isotropic elec-trons. \T1/cmr/m/n
+/12 (-20) The non-thermal elec-tron dis-tri-bu-tion
+ []
+
+
+Overfull \hbox (23.18988pt too wide) in paragraph at lines 2172--2177
+[]\T1/cmr/bx/n/12 (-20) Photon-number, not en-ergy, sam-pling. \T1/cmr/m/n/12 (
+-20) Emis-sion is sam-pled from the photon-number
+ []
+
+
+
+[49]
+
+[50]
+Overfull \hbox (1.74821pt too wide) detected at line 2345
+[][][]\OML/cmm/m/it/12 [] \OT1/cmr/m/n/12 = [][](\OML/cmm/m/it/12 p[] \OT1/cmr
+/m/n/12 + 2) [][] ^^A\OML/cmm/m/it/12 G[] \OT1/cmr/m/n/12 + (\OML/cmm/m/it/12 p
+[] \OT1/cmr/m/n/12 + 2)\OML/cmm/m/it/12 ^^M[] [][] \OT1/cmr/m/n/12 ^^A\OML/cmm/
+m/it/12 G[][];
+ []
+
+
+
+[51]
+Overfull \hbox (7.66182pt too wide) in paragraph at lines 2432--2434
+[]\T1/cmr/m/n/12 (-20) In \T1/cmr/m/sc/12 (-20) MCRaT\T1/cmr/m/n/12 (-20) , the
+ full fac-tor $\OT1/cmr/m/n/12 (-20) ^^@(1 \OMS/cmsy/m/n/12 ^^@ \OML/cmm/m/it/1
+2 ^^L [] ^^R\OT1/cmr/m/n/12 (-20) )$ \T1/cmr/m/n/12 (-20) is as-sem-bled in-sid
+e \T1/cmtt/m/n/12 calculateOpticalDepthSSA
+ []
+
+
+
+[52]
+Underfull \hbox (badness 3343) in paragraph at lines 2500--2519
+\T1/cmr/m/n/12 (+20) is used by \T1/cmtt/m/n/12 calculateOpticalDepth \T1/cmr/m
+/n/12 (+20) to form the \T1/cmr/m/it/12 (+20) scat-ter-ing \T1/cmr/m/n/12 (+20)
+ op-ti-cal depth
+ []
+
+
+Underfull \hbox (badness 6110) in paragraph at lines 2500--2519
+\T1/cmr/m/n/12 (+20) for non-thermal elec-trons (\T1/cmtt/m/n/12 nonthermal_-n_
+-dens_-lab = nonthermal_-dens[i] *
+ []
+
+
+Overfull \hbox (19.5698pt too wide) in paragraph at lines 2525--2531
+\T1/cmr/m/n/12 (-20) scat-ters (\T1/cmtt/m/n/12 recalc_-properties$\OT1/cmr/m/n
+/12 (-20) = 1$\T1/cmr/m/n/12 (-20) ), \T1/cmtt/m/n/12 calculateOpticalDepth \T1
+/cmr/m/n/12 (-20) (\T1/cmtt/m/n/12 optical_-depth.c\T1/cmr/m/n/12 (-20) ) re-co
+m-putes
+ []
+
+
+
+[53]
+Underfull \hbox (badness 1728) in paragraph at lines 2573--2580
+\T1/cmr/bx/n/12 (+20) Key re-sult.  \T1/cmr/m/n/12 (+20) A stale com-ment in \T
+1/cmtt/m/n/12 optical_-depth.c \T1/cmr/m/n/12 (+20) it-self, stated that
+ []
+
+
+Underfull \hbox (badness 1748) in paragraph at lines 2573--2580
+\T1/cmtt/m/n/12 ph->absorption_-opacity \T1/cmr/m/n/12 (+20) set to zero for al
+l other types. In the cur-rent
+ []
+
+
+Overfull \hbox (61.18611pt too wide) in paragraph at lines 2605--2610
+ []\T1/cmr/bx/n/12 (-20) Continuous weight at-ten-u-a-tion (\T1/cmtt/m/n/12 app
+lyabsorption\T1/cmr/bx/n/12 (-20) )[] \T1/cmr/m/n/12 (-20) Dur-ing pho-ton tran
+s-port, \T1/cmtt/m/n/12 applyAbsorption
+ []
+
+
+
+[54]
+
+[55]
+Overfull \hbox (7.22327pt too wide) in paragraph at lines 2718--2725
+[]\T1/cmr/bx/n/12 (-20) Hot ther-mal elec-trons \T1/cmr/m/n/12 (-20) in a fluid
+ with di-men-sion-less tem-per-a-ture $\OT1/cmr/m/n/12 (-20) ^^B = \OML/cmm/m/i
+t/12 k[]T=\OT1/cmr/m/n/12 (-20) (\OML/cmm/m/it/12 m[]c[]\OT1/cmr/m/n/12 (-20) )
+ \U/msa/m/n/12 &
+ []
+
+
+
+[56]
+
+[57]
+Overfull \hbox (8.16403pt too wide) in paragraph at lines 2885--2892
+ []\T1/cmr/bx/n/12 (-20) Runtime in-ter-po-la-tion.[] \T1/cmr/m/n/12 (-20) Dur-
+ing the sim-u-la-tion, \T1/cmtt/m/n/12 interpolateThermalHotCrossSection
+ []
+
+
+Overfull \hbox (21.27367pt too wide) in paragraph at lines 2885--2892
+\T1/cmr/m/n/12 (-20) and \T1/cmtt/m/n/12 interpolateSubgroupNonThermalHotCrossS
+ection \T1/cmr/m/n/12 (-20) use the pre-built GSL \T1/cmtt/m/n/12 gsl_-spline2d
+
+ []
+
+
+Overfull \hbox (94.52414pt too wide) in paragraph at lines 2917--2922
+ []\T1/cmr/bx/n/12 (-20) Opacity ver-sus op-ti-cal depth[] \T1/cmr/m/n/12 (-20)
+ The pho-ton fields \T1/cmtt/m/n/12 scattering_-opacity[k]\T1/cmr/m/n/12 (-20) 
+, \T1/cmtt/m/n/12 total_-scattering_-opacity\T1/cmr/m/n/12 (-20) ,
+ []
+
+
+
+[58]
+
+[59]
+
+[60]
+
+[61]
+
+[62]
+Overfull \hbox (11.80174pt too wide) in paragraph at lines 3288--3293
+ []\T1/cmr/bx/n/12 (-20) Electron sub-group se-lec-tion[] \T1/cmr/m/n/12 (-20) 
+When a scat-ter-ing event oc-curs, \T1/cmtt/m/n/12 generateSingleElectron
+ []
+
+
+Overfull \hbox (53.83076pt too wide) in paragraph at lines 3303--3313
+\T1/cmr/m/n/12 (-20) how-ever, is \T1/cmr/m/it/12 (-20) not \T1/cmr/m/n/12 (-20
+) re-com-puted lo-cally: it is read di-rectly from the field \T1/cmtt/m/n/12 ph
+->total_-scattering_-opacity\T1/cmr/m/n/12 (-20) , 
+ []
+
+
+
+[63]
+Overfull \hbox (34.95471pt too wide) in paragraph at lines 3338--3344
+\T1/cmr/m/n/12 (-20) dis-tri-bu-tion: the Maxwell--Jüttner dis-tri-bu-tion for 
+ther-mal elec-trons via \T1/cmtt/m/n/12 singleThermalElectron\T1/cmr/m/n/12 (-2
+0) ,
+ []
+
+
+Overfull \hbox (42.34644pt too wide) in paragraph at lines 3387--3390
+\T1/cmtt/m/n/12 calculateOpticalDepth \T1/cmr/m/n/12 (-20) (\T1/cmtt/m/n/12 opt
+ical_-depth.c\T1/cmr/m/n/12 (-20) ) pro-ceeds as fol-lows each time \T1/cmtt/m/
+n/12 recalc_-properties$\OT1/cmr/m/n/12 (-20) =
+ []
+
+
+
+[64]
+Overfull \hbox (34.19984pt too wide) in paragraph at lines 3399--3403
+[]\T1/cmr/m/n/12 (-20) Look up the nor-malised cross sec-tion $\OML/cmm/m/it/12
+ ^^[=^^[[]$ \T1/cmr/m/n/12 (-20) from the pre-com-puted ta-ble via \T1/cmtt/m/n
+/12 getCrossSection\T1/cmr/m/n/12 (-20) ,
+ []
+
+
+Overfull \hbox (12.48468pt too wide) in paragraph at lines 3399--3403
+\T1/cmr/m/n/12 (-20) which calls \T1/cmtt/m/n/12 getThermalCrossSection \T1/cmr
+/m/n/12 (-20) and (if ap-pli-ca-ble) \T1/cmtt/m/n/12 getNonThermalCrossSection\
+T1/cmr/m/n/12 (-20) . 
+ []
+
+
+Overfull \hbox (73.4516pt too wide) in paragraph at lines 3404--3411
+[]\T1/cmr/m/it/12 (-20) If ther-mal elec-trons are present: \T1/cmr/m/n/12 (-20
+) com-pute the ther-mal op-ti-cal depth $\OML/cmm/m/it/12 ^^\[] \OT1/cmr/m/n/12
+ (-20) = \OML/cmm/m/it/12 n[] ^^[[] \OT1/cmr/m/n/12 (-20) (\OML/cmm/m/it/12 ^^[
+=^^[[]\OT1/cmr/m/n/12 (-20) ) []$\T1/cmr/m/n/12 (-20) ;
+ []
+
+
+Overfull \hbox (62.67543pt too wide) in paragraph at lines 3404--3411
+\T1/cmr/m/n/12 (-20) com-pute the ther-mal bias $\OML/cmm/m/it/12 b[] \OT1/cmr/
+m/n/12 (-20) = \OML/cmm/m/it/12 b[]$ \T1/cmr/m/n/12 (-20) via [] us-ing $\OML/c
+mm/m/it/12 ^^\[]$ \T1/cmr/m/n/12 (-20) as $\OML/cmm/m/it/12 ^^\[]$\T1/cmr/m/n/1
+2 (-20) ; store in \T1/cmtt/m/n/12 ph->scattering_-opacity[0]
+ []
+
+
+Overfull \hbox (7.34633pt too wide) in paragraph at lines 3412--3419
+\OML/cmm/m/it/12 ^^\[]$ \T1/cmr/m/n/12 (-20) via []; set $\OML/cmm/m/it/12 ^^\[
+] \OT1/cmr/m/n/12 (-20) = \OML/cmm/m/it/12 ^^\[]=[]$ []\T1/cmr/m/n/12 (-20) . S
+et \T1/cmtt/m/n/12 ph->scattering_-opacity[0]
+ []
+
+
+Overfull \hbox (56.25545pt too wide) in paragraph at lines 3420--3425
+[] \T1/cmr/m/n/12 (-20) us-ing $\OML/cmm/m/it/12 b[]$ \T1/cmr/m/n/12 (-20) and 
+$\OML/cmm/m/it/12 ^^\[]$ \T1/cmr/m/n/12 (-20) from the ap-pro-pri-ate branch ab
+ove; store in \T1/cmtt/m/n/12 ph->scattering_-opacity[k]
+ []
+
+
+
+[65]
+
+[66]
+Overfull \hbox (48.30092pt too wide) in paragraph at lines 3569--3574
+\T1/cmr/m/n/12 (-20) com-pu-ta-tion, thresh-old, and kill/survive de-ci-sion) i
+s im-ple-mented in \T1/cmtt/m/n/12 applyRussianRouletteByType\T1/cmr/m/n/12 (-2
+0) ,
+ []
+
+
+Overfull \hbox (3.39496pt too wide) in paragraph at lines 3582--3586
+\T1/cmr/m/n/12 (-20) col-lec-tion, me-dian/threshold com-pu-ta-tion, and the ro
+ulette pass) for a sin-gle, caller-specified
+ []
+
+
+Overfull \hbox (32.38678pt too wide) in paragraph at lines 3587--3592
+[]\T1/cmr/m/n/12 (-20) The wrap-per func-tion ac-tu-ally in-voked from the main
+ trans-port loop, \T1/cmtt/m/n/12 applyRussianRoulette\T1/cmr/m/n/12 (-20) ,
+ []
+
+
+
+[67]
+Overfull \hbox (37.89757pt too wide) in paragraph at lines 3620--3630
+\T1/cmr/m/n/12 (-20) Comp-ton scat-ter-ing. This type in-cludes SSC pho-tons bu
+t is not lim-ited to synchrotron-seeded
+ []
+
+
+Overfull \hbox (0.15477pt too wide) in paragraph at lines 3645--3648
+\T1/cmr/m/n/12 (-20) pro-ce-dure of \T1/cmtt/m/n/12 applyRussianRouletteByType 
+\T1/cmr/m/n/12 (-20) for a sin-gle pho-ton type and a sin-gle thresh-old
+ []
+
+
+
+[68]
+Underfull \hbox (badness 10000) in paragraph at lines 3738--3740
+[]|\T1/cmr/m/n/12 (+20) call \T1/cmtt/m/n/12 sampleSynchFrequency \T1/cmr/m/n/1
+2 (+20) and
+ []
+
+
+Overfull \hbox (5.7007pt too wide) in paragraph at lines 3741--3742
+[]|\T1/cmtt/m/n/12 sampleSynchFrequency| 
+ []
+
+
+LaTeX Warning: Float too large for page by 23.55821pt on input line 3757.
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+
+Overfull \hbox (11.87419pt too wide) in paragraph at lines 3768--3769
+[]|\T1/cmtt/m/n/12 calculateOpticalDepth| 
+ []
+
+
+Overfull \hbox (30.39467pt too wide) in paragraph at lines 3775--3776
+[]|\T1/cmtt/m/n/12 calculateOpticalDepthSSA| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 3782--3784
+[]|\T1/cmtt/m/n/12 absorption_-opacity $\OT1/cmr/m/n/12 (+20) =
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 3786--3787
+[]|\T1/cmr/m/n/12 (+20) (Contrast with the lab-density
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 3799--3801
+[]|$\OML/cmm/m/it/12 w[] \OT1/cmr/m/n/12 (+20) =
+ []
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+
+Overfull \hbox (67.43562pt too wide) in paragraph at lines 3817--3818
+[]|\T1/cmtt/m/n/12 calculateThermalScatteringBias| 
+ []
+
+
+Overfull \hbox (85.9561pt too wide) in paragraph at lines 3824--3825
+[]|\T1/cmtt/m/n/12 calculateNonthermalScatteringBias| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 3831--3832
+[]|\T1/cmr/bx/n/12 (+20) Current be-haviour\T1/cmr/m/n/12 (+20) : the
+ []
+
+
+Overfull \hbox (18.04768pt too wide) in paragraph at lines 3836--3837
+[]|\T1/cmtt/m/n/12 generateSingleElectron| 
+ []
+
+
+Overfull \hbox (11.87419pt too wide) in paragraph at lines 3844--3845
+[]|\T1/cmtt/m/n/12 scatteredPhotonWeight| 
+ []
+
+
+Overfull \hbox (11.46938pt too wide) in paragraph at lines 3845--3846
+[]|\T1/cmtt/m/n/12 mcrat_-scattering.c| 
+ []
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+
+Overfull \hbox (5.7007pt too wide) in paragraph at lines 3862--3863
+[]|\T1/cmtt/m/n/12 applyRussianRoulette| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 3864--3865
+[]|\T1/cmr/m/n/12 (+20) Thin wrap-per: calls
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 3866--3867
+[]|\T1/cmtt/m/n/12 INJECTED_-PHOTON\T1/cmr/m/n/12 (+20) , and
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 3872--3873
+[]|\T1/cmtt/m/n/12 scatt_-frame != scatt_-framestart
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 3873--3874
+[]|\T1/cmtt/m/n/12 scatt_-frame != last_-frm\T1/cmr/m/n/12 (+20) ,
+ []
+
+
+Underfull \hbox (badness 2318) in paragraph at lines 3874--3875
+[]|\T1/cmr/m/n/12 (+20) before the cor-re-spond-ing re-bin-ning
+ []
+
+
+Overfull \hbox (42.74165pt too wide) in paragraph at lines 3876--3877
+[]|\T1/cmtt/m/n/12 applyRussianRouletteByType| 
+ []
+
+
+LaTeX Warning: Float too large for page by 16.11473pt on input line 3895.
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+
+Overfull \hbox (73.60912pt too wide) in paragraph at lines 3919--3920
+[]|\T1/cmtt/m/n/12 calculateNonthermalElectronDens| 
+ []
+
+
+Overfull \hbox (30.39467pt too wide) in paragraph at lines 3925--3926
+[]|\T1/cmtt/m/n/12 initalizeHotCrossSection| 
+ []
+
+
+Overfull \hbox (85.9561pt too wide) in paragraph at lines 3933--3934
+[]|\T1/cmtt/m/n/12 interpolateThermalHotCrossSection| 
+ []
+
+
+Overfull \hbox (153.86452pt too wide) in paragraph at lines 3940--3941
+[]|\T1/cmtt/m/n/12 interpolateSubgroupNonThermalHotCrossSection| 
+ []
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+
+Overfull \hbox (51.90369pt too wide) in paragraph at lines 3957--3970
+\T1/cmr/m/n/12 (-20) as-sem-bled con-sis-tently for both scat-ter-ing and SSA a
+b-sorp-tion within \T1/cmtt/m/n/12 calculateOpticalDepth\T1/cmr/m/n/12 (-20) ,
+ []
+
+
+Overfull \hbox (11.68027pt too wide) in paragraph at lines 3994--4007
+\T1/cmr/m/n/12 (-20) pop-u-la-tion. The wrap-per \T1/cmtt/m/n/12 applyRussianRo
+ulette \T1/cmr/m/n/12 (-20) ap-plies this pro-ce-dure in-de-pen-dently
+ []
+
+
+Overfull \hbox (1.0701pt too wide) in paragraph at lines 3994--4007
+\T1/cmr/m/n/12 (-20) to three pho-ton types (\T1/cmtt/m/n/12 SYNCH_-PHOTON\T1/c
+mr/m/n/12 (-20) , \T1/cmtt/m/n/12 INJECTED_-PHOTON\T1/cmr/m/n/12 (-20) , and \T
+1/cmtt/m/n/12 COMPTONIZED_-PHOTON\T1/cmr/m/n/12 (-20) ,
+ []
+
+
+Overfull \hbox (1.99945pt too wide) in paragraph at lines 3994--4007
+\T1/cmr/m/n/12 (-20) the last with a $\OT1/cmr/m/n/12 (-20) 10[]\OMS/cmsy/m/n/1
+2 ^^B$ \T1/cmr/m/n/12 (-20) re-duced thresh-old to pro-tect the SSC spec-tral t
+ail; Sec-tion []4.6.9[]),
+ []
+
+
+
+[69]
+Overfull \hbox (0.21211pt too wide) in paragraph at lines 4010--4011
+\T1/cmtt/m/n/12 custom_-spectrum.c\T1/cmr/m/n/12 (-20) , lets the user in-ject 
+pho-tons with an ar-bi-trary spec-trum, 4-momentum,
+ []
+
+LaTeX Font Info:    Font shape `T1/cmtt/bx/n' in size <14.4> not available
+(Font)              Font shape `T1/cmtt/m/n' tried instead on input line 4012.
+
+Overfull \hbox (9.24547pt too wide) in paragraph at lines 4018--4019
+[]\T1/cmtt/m/n/12 initialized_-photon = custom_-photon_-sampler(hydro_-data, i,
+ rand,
+ []
+
+
+Overfull \hbox (58.6334pt too wide) in paragraph at lines 4025--4026
+[]\T1/cmtt/m/n/12 struct photon custom_-photon_-sampler(struct hydro_-dataframe
+ *hydro_-data,
+ []
+
+
+
+[70]
+Overfull \hbox (93.41428pt too wide) in paragraph at lines 4030--4031
+\T1/cmr/m/n/12 (-20) The user ac-cesses a fluid quan-tity for this el-e-ment as
+, for ex-am-ple, \T1/cmtt/m/n/12 (hydro_-data->temp)[hydro_-index]\T1/cmr/m/n/1
+2 (-20) . 
+ []
+
+
+
+[71]
+Package microtype Info: Loading generic protrusion settings for font family
+(microtype)             `cmtt' (encoding: OT1).
+(microtype)             For optimal results, create family-specific settings.
+(microtype)             See the microtype manual for details.
+
+Overfull \hbox (26.85246pt too wide) in paragraph at lines 4072--4073
+\T1/cmr/m/n/12 (-20) The de-fault im-ple-men-ta-tion shipped with \T1/cmr/m/sc/
+12 (-20) MCRaT \T1/cmr/m/n/12 (-20) sam-ples a fre-quency from a fixed-temperat
+ure
+ []
+
+
+Overfull \hbox (10.65004pt too wide) in paragraph at lines 4076--4077
+\T1/cmtt/m/n/12 custom_-spectrum \T1/cmr/m/n/12 (-20) within the acceptance--re
+jection loop and set \T1/cmtt/m/n/12 comv_-p0 \T1/cmr/m/n/12 (-20) to the cor-r
+e-spond-ing
+ []
+
+
+Overfull \hbox (3.2102pt too wide) in paragraph at lines 4079--4080
+\T1/cmr/m/n/12 (-20) non-Blackbody spec-trum code to \T1/cmtt/m/n/12 custom_-ph
+oton_-sampler \T1/cmr/m/n/12 (-20) through its fall-through branch).
+ []
+
+
+Overfull \hbox (8.94804pt too wide) in paragraph at lines 4079--4080
+\T1/cmr/m/n/12 (-20) This causes \T1/cmtt/m/n/12 photonInjection \T1/cmr/m/n/12
+ (-20) to route pho-ton gen-er-a-tion through \T1/cmtt/m/n/12 custom_-photon_-s
+ampler\T1/cmr/m/n/12 (-20) ,
+ []
+
+
+
+[72]
+Overfull \hbox (12.02354pt too wide) in paragraph at lines 4087--4088
+[]\T1/cmtt/m/n/12 void customOutflowPrep(struct hydro_-dataframe *hydro_-data, 
+FILE
+ []
+
+
+Overfull \hbox (45.66237pt too wide) in paragraph at lines 4091--4092
+\T1/cmr/m/n/12 (-20) from the hy-dro file. The num-ber of hy-dro el-e-ments is 
+avail-able as \T1/cmtt/m/n/12 hydro_-data->num_-elements\T1/cmr/m/n/12 (-20) .
+ []
+
+
+
+[73]
+Overfull \hbox (16.10052pt too wide) in paragraph at lines 4100--4101
+\T1/cmr/m/n/12 (-20) by the speed of light, in the com-po-nents \T1/cmtt/m/n/12
+ (hydro_-data->v0)[i]\T1/cmr/m/n/12 (-20) , \T1/cmtt/m/n/12 (hydro_-data->v1)[i
+]\T1/cmr/m/n/12 (-20) ,
+ []
+
+
+Overfull \hbox (24.54407pt too wide) in paragraph at lines 4106--4107
+[]\OML/cmm/m/it/12 aT[]$\T1/cmr/m/n/12 (-20) , since \T1/cmr/m/sc/12 (-20) MCRa
+T \T1/cmr/m/n/12 (-20) as-sumes this through-out (Sec-tion []3.2[]). The ex-am-
+ple im-ple-men-ta-tion
+ []
+
+
+Overfull \hbox (23.4181pt too wide) in paragraph at lines 4124--4124
+ []   \T1/cmtt/m/n/10.95 calculateElectronDistSubgroupDens(hydro_data->electron
+_dens_subgroup, fPtr);[] 
+ []
+
+
+
+[74]
+Overfull \hbox (2.23553pt too wide) in paragraph at lines 4131--4132
+ []\T1/cmr/bx/n/12 (-20) Non-thermal elec-tron den-sity is \T1/cmr/bx/it/12 (-2
+0) not \T1/cmr/bx/n/12 (-20) auto-populated.[] \T1/cmr/m/n/12 (-20) For all non
+-custom sim-u-la-tion
+ []
+
+
+Overfull \hbox (115.19814pt too wide) in paragraph at lines 4131--4132
+\T1/cmr/m/n/12 (-20) den-sity \T1/cmtt/m/n/12 hydro_-data->nonthermal_-dens \T1
+/cmr/m/n/12 (-20) by equat-ing a user-specified frac-tion (\T1/cmtt/m/n/12 NONT
+HERMAL_-CONVERSION_-FACTOR\T1/cmr/m/n/12 (-20) )
+ []
+
+
+Overfull \hbox (35.61816pt too wide) in paragraph at lines 4131--4132
+\T1/cmr/m/n/12 (-20) the user's \T1/cmtt/m/n/12 customOutflowPrep \T1/cmr/m/n/1
+2 (-20) func-tion \T1/cmr/m/it/12 (-20) must it-self \T1/cmr/m/n/12 (-20) pop-u
+-late \T1/cmtt/m/n/12 hydro_-data->nonthermal_-dens[i]
+ []
+
+
+Overfull \hbox (9.48677pt too wide) in paragraph at lines 4141--4142
+[]\T1/cmr/m/n/12 (-20) If \T1/cmtt/m/n/12 B_-FIELD_-CALC \T1/cmr/m/n/12 (-20) i
+s set to \T1/cmtt/m/n/12 SIMULATION\T1/cmr/m/n/12 (-20) , \T1/cmr/m/sc/12 (-20)
+ MCRaT \T1/cmr/m/n/12 (-20) ex-pects the mag-netic field com-po-nents
+ []
+
+
+Overfull \hbox (100.84898pt too wide) in paragraph at lines 4145--4146
+\T1/cmr/m/n/12 (-20) rou-tine \T1/cmtt/m/n/12 calculateElectronDistSubgroupDens
+ \T1/cmr/m/n/12 (-20) com-putes the ar-ray \T1/cmtt/m/n/12 hydro_-data->electro
+n_-dens_-subgroup\T1/cmr/m/n/12 (-20) ,
+ []
+
+
+Overfull \hbox (56.39134pt too wide) in paragraph at lines 4145--4146
+\T1/cmr/m/n/12 (-20) den-si-ties with a cus-tom out-flow must there-fore also p
+op-u-late \T1/cmtt/m/n/12 hydro_-data->electron_-dens_-subgroup
+ []
+
+
+Overfull \hbox (171.90427pt too wide) in paragraph at lines 4145--4146
+\T1/cmr/m/n/12 (-20) them-selves, most con-ve-niently by call-ing \T1/cmtt/m/n/
+12 calculateElectronDistSubgroupDens(hydro_-data->electron_-dens_-subgroup,
+ []
+
+
+
+[75]
+Overfull \hbox (32.2234pt too wide) in paragraph at lines 4148--4149
+\T1/cmr/m/n/12 (-20) volume-averaged di-men-sion-less tem-per-a-ture $[]$, stor
+ed in \T1/cmtt/m/n/12 hydro_-data->average_-dimless_-theta
+ []
+
+
+Overfull \hbox (114.5752pt too wide) in paragraph at lines 4148--4149
+\T1/cmr/m/n/12 (-20) and used in com-put-ing the ther-mal scat-ter-ing bias (Se
+c-tion []4.5[]), is com-puted by \T1/cmtt/m/n/12 calculateAverageDimlessTheta
+ []
+
+
+Overfull \hbox (11.11319pt too wide) in paragraph at lines 4148--4149
+\T1/cmr/m/n/12 (-20) un-der a guard that de-pends \T1/cmr/m/it/12 (-20) only \T
+1/cmr/m/n/12 (-20) on \T1/cmtt/m/n/12 SCATTERING_-BIAS_-SWITCH \T1/cmr/m/n/12 (
+-20) and car-ries \T1/cmr/m/it/12 (-20) no \T1/cmr/m/n/12 (-20) custom-outflow
+ []
+
+
+Overfull \hbox (25.13202pt too wide) in paragraph at lines 4148--4149
+\T1/cmr/m/n/12 (-20) that \T1/cmtt/m/n/12 customOutflowPrep \T1/cmr/m/n/12 (-20
+) as-signs. The user does not need to pop-u-late \T1/cmtt/m/n/12 average_-dimle
+ss_-theta
+ []
+
+
+Overfull \hbox (10.20401pt too wide) in paragraph at lines 4148--4149
+\T1/cmr/m/n/12 (-20) man-u-ally, but must en-sure that the co-mov-ing tem-per-a
+-tures they as-sign to \T1/cmtt/m/n/12 hydro_-data->temp
+ []
+
+
+Overfull \hbox (12.13809pt too wide) in paragraph at lines 4154--4155
+[]\T1/cmtt/m/n/12 hydro_-data->B0[i]\T1/cmr/m/n/12 (-20) , \T1/cmtt/m/n/12 B1[i
+]\T1/cmr/m/n/12 (-20) , and (in 2.5D/3D) \T1/cmtt/m/n/12 B2[i] \T1/cmr/m/n/12 (
+-20) --- the mag-netic field com-po-nents,
+ []
+
+
+Overfull \hbox (110.04099pt too wide) in paragraph at lines 4155--4156
+\T1/cmr/m/n/12 (-20) if the non-thermal scat-ter-ing physics is used (most eas-
+ily by call-ing \T1/cmtt/m/n/12 calculateElectronDistSubgroupDens
+ []
+
+
+
+[76]
+Overfull \hbox (12.34145pt too wide) in paragraph at lines 4163--4164
+\T1/cmr/m/n/12 (-20) To use a cus-tom out-flow, the user sets the \T1/cmtt/m/n/
+12 SIMULATION_-TYPE \T1/cmr/m/n/12 (-20) pa-ram-e-ter in the \T1/cmtt/m/n/12 mc
+rat_-input.h
+ []
+
+(./mcrat_doc.bbl
+
+[77])
+
+[78]
+
+[79]
+
+[80]
+
+[81]
+
+[82]
+
+[83] (./mcrat_doc.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-01-18>
  ***********
 Package rerunfilecheck Info: File `mcrat_doc.out' has not changed.
-(rerunfilecheck)             Checksum: 49295D6EC54E5354DAD87995CDCDBE0D;8325.
+(rerunfilecheck)             Checksum: C58E3DB2375D28CC90C0AE1FD275CFD7;12259.
  ) 
 Here is how much of TeX's memory you used:
- 13277 strings out of 473190
- 207495 string characters out of 5715801
- 650146 words of memory out of 5000000
- 36232 multiletter control sequences out of 15000+600000
- 570719 words of font info for 82 fonts, out of 8000000 for 9000
+ 17047 strings out of 473190
+ 267409 string characters out of 5715801
+ 759622 words of memory out of 5000000
+ 39229 multiletter control sequences out of 15000+600000
+ 596964 words of font info for 305 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 75i,13n,79p,2309b,680s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 75i,15n,79p,2754b,763s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb
-></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbxti10.pf
-b></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb
-></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb>
-</usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></
-usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></us
-r/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/
-local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/lo
-cal/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local
-/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/te
-xlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/tex
-live/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texli
-ve/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive
-/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/local/texlive/
-2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/local/texlive/2
-025/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb></usr/local/texlive/20
-25/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb></usr/local/texliv
-e/2025/texmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb>
-Output written on mcrat_doc.pdf (38 pages, 734076 bytes).
+></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb>
+</usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb><
+/usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></u
+sr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr
+/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/l
+ocal/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/loca
+l/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/t
+exlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/te
+xlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texl
+ive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texliv
+e/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb></usr/local/texlive
+/2025/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb></usr/local/tex
+live/2025/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/local
+/texlive/2025/texmf-dist/fonts/type1/public/cm-super/sfbi1200.pfb></usr/local/t
+exlive/2025/texmf-dist/fonts/type1/public/cm-super/sfbx1200.pfb></usr/local/tex
+live/2025/texmf-dist/fonts/type1/public/cm-super/sfbx1440.pfb></usr/local/texli
+ve/2025/texmf-dist/fonts/type1/public/cm-super/sfbx1728.pfb></usr/local/texlive
+/2025/texmf-dist/fonts/type1/public/cm-super/sfcc1200.pfb></usr/local/texlive/2
+025/texmf-dist/fonts/type1/public/cm-super/sfrm0800.pfb></usr/local/texlive/202
+5/texmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/local/texlive/2025/
+texmf-dist/fonts/type1/public/cm-super/sfrm1440.pfb></usr/local/texlive/2025/te
+xmf-dist/fonts/type1/public/cm-super/sfrm2074.pfb></usr/local/texlive/2025/texm
+f-dist/fonts/type1/public/cm-super/sfti1200.pfb></usr/local/texlive/2025/texmf-
+dist/fonts/type1/public/cm-super/sftt0800.pfb></usr/local/texlive/2025/texmf-di
+st/fonts/type1/public/cm-super/sftt1095.pfb></usr/local/texlive/2025/texmf-dist
+/fonts/type1/public/cm-super/sftt1200.pfb></usr/local/texlive/2025/texmf-dist/f
+onts/type1/public/cm-super/sftt1440.pfb></usr/local/texlive/2025/texmf-dist/fon
+ts/type1/public/cm-super/sfxc1200.pfb></usr/local/texlive/2025/texmf-dist/fonts
+/type1/public/cm-super/sfxc1440.pfb></usr/local/texlive/2025/texmf-dist/fonts/t
+ype1/public/cm-super/sfxc1728.pfb>
+Output written on mcrat_doc.pdf (83 pages, 1169805 bytes).
 PDF statistics:
- 823 PDF objects out of 1000 (max. 8388607)
- 623 compressed objects within 7 object streams
- 123 named destinations out of 1000 (max. 500000)
- 359 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 1712 PDF objects out of 1728 (max. 8388607)
+ 1429 compressed objects within 15 object streams
+ 419 named destinations out of 1000 (max. 500000)
+ 61919 words of extra memory for PDF output out of 74296 (max. 10000000)
 

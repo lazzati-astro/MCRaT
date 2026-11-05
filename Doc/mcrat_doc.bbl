@@ -1,14 +1,37 @@
 \begin{thebibliography}{}
 \expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
 
+\bibitem[{Abramowicz {et~al.}(1991)Abramowicz, Novikov, \&
+  Paczynski}]{abramowicz1991}
+Abramowicz, M.~A., Novikov, I.~D., \& Paczynski, B. 1991, The Astrophysical
+  Journal, 369, 175
+
+\bibitem[{Canfield {et~al.}(1987)Canfield, Howard, \& Liang}]{canfield1987}
+Canfield, E., Howard, W.~M., \& Liang, E.~P. 1987, The Astrophysical Journal,
+  323, 565
+
 \bibitem[{Depaola(2003)}]{depaola2003new}
 Depaola, G. 2003, Nuclear Instruments and Methods in Physics Research Section
   A: Accelerators, Spectrometers, Detectors and Associated Equipment, 512, 619
+
+\bibitem[{Dexter {et~al.}(2012)Dexter, McKinney, \& Agol}]{dexter2012}
+Dexter, J., McKinney, C., \& Agol, E. 2012, Monthly Notices of the Royal
+  Astronomical Society, 421, 1517
+
+\bibitem[{Dolence {et~al.}(2009)Dolence, Gammie, Mo{\'s}cibrodzka, \&
+  Leung}]{dolence2009}
+Dolence, J.~C., Gammie, C.~F., Mo{\'s}cibrodzka, M., \& Leung, P.~K. 2009, The
+  Astrophysical Journal Supplement Series, 184, 387
 
 \bibitem[{Ito {et~al.}(2014)Ito, Nagataki, Matsumoto, Lee, Tolstov, Mao,
   Dainotti, \& Mizuta}]{ito_polarization}
 Ito, H., Nagataki, S., Matsumoto, J., {et~al.} 2014, The Astrophysical Journal,
   789, 159
+
+\bibitem[{Kawashima {et~al.}(2023)Kawashima, Ohsuga, \&
+  Takahashi}]{kawashima2023}
+Kawashima, T., Ohsuga, K., \& Takahashi, H.~R. 2023, The Astrophysical Journal,
+  949, 101
 
 \bibitem[{Krawczynski(2011)}]{krawczynski2011polarization}
 Krawczynski, H. 2011, The Astrophysical Journal, 744, 30
@@ -42,5 +65,9 @@ Parsotan, T., L{\'o}pez-C{\'a}mara, D., \& Lazzati, D. 2018, The Astrophysical
 \bibitem[{{Rybicki} \& {Lightman}(1979)}]{Rybiki_Lightman}
 {Rybicki}, G.~B., \& {Lightman}, A.~P. 1979, {Radiative processes in
   astrophysics}
+
+\bibitem[{Rybicki \& Lightman(1979)}]{rybicki1979}
+Rybicki, G.~B., \& Lightman, A.~P. 1979, Radiative Processes in Astrophysics
+  (New York: Wiley)
 
 \end{thebibliography}

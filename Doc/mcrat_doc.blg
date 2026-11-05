@@ -1,49 +1,49 @@
-This is BibTeX, Version 0.99d (TeX Live 2018)
-Capacity: max_strings=100000, hash_size=100000, hash_prime=85009
+This is BibTeX, Version 0.99d (TeX Live 2025)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: mcrat_doc.aux
 The style file: apj.bst.bst
 Database file #1: references.bib
 Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
 Warning--empty publisher in Rybiki_Lightman
-You've used 11 entries,
+You've used 17 entries,
             3085 wiz_defined-function locations,
-            710 strings with 6281 characters,
-and the built_in function-call counts, 4518 in all, are:
-= -- 394
-> -- 252
-< -- 7
-+ -- 89
-- -- 85
-* -- 335
-:= -- 858
-add.period$ -- 11
-call.type$ -- 11
-change.case$ -- 70
-chr.to.int$ -- 11
-cite$ -- 12
-duplicate$ -- 199
-empty$ -- 311
-format.name$ -- 101
-if$ -- 903
+            746 strings with 7097 characters,
+and the built_in function-call counts, 7288 in all, are:
+= -- 637
+> -- 432
+< -- 8
++ -- 153
+- -- 151
+* -- 563
+:= -- 1365
+add.period$ -- 17
+call.type$ -- 17
+change.case$ -- 112
+chr.to.int$ -- 17
+cite$ -- 18
+duplicate$ -- 313
+empty$ -- 490
+format.name$ -- 175
+if$ -- 1461
 int.to.chr$ -- 1
 int.to.str$ -- 0
-missing$ -- 11
-newline$ -- 37
-num.names$ -- 44
-pop$ -- 68
+missing$ -- 17
+newline$ -- 55
+num.names$ -- 68
+pop$ -- 114
 preamble$ -- 1
-purify$ -- 70
+purify$ -- 112
 quote$ -- 0
-skip$ -- 175
+skip$ -- 272
 stack$ -- 0
-substring$ -- 210
+substring$ -- 333
 swap$ -- 0
 text.length$ -- 0
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 96
+type$ -- 147
 warning$ -- 1
-while$ -- 43
+while$ -- 66
 width$ -- 0
-write$ -- 112
+write$ -- 172
 (There was 1 warning)
